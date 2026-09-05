@@ -651,7 +651,13 @@ function bird(k, col, opt = {}) {
   const v = vary(k);
   col = toned(k, col);
   const dark = darkOf(col);
-  const belly = bellyOf(col);
+  /* The vent. `bellyOf` lifts the base by a flat 0.32 toward paper, which on a
+     black crow is a tan patch under the tail and on a black-and-white myna a
+     pale wedge it does not have. How far a belly is lifted has to depend on
+     how dark the bird IS: a pale bird's underparts are paler still, a black
+     bird's are black. */
+  const lum = 0.299 * col.base[0] + 0.587 * col.base[1] + 0.114 * col.base[2];
+  const belly = col.belly ?? (/^(todiramphus|halcyon)-/.test(who(k)) ? paper : shade(col.base, 0.1 + 0.3 * lum));
   /* A wing takes the BODY colour. Routing `col.dark` here — which is a palette
      accent, not a shade of the bird — is what put maroon wings on a pigeon and
      an egret, and green wings on a swallow. A species that really does have a
@@ -673,6 +679,14 @@ function bird(k, col, opt = {}) {
   const parakeet = /^psittacula-/.test(id);
   const owl = /^(otus|ninox|tyto|bubo)-/.test(id);
   const longTail = parakeet || /^(lanius|rhipidura|copsychus|dicrurus|urocissa)-/.test(id);
+  /* The Collared Kingfisher is NAMED for a white collar over white underparts
+     against a turquoise back, and ours shipped turquoise from bill to toe. */
+  const collared = /^(todiramphus|halcyon)-/.test(id);
+  /* Crests. A crest was a 45% coin flip on every bird in the pack, which put
+     one on a zebra dove and on a pygmy woodpecker — neither species has any
+     such thing, and a crest is the loudest single feature a small bird can
+     carry. It is a fact about the genus now. */
+  const crested = /^(acridotheres|otus|ninox|gallus|lophura|cacatua|tanygnathus|hypothymis|pardaliparus|megalaima|psilopogon|elanus|spilornis|nisaetus|vanellus|pycnonotus)-/.test(id);
 
   const legH = opt.legH ?? (junglefowl ? 0.24 : heron ? v.f("legh", 0.3, 0.42) : v.f("legh", 0.05, 0.26));
   const fat = opt.plump ? v.f("fat", 1.04, 1.2) : v.f("fat", 0.82, 1.04);
@@ -700,12 +714,21 @@ function bird(k, col, opt = {}) {
   let headY = by * 0.66 + headR * 0.52;
   let headZ = bz * 0.18;
   if (neckLen > 0.02) {
-    const nseg = clamp(Math.round(neckLen / 0.09), 1, 4);
-    const nr = v.f("neckr", 0.055, 0.085);
+    /* One tapered COLUMN, not a bead chain. Each segment was a sphere of
+       0.055-0.085 under a head of 0.18-0.29 with visible air between them, so
+       four birds shipped a head apparently detached from the body and the
+       egret came out a snowman. The column now leaves the shoulders at very
+       nearly the head's own width, narrows to the throat, and every bead is
+       an ellipsoid long enough along the neck to overlap the next. */
+    const nseg = clamp(Math.round(neckLen / 0.06), 2, 6);
+    const step = neckLen / nseg;
+    const nr0 = Math.max(headR * 0.92, by * 0.44) * v.f("neckr", 0.86, 1.06);
+    const nr1 = headR * v.f("throat", 0.58, 0.74);
     for (let i = 0; i < nseg; i += 1) {
       const t = (i + 0.5) / nseg;
+      const nr = nr0 + (nr1 - nr0) * t;
       ball(k, body, `neck${i}`, {
-        r: nr * (1 - i * 0.08),
+        rx: nr, ry: step * 0.85, rz: nr,
         at: [0, by * 0.5 + neckLen * t, bz * 0.1 + 0.07 * t],
         color: col.neck ?? col.base,
       });
@@ -714,6 +737,16 @@ function bird(k, col, opt = {}) {
     headZ = bz * 0.1 + 0.07 + headR * 0.1;
   }
   const head = ball(k, body, "head", { r: headR, ry: headR * v.f("headsq", 0.88, 1.08), at: [0, headY, headZ], color: col.head ?? col.base });
+  if (collared) {
+    const white = col.collar ?? paper;
+    /* Standing PROUD of the body — a collar inside the ellipsoid it rings is
+       not a collar, which is why the first attempt left the kingfisher as
+       turquoise as it started. */
+    ball(k, body, "collar", {
+      rx: bx * 1.03, ry: by * 0.3, rz: bz * 0.66,
+      at: [0, by * 0.44, bz * 0.3], color: white,
+    });
+  }
 
   // wings — silhouette is per-species data, not one shared ellipsoid
   const swept = opt.wingShape === "sickle" || swallow;
@@ -858,7 +891,8 @@ function bird(k, col, opt = {}) {
   }
 
   // crest / comb / cheek
-  const crest = opt.crest ?? (junglefowl ? "comb" : owl ? "ear" : v.on("crest", 0.45) ? v.pick("crestk", ["tuft", "spike", "plume"]) : null);
+  const crest = opt.crest ?? (junglefowl ? "comb" : owl ? "ear"
+    : crested && v.on("crest", 0.8) ? v.pick("crestk", ["tuft", "spike", "plume"]) : null);
   if (owl) {
     /* The facial disc: the flat dish of stiff feathers that funnels sound, and
        the one feature that makes an owl an owl at any size. */
@@ -938,7 +972,7 @@ function bird(k, col, opt = {}) {
     const Re = eyeR0 * headR * (owl ? 1.06 : 0.98);
     for (const [tag, node] of [["l", eye.eyeL], ["r", eye.eyeR]]) {
       ball(k, node, `ring-${tag}`, {
-        rx: Re * 1.6, ry: Re * 1.6, rz: Re * 0.26,
+        rx: Re * (whiteEye ? 1.55 : 1.24), ry: Re * (whiteEye ? 1.55 : 1.24), rz: Re * 0.26,
         at: [0, 0, -Re * 0.18], color: whiteEye ? paper : APP.red, subdiv: 1,
       });
     }

@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T07:53:59.811Z",
+ "generated_at": "2026-09-05T07:57:27.102Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -435,7 +435,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/passer-montanus.glb",
-   "bytes": 59588,
+   "bytes": 62604,
    "display_scale_m": 0.15
   },
   {
@@ -1365,7 +1365,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/corvus-philippinus.glb",
-   "bytes": 64744,
+   "bytes": 67540,
    "display_scale_m": 0.4
   },
   {
@@ -1380,7 +1380,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/ardea-coromanda.glb",
-   "bytes": 62860,
+   "bytes": 69868,
    "display_scale_m": 0.55
   },
   {
@@ -1590,7 +1590,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/acridotheres-cristatellus.glb",
-   "bytes": 58448,
+   "bytes": 64212,
    "display_scale_m": 0.22
   },
   {
@@ -2100,7 +2100,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/oriolus-chinensis.glb",
-   "bytes": 62428,
+   "bytes": 60216,
    "display_scale_m": 0.24
   },
   {
@@ -2205,7 +2205,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/todiramphus-chloris.glb",
-   "bytes": 72752,
+   "bytes": 75636,
    "display_scale_m": 0.2
   },
   {
@@ -2265,7 +2265,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/lanius-cristatus.glb",
-   "bytes": 67652,
+   "bytes": 68260,
    "display_scale_m": 0.18
   },
   {
@@ -2625,7 +2625,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/geopelia-striata.glb",
-   "bytes": 60192,
+   "bytes": 58000,
    "display_scale_m": 0.16
   },
   {
@@ -3000,7 +3000,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/yungipicus-maculatus.glb",
-   "bytes": 62280,
+   "bytes": 65288,
    "display_scale_m": 0.15
   },
   {
@@ -3450,7 +3450,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/ardea-intermedia.glb",
-   "bytes": 66768,
+   "bytes": 70432,
    "display_scale_m": 0.55
   },
   {
@@ -3540,7 +3540,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/gerygone-sulphurea.glb",
-   "bytes": 64772,
+   "bytes": 68172,
    "display_scale_m": 0.09
   },
   {
@@ -3870,7 +3870,7 @@
    "archetype": "bird",
    "palette_source": "derived",
    "file": "species/otus-megalotis.glb",
-   "bytes": 73732,
+   "bytes": 77276,
    "display_scale_m": 0.18
   },
   {
@@ -4170,7 +4170,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/lalage-nigra.glb",
-   "bytes": 68556,
+   "bytes": 71924,
    "display_scale_m": 0.17
   },
   {
@@ -4185,7 +4185,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/lonchura-punctulata.glb",
-   "bytes": 61144,
+   "bytes": 56960,
    "display_scale_m": 0.11
   },
   {
@@ -5010,7 +5010,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/amaurornis-phoenicurus.glb",
-   "bytes": 66252,
+   "bytes": 72668,
    "display_scale_m": 0.2
   },
   {
@@ -5025,7 +5025,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/columba-livia.glb",
-   "bytes": 58160,
+   "bytes": 55608,
    "display_scale_m": 0.24
   },
   {
@@ -5040,7 +5040,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/lanius-schach.glb",
-   "bytes": 63020,
+   "bytes": 58788,
    "display_scale_m": 0.2
   },
   {
@@ -5340,7 +5340,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/cinnyris-jugularis.glb",
-   "bytes": 62356,
+   "bytes": 58280,
    "display_scale_m": 0.1
   },
   {
@@ -5760,7 +5760,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/rhipidura-nigritorquis.glb",
-   "bytes": 62160,
+   "bytes": 59952,
    "display_scale_m": 0.14
   },
   {
@@ -5850,7 +5850,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/psilopogon-haemacephalus.glb",
-   "bytes": 67284,
+   "bytes": 73760,
    "display_scale_m": 0.16
   },
   {
@@ -6120,7 +6120,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/dicaeum-pygmaeum.glb",
-   "bytes": 65640,
+   "bytes": 68572,
    "display_scale_m": 0.08
   },
   {
@@ -6135,7 +6135,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/motacilla-cinerea.glb",
-   "bytes": 70736,
+   "bytes": 72244,
    "display_scale_m": 0.14
   },
   {
@@ -8550,7 +8550,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/egretta-garzetta.glb",
-   "bytes": 65260,
+   "bytes": 70136,
    "display_scale_m": 0.5
   },
   {
@@ -8565,7 +8565,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/nycticorax-nycticorax.glb",
-   "bytes": 66976,
+   "bytes": 66892,
    "display_scale_m": 0.5
   },
   {
@@ -8580,7 +8580,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/muscicapa-griseisticta.glb",
-   "bytes": 60688,
+   "bytes": 63400,
    "display_scale_m": 0.12
   },
   {
@@ -8595,7 +8595,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/dicaeum-australe.glb",
-   "bytes": 62244,
+   "bytes": 65272,
    "display_scale_m": 0.09
   },
   {
@@ -8610,7 +8610,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/aplonis-panayensis.glb",
-   "bytes": 71372,
+   "bytes": 78384,
    "display_scale_m": 0.18
   },
   {
@@ -8625,7 +8625,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/zosterops-meyeni.glb",
-   "bytes": 66040,
+   "bytes": 69524,
    "display_scale_m": 0.09
   },
   {
@@ -9750,7 +9750,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/phylloscopus-borealis.glb",
-   "bytes": 69796,
+   "bytes": 67140,
    "display_scale_m": 0.1
   },
   {
@@ -10695,7 +10695,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/hierococcyx-pectoralis.glb",
-   "bytes": 63052,
+   "bytes": 56676,
    "display_scale_m": 0.24
   },
   {
@@ -11775,7 +11775,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/geokichla-cinerea.glb",
-   "bytes": 71592,
+   "bytes": 70792,
    "display_scale_m": 0.16
   },
   {
@@ -14940,7 +14940,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/collocalia-marginata.glb",
-   "bytes": 59272,
+   "bytes": 55040,
    "display_scale_m": 0.1
   },
   {
@@ -16350,7 +16350,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/tachyspiza-soloensis.glb",
-   "bytes": 76272,
+   "bytes": 77296,
    "display_scale_m": 0.24
   },
   {
