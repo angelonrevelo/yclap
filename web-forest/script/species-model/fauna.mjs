@@ -2566,21 +2566,38 @@ function blattodea(k, col, opt = {}) {
 
 function dermaptera(k, col, opt = {}) {
   const v = vary(k);
-  const dark = darkOf(col);
-  const bx = v.f("bx", 0.07, 0.1);
-  const by = v.f("by", 0.04, 0.065);
-  const bz = v.f("bz", 0.16, 0.24);
+  /* An earwig's head, antennae and legs are chitin, not a palette accent —
+     routing `col.dark` here gave both of ours a bright green or blue head. */
+  const dark = shade(col.base, -0.34);
+  const bx = v.f("bx", 0.06, 0.11);
+  const by = v.f("by", 0.035, 0.075);
+  const bz = v.f("bz", 0.14, 0.28);
   const bodyY = by * 1.2;
-  const body = ball(k, k.root, "body", { rx: bx, ry: by, rz: bz, at: [0, bodyY, -bz * 0.1], color: col.base });
+  const body = ball(k, k.root, "body", {
+    rx: bx, ry: by, rz: bz, at: [0, bodyY, -bz * 0.1],
+    rot: [v.f("pitch", -0.2, 0.16), 0, 0], color: col.base,
+  });
   const segN = v.i("segn", 2, 4);
   for (let i = 0; i < segN; i += 1) {
     ball(k, body, `tergite${i}`, { merge: true, rx: bx * 1.02, ry: by * 1.02, rz: bz * 0.09, at: [0, 0, -bz * (0.05 + i * (1.5 / (segN + 1)))], color: shade(col.base, i % 2 ? -0.24 : 0.1), subdiv: 0 });
   }
   for (const s of [1, -1]) {
     ball(k, body, `elytron-${s > 0 ? "l" : "r"}`, {
-      rx: bx * 0.45, ry: by * 0.8, rz: bz * v.f("elz", 0.28, 0.44),
-      at: [s * bx * 0.4, by * 0.3, bz * 0.3], color: shade(col.base, -0.14),
+      rx: bx * v.f("elx", 0.38, 0.56), ry: by * v.f("ely", 0.6, 0.95), rz: bz * v.f("elz", 0.24, 0.5),
+      at: [s * bx * 0.4, by * 0.32, bz * 0.3], color: shade(col.base, -0.14),
     });
+  }
+  /* The folded hindwing tips that stick out past the short wing cases —
+     present on some earwigs, absent on others, and a real part either way. */
+  const flapN = v.i("flapn", 0, 2);
+  for (let i = 0; i < flapN; i += 1) {
+    for (const s of [1, -1]) {
+      ball(k, body, `hindtip${i}-${s > 0 ? "l" : "r"}`, {
+        rx: bx * 0.24, ry: by * 0.24, rz: bz * v.f("htz", 0.12, 0.22),
+        at: [s * bx * (0.3 + i * 0.24), by * 0.5, -bz * (0.02 + i * 0.16)],
+        color: mix(col.base, hex("#f0ece2"), 0.5),
+      });
+    }
   }
   const head = ball(k, body, "head", { rx: bx * 0.6, ry: by * 0.9, rz: bx * 0.55, at: [0, by * 0.15, bz * 0.9], color: dark });
   antennaPair(k, head, { at: [0, bx * 0.3, bx * 0.4], gap: bx * 0.3, len: v.f("antl", 0.12, 0.24), r: 0.006, spread: v.f("ants", 0.3, 0.7), joint: 2, form: "thread", color: dark });
