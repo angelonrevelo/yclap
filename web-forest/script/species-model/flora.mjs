@@ -2050,75 +2050,102 @@ function shrub(k, col, opt = {}) {
       pl.bloomSpec = bloomSpec;
       // where the foliage starts, measured off the ground — a shrub is leafy
       // from about a tenth of its height, not from half way up a bare pole
-      pl.stemH = 0.08 + pl.u("sh") * 0.14;
+      pl.stemH = 0.05 + pl.u("sh") * 0.09;
       pl.crownW = ((pl.ax + pl.az) / 2) * 0.92;
       pl.anchorColor = trunkOf(col);
       p.spine("clump", (node) => {
         const tr = trunkOf(col);
-        const r0 = 0.013 + pl.u("sr") * 0.011;
+        const r0 = 0.016 + pl.u("sr") * 0.013;
         const leaf = opt.colorful ? CROTON[pl.H("cc") % CROTON.length] : pl.pal.leaf;
         const g = opt.colorful ? undefined : grad(shade(pl.pal.leaf, 0.2), pl.pal.deep, pl.stemH, 1);
         const depth = 1 - pl.stemH;
         const cw = pl.crownW;
 
         // the clump: several slender stems out of the ground, no leader
-        const ns = 3 + (pl.H("st") % 3);
+        const ns = 4 + (pl.H("st") % 3);
         const stem = [];
+        const top = [];
         for (let i = 0; i < ns; i += 1) {
           const a = i * 2.399 + pl.u("s0") * TAU;
-          const lean = 0.1 + 0.2 * ((i % 3) / 3);
-          const h = (0.5 + 0.42 * (((i * 5) % 7) / 7)) * (pl.bush === "upright" ? 1.1 : 1);
+          const lean = 0.16 + 0.26 * ((i % 3) / 3);
+          const h = (0.52 + 0.44 * (((i * 5) % 7) / 7)) * (pl.bush === "upright" ? 1.08 : 1);
           stem.push(xf(tubeGeo(r0 * (1.15 - 0.08 * i), r0 * 0.42, h, 9), {
             rz: -Math.cos(a) * lean, rx: Math.sin(a) * lean,
             at: [Math.cos(a) * r0 * 1.1, 0, Math.sin(a) * r0 * 1.1],
           }));
+          top.push([Math.cos(a) * (r0 * 1.1 + Math.sin(lean) * h), h * Math.cos(lean), Math.sin(a) * (r0 * 1.1 + Math.sin(lean) * h)]);
         }
         p.add(node, mergeGeo(stem), { color: tr, colorFn: grad(shade(tr, 0.12), shade(tr, -0.24), 0, 0.6) });
 
-        /* The core is deliberately SMALL. It is there to be the thing the
-           leaves hang off, not the shrub: a big opaque mass in the axis part
-           swallows every leaf slot and the archetype goes straight back to
-           being one blob eighty-nine times. */
-        let coreR = cw * 0.32, coreY = pl.stemH + depth * 0.45;
+        /*
+         * MANY small heads, never one big one.
+         *
+         * The old axis drew a single smooth ellipsoid a third of the crown wide
+         * and half its depth, and that one part WAS the shrub: it swallowed
+         * every leaf the slots added and fifty-three of the eighty-nine read as
+         * one or two horizontal lenses with a face on them. Murraya was
+         * literally two blobs.
+         *
+         * A shrub's outline is made of shoot tips. So the axis now carries a
+         * head per stem plus a low skirt — each one small enough that the leaf
+         * blades the slots hang on the outside are what the eye actually reads,
+         * and bumpy enough that the silhouette is not a lens.
+         */
+        const headR = cw * (pl.bush === "airy" ? 0.15 : 0.185);
+        const head = [];
+        const put = (x, y, z, rr, ry, col) => {
+          p.add(node, xf(sphereGeo(9, 5), { sx: rr, sy: ry, sz: rr, at: [x, y, z] }), { color: col, colorFn: g });
+          head.push({ at: [x, y, z], r: rr, ry });
+        };
         if (pl.bush === "tiered") {
           for (let i = 0; i < 3; i += 1) {
-            p.add(node, xf(capGeo(cw * (0.36 - i * 0.08), depth * 0.26, 12, 4, "flat"),
-              { at: [0, pl.stemH + i * depth * 0.32, 0] }), { color: i % 2 ? leaf : pl.pal.deep, colorFn: g });
+            const rr = cw * (0.3 - i * 0.07);
+            p.add(node, xf(capGeo(rr, depth * 0.2, 12, 4, "flat"), { at: [0, pl.stemH + i * depth * 0.3, 0] }),
+              { color: i % 2 ? leaf : pl.pal.deep, colorFn: g });
           }
-          coreR = cw * 0.36; coreY = pl.stemH + depth * 0.16;
-        } else if (pl.bush === "upright") {
-          p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.34, sy: depth * 0.42, sz: cw * 0.34, at: [0, pl.stemH + depth * 0.46, 0] }), { color: leaf, colorFn: g });
-          coreR = cw * 0.34; coreY = pl.stemH + depth * 0.46;
-        } else if (pl.bush === "airy") {
-          for (let i = 0; i < 3; i += 1) {
-            const a = i * 2.399 + pl.u("a0") * TAU;
-            p.add(node, xf(sphereGeo(10, 5), {
-              sx: cw * 0.19, sy: depth * 0.2, sz: cw * 0.19,
-              at: [Math.cos(a) * cw * 0.18, pl.stemH + depth * (0.32 + 0.29 * i), Math.sin(a) * cw * 0.18],
-            }), { color: i % 2 ? leaf : pl.pal.deep, colorFn: g });
-          }
-          coreR = cw * 0.19; coreY = 1 - depth * 0.25;
+          head.push({ at: [0, pl.stemH + depth * 0.16, 0], r: cw * 0.3, ry: depth * 0.2 });
         } else {
-          const d = pl.bush === "arching" ? 0.42 : 0.48;
-          p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.36, sy: depth * d * 0.6, sz: cw * 0.36, at: [0, 1 - depth * d, 0] }), { color: leaf, colorFn: g });
-          p.add(node, xf(capGeo(cw * 0.26, depth * 0.26, 11, 4, "flat"), { at: [0, pl.stemH * 0.4, 0] }), { color: pl.pal.deep, colorFn: g });
-          coreR = cw * 0.32; coreY = 1 - depth * d;
+          top.forEach((t, i) => {
+            const rr = headR * (0.82 + 0.4 * (((i * 3) % 5) / 5));
+            put(t[0] * 0.9, Math.max(pl.stemH + depth * 0.2, t[1]), t[2] * 0.9, rr, rr * (pl.bush === "upright" ? 1.25 : 0.86), i % 2 ? leaf : pl.pal.deep);
+          });
+          /* The skirt. Foliage carried DOWN to the ground is half of what makes
+             a shrub read as a shrub rather than a lollipop, and it lives in the
+             axis on purpose: the gate's trunk-versus-canopy test excludes the
+             axis, so low foliage here cannot make the plant read bottom-heavy. */
+          const nsk = pl.bush === "airy" ? 2 : 3;
+          for (let i = 0; i < nsk; i += 1) {
+            const a = i * 2.05 + pl.u("k0") * TAU;
+            put(Math.cos(a) * cw * 0.24, pl.stemH + depth * 0.12, Math.sin(a) * cw * 0.24,
+              headR * 0.9, headR * 0.62, i % 2 ? pl.pal.deep : leaf);
+          }
         }
-        const fr = Math.max(0.028, Math.min(coreR * 0.42, cw * 0.15));
-        addFace(p, node, { at: [0, coreY, coreR * 0.86], r: fr, tri: p.budget * 8 });
+        /* The face rides the head that faces the viewer and sits highest — it
+           has to be ON a head, not at the axis, or it hangs in the gap between
+           shoots and the face-attachment gate sees it. */
+        const seat = head.reduce((b, h) => (h.at[1] + h.at[2] * 0.6 > b.at[1] + b.at[2] * 0.6 ? h : b), head[0]);
+        const fr = Math.max(0.028, Math.min(seat.r * 0.55, cw * 0.14));
+        addFace(p, node, { at: [seat.at[0], seat.at[1], seat.at[2] + seat.r * 0.9], r: fr, tri: p.budget * 8 });
       });
     },
     slot(p, pl, s) {
       const { node, band, a, top } = s;
       if (band <= 1) {
-        // another shoot out of the clump, leafy right down to its foot
+        /* Another shoot out of the clump, and it carries LEAVES. It used to end
+           in a smooth lump, which made the bottom of every shrub a ring of
+           knuckles under a canopy — the low foliage a shrub is supposed to have
+           has to look like foliage. */
         const br = baseReach(pl, 0.36);
-        p.add(node, xf(tubeGeo(br * 0.2, br * 0.11, br * 1.5, 9), { rz: -Math.cos(a) * 0.34, rx: Math.sin(a) * 0.34 }), { color: trunkOf(col) });
-        addLump(p, node, {
-          rx: br * 0.5, ry: br * 0.42, rz: br * 0.5, yaw: a, tri: p.budget * 0.6,
-          at: [Math.cos(a) * br * 0.5, br * 0.7, Math.sin(a) * br * 0.5],
-          color: pl.pal.deep, colorFn: opt.colorful ? undefined : pl.pal.grad,
-        });
+        p.add(node, xf(tubeGeo(br * 0.18, br * 0.1, br * 1.4, 9), { rz: -Math.cos(a) * 0.34, rx: Math.sin(a) * 0.34 }), { color: trunkOf(col) });
+        const at = [Math.cos(a) * br * 0.46, br * 0.7, Math.sin(a) * br * 0.46];
+        for (let i = 0; i < 3; i += 1) {
+          addLeaf(p, node, {
+            tri: p.budget / 3, yaw: a + (i - 1) * 0.9, pitch: 0.55 + i * 0.2, at,
+            len: br * 0.95, wid: br * 0.42, shape: pl.shape, form: "simple",
+            color: i % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: opt.colorful ? undefined : pl.pal.grad,
+            stalkColor: pl.pal.deep, stalk: 0,
+          });
+        }
         return;
       }
       const spec = pl.bloomSpec;
@@ -2139,8 +2166,13 @@ function shrub(k, col, opt = {}) {
         });
         return;
       }
-      const droop = pl.bush === "arching" ? 0.75 : pl.bush === "upright" ? -0.35 : 0.2;
-      const r = reachOf(pl, a, (0.7 + pl.u("lr" + s.g) * 0.35) * (pl.bush === "airy" ? 1.05 : 1));
+      /* Angled, not flat. At a pitch of 0.2 a blade lies level, and a ring of
+         level blades is a pinwheel seen from above — which is what a third of
+         the family was doing over the top of its own canopy. */
+      const droop = pl.bush === "arching" ? 0.85 : pl.bush === "upright" ? 0.12 : 0.5;
+      /* Out past the heads. The axis carries small shoot tips now, and a leaf
+         that stops short of them is a leaf nobody can see. */
+      const r = reachOf(pl, a, (0.88 + pl.u("lr" + s.g) * 0.34) * (pl.bush === "airy" ? 1.05 : 1));
       /* A variegated shrub is still mostly a LEAF. Painting every blade from
          the croton pool left Excoecaria as magenta spikes radiating from a
          point with no green mass at all. */
@@ -2149,7 +2181,7 @@ function shrub(k, col, opt = {}) {
         : (s.g % 2 ? pl.pal.leaf : pl.pal.deep);
       addLeaf(p, node, {
         tri: p.budget, yaw: a, pitch: droop + pl.u("lp" + s.g) * 0.5,
-        len: r, wid: r * (0.34 + pl.u("lw" + s.g) * 0.34), shape: pl.shape, form: pl.form,
+        len: r * 0.88, wid: r * (0.42 + pl.u("lw" + s.g) * 0.3), shape: pl.shape, form: pl.form,
         leaflet: 3 + (s.g % 4),
         color: lc, colorFn: opt.colorful ? undefined : pl.pal.grad, stalkColor: pl.pal.deep, stalk: 0.2,
       });
