@@ -19,7 +19,7 @@
  *     species always rebuilds byte for byte, and two species in one family
  *     differ in structure rather than only in tint.
  */
-import { APP, INSECTS, shade, mix, hex, icosphere } from "./kit.mjs";
+import { APP, INSECTS, FLOWERS, shade, mix, hex, icosphere } from "./kit.mjs";
 
 const ink = APP.ink;
 const paper = APP.paper;
@@ -52,10 +52,30 @@ const darkOf = (col) => col.dark ?? shade(col.base, -0.22);
 const DERIVED_INSECT_DARK = INSECTS.map((c) => shade(c, -0.3));
 const sameColor = (a, b) => !!a && !!b
   && Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(a[1] - b[1]) < 1e-6 && Math.abs(a[2] - b[2]) < 1e-6;
-const chitinOf = (col, pooled = false) => {
-  if (col.chitin) return col.chitin;
-  const authored = !pooled && col.dark && !DERIVED_INSECT_DARK.some((d) => sameColor(d, col.dark));
-  return authored ? col.dark : shade(col.base, -0.26);
+/** `col.dark` if a human wrote it, else null. The whole authored-vs-derived
+ *  test in one place so body, chitin and limb cannot disagree about it. */
+const authoredDark = (col, pooled = false) => (
+  !pooled && col.dark && !DERIVED_INSECT_DARK.some((d) => sameColor(d, col.dark)) ? col.dark : null
+);
+const chitinOf = (col, pooled = false) => col.chitin ?? authoredDark(col, pooled) ?? shade(col.base, -0.26);
+/**
+ * The same artefact one column over. For an insect the orchestrator derives
+ * `accent: pick(FLOWERS, seed + 11)` — a FLOWER colour, on an animal — and the
+ * merge hands it to every species that only wrote a `base`. That is where the
+ * bright magenta on Scolia's gaster bands and the pink on Oryctes' horn came
+ * from: neither species authors an accent, so both were painted out of the
+ * flower pool. Membership of that exact pool IS the artefact, the same way
+ * `DERIVED_INSECT_DARK` is for `dark`.
+ *
+ * `#f6b22d` is in both the flower pool and the two Amata palettes, which are
+ * the only fauna entries whose hand-written accent collides; they are named
+ * rather than guessed at.
+ */
+const AUTHORED_FLOWER_ACCENT = /^(amata)-/;
+const accentOf = (k, col, fallback = null) => {
+  if (!col.accent) return fallback;
+  const derived = FLOWERS.some((f) => sameColor(f, col.accent)) && !AUTHORED_FLOWER_ACCENT.test(who(k));
+  return derived ? fallback : col.accent;
 };
 const bellyOf = (col) => col.belly ?? shade(col.base, 0.32);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -133,17 +153,30 @@ function latheGeo(profile, seg = 10, zScale = 1) {
   return { positions, indices };
 }
 
-/** Tapered limb: joint at y=0, tip at y=len. Two bands, so it stays cheap. */
-function spindleGeo(r, len, { seg = 10, bulge = 0.45, tip = 0, zScale = 1 } = {}) {
-  const profile = [[0, 0], [len * bulge, r]];
+/**
+ * Tapered limb: joint at y=0, tip at y=len. Two bands, so it stays cheap.
+ *
+ * `root` grows a real socket BELOW the joint. Without it the profile starts on
+ * a lathe apex — the entire joint end of every limb in the pack is a SINGLE
+ * vertex, and the first full ring of vertices sits 45% of the way down the
+ * limb, already clear of the body. The connectivity gate samples vertices, so
+ * a leg whose surface plainly meets the thorax still reported a gap of 0.068
+ * of the model radius against a 0.06 tolerance. A socket puts a full ring of
+ * vertices at and below the joint, inside the parent, where they belong.
+ */
+function spindleGeo(r, len, { seg = 10, bulge = 0.45, tip = 0, zScale = 1, root = 0 } = {}) {
+  const profile = root > 1e-7
+    ? [[-root, 0], [-root * 0.5, r * 0.72], [0, r * 0.9], [len * bulge, r]]
+    : [[0, 0], [len * bulge, r]];
   if (tip > 1e-7) profile.push([len, r * tip], [len, 0]);
   else profile.push([len, 0]);
   return latheGeo(profile, seg, zScale);
 }
 
 /** Cone: flat base disc at y=0, apex at y=h — beaks, horns, stings, spikes. */
-function coneGeo(r, h, { seg = 10, zScale = 1, waist = 0.55 } = {}) {
-  return latheGeo([[0, 0], [0, r], [h * 0.5, r * waist], [h, 0]], seg, zScale);
+function coneGeo(r, h, { seg = 10, zScale = 1, waist = 0.55, root = 0 } = {}) {
+  const profile = root > 1e-7 ? [[-root, 0], [-root, r * 0.92], [0, r]] : [[0, 0], [0, r]];
+  return latheGeo([...profile, [h * 0.5, r * waist], [h, 0]], seg, zScale);
 }
 
 /** Dome: flat rim at y=0, apex at y=h — shells, wing cases, caps. */
@@ -257,9 +290,16 @@ function ball(k, parent, name, o) {
   return put(k, parent, name, geo, o);
 }
 
+/* Every un-merged spindle sockets into whatever it hangs off by default. The
+   joint end of a spindle is a lathe APEX — one single vertex — so a stalk, a
+   sting, an ovipositor, a tail streamer or a snail's eyestalk placed exactly on
+   the parent's surface offers the connectivity gate exactly one point to find,
+   and the first full ring of vertices sits half way down the part, already in
+   free air. That is most of the pack's floating islands. */
 function spindle(k, parent, name, o) {
   const geo = spindleGeo(o.r, o.len, {
     seg: o.seg ?? 10, bulge: o.bulge ?? 0.45, tip: o.tip ?? 0, zScale: o.zScale ?? 1,
+    root: o.merge ? 0 : (o.root ?? o.r * 1.8),
   });
   if (o.merge) {
     k.cute.add(parent, geo, {
@@ -275,7 +315,10 @@ function spindle(k, parent, name, o) {
 }
 
 function cone(k, parent, name, o) {
-  const geo = coneGeo(o.r, o.h, { seg: o.seg ?? 10, zScale: o.zScale ?? 1, waist: o.waist ?? 0.55 });
+  const geo = coneGeo(o.r, o.h, {
+    seg: o.seg ?? 10, zScale: o.zScale ?? 1, waist: o.waist ?? 0.55,
+    root: o.merge ? 0 : (o.root ?? o.r * 1.2),
+  });
   if (o.merge) {
     k.cute.add(parent, geo, {
       at: o.at ?? [0, 0, 0], rotX: o.rotX ?? 0, rotY: o.rotY ?? 0, rotZ: o.rotZ ?? 0, color: o.color,
@@ -403,12 +446,24 @@ function antennaPair(k, parent, o) {
         : k.cute.node(`${name}-${tag}${i}`, { parent: parentNode, at: base, rot: [pitch * 0.6, 0, rz] });
       const rr = r * (1 - i * 0.12);
       k.cute.add(node, spindleGeo(rr, L, { seg: 10, bulge: 0.5, tip: 0 }), { color });
-      for (let b = 0; b < (i === joint - 1 ? barb : 0); b += 1) {
-        const t = (b + 1) / (barb + 1);
+      /* Bipectinate — "feathered" — antennae. The barb loop used to run on the
+         LAST joint only and to top out at two pairs, so all thirty-nine moths
+         in the pack shipped the same two or three straight bristles, including
+         the six saturniids and tussocks whose combed antennae ARE the field
+         mark. A plumose antenna is a comb: paired rami down the whole shaft,
+         longest around the middle, raked back toward the tip. */
+      const plume = form === "feather";
+      const barbN = plume ? Math.max(barb, 6) : (i === joint - 1 ? barb : 0);
+      for (let b = 0; b < barbN; b += 1) {
+        const t = (b + (plume ? 0.5 : 1)) / (plume ? barbN : barb + 1);
+        const u = plume ? (i + t) / joint : t;
+        const taperOff = plume ? Math.max(0.3, Math.sin(Math.min(1, 0.25 + u) * Math.PI)) : 1;
         for (const bs of [1, -1]) {
-          spindle(k, node, `${name}-${tag}${i}barb${b}${bs}`, {
-            merge: true, r: rr * 0.45, len: L * (0.55 - Math.abs(t - 0.5) * 0.5), at: [0, L * t, 0],
-            rot: [0, 0, bs * 1.35], color, seg: 5,
+          spindle(k, node, `${name}-${tag}${i}barb${b}${bs > 0 ? "l" : "r"}`, {
+            merge: true, r: rr * (plume ? 0.36 : 0.45),
+            len: L * (plume ? 0.92 * taperOff : 0.55 - Math.abs(t - 0.5) * 0.5),
+            at: [0, L * t, 0],
+            rot: [plume ? -0.62 : 0, 0, bs * 1.3], color, seg: 5, tip: plume ? 0.25 : 0,
           });
         }
       }
@@ -460,7 +515,10 @@ const matApply = (m, p) => [
  */
 function legChain(k, parent, name, { at, r, seg, color, subdiv = 1, merge = false }) {
   let parentNode = parent;
-  let base = at;
+  /* Sink the hip. A leg placed exactly on the silhouette hangs off the skin;
+     pulled a tenth of the way back toward the parent's own centre it is inside
+     it, and nothing about the pose reads differently at that distance. */
+  let base = [at[0] * 0.9, at[1] * 0.9, at[2] * 0.9];
   const node = [];
   let R = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
   let T = [0, 0, 0];
@@ -468,7 +526,14 @@ function legChain(k, parent, name, { at, r, seg, color, subdiv = 1, merge = fals
     const s = seg[i];
     const rot = [s.rx ?? 0, s.ry ?? 0, s.rz ?? 0];
     const rr = r * (s.taper ?? 1);
-    const geo = spindleGeo(rr, s.len, { seg: s.round ?? 10, bulge: s.bulge ?? 0.45, tip: s.tip ?? 0 });
+    /* The first segment sockets into whatever it hangs off; the later ones
+       socket into the segment above. Both ends of every joint therefore carry
+       vertices on the far side of the joint plane, which is what contact is
+       actually measured on. */
+    const geo = spindleGeo(rr, s.len, {
+      seg: s.round ?? 10, bulge: s.bulge ?? 0.45, tip: s.tip ?? 0,
+      root: s.root ?? rr * (i === 0 ? 1.5 : 1.1),
+    });
     if (merge && i > 0) {
       T = [0, 1, 2].map((a) => T[a] + matApply(R, base)[a]);
       R = matMul3(R, eulerMat(rot));
@@ -486,7 +551,7 @@ function legChain(k, parent, name, { at, r, seg, color, subdiv = 1, merge = fals
       R = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
       T = [0, 0, 0];
     }
-    base = [0, s.len * 0.88, 0];
+    base = [0, s.len * 0.82, 0];
   }
   return node;
 }
@@ -1033,7 +1098,17 @@ function frog(k, col, opt = {}) {
       });
     }
   }
-  k.arc(body, { name: "smile", R: bx * 0.5, r: 0.04, a0: Math.PI * 1.2, a1: Math.PI * 1.8, at: [0, -by * 0.1, bz * 0.86], color: ink, segs: 6 });
+  /* The mouth. `k.arc` lays its ring in the XY plane out of a square section
+     whose four corners all sit at z = 0 — a zero-thickness ribbon, not a tube.
+     That is the pure-black crescent slab that hung unpaired off the flank of
+     all six frogs: a flat plate, edge-on to the camera, solid ink whatever the
+     body colour. A frog's mouth is a wide shallow line across the front of the
+     snout, so it is a flattened ellipsoid pressed into the face and merged
+     into the body mesh, where it cannot float. */
+  ball(k, body, "mouth", { merge: true,
+    rx: bx * 0.52, ry: by * 0.085, rz: bz * 0.2,
+    at: [0, -by * 0.18, bz * 0.8], color: ink, subdiv: 0,
+  });
 
   /* The folded jumping leg IS the frog. It used to be two thin sticks in the
      dark accent tucked under the body where nothing could see them; it is now
@@ -1497,12 +1572,26 @@ function lepidoptera(k, col, opt = {}) {
   const moth = opt.kind === "moth" || opt.kind === "hawk";
   const hawk = opt.kind === "hawk";
   const skipper = opt.kind === "skipper";
-  const dark = darkOf(col);
+  /* The butterfly's body. `darkOf` fell straight through to `col.dark`, and
+     for a species that wrote only its real `base` that is the orchestrator's
+     DERIVED insect dark — a shade of a random tuned insect hue. Thirty of the
+     forty-four butterflies were therefore carrying a purple, teal, magenta or
+     orange thorax on a drab satyrid, a white pierid or a black nymphalid. The
+     ones that read correctly were exactly the ones whose derived pick landed
+     on something dark. Route it through the same authored-vs-derived test the
+     legs and chitin already use, and fall back to the animal's OWN colour.
+     A butterfly's own body is a dark drab brown whatever its wings do, so the
+     fallback mixes toward one rather than merely darkening the wing colour —
+     `shade` on a white pierid only gets you a pale grey thorax. */
+  const dark = authoredDark(col) ?? mix(col.base, hex("#2b2620"), v.f("bodyd", 0.58, 0.88));
   const bodyCol = moth ? shade(col.base, -0.25) : dark;
   /* The saturniids and the birdwings are among the biggest lepidoptera alive;
      shipping Attacus at the same size as a leaf-roller moth is a factual
      error, not a style choice. */
   const giant = /^(attacus|actias|samia|antheraea|troides|papilio-)/.test(who(k)) ? 1.45 : 1;
+  /* Bipectinate antennae are a family fact, not a die roll: Saturniidae,
+     Lymantriinae, Lasiocampidae. */
+  const plumose = moth && /^(attacus|actias|samia|antheraea|cricula|loepa|lymantria|orgyia|olene|dasychira|calliteara|arctornis|euproctis|somena|artace|trabala|lebeda|gastropacha|kunugia|bombyx)-/.test(who(k));
 
   // thorax, head, segmented abdomen — the abdomen count is a species knob
   const thoraxY = v.f("ty", 0.32, 0.5);
@@ -1511,7 +1600,7 @@ function lepidoptera(k, col, opt = {}) {
     rx: thoraxR, ry: thoraxR * 1.15, rz: thoraxR * 1.1, at: [0, thoraxY, 0],
     rot: [v.f("pitch", -0.3, 0.3), 0, 0], color: bodyCol,
   });
-  const abdN = v.i("abdn", 2, 5);
+  const abdN = v.i("abdn", 2, 6);
   const abdLen = v.f("abdl", 0.05, 0.115) * (hawk ? 1.35 : 1) * giant;
   for (let i = 0; i < abdN; i += 1) {
     const r = thoraxR * (0.92 - i * (skipper ? 0.16 : 0.1));
@@ -1523,12 +1612,16 @@ function lepidoptera(k, col, opt = {}) {
   }
   const headR = thoraxR * v.f("hr", 0.75, 1.0);
   const head = ball(k, thorax, "head", { r: headR, at: [0, thoraxR * 0.42, thoraxR * 0.85], color: bodyCol });
-  beadEyes(k, head, { r: headR * v.f("eyer", 0.5, 0.72), at: [0, 0, headR * 0.36], gap: headR * 0.62, color: ink, pupil: shade(col.accent ?? APP.red, -0.1), spark: true, subdiv: 1 });
+  beadEyes(k, head, { r: headR * v.f("eyer", 0.5, 0.72), at: [0, 0, headR * 0.36], gap: headR * 0.62, color: ink, pupil: shade(accentOf(k, col, APP.red), -0.1), spark: true, subdiv: 1 });
   antennaPair(k, head, {
     at: [0, headR * 0.5, headR * 0.3], gap: headR * 0.32,
-    len: v.f("antl", 0.1, 0.22), r: 0.008, spread: v.f("ants", 0.3, 0.8), joint: 2,
-    form: moth ? v.pick("antf", ["thread", "feather", "thread"]) : v.pick("antf", ["club", "club", "hook"]),
-    barb: moth && v.on("barb", 0.5) ? 2 : 0,
+    len: v.f("antl", 0.1, 0.22) * (plumose ? 1.35 : 1), r: plumose ? 0.0095 : 0.008, spread: v.f("ants", 0.3, 0.8),
+    /* The species whose antennae are bipectinate as a matter of fact —
+       giant silkmoths, tussocks and lappets — get the comb rather than a coin
+       flip on it. Everything else keeps the roll. */
+    joint: moth && plumose ? 3 : 2,
+    form: plumose ? "feather" : moth ? v.pick("antf", ["thread", "feather", "thread"]) : v.pick("antf", ["club", "club", "hook"]),
+    barb: plumose ? v.i("barbn", 6, 9) : (moth && v.on("barb", 0.5) ? 2 : 0),
     color: bodyCol,
   });
   if (moth && v.on("fuzz", 0.6)) {
@@ -1554,15 +1647,26 @@ function lepidoptera(k, col, opt = {}) {
      butterfly holds them open or clapped over its back. It is the single
      biggest difference in how tall the animal reads, so it is a species knob
      rather than one shared pose. */
-  const pose = moth ? v.pick("pose", ["flat", "roof", "tent", "flat"]) : v.pick("pose", ["open", "up", "raked", "up"]);
+  const pose = moth
+    ? v.pick("pose", ["flat", "roof", "tent", "flat", "fan", "delta"])
+    : v.pick("pose", ["open", "up", "raked", "up", "half", "clap"]);
   const carriage = {
     flat: [-0.05, 0.18], roof: [0.3, 0.75], tent: [0.14, 0.52],
+    fan: [-0.16, 0.06], delta: [0.52, 0.98],
     open: [0.36, 0.66], raked: [0.62, 0.95], up: [1.05, 1.5],
+    half: [0.82, 1.12], clap: [1.42, 1.82],
   }[pose];
+  /* How far forward the wing is swept is part of the carriage too, and it is
+     the dimension the shape signature reads as depth. Three sibling satyrids
+     holding their wings at the same angle in the same plane are, correctly,
+     one model; giving the pose a sweep of its own separates them on a fact
+     about the animal rather than on a tint. */
+  const sweepK = { flat: 0.0, roof: 0.22, tent: 0.12, fan: -0.14, delta: 0.34,
+    open: 0.0, raked: 0.2, up: -0.1, half: 0.3, clap: -0.24 }[pose];
   const wingY = thoraxY + thoraxR * (moth ? 0.2 : 0.55);
   const foreWing = bladeWings(k, k.root, {
     at: [0, wingY, thoraxR * 0.15], gap: thoraxR * 0.55, outline: foreOut, thick: v.f("fth", 0.012, 0.024),
-    reach: foreX * 0.05, tilt: v.f("ftl", -0.2, 0.25), yaw: moth ? v.f("fyaw", 0.35, 0.75) : v.f("fyaw", 0.0, 0.24),
+    reach: foreX * 0.05, tilt: v.f("ftl", -0.2, 0.25), yaw: (moth ? v.f("fyaw", 0.35, 0.75) : v.f("fyaw", 0.0, 0.24)) + sweepK,
     roll: v.f("frl", carriage[0], carriage[1]), color: col.base, colorFn: col.wingGrad,
     flap: v.f("fflap", 0.1, 0.3), dur: v.f("fdur", 1.0, 1.8), name: "wing-up",
   });
@@ -1579,11 +1683,16 @@ function lepidoptera(k, col, opt = {}) {
        Scaling it by the chord let a broad-winged moth hang its hindwing a
        third of a unit below the body with nothing in between. */
     at: [0, wingY - thoraxR * v.f("hdrop", 0.35, 1.05), -thoraxR * 0.85], gap: thoraxR * 0.45, outline: hindOut, thick: v.f("hth", 0.012, 0.026),
-    reach: hindX * 0.05, tilt: v.f("htl", -0.15, 0.2), yaw: moth ? v.f("hyaw", 0.3, 0.7) : v.f("hyaw", 0, 0.2),
+    reach: hindX * 0.05, tilt: v.f("htl", -0.15, 0.2), yaw: (moth ? v.f("hyaw", 0.3, 0.7) : v.f("hyaw", 0, 0.2)) - sweepK * 0.6,
     roll: v.f("hrl", carriage[0] * 0.85, carriage[1] * 0.9), color: shade(col.base, v.f("hshade", 0.02, 0.28)),
     flap: v.f("hflap", 0.08, 0.26), dur: v.f("fdur", 1.0, 1.8), phase: 0.25, name: "wing-lo",
   });
 
+  /* Wing pattern. A butterfly's spots and ocelli genuinely are bright — the
+     derived accent is a plausible one there and is most of what tells two
+     white pierids apart. A moth's are not, so the moth half goes through the
+     authored-accent test and lands on a pale scale colour instead. */
+  const spotCol = moth ? accentOf(k, col, mix(col.base, paper, 0.55)) : (col.accent ?? paper);
   // wing pattern: eyespots, bands, and swallowtail streamers — all part count
   const spotN = opt.spots ? v.i("spotn", 1, 2) : v.i("spotn", 0, 2);
   for (const [wi, pair] of [foreWing, hindWing].entries()) {
@@ -1596,12 +1705,12 @@ function lepidoptera(k, col, opt = {}) {
         ball(k, w, `spot${wi}${si}${i}`, { merge: true,
           rx: rx * v.f(`sp${i}`, 0.08, 0.18), ry: 0.011, rz: rz * v.f(`spz${i}`, 0.14, 0.3),
           at: [s * rx * (0.25 + t * 0.55), 0.011, rz * v.f(`spo${i}`, -0.3, 0.3)],
-          color: i % 2 ? (col.accent ?? paper) : shade(col.base, -0.4), subdiv: 0,
+          color: i % 2 ? spotCol : shade(col.base, -0.4), subdiv: 0,
         });
       }
     }
   }
-  const bandN = v.i("bandn", 0, 2);
+  const bandN = v.i("bandn", 0, 3);
   for (let i = 0; i < bandN; i += 1) {
     for (const [si, w] of foreWing.entries()) {
       const s = si === 0 ? 1 : -1;
@@ -1636,14 +1745,14 @@ function lepidoptera(k, col, opt = {}) {
   }
   /* Ocelli: the raised eyespots on a satyrine's wing, as real parts. Merged
      paint cannot separate two butterflies in the signature; a part can. */
-  const ocelN = v.i("oceln", 0, 2);
+  const ocelN = v.i("oceln", 0, 5);
   for (let i = 0; i < ocelN; i += 1) {
     for (const [si, w] of hindWing.entries()) {
       const s = si === 0 ? 1 : -1;
       ball(k, w, `ocellus${i}${si}`, {
         rx: hindX * v.f("ocelr", 0.1, 0.19), ry: 0.011, rz: hindZ * v.f("ocelz", 0.18, 0.32),
         at: [s * hindX * v.f("ocelx", 0.35, 0.68), 0.012, hindZ * v.f("ocelo", -0.28, 0.24)],
-        color: i % 2 ? (col.accent ?? paper) : shade(col.base, -0.5),
+        color: i % 2 ? spotCol : shade(col.base, -0.5),
       });
     }
   }
@@ -1651,7 +1760,7 @@ function lepidoptera(k, col, opt = {}) {
      Counting them is a species knob with real parts behind it, which is what
      the distinctness signature can actually see — two moths built from the
      same recipe with two different tints are, correctly, one model. */
-  const tuftN = v.i("tuftn", 0, 3);
+  const tuftN = v.i("tuftn", 0, 5);
   for (let i = 0; i < tuftN; i += 1) {
     for (const s of [1, -1]) {
       ball(k, thorax, `tuft${i}-${s > 0 ? "l" : "r"}`, {
@@ -1662,7 +1771,7 @@ function lepidoptera(k, col, opt = {}) {
     }
   }
   if (moth) {
-    const crestN = v.i("crestn", 0, 3);
+    const crestN = v.i("crestn", 0, 4);
     for (let i = 0; i < crestN; i += 1) {
       ball(k, thorax, `crest${i}`, {
         rx: thoraxR * v.f("crestw", 0.4, 0.75), ry: thoraxR * v.f("cresth", 0.3, 0.6), rz: thoraxR * 0.35,
@@ -1680,7 +1789,7 @@ function odonata(k, col, opt = {}) {
   const v = vary(k);
   col = toned(k, col);
   const slim = opt.kind === "damselfly";
-  const dark = darkOf(col);
+  const dark = chitinOf(col);
   /* A dragonfly's abdomen is several times the length of its thorax; four
      short beads made it barely longer than the head, which is why none of the
      ten read as a dragonfly. */
@@ -1714,13 +1823,13 @@ function odonata(k, col, opt = {}) {
   const eyeR = headR * v.f("eyer", 0.6, 0.92);
   beadEyes(k, head, {
     r: eyeR, at: [0, headR * 0.15, headR * 0.15], gap: headR * (slim ? 0.95 : 0.6),
-    color: col.accent ?? shade(col.base, 0.3), pupil: ink, subdiv: 1,
+    color: accentOf(k, col, shade(col.base, 0.3)), pupil: ink, subdiv: 1,
   });
   antennaPair(k, head, { at: [0, headR * 0.5, headR * 0.3], gap: headR * 0.2, len: 0.03, r: 0.005, spread: 0.7, joint: 1, form: "thread", color: dark });
 
   const wingLen = v.f("wl", 0.2, 0.4);
   const wingW = v.f("ww", 0.035, 0.065);
-  const wingCol = shade(col.accent ?? col.base, v.f("wsh", 0.3, 0.5));
+  const wingCol = shade(accentOf(k, col, col.base), v.f("wsh", 0.3, 0.5));
   for (const [i, dz] of [abdR * 1.2, -abdR * 1.4].entries()) {
     bladeWings(k, thorax, {
       at: [0, abdR * 1.4, dz], gap: abdR * 0.8,
@@ -1740,7 +1849,7 @@ function odonata(k, col, opt = {}) {
   for (let i = 0; i < stripeN; i += 1) {
     ball(k, thorax, `stripe${i}`, { merge: true,
       rx: abdR * 2.6, ry: abdR * 0.5, rz: abdR * 0.6,
-      at: [0, abdR * (1.0 - i * 0.9), abdR * (1.4 - i * 1.3)], color: col.accent ?? paper, subdiv: 0,
+      at: [0, abdR * (1.0 - i * 0.9), abdR * (1.4 - i * 1.3)], color: accentOf(k, col, paper), subdiv: 0,
     });
   }
   insectLegs(k, thorax, {
@@ -1825,7 +1934,7 @@ function hymenoptera(k, col, opt = {}) {
       g = ball(k, g, `gaster-tip${i}`, {
         rx: gx * (0.72 - t * 0.3), ry: gx * (0.66 - t * 0.28), rz: gz * v.f("tailz", 0.3, 0.55),
         at: [0, 0, i === 0 ? -gz * 0.72 : -gz * v.f("tailz", 0.3, 0.55) * 1.3],
-        color: i % 2 ? shade(col.base, -0.24) : (col.accent ?? shade(col.base, 0.1)),
+        color: i % 2 ? shade(col.base, -0.24) : accentOf(k, col, shade(col.base, 0.1)),
       });
     }
     if (v.on("ovipositor", 0.4)) {
@@ -1853,7 +1962,7 @@ function hymenoptera(k, col, opt = {}) {
     ball(k, gaster, `stripe${i}`, { merge: true,
       rx: gx * 1.05, ry: gx * 1.05 * v.f("gh", 0.85, 1.2), rz: gz * (ant ? 0.12 : 0.19),
       at: [0, 0, gz * (0.66 - i * (1.4 / Math.max(1, stripeN)))],
-      color: ant ? shade(col.base, -0.34) : (i % 2 ? (col.accent ?? APP.orange) : shade(col.base, -0.3)),
+      color: ant ? shade(col.base, -0.34) : (i % 2 ? accentOf(k, col, shade(col.base, 0.34)) : shade(col.base, -0.3)),
       subdiv: 0,
     });
   }
@@ -1901,7 +2010,7 @@ function hymenoptera(k, col, opt = {}) {
       ball(k, thorax, `corbicula-${sd > 0 ? "l" : "r"}`, {
         rx: thoraxR * 0.3, ry: thoraxR * 0.42, rz: thoraxR * 0.3,
         at: [sd * thoraxR * 0.85, -thoraxR * 0.95, -thoraxR * 0.55],
-        color: col.accent ?? APP.orange,
+        color: accentOf(k, col, APP.orange),
       });
     }
   }
@@ -1987,8 +2096,8 @@ function coleoptera(k, col, opt = {}) {
   const head = ball(k, pronotum, "head", { rx: headR, ry: headR * 0.85, rz: headR, at: [0, -by * 0.06, bz * 0.3 + headR * 0.4], color: dark });
 
   if (opt.horn || v.on("horn", 0.15)) {
-    cone(k, head, "horn", { r: headR * 0.3, h: headR * v.f("hornl", 1.6, 3.2), at: [0, headR * 0.3, headR * 0.2], rotX: v.f("horna", 0.3, 0.8), color: shade(col.accent ?? col.base, -0.1) });
-    if (v.on("horn2", 0.5)) cone(k, pronotum, "horn2", { r: pronR * 0.16, h: pronR * v.f("horn2l", 0.6, 1.4), at: [0, by * 0.6, bz * 0.1], rotX: 0.5, color: shade(col.accent ?? col.base, -0.2) });
+    cone(k, head, "horn", { r: headR * 0.3, h: headR * v.f("hornl", 1.6, 3.2), at: [0, headR * 0.3, headR * 0.2], rotX: v.f("horna", 0.3, 0.8), color: shade(accentOf(k, col, col.base), -0.1) });
+    if (v.on("horn2", 0.5)) cone(k, pronotum, "horn2", { r: pronR * 0.16, h: pronR * v.f("horn2l", 0.6, 1.4), at: [0, by * 0.6, bz * 0.1], rotX: 0.5, color: shade(accentOf(k, col, col.base), -0.2) });
   }
   if (opt.snout) {
     spindle(k, head, "snout", { r: headR * 0.26, len: headR * v.f("snoutl", 1.6, 3.0), at: [0, -headR * 0.1, headR * 0.5], rot: [1.1, 0, 0], tip: 0.5, color: dark });
@@ -2303,7 +2412,7 @@ function hemiptera(k, col, opt = {}) {
   });
   beadEyes(k, head, {
     r: headR * v.f("eyer", 0.4, 0.56), at: [0, 0, headR * 0.15], gap: headR * v.f("eyeg", 0.8, 1.05),
-    color: cicada ? (col.accent ?? shade(col.base, 0.3)) : ink, pupil: cicada ? ink : paper, pupilR: 0.36, spark: cicada,
+    color: cicada ? accentOf(k, col, shade(col.base, 0.3)) : ink, pupil: cicada ? ink : paper, pupilR: 0.36, spark: cicada,
   });
   k.idle({ breatheK: v.f("br", 0.035, 0.06), bobAmp: v.f("bob", 0.008, 0.022) });
 }
@@ -2333,7 +2442,7 @@ function hemipteraScale(k, col, v) {
   }
   ball(k, body, "nucleus", {
     rx: r * v.f("nw", 0.3, 0.46), ry: h * v.f("nh", 0.45, 0.7), rz: r * v.f("nw", 0.3, 0.46),
-    at: [0, h * 0.6, 0], color: col.accent ?? shade(col.base, -0.2),
+    at: [0, h * 0.6, 0], color: accentOf(k, col, shade(col.base, -0.2)),
   });
   // the sunken base where it sits on the bark
   ball(k, k.root, "foot", {
@@ -2380,7 +2489,7 @@ function diptera(k, col, opt = {}) {
   }
   if (opt.stripes || v.on("stripe", 0.4)) {
     for (let i = 0; i < 2; i += 1) {
-      ball(k, thorax, `stripe${i}`, { merge: true, rx: thoraxR * 1.05, ry: thoraxR * 1.05, rz: thoraxR * 0.14, at: [0, 0, thoraxR * (0.5 - i * 0.7)], color: i % 2 ? (col.accent ?? APP.orange) : shade(col.base, -0.4), subdiv: 0 });
+      ball(k, thorax, `stripe${i}`, { merge: true, rx: thoraxR * 1.05, ry: thoraxR * 1.05, rz: thoraxR * 0.14, at: [0, 0, thoraxR * (0.5 - i * 0.7)], color: i % 2 ? accentOf(k, col, APP.orange) : shade(col.base, -0.4), subdiv: 0 });
     }
   }
   const headR = thoraxR * v.f("hr", 0.7, 1.0);
@@ -2439,7 +2548,7 @@ function diptera(k, col, opt = {}) {
       ball(k, thorax, `gasterband${i}`, { merge: true,
         rx: abdR * 1.02, ry: abdR * 0.95, rz: abdZ * 0.09,
         at: [0, -thoraxR * 0.12, -thoraxR * 1.0 - abdZ * (0.18 + i * 0.42)],
-        color: i % 2 ? (col.accent ?? APP.orange) : ink, subdiv: 0,
+        color: i % 2 ? accentOf(k, col, APP.orange) : ink, subdiv: 0,
       });
     }
   }
@@ -3209,7 +3318,13 @@ function flatworm(k, col, opt = {}) {
     const t = stripeN === 1 ? 0 : i / (stripeN - 1) - 0.5;
     ball(k, body, `stripe${i}`, { merge: true,
       rx: wide * v.f("stripew", 0.08, 0.22), ry: 0.006, rz: len * v.f("stripel", 0.8, 0.95),
-      at: [t * wide * 1.3, 0.018, 0], color: i % 2 ? dark : (col.accent ?? paper), subdiv: 0,
+      /* A land planarian's pale dorsal stripe is bone or straw, and it must
+         not be literally `paper`: the audit reads paper and ink as FACE
+         colours and then measures those parts for thickness, so painting a
+         6 mm-thick ribbon `paper` reports four flatworms as thin floating
+         faces. Straw off the animal's own colour, which is what it is. */
+      at: [t * wide * 1.3, 0.018, 0],
+      color: i % 2 ? dark : accentOf(k, col, mix(col.base, hex("#efe3bc"), 0.82)), subdiv: 0,
     });
   }
   const fan = v.pick("fan", ["hammer", "spade", "point"]);
@@ -3375,7 +3490,11 @@ function worm(k, col, opt = {}) {
     });
   } else {
     beadEyes(k, head, { r: headR * v.f("eyer", 0.3, 0.46), at: [0, headR * 0.2, headR * 0.5], gap: headR * 0.5, color: paper, pupil: ink, spark: true });
-    k.arc(head, { name: "smile", R: headR * 0.4, r: headR * 0.12, a0: Math.PI * 1.2, a1: Math.PI * 1.8, at: [0, -headR * 0.1, headR * 0.85], color: ink, segs: 6 });
+    /* Same zero-thickness `k.arc` ribbon the frogs shipped as a black slab. */
+    ball(k, head, "mouth", { merge: true,
+      rx: headR * 0.5, ry: headR * 0.12, rz: headR * 0.28,
+      at: [0, -headR * 0.18, headR * 0.8], color: ink, subdiv: 0,
+    });
   }
   k.idle({ breatheK: v.f("br", 0.03, 0.05), bobAmp: 0 });
 }
