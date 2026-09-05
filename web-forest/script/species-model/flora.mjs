@@ -2742,6 +2742,16 @@ function fern(k, col) {
     axSet: form === "spikemoss" ? [1.3, 1.8, 2.3] : form === "nest" ? [0.6, 0.9, 1.2] : form === "sword" ? [0.8, 1.1, 1.4] : ASPECT,
     azSet: form === "spikemoss" ? [1.3, 1.8, 2.3] : form === "nest" ? [0.6, 0.9, 1.2] : form === "sword" ? [0.8, 1.1, 1.4] : ASPECT,
     height: form === "spikemoss" ? 0.3 : form === "nest" ? 0.66 : 0.55,
+    /*
+     * FEWER, better-fed fronds. A divided frond needs eighty triangles before
+     * addLeaf will cut pinnae into it at all, and at twenty-four or thirty-two
+     * parts the per-part budget leaves forty-five — so twelve ferns drew a
+     * broad ENTIRE blade where the pinnae are the whole identification:
+     * Tectaria, Davallia, Christella, Pteris, both Nephrolepis. A fern is a
+     * handful of fronds, not thirty leaves; sixteen parts is the ceiling now
+     * and every frond can afford to be a frond.
+     */
+    pLevel: form === "spikemoss" ? [12, 16, 20] : [8, 10, 12, 16],
     breathe: 0.02,
     sway: 0.05,
     bands: [0, 1, 2, 3, 4, 5],
@@ -2752,17 +2762,29 @@ function fern(k, col) {
       pl.wiry = wiry;
       p.spine("frond0", (node) => {
         if (form === "spikemoss") {
-          p.add(node, xf(capGeo(0.34, 0.4, 13, 5, "flat")), { color: pl.pal.deep, colorFn: grad(shade(pl.pal.leaf, 0.2), pl.pal.deep, 0, 0.4) });
+          /*
+           * A creeping frondose MAT. All three Selaginella were a solid drum
+           * with spikes stuck in it — kraussiana read as a flowerpot — because
+           * the axis was a 0.34-by-0.4 flat cap that no amount of foliage could
+           * hide. A spikemoss has no such body: it is a low spray of small
+           * branched frondlets lying almost flat, on a wiry creeping stem.
+           */
+          const creep = [];
+          for (let i = 0; i < 5; i += 1) {
+            const a = i * 1.257 + pl.u("c0") * TAU;
+            creep.push(xf(tubeGeo(0.016, 0.011, 0.3, 7), { rz: -Math.cos(a) * 1.25, rx: Math.sin(a) * 1.25, at: [0, 0.05, 0] }));
+          }
+          p.add(node, mergeGeo(creep), { color: shade(pl.pal.deep, -0.2) });
           const bunch = [[], []];
           for (let i = 0; i < 12; i += 1) {
             const a = i * 2.399 + pl.u("s0") * TAU;
-            const rr = 0.28 * Math.sqrt((i + 0.3) / 12);
-            bunch[i % 2].push(xf(bladeGeo({ len: 0.5 - rr * 0.7, wid: 0.09, thick: 0.012, shape: "spatulate", rows: 4, ring: 4, bend: 0.12 }),
-              { rx: -1.15 + rr * 1.5, ry: a, at: [Math.cos(a) * rr, 0.3 - rr * 0.5, Math.sin(a) * rr] }));
+            const rr = 0.3 * Math.sqrt((i + 0.3) / 12);
+            bunch[i % 2].push(xf(bladeGeo({ len: 0.42 - rr * 0.4, wid: 0.13, thick: 0.009, shape: "lanceolate", rows: 5, ring: 4, bend: 0.06 }),
+              { rx: -0.55 + rr * 0.9, ry: a, at: [Math.cos(a) * rr, 0.07 + (i % 3) * 0.05, Math.sin(a) * rr] }));
           }
           p.add(node, mergeGeo(bunch[0]), { color: pl.pal.leaf, colorFn: pl.pal.grad });
           p.add(node, mergeGeo(bunch[1]), { color: pl.pal.deep });
-          addFace(p, node, { at: [0, 0.22, 0.24], r: 0.062, tri: p.budget * 8 });
+          addFace(p, node, { at: [0, 0.14, 0.1], r: 0.058, tri: p.budget * 8 });
           return;
         }
         p.add(node, xf(tubeGeo(0.012, 0.008, 0.18, 8)), { color: wiry });
@@ -2776,12 +2798,20 @@ function fern(k, col) {
             shape: "elliptic", form: "ladder", tri: 620, bend: -0.3, stalk: 0.06, roll: 0.12,
             color: pl.pal.leaf, colorFn: pl.pal.grad, stalkColor: wiry,
           });
+        } else if (form === "nest" || form === "strap") {
+          // a bird's-nest fern IS an entire strap: no jagged splitting at all
+          p.add(node, xf(bladeGeo({ len: 0.88, wid: 0.2, thick: 0.02, shape: "obovate", rows: 7, ring: 4, bend: -0.06, fold: 0.3 }),
+            { rx: -1.5, at: [0, 0.16, 0] }), { color: pl.pal.leaf, colorFn: pl.pal.grad });
         } else {
-          const bl = { rows: 7, ring: 4 };
-          const g = form === "nest"
-            ? bladeGeo({ len: 0.88, wid: 0.2, thick: 0.02, shape: "obovate", ...bl, bend: -0.06, fold: 0.3 })
-            : bladeGeo({ len: 0.9, wid: 0.16, thick: 0.02, shape: "lanceolate", ...bl, bend: -0.16 });
-          p.add(node, xf(g, { rx: form === "nest" ? -1.5 : -1.35, at: [0, 0.16, 0] }), { color: pl.pal.leaf, colorFn: pl.pal.grad });
+          /* And the axis frond has to be divided too. It is the tallest thing
+             in the model, so an undivided one makes the whole fern read as a
+             slab however many divided fronds hang off it — the same trap the
+             sword form already had a note about. */
+          addLeaf(p, node, {
+            at: [0, 0.16, 0], yaw: 0, pitch: -1.3, len: 0.92, wid: 0.2, thick: 0.016,
+            shape: "linear", form: "frond", leaflet: 8, tri: 560, bend: -0.24, stalk: 0.1,
+            color: pl.pal.leaf, colorFn: pl.pal.grad, stalkColor: wiry,
+          });
         }
         addFace(p, node, { at: [0, 0.09, 0.03], r: 0.034, tri: p.budget * 8 });
       });
@@ -2798,8 +2828,8 @@ function fern(k, col) {
           for (let j = 0; j < n; j += 1) {
             const aa = a + (sgn > 0 ? 0 : Math.PI) + (j - (n - 1) / 2) * 0.6;
             const rr = r * (0.4 + 0.6 * ((j + 0.5) / n));
-            bunch[j % 2].push(xf(bladeGeo({ len: 0.16 + r * 0.5, wid: 0.075, thick: 0.011, shape: "spatulate", rows: 3, ring: 4, bend: 0.1 }),
-              { rx: -0.85 + pl.u(`sp${s.g}${j}`) * 0.7, ry: aa, at: [Math.cos(aa) * rr, 0, Math.sin(aa) * rr] }));
+            bunch[j % 2].push(xf(bladeGeo({ len: 0.16 + r * 0.55, wid: 0.1, thick: 0.008, shape: "lanceolate", rows: 5, ring: 4, bend: 0.06 }),
+              { rx: -0.45 + pl.u(`sp${s.g}${j}`) * 0.5, ry: aa, at: [Math.cos(aa) * rr, 0, Math.sin(aa) * rr] }));
           }
         }
         if (bunch[0].length) p.add(node, mergeGeo(bunch[0]), { color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });

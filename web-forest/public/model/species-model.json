@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T08:05:44.705Z",
+ "generated_at": "2026-09-05T08:07:59.697Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -735,7 +735,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/adiantum-philippense.glb",
-   "bytes": 82576,
+   "bytes": 75728,
    "display_scale_m": 0.8
   },
   {
@@ -2070,7 +2070,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/christella-parasitica.glb",
-   "bytes": 85244,
+   "bytes": 80316,
    "display_scale_m": 0.8
   },
   {
@@ -3180,7 +3180,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/drynaria-quercifolia.glb",
-   "bytes": 65100,
+   "bytes": 78412,
    "display_scale_m": 0.8
   },
   {
@@ -3390,7 +3390,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/christella-dentata.glb",
-   "bytes": 87316,
+   "bytes": 81740,
    "display_scale_m": 0.8
   },
   {
@@ -4320,7 +4320,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/asplenium-nidus.glb",
-   "bytes": 68116,
+   "bytes": 56224,
    "display_scale_m": 0.8
   },
   {
@@ -5460,7 +5460,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/pteris-tripartita.glb",
-   "bytes": 64256,
+   "bytes": 77496,
    "display_scale_m": 0.8
   },
   {
@@ -5625,7 +5625,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/pteris-biaurita.glb",
-   "bytes": 85640,
+   "bytes": 81056,
    "display_scale_m": 0.8
   },
   {
@@ -7020,7 +7020,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/macrothelypteris-torresiana.glb",
-   "bytes": 69832,
+   "bytes": 83108,
    "display_scale_m": 0.8
   },
   {
@@ -7110,7 +7110,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/pteris-ensiformis.glb",
-   "bytes": 80024,
+   "bytes": 78292,
    "display_scale_m": 0.8
   },
   {
@@ -7680,7 +7680,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/selaginella-ciliaris.glb",
-   "bytes": 84136,
+   "bytes": 71288,
    "display_scale_m": 0.8
   },
   {
@@ -10665,7 +10665,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/haplopteris-elongata.glb",
-   "bytes": 42652,
+   "bytes": 41108,
    "display_scale_m": 0.8
   },
   {
@@ -10755,7 +10755,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/selaginella-repanda.glb",
-   "bytes": 81992,
+   "bytes": 74416,
    "display_scale_m": 0.8
   },
   {
@@ -11370,7 +11370,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/nephrolepis-biserrata.glb",
-   "bytes": 80840,
+   "bytes": 76392,
    "display_scale_m": 0.8
   },
   {
@@ -11490,7 +11490,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/selaginella-kraussiana.glb",
-   "bytes": 50564,
+   "bytes": 84388,
    "display_scale_m": 0.8
   },
   {
@@ -12465,7 +12465,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/nephrolepis-brownii.glb",
-   "bytes": 85820,
+   "bytes": 76284,
    "display_scale_m": 0.8
   },
   {
@@ -13005,7 +13005,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/pyrrosia-lanceolata.glb",
-   "bytes": 42668,
+   "bytes": 39704,
    "display_scale_m": 0.8
   },
   {
@@ -14280,7 +14280,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/pyrrosia-adnascens.glb",
-   "bytes": 67928,
+   "bytes": 49664,
    "display_scale_m": 0.8
   },
   {
@@ -14370,7 +14370,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/tectaria-dissecta.glb",
-   "bytes": 85592,
+   "bytes": 62264,
    "display_scale_m": 0.8
   },
   {
@@ -15795,7 +15795,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/mickelopteris-cordata.glb",
-   "bytes": 84256,
+   "bytes": 56336,
    "display_scale_m": 0.8
   },
   {
@@ -15900,7 +15900,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/davallia-divaricata.glb",
-   "bytes": 82020,
+   "bytes": 79656,
    "display_scale_m": 0.8
   },
   {
@@ -16410,7 +16410,7 @@
    "archetype": "fern",
    "palette_source": "derived",
    "file": "species/tectaria-membranacea.glb",
-   "bytes": 81896,
+   "bytes": 79496,
    "display_scale_m": 0.8
   },
   {
