@@ -824,66 +824,190 @@ function frog(k, col, opt = {}) {
   k.cute.bob(k.root, { amp: v.f("bob", 0.04, 0.08), phase: 0.1 });
 }
 
+/* ── lizards ──────────────────────────────────────────────────────────────
+ * Live for five campus species since the reptile route was fixed: a marbled
+ * water monitor, a common sun skink and three house geckos. They are three
+ * different animals, so `kind` picks a BODY PLAN rather than a scale factor —
+ * a monitor is neck, snout and a tail longer than the rest of it; a gecko is
+ * head and eyes on padded toes; a skink is a smooth low cylinder with short
+ * legs. The three geckos then separate on head width, tail plumpness,
+ * tubercle rows and toe count, since they share one recipe.
+ */
 function lizard(k, col, opt = {}) {
   const v = vary(k);
-  const scale = opt.kind === "monitor" ? 1.35 : 1;
-  const bx = 0.14 * scale * v.f("bx", 0.85, 1.2);
-  const by = 0.11 * scale * v.f("by", 0.82, 1.2);
-  const bz = 0.26 * scale * v.f("bz", 0.85, 1.2);
-  const body = ball(k, k.root, "body", { rx: bx, ry: by, rz: bz, at: [0, by * 1.3, 0], color: col.base });
-  const headR = (opt.kind === "gecko" ? 0.16 : 0.13) * scale * v.f("hr", 0.86, 1.15);
-  const head = ball(k, body, "head", { rx: headR, ry: headR * 0.82, rz: headR * 1.2, at: [0, by * 0.2, bz * 0.9], color: col.head ?? col.base });
+  col = toned(k, col);
+  const dark = darkOf(col);
+  const kind = opt.kind === "monitor" ? "monitor" : opt.kind === "gecko" ? "gecko" : "skink";
+  const P = {
+    monitor: {
+      bx: 0.145, by: 0.125, bz: 0.30, head: 0.115, snout: 2.1, neck: true,
+      tailN: [6, 8], tail: 1.55, flat: 0.6, legR: 0.036, legL: 0.15, splay: 1.05,
+      eye: 0.25, toe: [3, 4], claw: true, tongue: true, pad: false, scale: 1.3,
+    },
+    gecko: {
+      bx: 0.15, by: 0.105, bz: 0.21, head: 0.16, snout: 1.05, neck: false,
+      tailN: [4, 6], tail: 1.05, flat: 1.05, legR: 0.026, legL: 0.11, splay: 1.5,
+      eye: 0.52, toe: [4, 5], claw: false, tongue: false, pad: true, scale: 1,
+    },
+    skink: {
+      bx: 0.125, by: 0.115, bz: 0.29, head: 0.115, snout: 1.4, neck: false,
+      tailN: [5, 7], tail: 1.3, flat: 0.92, legR: 0.022, legL: 0.085, splay: 1.32,
+      eye: 0.34, toe: [2, 3], claw: false, tongue: false, pad: false, scale: 1,
+    },
+  }[kind];
+  const S = P.scale;
+  const bx = P.bx * S * v.f("bx", 0.88, 1.14);
+  const by = P.by * S * v.f("by", 0.86, 1.16);
+  const bz = P.bz * S * v.f("bz", 0.88, 1.18);
 
-  const tailN = v.i("tailn", 3, 6);
-  const tailLen = v.f("taill", 0.13, 0.22) * scale;
+  const body = ball(k, k.root, "body", { rx: bx, ry: by, rz: bz, at: [0, by * 1.4, 0], color: col.base });
+  ball(k, body, "belly", { rx: bx * 0.78, ry: by * 0.6, rz: bz * 0.8, at: [0, -by * 0.46, bz * 0.06], color: bellyOf(col) });
+
+  // a monitor carries its head out on a neck; a gecko and a skink do not
+  const neckLen = P.neck ? bz * v.f("neckl", 0.3, 0.55) : 0;
+  if (neckLen > 0) {
+    const nseg = v.i("neckn", 1, 2);
+    for (let i = 0; i < nseg; i += 1) {
+      const t = (i + 0.5) / nseg;
+      ball(k, body, `neck${i}`, {
+        rx: bx * (0.6 - i * 0.05), ry: by * (0.72 - i * 0.05), rz: bz * 0.2,
+        at: [0, by * 0.24, bz * 0.7 + neckLen * t], color: col.base,
+      });
+    }
+  }
+  const headR = P.head * S * v.f("hr", 0.88, 1.14);
+  const headZ = headR * P.snout * v.f("hsnout", 0.9, 1.15);
+  const head = ball(k, body, "head", {
+    rx: headR * v.f("hw", 0.9, 1.2), ry: headR * v.f("hh", 0.72, 0.95), rz: headZ,
+    at: [0, by * 0.28, bz * 0.7 + neckLen + headZ * 0.72], color: col.head ?? col.base,
+  });
+  // jaw line, and the monitor's tapered muzzle
+  ball(k, head, "jaw", {
+    rx: headR * 0.78, ry: headR * 0.3, rz: headZ * 0.8,
+    at: [0, -headR * 0.45, headZ * 0.12], color: bellyOf(col), subdiv: 0, merge: true,
+  });
+  if (P.snout > 1.5) {
+    cone(k, head, "muzzle", {
+      r: headR * 0.5, h: headZ * v.f("muzzle", 0.4, 0.65), at: [0, -headR * 0.08, headZ * 0.7],
+      rotX: Math.PI / 2, zScale: 0.75, color: col.head ?? col.base,
+    });
+  }
+  if (P.tongue) {
+    for (const s of [1, -1]) {
+      spindle(k, head, `tongue-${s > 0 ? "l" : "r"}`, {
+        r: 0.008 * S, len: headZ * v.f("tongue", 0.5, 0.9), at: [0, -headR * 0.3, headZ * 0.8],
+        rot: [1.45, 0, s * 0.28], color: APP.red, seg: 7,
+      });
+    }
+  }
+  if (P.pad) {
+    // a gecko's ear openings and its wide, lidless brow
+    for (const s of [1, -1]) {
+      ball(k, head, `brow-${s > 0 ? "l" : "r"}`, {
+        rx: headR * 0.34, ry: headR * 0.22, rz: headZ * 0.34,
+        at: [s * headR * 0.6, headR * 0.42, headZ * 0.1], color: shade(col.head ?? col.base, -0.16),
+      });
+    }
+  }
+
+  // tail: a chain that overlaps link to link, flattened for the swimmer
+  const tailN = v.i("tailn", P.tailN[0], P.tailN[1]);
+  const tailLen = bz * P.tail * v.f("taill", 0.85, 1.2) / tailN * 2.2;
+  const tailR = by * v.f("tailr", 0.7, 1.0) * (kind === "gecko" ? 1.25 : 1);
   let p = body;
   let at = [0, 0, -bz * 0.78];
   for (let i = 0; i < tailN; i += 1) {
-    const r = (0.085 - i * (0.075 / tailN)) * scale;
-    const n = ball(k, p, `tail${i}`, {
-      rx: r, ry: r * 0.82, rz: tailLen * 0.62, at, rot: [0, i === 0 ? 0 : v.f("tailc", -0.16, 0.16), 0],
-      color: shade(col.base, (i % 2 ? 0.09 : -0.04) - i * 0.02),
+    const t = i / tailN;
+    const r = tailR * (1 - t * 0.82);
+    p = ball(k, p, `tail${i}`, {
+      rx: r * P.flat, ry: r, rz: tailLen * 0.62,
+      at, rot: [i === 0 ? v.f("taillift", -0.1, 0.22) : 0, i === 0 ? 0 : v.f("tailc", -0.14, 0.14), 0],
+      color: shade(col.base, (i % 2 ? 0.1 : -0.05) - t * 0.06),
     });
-    p = n;
     at = [0, 0, -tailLen * 0.86];
   }
 
-  const crestN = v.i("crestn", 0, 4);
+  const crestN = kind === "gecko" ? 0 : v.i("crestn", 0, 3);
   for (let i = 0; i < crestN; i += 1) {
     cone(k, body, `crest${i}`, {
-      r: 0.02 * scale, h: v.f("cresth", 0.04, 0.09) * scale,
-      at: [0, by * 0.85, bz * (0.5 - i * 0.36)], color: shade(col.base, -0.28),
+      r: 0.018 * S, h: v.f("cresth", 0.035, 0.08) * S,
+      at: [0, by * 0.86, bz * (0.5 - i * 0.36)], color: shade(col.base, -0.28),
     });
   }
-  const bandN = v.i("bandn", 0, 3);
-  for (let i = 0; i < bandN; i += 1) {
-    ball(k, body, `band${i}`, { merge: true,
-      rx: bx * 1.03, ry: by * 1.03, rz: bz * 0.1,
-      at: [0, 0, bz * (0.55 - i * 0.5)], color: shade(col.base, -0.34), subdiv: 0,
-    });
-  }
-
-  for (const s of [1, -1]) {
-    for (const [i, dz] of [bz * 0.52, -bz * 0.48].entries()) {
-      const chain = legChain(k, body, `leg${i}-${s > 0 ? "l" : "r"}`, {
-        at: [s * bx * 0.7, -by * 0.2, dz], r: 0.024 * scale,
-        seg: [
-          { len: 0.09 * scale, rz: s * -1.3, rx: i ? -0.5 : 0.5, taper: 0.9 },
-          { len: 0.08 * scale, rz: s * -0.55, taper: 0.8 },
-        ],
-        color: shade(col.base, -0.1),
-      });
-      const toe = v.i("toe", 0, 3);
-      for (let t = 0; t < toe; t += 1) {
-        ball(k, chain[1], `toe${i}${t}${s > 0 ? "l" : "r"}`, {
-          r: 0.024 * scale, at: [(t - (toe - 1) / 2) * 0.035, 0.07 * scale, 0.01], color: shade(col.base, 0.22), subdiv: 0,
+  // markings: marbled ocelli, a skink's lines, a gecko's tubercle rows
+  if (kind === "monitor") {
+    const rowN = v.i("ocelli", 2, 4);
+    for (let i = 0; i < rowN; i += 1) {
+      for (const s of [1, -1]) {
+        ball(k, body, `ocellus${i}-${s > 0 ? "l" : "r"}`, {
+          rx: bx * 0.2, ry: by * 0.24, rz: bz * 0.1,
+          at: [s * bx * 0.55, by * 0.72, bz * (0.5 - i * (1.1 / rowN))],
+          color: shade(col.base, 0.42), subdiv: 0, merge: true,
+        });
+      }
+    }
+  } else if (kind === "skink") {
+    const lineN = v.i("linen", 2, 4);
+    for (let i = 0; i < lineN; i += 1) {
+      for (const s of [1, -1]) {
+        ball(k, body, `stripe${i}-${s > 0 ? "l" : "r"}`, {
+          rx: bx * 0.07, ry: by * 0.16, rz: bz * 0.9,
+          at: [s * bx * (0.3 + i * 0.24), by * 0.66, 0],
+          color: i % 2 ? shade(col.base, -0.4) : paper, subdiv: 0, merge: true,
+        });
+      }
+    }
+  } else {
+    const rowN = v.i("tuberc", 0, 3);
+    for (let i = 0; i < rowN; i += 1) {
+      for (const s of [1, -1]) {
+        ball(k, body, `tubercle${i}-${s > 0 ? "l" : "r"}`, {
+          r: bx * v.f("tubr", 0.09, 0.15),
+          at: [s * bx * (0.34 + i * 0.2), by * 0.78, bz * v.f("tubz", -0.3, 0.3)],
+          color: shade(col.base, -0.24), subdiv: 0,
         });
       }
     }
   }
-  k.face(head, { center: [0, headR * 0.1, 0], r: headR, eyeR: opt.kind === "gecko" ? 0.46 : v.f("eyer", 0.3, 0.42), gap: 0.55, smile: false, blush: false });
+
+  // four sprawled legs, each ending in a real foot
+  for (const s of [1, -1]) {
+    for (const [i, dz] of [bz * 0.5, -bz * 0.46].entries()) {
+      const chain = legChain(k, body, `leg${i}-${s > 0 ? "l" : "r"}`, {
+        at: [s * bx * 0.68, -by * 0.24, dz], r: P.legR * S,
+        seg: [
+          { len: P.legL * S * v.f("upperl", 0.85, 1.15), rz: s * -P.splay, rx: i ? -0.5 : 0.55, taper: 0.9 },
+          { len: P.legL * S * 0.85, rz: s * -(1.6 - P.splay), rx: i ? 0.3 : -0.3, taper: 0.75 },
+        ],
+        color: shade(col.base, -0.1),
+      });
+      const foot = chain[chain.length - 1];
+      const toe = v.i("toe", P.toe[0], P.toe[1]);
+      for (let t = 0; t < toe; t += 1) {
+        const spread = (t - (toe - 1) / 2) / Math.max(1, toe - 1);
+        const tip = ball(k, foot, `toe${i}${t}-${s > 0 ? "l" : "r"}`, {
+          rx: P.legR * S * (P.pad ? 1.5 : 0.9), ry: P.legR * S * (P.pad ? 0.5 : 0.8),
+          rz: P.legR * S * (P.pad ? 1.7 : 1.4),
+          at: [spread * P.legR * S * 2.4, P.legL * S * 0.7, P.legR * S * 0.6],
+          rot: [0, spread * 0.7, 0], color: shade(col.base, P.pad ? 0.3 : 0.2), subdiv: 0,
+        });
+        if (P.claw) {
+          cone(k, tip, `claw${i}${t}-${s > 0 ? "l" : "r"}`, {
+            merge: true, r: P.legR * S * 0.3, h: P.legR * S * 1.3,
+            at: [0, 0, P.legR * S * 1.2], rotX: 1.3, color: ink, seg: 6,
+          });
+        }
+      }
+    }
+  }
+
+  k.face(head, {
+    center: [0, headR * 0.16, headZ * v.f("facez", 0.06, 0.2)],
+    r: headR * 0.98, eyeR: P.eye * v.f("eyer", 0.9, 1.12), gap: v.f("eyeg", 0.48, 0.62),
+    smile: kind !== "monitor", blush: false, blink: kind !== "gecko",
+  });
   k.cute.swing(body, { axis: "y", amp: v.f("sway", 0.05, 0.12), dur: v.f("swayd", 1.4, 2.4), phase: 0.2 });
-  k.idle({ breatheK: 0.04, bobAmp: 0 });
+  k.idle({ breatheK: v.f("br", 0.03, 0.05), bobAmp: 0 });
 }
 
 /**
@@ -1420,30 +1544,81 @@ function coleoptera(k, col, opt = {}) {
 function orthoptera(k, col, opt = {}) {
   const v = vary(k);
   const dark = darkOf(col);
+  const cricket = opt.kind === "cricket";
+
+  /* Stance is the knob that matters most here. Where the cocked knee sits
+     relative to the back decides how the model's mass stacks up its own
+     height, and that mass profile is one of the four things the shape
+     signature reads — so a crouching pygmy grasshopper and a stilt-legged
+     katydid come out as different animals rather than one at two sizes. */
+  const stance = v.pick("stance", ["crouch", "cocked", "stilt", "cocked"]);
+  const ST = {
+    crouch: { fold: -1.62, ext: 2.05, femur: 0.78, kick: 0.22, pitch: 0.16 },
+    cocked: { fold: -2.35, ext: 2.62, femur: 1.05, kick: 0.5, pitch: -0.1 },
+    stilt: { fold: -2.05, ext: 2.95, femur: 1.4, kick: 0.12, pitch: -0.34 },
+  }[stance];
+
   const bx = v.f("bx", 0.07, 0.11);
   const bz = v.f("bz", 0.2, 0.32);
+  const by = bx * v.f("bh", 0.9, 1.3);
   const bodyY = v.f("by", 0.16, 0.24);
   const body = ball(k, k.root, "body", {
-    rx: bx, ry: bx * v.f("bh", 0.9, 1.3), rz: bz, at: [0, bodyY, -bz * 0.1],
-    rot: [v.f("tilt", -0.2, 0.02), 0, 0], color: col.base,
+    rx: bx, ry: by, rz: bz, at: [0, bodyY, -bz * 0.1],
+    rot: [ST.pitch + v.f("tilt", -0.12, 0.1), 0, 0], color: col.base,
   });
-  const pron = ball(k, body, "pronotum", { rx: bx * 1.06, ry: bx * 1.1, rz: bz * v.f("pz", 0.22, 0.36), at: [0, bx * 0.1, bz * 0.62], color: shade(col.base, -0.12) });
+
+  // abdominal tergites — real rings stepping down the abdomen, not paint
+  const tergN = v.i("tergn", 0, 3);
+  for (let i = 0; i < tergN; i += 1) {
+    ball(k, body, `tergite${i}`, {
+      rx: bx * 1.05, ry: by * 1.04, rz: bz * 0.075,
+      at: [0, -by * 0.05 * i, -bz * (0.14 + i * 0.24)],
+      color: shade(col.base, i % 2 ? -0.34 : 0.14), subdiv: 0,
+    });
+  }
+  // ovipositor / cerci: the blades at the tail end, 0 to 3 pairs
+  const oviN = v.i("ovin", 0, 3);
+  for (let i = 0; i < oviN; i += 1) {
+    for (const s of [1, -1]) {
+      spindle(k, body, `ovipositor${i}-${s > 0 ? "l" : "r"}`, {
+        r: bx * (0.17 - i * 0.035), len: bz * v.f("ovil", 0.28, 0.75) * (1 - i * 0.2),
+        at: [s * bx * 0.24, by * (0.14 - i * 0.3), -bz * 0.76],
+        rot: [-1.32 - i * 0.3, 0, s * 0.16], color: shade(col.base, -0.2), seg: 8,
+      });
+    }
+  }
+
+  const pron = ball(k, body, "pronotum", {
+    rx: bx * 1.06, ry: by * 1.05, rz: bz * v.f("pz", 0.22, 0.36),
+    at: [0, bx * 0.1, bz * 0.62], color: shade(col.base, -0.12),
+  });
+  const crestN = v.i("crestn", 0, 2);
+  for (let i = 0; i < crestN; i += 1) {
+    ball(k, pron, `saddle${i}`, {
+      rx: bx * 0.34, ry: by * (0.3 + i * 0.2), rz: bz * 0.1,
+      at: [0, by * 0.86, bz * (0.05 - i * 0.16)], color: shade(col.base, -0.3), subdiv: 0,
+    });
+  }
   const headR = bx * v.f("hr", 0.9, 1.25);
-  const head = ball(k, pron, "head", { rx: headR, ry: headR * v.f("hh", 1.0, 1.4), rz: headR * 0.95, at: [0, bx * 0.1, bz * 0.2 + headR * 0.5], color: col.head ?? col.base });
+  const head = ball(k, pron, "head", {
+    rx: headR, ry: headR * v.f("hh", 1.0, 1.4), rz: headR * 0.95,
+    at: [0, bx * 0.1, bz * 0.2 + headR * 0.5], color: col.head ?? col.base,
+  });
   antennaPair(k, head, {
     at: [0, headR * 0.6, headR * 0.3], gap: headR * 0.3,
-    len: opt.kind === "cricket" ? v.f("antl", 0.22, 0.36) : v.f("antl", 0.3, 0.5),
+    len: cricket ? v.f("antl", 0.22, 0.36) : v.f("antl", 0.26, 0.5),
     r: 0.007, spread: v.f("ants", 0.3, 0.7), joint: 3, form: "thread", color: dark,
   });
-  // the big folded jumping legs
+
+  // the big folded jumping legs — the femur angle is the stance
   for (const s of [1, -1]) {
-    const femurL = v.f("femur", 0.16, 0.26);
+    const femurL = v.f("femur", 0.16, 0.24) * ST.femur;
     const chain = legChain(k, body, `hind-${s > 0 ? "l" : "r"}`, {
       at: [s * bx * 0.6, -bx * 0.2, -bz * 0.3], r: v.f("femurr", 0.035, 0.055),
       seg: [
-        { len: femurL, rz: s * -0.5, rx: -2.2, taper: 0.45, bulge: 0.35 },
-        { len: femurL * v.f("tibia", 0.85, 1.2), rz: s * 0.15, rx: 2.5, taper: 0.35 },
-        { len: femurL * 0.3, rz: s * 0.1, rx: 1.1, taper: 0.6 },
+        { len: femurL, rz: s * -0.5, rx: ST.fold, taper: 0.45, bulge: 0.35 },
+        { len: femurL * v.f("tibia", 0.85, 1.2), rz: s * 0.15, rx: ST.ext, taper: 0.35 },
+        { len: femurL * 0.3, rz: s * 0.1, rx: 1.1 + ST.kick, taper: 0.6 },
       ],
       color: dark,
     });
@@ -1454,9 +1629,10 @@ function orthoptera(k, col, opt = {}) {
     }
   }
   insectLegs(k, body, {
-    at: [0, -bx * 0.5, bz * 0.3], gap: bx * 0.5, pair: 2,
+    at: [0, -bx * 0.5, bz * 0.3], gap: bx * 0.5, pair: v.i("legpair", 2, 3),
     len: v.f("legl", 0.09, 0.15), r: 0.011, spanZ: bz * 0.28, splay: 1.2, bend: 1.1, color: dark,
   });
+
   // folded wings along the back
   const wingN = v.i("wingn", 1, 2);
   const wingLen = v.f("wingl", 0.18, 0.34);
@@ -1469,10 +1645,6 @@ function orthoptera(k, col, opt = {}) {
         color: shade(col.base, i % 2 ? -0.18 : 0.1),
       });
     }
-  }
-  const bandN = v.i("bandn", 0, 3);
-  for (let i = 0; i < bandN; i += 1) {
-    ball(k, body, `band${i}`, { merge: true, rx: bx * 1.04, ry: bx * 1.06, rz: bz * 0.08, at: [0, 0, bz * (0.4 - i * 0.4)], color: shade(col.base, -0.35), subdiv: 0 });
   }
   beadEyes(k, head, { r: headR * v.f("eyer", 0.34, 0.5), at: [0, headR * 0.3, headR * 0.35], gap: headR * 0.62, color: ink, pupil: paper, spark: true });
   k.idle({ breatheK: v.f("br", 0.035, 0.06), bobAmp: v.f("bob", 0.012, 0.03) });
