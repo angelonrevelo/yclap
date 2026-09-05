@@ -608,6 +608,239 @@ class Plant {
     return { baseWide, crownWide, baseNode };
   }
 
+  /**
+   * The exact vertex stream `glb.mjs` will write for this node — position and
+   * multiplicity, in order.
+   *
+   * The repair below has to reason about the same numbers the gate will read
+   * back out of the file, and there are two steps between a part's geometry and
+   * those numbers: the writer welds corners by position and splits a welded
+   * position back into one vertex per normal cluster, and the gate then reads
+   * only every `n/220`-th vertex of the result. Guess either and the repair
+   * certifies joins the gate cannot see — the first attempt at this pass did
+   * exactly that, and `lagundi` shipped its floating leaf anyway. So the weld
+   * is replayed here rather than approximated: same crease angle, same fan-apex
+   * guard, same order. Positions only; normals and colour do not move a vertex.
+   */
+  weldedVert(node) {
+    const COS_CREASE = Math.cos((40 * Math.PI) / 180);
+    const COS_APEX = Math.cos((55 * Math.PI) / 180);
+    const keyOf = (p) => `${p[0].toFixed(6)},${p[1].toFixed(6)},${p[2].toFixed(6)}`;
+    const out = [];
+    /* Per PART, not per node: the writer welds inside a part and concatenates,
+       so two parts of one node that share a corner still ship two vertices. */
+    for (const part of node.parts) {
+      const P = part.positions;
+      const face = [];
+      for (const [a, b, c] of part.indices) {
+        const A = P[a], B = P[b], C = P[c];
+        const ux = B[0] - A[0], uy = B[1] - A[1], uz = B[2] - A[2];
+        const vx = C[0] - A[0], vy = C[1] - A[1], vz = C[2] - A[2];
+        const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+        const len = Math.hypot(nx, ny, nz);
+        if (!(len > 1e-12)) continue;
+        face.push({ v: [A, B, C], n: [nx / len, ny / len, nz / len] });
+      }
+      const at = new Map();
+      face.forEach((f, fi) => {
+        for (const q of f.v) {
+          const k = keyOf(q);
+          let bucket = at.get(k);
+          if (!bucket) { bucket = { p: q, face: [] }; at.set(k, bucket); }
+          bucket.face.push(fi);
+        }
+      });
+      for (const [, bucket] of at) {
+        const list = bucket.face;
+        const parent = list.map((_, i) => i);
+        const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+        for (let i = 0; i < list.length; i += 1) {
+          for (let j = i + 1; j < list.length; j += 1) {
+            const a = face[list[i]].n, b = face[list[j]].n;
+            if (a[0] * b[0] + a[1] * b[1] + a[2] * b[2] >= COS_CREASE) {
+              const ra = find(i), rb = find(j);
+              if (ra !== rb) parent[ra] = rb;
+            }
+          }
+        }
+        const member = new Map();
+        list.forEach((fi, i) => {
+          const r = find(i);
+          if (!member.has(r)) member.set(r, []);
+          member.get(r).push(fi);
+        });
+        let count = 0;
+        for (const [, fl] of member) {
+          if (fl.length < 3) { count += 1; continue; }
+          const avg = [0, 0, 0];
+          for (const fi of fl) { avg[0] += face[fi].n[0]; avg[1] += face[fi].n[1]; avg[2] += face[fi].n[2]; }
+          const al = Math.hypot(avg[0], avg[1], avg[2]) || 1;
+          let keep = 0, split = 0;
+          for (const fi of fl) {
+            const n = face[fi].n;
+            if ((n[0] * avg[0] + n[1] * avg[1] + n[2] * avg[2]) / al >= COS_APEX) keep += 1;
+            else split += 1;
+          }
+          count += split + (keep ? 1 : 0);
+        }
+        for (let i = 0; i < count; i += 1) out.push(bucket.p);
+      }
+    }
+    return out;
+  }
+
+  /** That stream read the way the gate reads it: one vertex in `n/220`. */
+  auditSample(node, sx, sy, sz) {
+    const v = this.weldedVert(node);
+    const step = Math.max(1, Math.floor(v.length / 220));
+    const dy = node.at[1];
+    const out = [];
+    for (let i = 0; i < v.length; i += step) out.push([v[i][0] * sx, (v[i][1] + dy) * sy, v[i][2] * sz]);
+    return out;
+  }
+
+  /**
+   * Close every hole the connectivity gate can see, by measuring instead of
+   * hoping.
+   *
+   * `anchor()` above is a DESIGN rule — a part that sits off to one side gets a
+   * pedicel back to the axis — and for most of the pack that is enough. It is
+   * not a proof, for one reason: contact is decided on VERTICES. A trunk drawn
+   * as a lathe has vertex rings only at its two ends, so a pedicel that runs to
+   * the axis half way up the trunk ends in empty vertex space; the surfaces
+   * interpenetrate and the gate still calls it a hole, correctly, because the
+   * points sampled on each side never come within tolerance of one another.
+   * That is why the gate went from 0 to 271 the moment it stopped comparing
+   * bounding boxes: the holes were always there.
+   *
+   * So this replays the gate on the parts about to ship and, wherever an island
+   * is left, grows a stem along the shortest segment between it and the body.
+   *
+   * The join is marked with a small bead on BOTH sides. That is the part worth
+   * explaining: the gate reads a SUBSAMPLE of each part — roughly one vertex in
+   * `n/220` — and the writer welds vertices by position before that, so the
+   * generator cannot know which vertices the gate will end up looking at. A
+   * stem whose tip lands exactly on a vertex of the trunk still fails when that
+   * vertex is one of the two in three the gate skipped — which is precisely how
+   * `lagundi` kept its floating leaf through a first attempt at this. A dozen
+   * vertices packed inside a tenth of the tolerance on each side of the join
+   * cannot all be skipped, so the join holds whatever the sampling does.
+   */
+  repairConnection(sx, sy, sz, slack, dry = false) {
+    const node = this.node.filter((n) => n.parts.length);
+    if (node.length <= 1) return 1;
+
+    /* The gate's own points, and the gate's own boxes: the boxes come from
+       every vertex, the contact test from the subsample. */
+    const pt = node.map((n) => this.auditSample(n, sx, sy, sz));
+    const box = node.map((n) => {
+      const b = this.localBox(n);
+      return {
+        lo: [b.lo[0] * sx, (b.lo[1] + n.at[1]) * sy, b.lo[2] * sz],
+        hi: [b.hi[0] * sx, (b.hi[1] + n.at[1]) * sy, b.hi[2] * sz],
+      };
+    });
+    const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+    for (const b of box) for (let k = 0; k < 3; k += 1) { lo[k] = Math.min(lo[k], b.lo[k]); hi[k] = Math.max(hi[k], b.hi[k]); }
+    const tol = Math.max(1e-6, Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) / 2) * slack;
+
+    /* A grid at the tolerance, so contact is a neighbour-cell scan rather than
+       every vertex in the model against every other. */
+    const grid = new Map();
+    const key = (a, b, c) => `${a},${b},${c}`;
+    const cellOf = (q) => [Math.floor(q[0] / tol), Math.floor(q[1] / tol), Math.floor(q[2] / tol)];
+    pt.forEach((s, i) => {
+      for (const q of s) {
+        const c = cellOf(q);
+        const k = key(c[0], c[1], c[2]);
+        let bucket = grid.get(k);
+        if (!bucket) { bucket = []; grid.set(k, bucket); }
+        bucket.push([q, i]);
+      }
+    });
+
+    const parent = node.map((_, i) => i);
+    const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+    const tol2 = tol * tol;
+    let island = node.length;
+    outer:
+    for (const [, bucket] of grid) {
+      for (const [q, i] of bucket) {
+        const c = cellOf(q);
+        for (let dx = -1; dx <= 1; dx += 1) for (let dy = -1; dy <= 1; dy += 1) for (let dz = -1; dz <= 1; dz += 1) {
+          const other = grid.get(key(c[0] + dx, c[1] + dy, c[2] + dz));
+          if (!other) continue;
+          for (const [r, j] of other) {
+            const ri = find(i), rj = find(j);
+            if (ri === rj) continue;
+            if ((q[0] - r[0]) ** 2 + (q[1] - r[1]) ** 2 + (q[2] - r[2]) ** 2 > tol2) continue;
+            parent[ri] = rj;
+            island -= 1;
+            if (island === 1) break outer;
+          }
+        }
+      }
+    }
+    const group = new Map();
+    for (let i = 0; i < node.length; i += 1) {
+      const r = find(i);
+      if (!group.has(r)) group.set(r, []);
+      group.get(r).push(i);
+    }
+    const comp = [...group.values()].sort((a, b) => b.length - a.length);
+    if (dry) return comp.length;
+    if (comp.length <= 1) return 1;
+    const main = new Set(comp[0]);
+
+    const color = this.plan.anchorColor ?? this.plan.pal?.deep ?? this.col.dark ?? APP.greenDeep;
+    const bead = (host, at, r) => this.add(host, xf(sphereGeo(6, 3), {
+      sx: r / sx, sy: r / sy, sz: r / sz, at,
+    }), { color }, true);
+
+    for (const island of comp.slice(1)) {
+      let best = Infinity, from = null, to = null, hostIdx = -1;
+      for (const i of island) {
+        for (let j = 0; j < node.length; j += 1) {
+          if (!main.has(j)) continue;
+          let g2 = 0;
+          for (let k = 0; k < 3; k += 1) {
+            const g = Math.max(box[i].lo[k] - box[j].hi[k], box[j].lo[k] - box[i].hi[k], 0);
+            g2 += g * g;
+          }
+          if (g2 >= best) continue;
+          const a = pt[i], b = pt[j];
+          const sa = Math.max(1, Math.floor(a.length / 260)), sb = Math.max(1, Math.floor(b.length / 260));
+          for (let x = 0; x < a.length; x += sa) {
+            for (let y = 0; y < b.length; y += sb) {
+              const d = (a[x][0] - b[y][0]) ** 2 + (a[x][1] - b[y][1]) ** 2 + (a[x][2] - b[y][2]) ** 2;
+              if (d < best) { best = d; to = a[x]; from = b[y]; hostIdx = i; }
+            }
+          }
+        }
+      }
+      if (hostIdx < 0 || !from || !to) continue;
+      /* `to` is the island's own point, `from` the body's: the stem grows out
+         of the island so its geometry lands in the island's mesh. */
+      const host = node[hostIdx];
+      const loc = (q, n) => [q[0] / sx, q[1] / sy - n.at[1], q[2] / sz];
+      const B = loc(to, host), A = loc(from, host);
+      const d = [A[0] - B[0], A[1] - B[1], A[2] - B[2]];
+      const len = Math.hypot(d[0], d[1], d[2]);
+      if (len > tol * 0.08) {
+        const w = Math.max(0.0018, len * 0.05);
+        const rx = Math.acos(Math.max(-1, Math.min(1, d[1] / len)));
+        const ry = Math.atan2(d[0], d[2]);
+        this.add(host, xf(lathe([[w, 0], [w * 0.8, len]], 5), { rx, ry, at: B }), { color }, true);
+      }
+      /* `A` is a point the gate itself will read on the body side, so the tip
+         only has to be read on the island side — hence the bead: fourteen
+         positions in a bud a tenth of the tolerance across, consecutive in the
+         stream, which no stride can skip. */
+      bead(host, A, tol * 0.09);
+    }
+    return comp.length;
+  }
+
   /** Normalise the silhouette to the planned aspect and the archetype height. */
   finish() {
     const H = typeof this.style.height === "function" ? this.style.height(this.plan) : (this.style.height ?? 0.5);
@@ -627,7 +860,7 @@ class Plant {
        * base in — three passes, because shrinking the base can move the box
        * that the scales were derived from.
        */
-      for (let pass = 0; pass < 3; pass += 1) {
+      for (let pass = 0; pass < 4; pass += 1) {
         const { baseWide, crownWide, baseNode } = this.heaviness(f.sx, f.sz);
         if (crownWide < 1e-6 || baseWide <= crownWide * 0.7) break;
         const k = Math.max(0.12, (crownWide * 0.7) / baseWide);
@@ -660,6 +893,16 @@ class Plant {
           ]);
         }
       }
+    }
+    /*
+     * Last, once every part is where it will ship: close the holes. Twice,
+     * because a stem changes the body box a hair and therefore the fit — and
+     * at a tolerance tighter than the gate's own, so that hair cannot reopen
+     * anything.
+     */
+    for (let pass = 0; pass < 4; pass += 1) {
+      if (this.repairConnection(f.sx, H, f.sz, 0.05) <= 1) break;
+      f = fit();
     }
     this.body.scale = [f.sx, H, f.sz];
     this.body.at = [-((f.lo[0] + f.hi[0]) / 2) * f.sx, 0, -((f.lo[2] + f.hi[2]) / 2) * f.sz];
