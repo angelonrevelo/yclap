@@ -722,6 +722,32 @@ function route(row, ctx) {
      * Crepidotus, Clitopilus, Resupinatus and Favolaschia are Agaricales but
      * grow as fans and shelves on wood with no central stipe.
      */
+    /*
+     * Fungi that are not agarics and were shipping as classic toadstools. The
+     * full review found these; each goes to the closest HONEST form available
+     * rather than to a shape that flatters it.
+     *
+     * The four microfungi are the uncomfortable ones: a leaf rust and three
+     * moulds have no macroscopic fruiting body at all. They take the crust
+     * form the lichens already use in `moss`, which renders as a flat patch on
+     * a surface. That is not what they are, but it is far closer than a
+     * stalked mushroom with a cap and gills, and the manifest still records
+     * what they actually are.
+     */
+    const NON_AGARIC = {
+      "trypethelium eluteriae": "moss",        // a crustose bark LICHEN
+      "coleosporium plumeriae": "moss",        // frangipani rust
+      "trichoderma viride": "moss",            // a mould
+      "pestalotiopsis funerea": "moss",        // tip-blight anamorph
+      "chromelosporiopsis carnea": "moss",     // anamorphic crust
+      "dacrymyces spathularia": "mushroom-jelly", // a jelly fungus, not a cap
+      /* Centrally-stalked polypores: little funnels on a stalk, not shelves. */
+      "lentinus arcularius": "mushroom",
+      "lentinus squarrosulus": "mushroom",
+    };
+    const nonAgaric = NON_AGARIC[sci.split(" ").slice(0, 2).join(" ")];
+    if (nonAgaric) return nonAgaric;
+
     const STALKLESS_GENUS = new Set(
       "stereum xylobolus schizophyllum crepidotus clitopilus resupinatus favolaschia".split(" "),
     );
@@ -803,6 +829,12 @@ function route(row, ctx) {
      * fern and grass families. Checked before any genus rule.
      */
     const SPECIES_FORM = {
+      /* Second round, from the full 1098-model visual verification. */
+      "pisonia grandis": "tree",            // a large coastal tree, was knee-high
+      "phyllanthus acidus": "tree",         // Otaheite gooseberry, a small tree
+      "pisonia aculeata": "vine",           // a thorny scrambling liana
+      "heptapleurum arboricola": "shrub",
+      "heptapleurum ellipticum": "shrub",
       "thunbergia erecta": "shrub",
       "capparis micracantha": "shrub",
       "gnetum gnemon": "tree",

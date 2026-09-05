@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T06:46:12.107Z",
+ "generated_at": "2026-09-05T07:40:25.224Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -2367,11 +2367,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/heptapleurum-arboricola.glb",
-   "bytes": 82228,
-   "display_scale_m": 0.35
+   "bytes": 87356,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "eleutherodactylus-planirostris",
@@ -3837,11 +3837,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/pisonia-grandis.glb",
-   "bytes": 90796,
-   "display_scale_m": 0.35
+   "bytes": 88004,
+   "display_scale_m": 5
   },
   {
    "species_code": "phlyctis-argena",
@@ -4962,11 +4962,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/heptapleurum-ellipticum.glb",
-   "bytes": 81292,
-   "display_scale_m": 0.35
+   "bytes": 80116,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "myriocoleopsis-minutissima",
@@ -7062,11 +7062,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/pisonia-aculeata.glb",
-   "bytes": 97664,
-   "display_scale_m": 0.35
+   "bytes": 86600,
+   "display_scale_m": 1
   },
   {
    "species_code": "plagiothecium-denticulatum",
@@ -8487,11 +8487,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Fungi",
-   "archetype": "mushroom",
+   "archetype": "mushroom-jelly",
    "palette_source": "derived",
    "file": "species/dacrymyces-spathularia.glb",
-   "bytes": 85316,
-   "display_scale_m": 0.1
+   "bytes": 72280,
+   "display_scale_m": 0.06
   },
   {
    "species_code": "bergera-koenigii",
@@ -11382,11 +11382,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/phyllanthus-acidus.glb",
-   "bytes": 63708,
-   "display_scale_m": 0.35
+   "bytes": 73556,
+   "display_scale_m": 5
   },
   {
    "species_code": "phyllostachys-nigra",
@@ -12027,11 +12027,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Fungi",
-   "archetype": "mushroom",
+   "archetype": "moss",
    "palette_source": "derived",
    "file": "species/trypethelium-eluteriae.glb",
-   "bytes": 85952,
-   "display_scale_m": 0.1
+   "bytes": 54628,
+   "display_scale_m": 0.04
   },
   {
    "species_code": "neoscona-punctigera",
@@ -13242,11 +13242,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Fungi",
-   "archetype": "mushroom",
+   "archetype": "moss",
    "palette_source": "derived",
    "file": "species/coleosporium-plumeriae.glb",
-   "bytes": 81520,
-   "display_scale_m": 0.1
+   "bytes": 86256,
+   "display_scale_m": 0.04
   },
   {
    "species_code": "daldinia-childiae",
@@ -13377,11 +13377,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Fungi",
-   "archetype": "mushroom",
+   "archetype": "moss",
    "palette_source": "derived",
    "file": "species/trichoderma-viride.glb",
-   "bytes": 54384,
-   "display_scale_m": 0.1
+   "bytes": 95836,
+   "display_scale_m": 0.04
   },
   {
    "species_code": "trema-tomentosum",
@@ -13947,11 +13947,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Fungi",
-   "archetype": "mushroom",
+   "archetype": "moss",
    "palette_source": "derived",
    "file": "species/pestalotiopsis-funerea.glb",
-   "bytes": 57008,
-   "display_scale_m": 0.1
+   "bytes": 79064,
+   "display_scale_m": 0.04
   },
   {
    "species_code": "hoheria-angustifolia",
@@ -14712,11 +14712,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Fungi",
-   "archetype": "mushroom-bracket",
+   "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/lentinus-squarrosulus.glb",
-   "bytes": 96076,
-   "display_scale_m": 0.15
+   "bytes": 73256,
+   "display_scale_m": 0.1
   },
   {
    "species_code": "leucauge-tessellata",
@@ -16107,11 +16107,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Fungi",
-   "archetype": "mushroom",
+   "archetype": "moss",
    "palette_source": "derived",
    "file": "species/chromelosporiopsis-carnea.glb",
-   "bytes": 50428,
-   "display_scale_m": 0.1
+   "bytes": 82472,
+   "display_scale_m": 0.04
   },
   {
    "species_code": "mimeusemia-semyron",
@@ -16197,11 +16197,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Fungi",
-   "archetype": "mushroom-bracket",
+   "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/lentinus-arcularius.glb",
-   "bytes": 90272,
-   "display_scale_m": 0.15
+   "bytes": 46444,
+   "display_scale_m": 0.1
   },
   {
    "species_code": "tropidonophis-spilogaster",
