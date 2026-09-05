@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T08:00:49.974Z",
+ "generated_at": "2026-09-05T08:16:48.318Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -435,7 +435,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/passer-montanus.glb",
-   "bytes": 62604,
+   "bytes": 62680,
    "display_scale_m": 0.15
   },
   {
@@ -450,7 +450,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/hypolimnas-bolina.glb",
-   "bytes": 60876,
+   "bytes": 60952,
    "display_scale_m": 0.08
   },
   {
@@ -465,7 +465,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/junonia-hedonia.glb",
-   "bytes": 57336,
+   "bytes": 57352,
    "display_scale_m": 0.07
   },
   {
@@ -615,7 +615,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/ypthima-stellera.glb",
-   "bytes": 57124,
+   "bytes": 57176,
    "display_scale_m": 0.04
   },
   {
@@ -1365,7 +1365,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/corvus-philippinus.glb",
-   "bytes": 67540,
+   "bytes": 67616,
    "display_scale_m": 0.4
   },
   {
@@ -1380,7 +1380,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/ardea-coromanda.glb",
-   "bytes": 69868,
+   "bytes": 69948,
    "display_scale_m": 0.55
   },
   {
@@ -1455,7 +1455,7 @@
    "archetype": "diptera",
    "palette_source": "known",
    "file": "species/chrysomya-megacephala.glb",
-   "bytes": 76760,
+   "bytes": 76756,
    "display_scale_m": 0.012
   },
   {
@@ -1515,7 +1515,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/junonia-lemonias.glb",
-   "bytes": 63340,
+   "bytes": 63400,
    "display_scale_m": 0.06
   },
   {
@@ -1530,7 +1530,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/leptosia-nina.glb",
-   "bytes": 61700,
+   "bytes": 62924,
    "display_scale_m": 0.035
   },
   {
@@ -1590,7 +1590,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/acridotheres-cristatellus.glb",
-   "bytes": 64212,
+   "bytes": 65132,
    "display_scale_m": 0.22
   },
   {
@@ -1635,7 +1635,7 @@
    "archetype": "odonata",
    "palette_source": "known",
    "file": "species/diplacodes-trivialis.glb",
-   "bytes": 68764,
+   "bytes": 68756,
    "display_scale_m": 0.035
   },
   {
@@ -1830,7 +1830,7 @@
    "archetype": "diptera",
    "palette_source": "known",
    "file": "species/musca-domestica.glb",
-   "bytes": 83124,
+   "bytes": 83120,
    "display_scale_m": 0.01
   },
   {
@@ -1920,7 +1920,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/gallus-gallus.glb",
-   "bytes": 70980,
+   "bytes": 71060,
    "display_scale_m": 0.45
   },
   {
@@ -2055,7 +2055,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/amata-huebneri.glb",
-   "bytes": 72936,
+   "bytes": 72916,
    "display_scale_m": 0.035
   },
   {
@@ -2100,7 +2100,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/oriolus-chinensis.glb",
-   "bytes": 60216,
+   "bytes": 60292,
    "display_scale_m": 0.24
   },
   {
@@ -2205,7 +2205,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/todiramphus-chloris.glb",
-   "bytes": 75636,
+   "bytes": 75712,
    "display_scale_m": 0.2
   },
   {
@@ -2250,7 +2250,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/papilio-alphenor.glb",
-   "bytes": 60080,
+   "bytes": 60056,
    "display_scale_m": 0.09
   },
   {
@@ -2265,7 +2265,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/lanius-cristatus.glb",
-   "bytes": 68260,
+   "bytes": 68336,
    "display_scale_m": 0.18
   },
   {
@@ -2625,7 +2625,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/geopelia-striata.glb",
-   "bytes": 58000,
+   "bytes": 58076,
    "display_scale_m": 0.16
   },
   {
@@ -2745,7 +2745,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/lyssa-zampa.glb",
-   "bytes": 91644,
+   "bytes": 91636,
    "display_scale_m": 0.12
   },
   {
@@ -2835,7 +2835,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/asota-heliconia.glb",
-   "bytes": 67292,
+   "bytes": 67276,
    "display_scale_m": 0.06
   },
   {
@@ -2895,7 +2895,7 @@
    "archetype": "diptera",
    "palette_source": "derived",
    "file": "species/chrysosoma-leucopogon.glb",
-   "bytes": 66652,
+   "bytes": 66648,
    "display_scale_m": 0.012
   },
   {
@@ -2985,7 +2985,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/ophthalmis-lincea.glb",
-   "bytes": 67012,
+   "bytes": 66908,
    "display_scale_m": 0.06
   },
   {
@@ -3000,7 +3000,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/yungipicus-maculatus.glb",
-   "bytes": 65288,
+   "bytes": 76612,
    "display_scale_m": 0.15
   },
   {
@@ -3045,7 +3045,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/hirundo-javanica.glb",
-   "bytes": 57048,
+   "bytes": 57124,
    "display_scale_m": 0.13
   },
   {
@@ -3135,7 +3135,7 @@
    "archetype": "lepidoptera-hawk",
    "palette_source": "known",
    "file": "species/theretra-oldenlandiae.glb",
-   "bytes": 86352,
+   "bytes": 86388,
    "display_scale_m": 0.07
   },
   {
@@ -3330,7 +3330,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/pareronia-boebera.glb",
-   "bytes": 67944,
+   "bytes": 67980,
    "display_scale_m": 0.07
   },
   {
@@ -3435,7 +3435,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/lasippa-illigera.glb",
-   "bytes": 57800,
+   "bytes": 57840,
    "display_scale_m": 0.04
   },
   {
@@ -3450,7 +3450,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/ardea-intermedia.glb",
-   "bytes": 70432,
+   "bytes": 70508,
    "display_scale_m": 0.55
   },
   {
@@ -3525,7 +3525,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/falco-peregrinus.glb",
-   "bytes": 63292,
+   "bytes": 63364,
    "display_scale_m": 0.3
   },
   {
@@ -3540,7 +3540,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/gerygone-sulphurea.glb",
-   "bytes": 68172,
+   "bytes": 68248,
    "display_scale_m": 0.09
   },
   {
@@ -3555,7 +3555,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/pycnonotus-goiavier.glb",
-   "bytes": 60060,
+   "bytes": 60124,
    "display_scale_m": 0.17
   },
   {
@@ -3570,7 +3570,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/melanitis-leda.glb",
-   "bytes": 65124,
+   "bytes": 65128,
    "display_scale_m": 0.07
   },
   {
@@ -3645,7 +3645,7 @@
    "archetype": "diptera",
    "palette_source": "known",
    "file": "species/hermetia-illucens.glb",
-   "bytes": 69956,
+   "bytes": 69964,
    "display_scale_m": 0.015
   },
   {
@@ -3735,7 +3735,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/mycalesis-mineus.glb",
-   "bytes": 67160,
+   "bytes": 67200,
    "display_scale_m": 0.04
   },
   {
@@ -3870,7 +3870,7 @@
    "archetype": "bird",
    "palette_source": "derived",
    "file": "species/otus-megalotis.glb",
-   "bytes": 77276,
+   "bytes": 77352,
    "display_scale_m": 0.18
   },
   {
@@ -3885,7 +3885,7 @@
    "archetype": "hymenoptera-bee",
    "palette_source": "known",
    "file": "species/apis-dorsata.glb",
-   "bytes": 76948,
+   "bytes": 76944,
    "display_scale_m": 0.02
   },
   {
@@ -3900,7 +3900,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/phaedyma-columella.glb",
-   "bytes": 60988,
+   "bytes": 60992,
    "display_scale_m": 0.06
   },
   {
@@ -3930,7 +3930,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/cepora-aspasia.glb",
-   "bytes": 70076,
+   "bytes": 70152,
    "display_scale_m": 0.05
   },
   {
@@ -4005,7 +4005,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/phauda-flammans.glb",
-   "bytes": 93012,
+   "bytes": 92992,
    "display_scale_m": 0.03
   },
   {
@@ -4050,7 +4050,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/delias-henningia.glb",
-   "bytes": 58192,
+   "bytes": 58132,
    "display_scale_m": 0.07
   },
   {
@@ -4065,7 +4065,7 @@
    "archetype": "lepidoptera-skipper",
    "palette_source": "known",
    "file": "species/taractrocera-luzonensis.glb",
-   "bytes": 63512,
+   "bytes": 63484,
    "display_scale_m": 0.03
   },
   {
@@ -4170,7 +4170,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/lalage-nigra.glb",
-   "bytes": 71924,
+   "bytes": 72004,
    "display_scale_m": 0.17
   },
   {
@@ -4185,7 +4185,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/lonchura-punctulata.glb",
-   "bytes": 56960,
+   "bytes": 57040,
    "display_scale_m": 0.11
   },
   {
@@ -4275,7 +4275,7 @@
    "archetype": "diptera-mosquito",
    "palette_source": "known",
    "file": "species/aedes-albopictus.glb",
-   "bytes": 81328,
+   "bytes": 81324,
    "display_scale_m": 0.008
   },
   {
@@ -4365,7 +4365,7 @@
    "archetype": "odonata-damsel",
    "palette_source": "known",
    "file": "species/agriocnemis-femina.glb",
-   "bytes": 76152,
+   "bytes": 76144,
    "display_scale_m": 0.02
   },
   {
@@ -4845,7 +4845,7 @@
    "archetype": "lepidoptera-hawk",
    "palette_source": "known",
    "file": "species/psilogramma-discistriga.glb",
-   "bytes": 85256,
+   "bytes": 85240,
    "display_scale_m": 0.07
   },
   {
@@ -4875,7 +4875,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/phimenes-curvatus.glb",
-   "bytes": 78572,
+   "bytes": 78568,
    "display_scale_m": 0.025
   },
   {
@@ -4890,7 +4890,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/lymantria-lunata.glb",
-   "bytes": 109096,
+   "bytes": 109048,
    "display_scale_m": 0.04
   },
   {
@@ -5010,7 +5010,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/amaurornis-phoenicurus.glb",
-   "bytes": 72668,
+   "bytes": 72748,
    "display_scale_m": 0.2
   },
   {
@@ -5025,7 +5025,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/columba-livia.glb",
-   "bytes": 55608,
+   "bytes": 55680,
    "display_scale_m": 0.24
   },
   {
@@ -5040,7 +5040,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/lanius-schach.glb",
-   "bytes": 58788,
+   "bytes": 58864,
    "display_scale_m": 0.2
   },
   {
@@ -5070,7 +5070,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/papilio-demoleus.glb",
-   "bytes": 60012,
+   "bytes": 60028,
    "display_scale_m": 0.08
   },
   {
@@ -5085,7 +5085,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/eurema-hecabe.glb",
-   "bytes": 45360,
+   "bytes": 46612,
    "display_scale_m": 0.04
   },
   {
@@ -5100,7 +5100,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/asota-caricae.glb",
-   "bytes": 73500,
+   "bytes": 73496,
    "display_scale_m": 0.06
   },
   {
@@ -5340,7 +5340,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/cinnyris-jugularis.glb",
-   "bytes": 58280,
+   "bytes": 58356,
    "display_scale_m": 0.1
   },
   {
@@ -5520,7 +5520,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/zizula-hylax.glb",
-   "bytes": 61704,
+   "bytes": 61676,
    "display_scale_m": 0.02
   },
   {
@@ -5535,7 +5535,7 @@
    "archetype": "lepidoptera-hawk",
    "palette_source": "known",
    "file": "species/hippotion-celerio.glb",
-   "bytes": 73804,
+   "bytes": 73892,
    "display_scale_m": 0.06
   },
   {
@@ -5580,7 +5580,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/eudocima-phalonia.glb",
-   "bytes": 95772,
+   "bytes": 95820,
    "display_scale_m": 0.07
   },
   {
@@ -5610,7 +5610,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/delias-hyparete.glb",
-   "bytes": 66172,
+   "bytes": 66136,
    "display_scale_m": 0.06
   },
   {
@@ -5670,7 +5670,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/papilio-clytia.glb",
-   "bytes": 72776,
+   "bytes": 72812,
    "display_scale_m": 0.09
   },
   {
@@ -5715,7 +5715,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/eumeta-variegata.glb",
-   "bytes": 78572,
+   "bytes": 78600,
    "display_scale_m": 0.04
   },
   {
@@ -5730,7 +5730,7 @@
    "archetype": "lepidoptera-skipper",
    "palette_source": "known",
    "file": "species/borbo-cinnara.glb",
-   "bytes": 55212,
+   "bytes": 55204,
    "display_scale_m": 0.035
   },
   {
@@ -5760,7 +5760,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/rhipidura-nigritorquis.glb",
-   "bytes": 59952,
+   "bytes": 60028,
    "display_scale_m": 0.14
   },
   {
@@ -5850,7 +5850,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/psilopogon-haemacephalus.glb",
-   "bytes": 73760,
+   "bytes": 73832,
    "display_scale_m": 0.16
   },
   {
@@ -5880,7 +5880,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/rhesala-imparata.glb",
-   "bytes": 71556,
+   "bytes": 71640,
    "display_scale_m": 0.025
   },
   {
@@ -5925,7 +5925,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/ypthima-sempera.glb",
-   "bytes": 57668,
+   "bytes": 57628,
    "display_scale_m": 0.035
   },
   {
@@ -5940,7 +5940,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/papilio-deiphobus.glb",
-   "bytes": 69656,
+   "bytes": 69736,
    "display_scale_m": 0.09
   },
   {
@@ -6105,7 +6105,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/artamus-leucorynchus.glb",
-   "bytes": 64412,
+   "bytes": 64488,
    "display_scale_m": 0.15
   },
   {
@@ -6120,7 +6120,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/dicaeum-pygmaeum.glb",
-   "bytes": 68572,
+   "bytes": 68652,
    "display_scale_m": 0.08
   },
   {
@@ -6135,7 +6135,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/motacilla-cinerea.glb",
-   "bytes": 72244,
+   "bytes": 72324,
    "display_scale_m": 0.14
   },
   {
@@ -6150,7 +6150,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/psittacula-krameri.glb",
-   "bytes": 61348,
+   "bytes": 61428,
    "display_scale_m": 0.3
   },
   {
@@ -6240,7 +6240,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/hypolimnas-misippus.glb",
-   "bytes": 61820,
+   "bytes": 61804,
    "display_scale_m": 0.07
   },
   {
@@ -6255,7 +6255,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/spoladea-recurvalis.glb",
-   "bytes": 67284,
+   "bytes": 67280,
    "display_scale_m": 0.025
   },
   {
@@ -6525,7 +6525,7 @@
    "archetype": "odonata",
    "palette_source": "known",
    "file": "species/pantala-flavescens.glb",
-   "bytes": 71108,
+   "bytes": 71104,
    "display_scale_m": 0.045
   },
   {
@@ -6660,7 +6660,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/catopsilia-pomona.glb",
-   "bytes": 62692,
+   "bytes": 63884,
    "display_scale_m": 0.07
   },
   {
@@ -6720,7 +6720,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/scolia-superciliaris.glb",
-   "bytes": 70592,
+   "bytes": 70584,
    "display_scale_m": 0.03
   },
   {
@@ -6780,7 +6780,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/leptodialepis-bipartitus.glb",
-   "bytes": 78604,
+   "bytes": 78600,
    "display_scale_m": 0.028
   },
   {
@@ -6810,7 +6810,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/hulodes-caranea.glb",
-   "bytes": 81724,
+   "bytes": 81776,
    "display_scale_m": 0.06
   },
   {
@@ -6840,7 +6840,7 @@
    "archetype": "lepidoptera-skipper",
    "palette_source": "known",
    "file": "species/suastus-gremius.glb",
-   "bytes": 58144,
+   "bytes": 58132,
    "display_scale_m": 0.03
   },
   {
@@ -7215,7 +7215,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/orgyia-postica.glb",
-   "bytes": 105296,
+   "bytes": 105244,
    "display_scale_m": 0.025
   },
   {
@@ -7260,7 +7260,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/adoxophyes-privatana.glb",
-   "bytes": 72268,
+   "bytes": 72264,
    "display_scale_m": 0.015
   },
   {
@@ -7515,7 +7515,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/cyrestis-maenalis.glb",
-   "bytes": 53096,
+   "bytes": 53116,
    "display_scale_m": 0.06
   },
   {
@@ -7530,7 +7530,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/amata-polymita.glb",
-   "bytes": 65660,
+   "bytes": 65628,
    "display_scale_m": 0.035
   },
   {
@@ -7740,7 +7740,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/prosotas-dubiosa.glb",
-   "bytes": 62816,
+   "bytes": 62804,
    "display_scale_m": 0.022
   },
   {
@@ -7755,7 +7755,7 @@
    "archetype": "diptera",
    "palette_source": "known",
    "file": "species/bactrocera-dorsalis.glb",
-   "bytes": 77528,
+   "bytes": 77524,
    "display_scale_m": 0.01
   },
   {
@@ -7815,7 +7815,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/vespa-tropica.glb",
-   "bytes": 73664,
+   "bytes": 73660,
    "display_scale_m": 0.03
   },
   {
@@ -8325,7 +8325,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/scolia-clypeata.glb",
-   "bytes": 75268,
+   "bytes": 75264,
    "display_scale_m": 0.028
   },
   {
@@ -8415,7 +8415,7 @@
    "archetype": "diptera",
    "palette_source": "known",
    "file": "species/homoneura-discoglauca.glb",
-   "bytes": 80264,
+   "bytes": 80256,
    "display_scale_m": 0.008
   },
   {
@@ -8520,7 +8520,7 @@
    "archetype": "lepidoptera",
    "palette_source": "derived",
    "file": "species/eriboea-lampedo.glb",
-   "bytes": 62636,
+   "bytes": 62628,
    "display_scale_m": 0.07
   },
   {
@@ -8550,7 +8550,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/egretta-garzetta.glb",
-   "bytes": 70136,
+   "bytes": 70212,
    "display_scale_m": 0.5
   },
   {
@@ -8565,7 +8565,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/nycticorax-nycticorax.glb",
-   "bytes": 66892,
+   "bytes": 66972,
    "display_scale_m": 0.5
   },
   {
@@ -8580,7 +8580,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/muscicapa-griseisticta.glb",
-   "bytes": 63400,
+   "bytes": 69156,
    "display_scale_m": 0.12
   },
   {
@@ -8595,7 +8595,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/dicaeum-australe.glb",
-   "bytes": 65272,
+   "bytes": 65348,
    "display_scale_m": 0.09
   },
   {
@@ -8610,7 +8610,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/aplonis-panayensis.glb",
-   "bytes": 78384,
+   "bytes": 78464,
    "display_scale_m": 0.18
   },
   {
@@ -8625,7 +8625,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/zosterops-meyeni.glb",
-   "bytes": 69524,
+   "bytes": 69604,
    "display_scale_m": 0.09
   },
   {
@@ -8655,7 +8655,7 @@
    "archetype": "mammal",
    "palette_source": "known",
    "file": "species/ptenochirus-jagorii.glb",
-   "bytes": 65984,
+   "bytes": 65976,
    "display_scale_m": 0.15
   },
   {
@@ -8745,7 +8745,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/junonia-orithya.glb",
-   "bytes": 66880,
+   "bytes": 66892,
    "display_scale_m": 0.06
   },
   {
@@ -8760,7 +8760,7 @@
    "archetype": "lepidoptera-hawk",
    "palette_source": "known",
    "file": "species/daphnis-nerii.glb",
-   "bytes": 59492,
+   "bytes": 59528,
    "display_scale_m": 0.07
   },
   {
@@ -8775,7 +8775,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/mocis-frugalis.glb",
-   "bytes": 89032,
+   "bytes": 89060,
    "display_scale_m": 0.04
   },
   {
@@ -8790,7 +8790,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/ypthima-baldus.glb",
-   "bytes": 58136,
+   "bytes": 58168,
    "display_scale_m": 0.04
   },
   {
@@ -9150,7 +9150,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/olene-mendosa.glb",
-   "bytes": 112968,
+   "bytes": 112976,
    "display_scale_m": 0.03
   },
   {
@@ -9315,7 +9315,7 @@
    "archetype": "diptera",
    "palette_source": "known",
    "file": "species/drosophila-melanogaster.glb",
-   "bytes": 79604,
+   "bytes": 79608,
    "display_scale_m": 0.004
   },
   {
@@ -9420,7 +9420,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/appias-libythea.glb",
-   "bytes": 56812,
+   "bytes": 57992,
    "display_scale_m": 0.05
   },
   {
@@ -9690,7 +9690,7 @@
    "archetype": "odonata",
    "palette_source": "known",
    "file": "species/diplacina-braueri.glb",
-   "bytes": 62412,
+   "bytes": 62408,
    "display_scale_m": 0.035
   },
   {
@@ -9735,7 +9735,7 @@
    "archetype": "odonata",
    "palette_source": "known",
    "file": "species/tholymis-tillarga.glb",
-   "bytes": 70208,
+   "bytes": 70192,
    "display_scale_m": 0.045
   },
   {
@@ -9750,7 +9750,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/phylloscopus-borealis.glb",
-   "bytes": 67140,
+   "bytes": 67224,
    "display_scale_m": 0.1
   },
   {
@@ -9960,7 +9960,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/thyas-coronata.glb",
-   "bytes": 66688,
+   "bytes": 66764,
    "display_scale_m": 0.06
   },
   {
@@ -9990,7 +9990,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/maruca-vitrata.glb",
-   "bytes": 88296,
+   "bytes": 88320,
    "display_scale_m": 0.025
   },
   {
@@ -10080,7 +10080,7 @@
    "archetype": "lepidoptera-hawk",
    "palette_source": "known",
    "file": "species/agrius-convolvuli.glb",
-   "bytes": 58596,
+   "bytes": 58576,
    "display_scale_m": 0.07
   },
   {
@@ -10110,7 +10110,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/orvasca-subnotata.glb",
-   "bytes": 66924,
+   "bytes": 66856,
    "display_scale_m": 0.02
   },
   {
@@ -10155,7 +10155,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/spodoptera-litura.glb",
-   "bytes": 97652,
+   "bytes": 97680,
    "display_scale_m": 0.04
   },
   {
@@ -10170,7 +10170,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "derived",
    "file": "species/creatonotos-transiens.glb",
-   "bytes": 70020,
+   "bytes": 69980,
    "display_scale_m": 0.05
   },
   {
@@ -10185,7 +10185,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/eublemma-accedens.glb",
-   "bytes": 80948,
+   "bytes": 80976,
    "display_scale_m": 0.02
   },
   {
@@ -10200,7 +10200,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/zizina-otis.glb",
-   "bytes": 50156,
+   "bytes": 50176,
    "display_scale_m": 0.022
   },
   {
@@ -10215,7 +10215,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/phalanta-phalantha.glb",
-   "bytes": 62912,
+   "bytes": 62860,
    "display_scale_m": 0.055
   },
   {
@@ -10230,7 +10230,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/euploea-mulciber.glb",
-   "bytes": 62112,
+   "bytes": 62124,
    "display_scale_m": 0.08
   },
   {
@@ -10260,7 +10260,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/graphium-sarpedon.glb",
-   "bytes": 58936,
+   "bytes": 58996,
    "display_scale_m": 0.08
   },
   {
@@ -10440,7 +10440,7 @@
    "archetype": "diptera-mosquito",
    "palette_source": "known",
    "file": "species/culex-pipiens.glb",
-   "bytes": 68972,
+   "bytes": 68976,
    "display_scale_m": 0.008
   },
   {
@@ -10545,7 +10545,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/eudocima-cocalus.glb",
-   "bytes": 70604,
+   "bytes": 70648,
    "display_scale_m": 0.07
   },
   {
@@ -10695,7 +10695,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/hierococcyx-pectoralis.glb",
-   "bytes": 56676,
+   "bytes": 56756,
    "display_scale_m": 0.24
   },
   {
@@ -10725,7 +10725,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/eurema-blanda.glb",
-   "bytes": 68292,
+   "bytes": 69540,
    "display_scale_m": 0.04
   },
   {
@@ -10770,7 +10770,7 @@
    "archetype": "lepidoptera-skipper",
    "palette_source": "known",
    "file": "species/notocrypta-curvifascia.glb",
-   "bytes": 56328,
+   "bytes": 56320,
    "display_scale_m": 0.04
   },
   {
@@ -10905,7 +10905,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/lebeda-nobilis.glb",
-   "bytes": 111840,
+   "bytes": 111820,
    "display_scale_m": 0.06
   },
   {
@@ -11745,7 +11745,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/catochrysops-strabo.glb",
-   "bytes": 55644,
+   "bytes": 55676,
    "display_scale_m": 0.025
   },
   {
@@ -11775,7 +11775,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/geokichla-cinerea.glb",
-   "bytes": 70792,
+   "bytes": 70872,
    "display_scale_m": 0.16
   },
   {
@@ -11790,7 +11790,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/asota-plana.glb",
-   "bytes": 59680,
+   "bytes": 59724,
    "display_scale_m": 0.055
   },
   {
@@ -11820,7 +11820,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "derived",
    "file": "species/chiasmia-emersaria.glb",
-   "bytes": 67684,
+   "bytes": 67660,
    "display_scale_m": 0.05
   },
   {
@@ -11850,7 +11850,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/loriculus-philippensis.glb",
-   "bytes": 56568,
+   "bytes": 56648,
    "display_scale_m": 0.12
   },
   {
@@ -11895,7 +11895,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/troides-aeacus.glb",
-   "bytes": 72492,
+   "bytes": 72536,
    "display_scale_m": 0.13
   },
   {
@@ -11940,7 +11940,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/dasychira-chekiangensis.glb",
-   "bytes": 105692,
+   "bytes": 105660,
    "display_scale_m": 0.035
   },
   {
@@ -12060,7 +12060,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/aloa-lactinea.glb",
-   "bytes": 76744,
+   "bytes": 76752,
    "display_scale_m": 0.045
   },
   {
@@ -12105,7 +12105,7 @@
    "archetype": "lepidoptera-hawk",
    "palette_source": "known",
    "file": "species/daphnis-hypothous.glb",
-   "bytes": 65240,
+   "bytes": 65236,
    "display_scale_m": 0.07
   },
   {
@@ -12390,7 +12390,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/doleschallia-bisaltide.glb",
-   "bytes": 65976,
+   "bytes": 65992,
    "display_scale_m": 0.07
   },
   {
@@ -12405,7 +12405,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/thosea-sinensis.glb",
-   "bytes": 76416,
+   "bytes": 76520,
    "display_scale_m": 0.025
   },
   {
@@ -12420,7 +12420,7 @@
    "archetype": "lepidoptera-hawk",
    "palette_source": "derived",
    "file": "species/theretra-alecto.glb",
-   "bytes": 85008,
+   "bytes": 85044,
    "display_scale_m": 0.07
   },
   {
@@ -12435,7 +12435,7 @@
    "archetype": "lepidoptera-hawk",
    "palette_source": "derived",
    "file": "species/pergesa-acteus.glb",
-   "bytes": 69892,
+   "bytes": 69976,
    "display_scale_m": 0.07
   },
   {
@@ -12660,7 +12660,7 @@
    "archetype": "diptera",
    "palette_source": "known",
    "file": "species/drosophila-repleta.glb",
-   "bytes": 81412,
+   "bytes": 81408,
    "display_scale_m": 0.005
   },
   {
@@ -12675,7 +12675,7 @@
    "archetype": "diptera-crane",
    "palette_source": "known",
    "file": "species/symplecta-pilipes.glb",
-   "bytes": 77220,
+   "bytes": 77216,
    "display_scale_m": 0.015
   },
   {
@@ -12855,7 +12855,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/ideopsis-juventa.glb",
-   "bytes": 52832,
+   "bytes": 52828,
    "display_scale_m": 0.07
   },
   {
@@ -12885,7 +12885,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/dudua-aprobola.glb",
-   "bytes": 89428,
+   "bytes": 89380,
    "display_scale_m": 0.015
   },
   {
@@ -13440,7 +13440,7 @@
    "archetype": "diptera-hover",
    "palette_source": "known",
    "file": "species/ischiodon-scutellaris.glb",
-   "bytes": 82020,
+   "bytes": 82016,
    "display_scale_m": 0.012
   },
   {
@@ -13590,7 +13590,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/gesonia-obeditalis.glb",
-   "bytes": 70392,
+   "bytes": 70372,
    "display_scale_m": 0.025
   },
   {
@@ -13620,7 +13620,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "derived",
    "file": "species/phereoeca-uterella.glb",
-   "bytes": 85496,
+   "bytes": 85508,
    "display_scale_m": 0.05
   },
   {
@@ -13635,7 +13635,7 @@
    "archetype": "hymenoptera-bee",
    "palette_source": "known",
    "file": "species/xylocopa-latipes.glb",
-   "bytes": 73440,
+   "bytes": 73436,
    "display_scale_m": 0.025
   },
   {
@@ -13650,7 +13650,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/bocana-manifestalis.glb",
-   "bytes": 71680,
+   "bytes": 71592,
    "display_scale_m": 0.035
   },
   {
@@ -13710,7 +13710,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/phylloscopus-examinandus.glb",
-   "bytes": 60084,
+   "bytes": 60164,
    "display_scale_m": 0.1
   },
   {
@@ -13890,7 +13890,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/sceliphron-madraspatanum.glb",
-   "bytes": 73140,
+   "bytes": 73132,
    "display_scale_m": 0.025
   },
   {
@@ -14190,7 +14190,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/catopyrops-ancyra.glb",
-   "bytes": 67468,
+   "bytes": 67512,
    "display_scale_m": 0.025
   },
   {
@@ -14460,7 +14460,7 @@
    "archetype": "diptera",
    "palette_source": "derived",
    "file": "species/hydrotaea-chalcogaster.glb",
-   "bytes": 73632,
+   "bytes": 73628,
    "display_scale_m": 0.012
   },
   {
@@ -14535,7 +14535,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/gandaca-harina.glb",
-   "bytes": 76560,
+   "bytes": 77808,
    "display_scale_m": 0.045
   },
   {
@@ -14580,7 +14580,7 @@
    "archetype": "diptera",
    "palette_source": "known",
    "file": "species/lucilia-coeruleiviridis.glb",
-   "bytes": 71516,
+   "bytes": 71508,
    "display_scale_m": 0.011
   },
   {
@@ -14655,7 +14655,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/ropalidia-stigma.glb",
-   "bytes": 76676,
+   "bytes": 76672,
    "display_scale_m": 0.018
   },
   {
@@ -14760,7 +14760,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/troides-magellanus.glb",
-   "bytes": 63112,
+   "bytes": 63116,
    "display_scale_m": 0.13
   },
   {
@@ -14850,7 +14850,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/xanthetis-luzonica.glb",
-   "bytes": 58772,
+   "bytes": 58816,
    "display_scale_m": 0.03
   },
   {
@@ -14910,7 +14910,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/spilosoma-elmagna.glb",
-   "bytes": 62996,
+   "bytes": 62960,
    "display_scale_m": 0.035
   },
   {
@@ -14940,7 +14940,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/collocalia-marginata.glb",
-   "bytes": 55040,
+   "bytes": 55116,
    "display_scale_m": 0.1
   },
   {
@@ -14985,7 +14985,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/rhynchium-haemorrhoidale.glb",
-   "bytes": 80356,
+   "bytes": 80352,
    "display_scale_m": 0.02
   },
   {
@@ -15000,7 +15000,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/athyma-kasa.glb",
-   "bytes": 62460,
+   "bytes": 62472,
    "display_scale_m": 0.06
   },
   {
@@ -15450,7 +15450,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/attacus-lorquinii.glb",
-   "bytes": 103836,
+   "bytes": 103824,
    "display_scale_m": 0.13
   },
   {
@@ -15615,7 +15615,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/rapala-caerulescens.glb",
-   "bytes": 66344,
+   "bytes": 66328,
    "display_scale_m": 0.03
   },
   {
@@ -15660,7 +15660,7 @@
    "archetype": "diptera",
    "palette_source": "known",
    "file": "species/hermetia-sexmaculata.glb",
-   "bytes": 71968,
+   "bytes": 71964,
    "display_scale_m": 0.014
   },
   {
@@ -16005,7 +16005,7 @@
    "archetype": "lepidoptera",
    "palette_source": "known",
    "file": "species/troides-rhadamantus.glb",
-   "bytes": 58052,
+   "bytes": 58112,
    "display_scale_m": 0.12
   },
   {
@@ -16125,7 +16125,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "derived",
    "file": "species/mimeusemia-semyron.glb",
-   "bytes": 69396,
+   "bytes": 69400,
    "display_scale_m": 0.05
   },
   {
@@ -16320,7 +16320,7 @@
    "archetype": "diptera",
    "palette_source": "derived",
    "file": "species/chrysosoma-vittatum.glb",
-   "bytes": 72056,
+   "bytes": 72048,
    "display_scale_m": 0.012
   },
   {
@@ -16350,7 +16350,7 @@
    "archetype": "bird",
    "palette_source": "known",
    "file": "species/tachyspiza-soloensis.glb",
-   "bytes": 77296,
+   "bytes": 77376,
    "display_scale_m": 0.24
   },
   {

@@ -629,10 +629,16 @@ function bladeWings(k, parent, o) {
   const out = [];
   for (const s of [1, -1]) {
     const tag = s > 0 ? "l" : "r";
+    /* Carriage on the REST node, not on the animation's centre. `hinge` drops
+       the inner node's rotation entirely when a channel animates it, so a wing
+       with any flap at all was shipping a rest pose with no roll — a butterfly
+       holding its wings up over its back had them flat in the static model,
+       which is what the audit measures and what a still render shows. The
+       roll is the shoulder's pose now and the flap swings around it. */
     const node = hinge(k, parent, `${name}-${tag}`, {
       at: [at[0] + s * gap, at[1], at[2]],
-      rot: [tilt, s * yaw, 0],
-      axis: "z", base: s * roll, amp: flap ? s * flap : 0, dur, phase,
+      rot: [tilt, s * yaw, s * roll],
+      axis: "z", base: 0, amp: flap ? s * flap : 0, dur, phase,
     });
     const geo = bladeGeo(outline.map(([x, z]) => [x * s, z]), thick);
     k.cute.add(node, geo, { at: clampOff(geo, [s * reach, 0, 0]), color, colorFn });
@@ -687,6 +693,12 @@ function bird(k, col, opt = {}) {
      such thing, and a crest is the loudest single feature a small bird can
      carry. It is a fact about the genus now. */
   const crested = /^(acridotheres|otus|ninox|gallus|lophura|cacatua|tanygnathus|hypothymis|pardaliparus|megalaima|psilopogon|elanus|spilornis|nisaetus|vanellus|pycnonotus)-/.test(id);
+  /* A woodpecker is a chisel bill and a stiff wedge tail it props against the
+     trunk; a flycatcher is rictal bristles round a flat bill. Without either,
+     a pygmy woodpecker and a grey-streaked flycatcher are the same small grey
+     bird — which is what the distinctness gate said about them. */
+  const woodpecker = /^(yungipicus|dendrocopos|picoides|mulleripicus|dryocopus|chrysocolaptes|picus|dinopium|micropternus)-/.test(id);
+  const flycatcher = /^(muscicapa|ficedula|cyornis|culicicapa|eumyias|terpsiphone)-/.test(id);
 
   const legH = opt.legH ?? (junglefowl ? 0.24 : heron ? v.f("legh", 0.3, 0.42) : v.f("legh", 0.05, 0.26));
   const fat = opt.plump ? v.f("fat", 1.04, 1.2) : v.f("fat", 0.82, 1.04);
@@ -775,7 +787,8 @@ function bird(k, col, opt = {}) {
   }
 
   // tail
-  const tailKind = opt.tail ?? (junglefowl ? "sickle" : swallow ? "fork" : heron ? "wedge" : longTail ? "long" : v.pick("tailk", ["fan", "wedge", "fan", "long", "fork"]));
+  const tailKind = opt.tail ?? (junglefowl ? "sickle" : swallow ? "fork" : heron ? "wedge"
+    : woodpecker ? "fan" : longTail ? "long" : v.pick("tailk", ["fan", "wedge", "fan", "long", "fork"]));
   const tailBase = [0, by * 0.2, -bz * 0.72];
   const tailCol = col.accentTail ?? shade(col.base, -0.2);
   if (tailKind === "sickle") {
@@ -862,7 +875,7 @@ function bird(k, col, opt = {}) {
   }
 
   // bill
-  const beak = opt.beak ?? (heron ? "needle" : v.pick("beak", ["cone", "cone", "chisel", "needle", "hook"]));
+  const beak = opt.beak ?? (heron ? "needle" : woodpecker ? "chisel" : v.pick("beak", ["cone", "cone", "chisel", "needle", "hook"]));
   const beakCol = col.beak ?? col.accent ?? APP.orange;
   const bl = headR * (beak === "needle" ? v.f("bl", 1.5, 2.3) : beak === "chisel" ? v.f("bl", 0.55, 0.85) : v.f("bl", 0.7, 1.1));
   const br = headR * (beak === "needle" ? 0.11 : v.f("br", 0.17, 0.26));
@@ -930,6 +943,8 @@ function bird(k, col, opt = {}) {
       });
     }
   } else if (crest === "crest" || crest === "spike") {
+    // merged collar so the crown has vertices where the spikes leave it
+    ball(k, head, "crest-base", { merge: true, rx: 0.06, ry: headR * 0.2, rz: 0.05, at: [0, headR * 0.66, -0.04], color: shade(col.head ?? col.base, -0.14), subdiv: 0 });
     for (const s of [1, -1]) {
       cone(k, head, `crest${s > 0 ? "l" : "r"}`, { r: 0.028, h: v.f("crl", 0.1, 0.18), at: [s * 0.03, headR * 0.72, -0.04], rotX: -0.6, color: col.accent ?? APP.red });
     }
@@ -958,6 +973,29 @@ function bird(k, col, opt = {}) {
     }
   }
 
+  if (flycatcher) {
+    // rictal bristles: the fan of stiff hairs round a flycatcher's gape
+    for (const sd of [1, -1]) {
+      for (let i = 0; i < 3; i += 1) {
+        spindle(k, head, `bristle${i}-${sd > 0 ? "l" : "r"}`, {
+          merge: i > 0, r: 0.006, len: headR * (0.7 - i * 0.12),
+          at: [sd * headR * (0.2 + i * 0.08), -headR * 0.02, headR * 0.62],
+          rot: [1.1 + i * 0.16, sd * (0.3 + i * 0.22), 0], color: shade(dark, -0.1), seg: 6,
+        });
+      }
+    }
+  }
+  if (woodpecker) {
+    /* The stiffened tail a woodpecker braces against the trunk: shorter than
+       a songbird's, pointing down and back rather than out. */
+    for (const sd of [1, -1]) {
+      cone(k, body, `prop-${sd > 0 ? "l" : "r"}`, {
+        r: 0.024, h: v.f("propl", 0.1, 0.16),
+        at: [sd * bx * 0.16, -by * 0.42, -bz * 0.7], rotX: 2.3, rotZ: sd * 0.12,
+        color: shade(wingCol, -0.3), seg: 8,
+      });
+    }
+  }
   const eyeR0 = owl ? 0.44 : v.f("eyer", 0.3, 0.4);
   const eye = k.face(head, {
     r: headR * (owl ? 1.06 : 0.98),
@@ -1669,7 +1707,7 @@ function lepidoptera(k, col, opt = {}) {
      A butterfly's own body is a dark drab brown whatever its wings do, so the
      fallback mixes toward one rather than merely darkening the wing colour —
      `shade` on a white pierid only gets you a pale grey thorax. */
-  const dark = authoredDark(col) ?? mix(col.base, hex("#2b2620"), v.f("bodyd", 0.58, 0.88));
+  const dark = authoredDark(col) ?? mix(col.base, hex("#2b2620"), v.f("bodyd", 0.34, 0.95));
   const bodyCol = moth ? shade(col.base, -0.25) : dark;
   /* The saturniids and the birdwings are among the biggest lepidoptera alive;
      shipping Attacus at the same size as a leaf-roller moth is a factual
@@ -1693,12 +1731,15 @@ function lepidoptera(k, col, opt = {}) {
     ball(k, thorax, `abdomen${i}`, {
       rx: r, ry: abdLen * 0.62, rz: r,
       at: [0, -thoraxR * (0.22 + i * 0.16) * (hawk ? 0.5 : 1), -thoraxR * 0.55 - abdLen * i * 0.82],
-      color: i % 2 ? shade(bodyCol, 0.14) : shade(bodyCol, -0.06),
+      color: i % 2 ? shade(bodyCol, v.f("abdb", 0.06, 0.4)) : shade(bodyCol, -0.06),
     });
   }
   const headR = thoraxR * v.f("hr", 0.75, 1.0);
   const head = ball(k, thorax, "head", { r: headR, at: [0, thoraxR * 0.42, thoraxR * 0.85], color: bodyCol });
-  beadEyes(k, head, { r: headR * v.f("eyer", 0.5, 0.72), at: [0, 0, headR * 0.36], gap: headR * 0.62, color: ink, pupil: shade(accentOf(k, col, APP.red), -0.1), spark: true, subdiv: 1 });
+  beadEyes(k, head, { r: headR * v.f("eyer", 0.5, 0.72), at: [0, 0, headR * 0.36], gap: headR * 0.62, color: ink, /* A butterfly's compound eye is dark grey-brown. The pupil was taking the
+     palette accent and falling back to APP.red, which put a bright red bead on
+     the front of every head in the family. */
+    pupil: accentOf(k, col, mix(ink, col.base, 0.3)), spark: true, subdiv: 1 });
   antennaPair(k, head, {
     at: [0, headR * 0.5, headR * 0.3], gap: headR * 0.32,
     len: v.f("antl", 0.1, 0.22) * (plumose ? 1.35 : 1), r: plumose ? 0.0095 : 0.008, spread: v.f("ants", 0.3, 0.8),
@@ -1735,12 +1776,13 @@ function lepidoptera(k, col, opt = {}) {
      rather than one shared pose. */
   const pose = moth
     ? v.pick("pose", ["flat", "roof", "tent", "flat", "fan", "delta"])
-    : v.pick("pose", ["open", "up", "raked", "up", "half", "clap"]);
+    : v.pick("pose", ["open", "up", "raked", "half", "clap", "tilt", "spread", "stack"]);
   const carriage = {
     flat: [-0.05, 0.18], roof: [0.3, 0.75], tent: [0.14, 0.52],
     fan: [-0.16, 0.06], delta: [0.52, 0.98],
     open: [0.36, 0.66], raked: [0.62, 0.95], up: [1.05, 1.5],
     half: [0.82, 1.12], clap: [1.42, 1.82],
+    tilt: [0.18, 0.42], spread: [-0.1, 0.12], stack: [1.2, 1.62],
   }[pose];
   /* How far forward the wing is swept is part of the carriage too, and it is
      the dimension the shape signature reads as depth. Three sibling satyrids
@@ -1748,12 +1790,18 @@ function lepidoptera(k, col, opt = {}) {
      one model; giving the pose a sweep of its own separates them on a fact
      about the animal rather than on a tint. */
   const sweepK = { flat: 0.0, roof: 0.22, tent: 0.12, fan: -0.14, delta: 0.34,
-    open: 0.0, raked: 0.2, up: -0.1, half: 0.3, clap: -0.24 }[pose];
+    open: 0.0, raked: 0.2, up: -0.1, half: 0.3, clap: -0.24,
+    tilt: 0.36, spread: -0.2, stack: 0.12 }[pose];
   const wingY = thoraxY + thoraxR * (moth ? 0.2 : 0.55);
   const foreWing = bladeWings(k, k.root, {
     at: [0, wingY, thoraxR * 0.15], gap: thoraxR * 0.55, outline: foreOut, thick: v.f("fth", 0.012, 0.024),
     reach: foreX * 0.05, tilt: v.f("ftl", -0.2, 0.25), yaw: (moth ? v.f("fyaw", 0.35, 0.75) : v.f("fyaw", 0.0, 0.24)) + sweepK,
-    roll: v.f("frl", carriage[0], carriage[1]), color: col.base, colorFn: col.wingGrad,
+    /* Wing carriage as a continuous species value rather than one of a
+       handful of buckets. How far a butterfly's wings are raised is most of
+       what decides how tall it reads, and that is the dimension the shape
+       signature can actually see two small pale pierids differ in. */
+    roll: moth ? v.f("frl", carriage[0], carriage[1]) : v.f("frl", 0.02, 1.72),
+    color: col.base, colorFn: col.wingGrad,
     flap: v.f("fflap", 0.1, 0.3), dur: v.f("fdur", 1.0, 1.8), name: "wing-up",
   });
   // hindwing
@@ -1773,9 +1821,16 @@ function lepidoptera(k, col, opt = {}) {
     /* A birdwing's hindwing is gold and its forewing is black — that single
        contrast is the whole diagnostic, and painting the hindwing a shade of
        the forewing threw it away on all three Troides. */
-    roll: v.f("hrl", carriage[0] * 0.85, carriage[1] * 0.9),
+    roll: moth ? v.f("hrl", carriage[0] * 0.85, carriage[1] * 0.9) : v.f("frl", 0.02, 1.72) * v.f("hrlk", 0.72, 0.95),
     color: /^(troides|trogonoptera|ornithoptera)-/.test(who(k)) && col.accent
-      ? col.accent : shade(col.base, v.f("hshade", 0.02, 0.28)),
+      ? col.accent
+      /* The gulls and the orange tips carry a deep yellow wash over the whole
+         hindwing — Cepora aspasia is NAMED for it, and without it a lesser
+         gull and a grass yellow are the same white butterfly twice, which is
+         what the distinctness gate was saying about those two. */
+      : /^(cepora|prioneris|ixias|hebomoia|pareronia)-/.test(who(k))
+        ? mix(col.base, col.hindwing ?? hex("#e8c23a"), 0.72)
+        : shade(col.base, v.f("hshade", -0.16, 0.36)),
     flap: v.f("hflap", 0.08, 0.26), dur: v.f("fdur", 1.0, 1.8), phase: 0.25, name: "wing-lo",
   });
 
@@ -1783,7 +1838,7 @@ function lepidoptera(k, col, opt = {}) {
      derived accent is a plausible one there and is most of what tells two
      white pierids apart. A moth's are not, so the moth half goes through the
      authored-accent test and lands on a pale scale colour instead. */
-  const spotCol = moth ? accentOf(k, col, mix(col.base, paper, 0.55)) : (col.accent ?? paper);
+  const spotCol = moth ? accentOf(k, col, mix(col.base, paper, 0.55)) : (col.accent ?? mix(paper, col.base, 0.1));
   // wing pattern: eyespots, bands, and swallowtail streamers — all part count
   const spotN = opt.spots ? v.i("spotn", 1, 2) : v.i("spotn", 0, 2);
   for (const [wi, pair] of [foreWing, hindWing].entries()) {
@@ -1795,10 +1850,24 @@ function lepidoptera(k, col, opt = {}) {
         const t = (i + 1) / (spotN + 1);
         ball(k, w, `spot${wi}${si}${i}`, { merge: true,
           rx: rx * v.f(`sp${i}`, 0.08, 0.18), ry: 0.011, rz: rz * v.f(`spz${i}`, 0.14, 0.3),
-          at: [s * rx * (0.25 + t * 0.55), 0.011, rz * v.f(`spo${i}`, -0.3, 0.3)],
+          at: [s * rx * (0.25 + t * 0.55), 0, rz * v.f(`spo${i}`, -0.24, 0.24) * (1 - t * 0.5)],
           color: i % 2 ? spotCol : shade(col.base, -0.4), subdiv: 0,
         });
       }
+    }
+  }
+  /* The pierid apical border. A grass yellow and a lesser gull are both small
+     pale butterflies with the same wing carriage, and without the heavy black
+     margin that Eurema, Catopsilia and Appias actually wear they come out as
+     one model in two tints — which is exactly what the distinctness signature
+     said about Eurema blanda and Cepora aspasia. */
+  if (!moth && /^(eurema|catopsilia|appias|leptosia|gandaca|colias|terias)-/.test(who(k))) {
+    for (const [si, w] of foreWing.entries()) {
+      const s = si === 0 ? 1 : -1;
+      ball(k, w, `border${si}`, { merge: true,
+        rx: foreX * 0.34, ry: 0.014, rz: foreZ * 0.78,
+        at: [s * foreX * 0.74, 0, foreZ * 0.06], color: col.border ?? hex("#2a2622"), subdiv: 0,
+      });
     }
   }
   const bandN = v.i("bandn", 0, 3);
@@ -1823,7 +1892,7 @@ function lepidoptera(k, col, opt = {}) {
          span where a tapering blade has nothing left to hang off. */
       spindle(k, w, `streamer${si}`, {
         r: swallowtail ? 0.013 : 0.011, len: tailL,
-        at: [s * hindX * 0.4, 0, -hindZ * 0.34],
+        at: [s * hindX * 0.34, 0, -hindZ * 0.28],
         rot: [-1.75, 0, s * 0.45], tip: swallowtail ? 0.9 : 0,
         root: 0.02, color: shade(col.base, -0.2), seg: 8,
       });
@@ -1864,9 +1933,12 @@ function lepidoptera(k, col, opt = {}) {
   const tuftN = v.i("tuftn", 0, 5);
   for (let i = 0; i < tuftN; i += 1) {
     for (const s of [1, -1]) {
+      /* Stepped by 0.7 of the thorax radius each, five tufts walked a chain of
+         beads out from under the animal and into the air below it — they have
+         to stay ON the shoulder they are tufts of. */
       ball(k, thorax, `tuft${i}-${s > 0 ? "l" : "r"}`, {
         rx: thoraxR * 0.4, ry: thoraxR * 0.3, rz: thoraxR * 0.4,
-        at: [s * thoraxR * 0.7, thoraxR * (0.2 - i * 0.7), -thoraxR * 0.2],
+        at: [s * thoraxR * 0.7, thoraxR * (0.3 - i * 0.26), -thoraxR * (0.2 + i * 0.16)],
         color: shade(bodyCol, i % 2 ? 0.3 : -0.2), subdiv: 0,
       });
     }
@@ -1876,7 +1948,7 @@ function lepidoptera(k, col, opt = {}) {
     for (let i = 0; i < crestN; i += 1) {
       ball(k, thorax, `crest${i}`, {
         rx: thoraxR * v.f("crestw", 0.4, 0.75), ry: thoraxR * v.f("cresth", 0.3, 0.6), rz: thoraxR * 0.35,
-        at: [0, thoraxR * (0.8 - i * 0.5), -thoraxR * (0.1 + i * 0.45)],
+        at: [0, thoraxR * (0.85 - i * 0.2), -thoraxR * (0.1 + i * 0.3)],
         color: shade(bodyCol, i % 2 ? 0.28 : -0.18),
       });
     }
