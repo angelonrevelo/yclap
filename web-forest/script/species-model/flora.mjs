@@ -1002,7 +1002,7 @@ function addLeaf(p, node, o) {
   const {
     at = [0, 0, 0], yaw = 0, pitch = 0, roll = 0,
     len, wid, thick = null, shape = "lanceolate", form = "simple",
-    color, colorFn, stalkColor, stalk = 0.25, leaflet = 5,
+    color, colorFn, stalkColor, stalk = 0.25, leaflet = 5, leafletShape = null,
     bend = 0, sweep = 0, fold = 0, tri = 64,
   } = o;
   const th = thick ?? Math.max(0.004, wid * 0.16);
@@ -1045,6 +1045,21 @@ function addLeaf(p, node, o) {
       const ll = body * (form === "frond" ? 0.52 : 0.44) * (1 - 0.5 * Math.abs(t - 0.42));
       for (const s of [1, -1]) blade(ll, wid * 0.46, form === "frond" ? "linear" : shape, [0, 0, petLen + t * body], s * (1.05 + 0.25 * t), each, -0.15 * ll);
     }
+  } else if (form === "fan" && left >= 70) {
+    /*
+     * A costapalmate fan: many NARROW segments radiating from the petiole tip.
+     * The fan palms were drawing the generic palmate form, which spends its
+     * whole width on five or seven leaflets half the blade wide — so Livistona
+     * came out as a handful of opaque broadleaf blobs and Licuala as two flat
+     * lobes. A fan palm's fan is the segments; there have to be a lot of them
+     * and each has to be a strap.
+     */
+    const nlf = Math.max(5, Math.min(13, Math.min(leaflet, Math.floor(left / 16))));
+    const each = left / nlf;
+    for (let i = 0; i < nlf; i += 1) {
+      const t = i / (nlf - 1) - 0.5;
+      blade(body * (1 - 0.3 * Math.abs(t) * 2), wid * 0.13, "linear", [0, 0, petLen], t * 2.5, each);
+    }
   } else if (form === "ladder" && left >= 44) {
     /* A sword fern: one long rachis carrying MANY small paired pinnae. The
        generic pinnate form tops out at nine leaflets and spends its whole
@@ -1057,7 +1072,10 @@ function addLeaf(p, node, o) {
     for (let i = 0; i < nlf; i += 1) {
       const t = (i + 0.55) / (nlf + 0.25);
       const ll = body * 0.26 * (1 - 0.5 * Math.abs(t - 0.34));
-      for (const s of [1, -1]) blade(ll, wid * 0.6, "elliptic", [0, 0, petLen + t * body], s * 1.36, each, -0.1 * ll);
+      /* The leaflet's own shape carries through. Caryota's fishtail leaflet —
+         a wedge, blunt and jagged at the tip — is the genus diagnostic, and the
+         ladder used to hardcode a plain ellipse over the top of it. */
+      for (const s of [1, -1]) blade(ll, wid * 0.6, leafletShape ?? "elliptic", [0, 0, petLen + t * body], s * 1.36, each, -0.1 * ll);
     }
   } else if (form === "lobed" && left >= 60) {
     blade(body, wid, shape, [0, 0, petLen], 0, left * 0.5);
@@ -1748,10 +1766,13 @@ function palm(k, col, opt = {}) {
     axSet: ASPECT_CROWN,
     azSet: ASPECT_CROWN,
     height: (pl) => (0.8 + pl.u("size") * 0.5) * (1 + tall * 0.28),
-    /* A palm carries eight to twenty fronds, not thirty-two, and the
+    /* A palm carries eight to sixteen fronds, not thirty-two, and the
        difference is what pays for each of them to be a divided FROND rather
-       than the broad undivided blade a 48-triangle budget can afford. */
-    pLevel: [8, 12, 16, 20],
+       than the broad undivided blade a 48-triangle budget can afford. The
+       ceiling came down from twenty when the costapalmate fan turned out to
+       need eighty triangles before it will cut a single segment — at twenty
+       parts Livistona was still shipping four broad lobes. */
+    pLevel: [8, 10, 12, 16],
     breathe: 0.012,
     sway: 0.04,
     bands: [0, 1, 2, 4, 5],
@@ -1766,11 +1787,16 @@ function palm(k, col, opt = {}) {
       p.spine("trunk", (node) => {
         const tr = trunkOf(col);
         const { trunkH, r0 } = pl;
-        p.add(node, xf(tubeGeo(r0 * (bottle ? 2.1 : 1.3), r0 * (bottle ? 0.55 : 0.82 + pl.u("tp") * 0.16), trunkH, 12, bottle ? r0 * 1.5 : 0)),
+        /* A bottle palm's base is swollen, not spherical. At 2.1 radii with
+           another 1.5 of bulge on top it was an onion with a sprig on it. */
+        p.add(node, xf(tubeGeo(r0 * (bottle ? 1.7 : 1.3), r0 * (bottle ? 0.6 : 0.82 + pl.u("tp") * 0.16), trunkH, 12, bottle ? r0 * 0.85 : 0)),
           { color: tr, colorFn: grad(shade(tr, 0.14), shade(tr, -0.22), 0, trunkH) });
         const rings = 4 + (pl.H("rg") % 6);
         for (let i = 1; i <= rings; i += 1) {
-          p.add(node, xf(discGeo(r0 * 1.12, r0 * 0.14, 9), { at: [0, (i / (rings + 1)) * trunkH, 0] }), { color: shade(tr, -0.22) });
+          /* Leaf scars, not a screw thread. At 1.12 radii and 0.14 deep on a
+             pale trunk they read as a drill bit — Roystonea regia in the
+             sheet. */
+          p.add(node, xf(discGeo(r0 * 1.04, r0 * 0.08, 10), { at: [0, (i / (rings + 1)) * trunkH, 0] }), { color: shade(tr, -0.14) });
         }
         // a SLIM crown shaft — not the opaque green barrel that was capping
         // the stump and standing in for the whole crown
@@ -1798,7 +1824,16 @@ function palm(k, col, opt = {}) {
             });
           }
         } else {
-          p.add(node, xf(coneGeo(br * 0.34, br * 1.1, 9), { rz: -Math.cos(a) * 1.0, rx: Math.sin(a) * 1.0 }), { color: trunkOf(col) });
+          /*
+           * A root buttress, not a skirt. At a third of the base reach wide and
+           * a full reach long, laid almost flat, eight of these merged with the
+           * trunk into one brown mass — which is the "crown wider than the
+           * plant is tall on a trunk reduced to a root flare" in nine of the
+           * twenty-three, and on Hyophorbe it swallowed the bottle entirely and
+           * read as an onion. Narrower, shorter and steeper.
+           */
+          const k2 = bottle ? 0.45 : 1;
+          p.add(node, xf(coneGeo(br * 0.2 * k2, br * 0.66 * k2, 9), { rz: -Math.cos(a) * 1.3, rx: Math.sin(a) * 1.3 }), { color: trunkOf(col) });
         }
         return;
       }
@@ -1813,12 +1848,28 @@ function palm(k, col, opt = {}) {
 
       const r = reachOf(pl, a, 0.95);
       if (pl.disc) {
-        // Licuala: one circular pleated disc on a long petiole, and nothing else
+        /*
+         * Licuala: a circular PLEATED fan on a long petiole. It was a lobed
+         * crust plate, which at gallery size is a flat lobe and nothing else —
+         * two of them, and the review read the plant as two flat lobes. The
+         * pleats are the fan: wedge segments radiating the whole way round the
+         * petiole's tip, splayed a little out of plane so the disc reads as
+         * folded rather than as a disc.
+         */
         const L = r * 0.55;
         p.add(node, xf(tubeGeo(0.011, 0.008, L, 9), { rz: -Math.cos(a) * 0.85, rx: Math.sin(a) * 0.85 }), { color: pl.pal.deep });
-        p.add(node, xf(crustGeo({ r: r * 0.62, thick: r * 0.09, lobe: 11, wob: 0.09, seg: p.budget >= 70 ? 22 : 14, rise: 1 }),
-          { rx: 0.45, ry: a, at: [Math.cos(a) * (L * 0.75 + r * 0.5), L * 0.66, Math.sin(a) * (L * 0.75 + r * 0.5)] }),
-        { color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });
+        const tip = [Math.cos(a) * (L * 0.75 + r * 0.12), L * 0.66, Math.sin(a) * (L * 0.75 + r * 0.12)];
+        const nseg = Math.max(7, Math.min(14, Math.floor(p.budget / 12)));
+        const pleat = [[], []];
+        for (let j = 0; j < nseg; j += 1) {
+          const t = j / (nseg - 1) - 0.5;
+          pleat[j % 2].push(xf(bladeGeo({
+            len: r * 0.68 * (1 - 0.18 * Math.abs(t) * 2), wid: r * 0.16, thick: r * 0.02,
+            shape: "spatulate", rows: 3, ring: 4,
+          }), { rx: 0.4 + Math.abs(t) * 0.35, ry: a + t * 2.7, at: tip }));
+        }
+        p.add(node, mergeGeo(pleat[0]), { color: pl.pal.leaf, colorFn: pl.pal.grad });
+        p.add(node, mergeGeo(pleat[1]), { color: mix(pl.pal.leaf, pl.pal.deep, 0.55), colorFn: pl.pal.grad });
         return;
       }
       addLeaf(p, node, {
@@ -1826,8 +1877,9 @@ function palm(k, col, opt = {}) {
         len: r * (pl.fan ? 0.85 : 1.15),
         wid: r * (pl.fan ? 1.05 : pl.fishtail ? 0.42 : 0.24 + pl.u(`fw${s.g}`) * 0.12),
         shape: pl.fishtail ? "spatulate" : "linear",
-        form: pl.fan ? "palmate" : "ladder",
-        leaflet: pl.fan ? 7 : 9,
+        form: pl.fan ? "fan" : "ladder",
+        leaflet: pl.fan ? 12 : 9,
+        leafletShape: pl.fishtail ? "spatulate" : null,
         bend: -r * (pl.fan ? 0.2 : 0.45 + pl.u(`fb${s.g}`) * 0.4),
         color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad, stalkColor: pl.pal.deep,
         stalk: pl.fan ? 0.42 : 0.18,

@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T08:07:59.697Z",
+ "generated_at": "2026-09-05T08:14:41.770Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -360,7 +360,7 @@
    "archetype": "palm",
    "palette_source": "known",
    "file": "species/ptychosperma-propinquum.glb",
-   "bytes": 68476,
+   "bytes": 62620,
    "display_scale_m": 4
   },
   {
@@ -600,7 +600,7 @@
    "archetype": "palm",
    "palette_source": "known",
    "file": "species/caryota-mitis.glb",
-   "bytes": 72608,
+   "bytes": 73100,
    "display_scale_m": 4
   },
   {
@@ -645,7 +645,7 @@
    "archetype": "palm",
    "palette_source": "known",
    "file": "species/rhapis-excelsa.glb",
-   "bytes": 64884,
+   "bytes": 67056,
    "display_scale_m": 1.8
   },
   {
@@ -1890,7 +1890,7 @@
    "archetype": "palm",
    "palette_source": "derived",
    "file": "species/livistona-chinensis.glb",
-   "bytes": 74596,
+   "bytes": 67296,
    "display_scale_m": 5
   },
   {
@@ -2445,7 +2445,7 @@
    "archetype": "palm",
    "palette_source": "derived",
    "file": "species/licuala-grandis.glb",
-   "bytes": 46572,
+   "bytes": 56072,
    "display_scale_m": 5
   },
   {
@@ -2670,7 +2670,7 @@
    "archetype": "palm",
    "palette_source": "known",
    "file": "species/cocos-nucifera.glb",
-   "bytes": 75000,
+   "bytes": 73744,
    "display_scale_m": 8
   },
   {
@@ -3105,7 +3105,7 @@
    "archetype": "palm",
    "palette_source": "derived",
    "file": "species/areca-catechu.glb",
-   "bytes": 64224,
+   "bytes": 60164,
    "display_scale_m": 5
   },
   {
@@ -4665,7 +4665,7 @@
    "archetype": "palm",
    "palette_source": "derived",
    "file": "species/chamaedorea-elegans.glb",
-   "bytes": 65724,
+   "bytes": 67412,
    "display_scale_m": 5
   },
   {
@@ -5235,7 +5235,7 @@
    "archetype": "palm",
    "palette_source": "derived",
    "file": "species/archontophoenix-cunninghamiana.glb",
-   "bytes": 69008,
+   "bytes": 59732,
    "display_scale_m": 5
   },
   {
@@ -5565,7 +5565,7 @@
    "archetype": "palm",
    "palette_source": "derived",
    "file": "species/hyophorbe-lagenicaulis.glb",
-   "bytes": 63980,
+   "bytes": 72976,
    "display_scale_m": 5
   },
   {
@@ -6705,7 +6705,7 @@
    "archetype": "palm",
    "palette_source": "derived",
    "file": "species/wodyetia-bifurcata.glb",
-   "bytes": 77084,
+   "bytes": 75160,
    "display_scale_m": 5
   },
   {
@@ -7230,7 +7230,7 @@
    "archetype": "palm",
    "palette_source": "known",
    "file": "species/roystonea-regia.glb",
-   "bytes": 79928,
+   "bytes": 71576,
    "display_scale_m": 12
   },
   {
@@ -7275,7 +7275,7 @@
    "archetype": "palm",
    "palette_source": "derived",
    "file": "species/phoenix-roebelenii.glb",
-   "bytes": 61556,
+   "bytes": 61932,
    "display_scale_m": 5
   },
   {
@@ -10485,7 +10485,7 @@
    "archetype": "palm",
    "palette_source": "derived",
    "file": "species/elaeis-guineensis.glb",
-   "bytes": 45736,
+   "bytes": 45748,
    "display_scale_m": 5
   },
   {
@@ -10560,7 +10560,7 @@
    "archetype": "palm",
    "palette_source": "derived",
    "file": "species/howea-forsteriana.glb",
-   "bytes": 57460,
+   "bytes": 57464,
    "display_scale_m": 5
   },
   {
@@ -10635,7 +10635,7 @@
    "archetype": "palm",
    "palette_source": "derived",
    "file": "species/caryota-urens.glb",
-   "bytes": 74920,
+   "bytes": 72360,
    "display_scale_m": 5
   },
   {
@@ -12270,7 +12270,7 @@
    "archetype": "palm",
    "palette_source": "derived",
    "file": "species/roystonea-oleracea.glb",
-   "bytes": 67340,
+   "bytes": 70528,
    "display_scale_m": 5
   },
   {
@@ -12495,7 +12495,7 @@
    "archetype": "palm",
    "palette_source": "derived",
    "file": "species/caryota-maxima.glb",
-   "bytes": 78592,
+   "bytes": 76276,
    "display_scale_m": 5
   },
   {
@@ -13455,7 +13455,7 @@
    "archetype": "palm",
    "palette_source": "derived",
    "file": "species/roystonea-borinquena.glb",
-   "bytes": 65424,
+   "bytes": 68624,
    "display_scale_m": 5
   },
   {
