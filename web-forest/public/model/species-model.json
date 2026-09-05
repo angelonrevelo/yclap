@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-03T18:55:33.308Z",
+ "generated_at": "2026-09-05T04:39:31.931Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -132,11 +132,11 @@
    "source": "curated",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/balete.glb",
-   "bytes": 42916,
-   "display_scale_m": 0.35
+   "bytes": 44728,
+   "display_scale_m": 5
   },
   {
    "species_code": "lagundi",
@@ -852,11 +852,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/tamarindus-indica.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 44740,
+   "display_scale_m": 5
   },
   {
    "species_code": "bougainvillea-spectabilis",
@@ -912,11 +912,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/thunbergia-grandiflora.glb",
-   "bytes": 42936,
-   "display_scale_m": 0.35
+   "bytes": 46316,
+   "display_scale_m": 1
   },
   {
    "species_code": "monoon-longifolium",
@@ -957,11 +957,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/spathodea-campanulata.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 44740,
+   "display_scale_m": 5
   },
   {
    "species_code": "macaranga-tanarius",
@@ -972,11 +972,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/macaranga-tanarius.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 44752,
+   "display_scale_m": 5
   },
   {
    "species_code": "sandoricum-koetjape",
@@ -987,11 +987,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/sandoricum-koetjape.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 44760,
+   "display_scale_m": 5
   },
   {
    "species_code": "bauhinia-purpurea",
@@ -1002,11 +1002,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/bauhinia-purpurea.glb",
-   "bytes": 42972,
-   "display_scale_m": 0.35
+   "bytes": 44756,
+   "display_scale_m": 5
   },
   {
    "species_code": "alternanthera-bettzickiana",
@@ -1062,11 +1062,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/syngonium-podophyllum.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 46264,
+   "display_scale_m": 1
   },
   {
    "species_code": "aglaonema-commutatum",
@@ -1077,11 +1077,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "aroid",
    "palette_source": "derived",
    "file": "species/aglaonema-commutatum.glb",
-   "bytes": 42944,
-   "display_scale_m": 0.35
+   "bytes": 39940,
+   "display_scale_m": 0.5
   },
   {
    "species_code": "luzonomorpha-picea",
@@ -1212,11 +1212,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/coleus-scutellarioides.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 25924,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "melicodes-tenebrosus",
@@ -1242,11 +1242,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/antigonon-leptopus.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 46276,
+   "display_scale_m": 1
   },
   {
    "species_code": "psidium-guajava",
@@ -1272,11 +1272,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/plumbago-auriculata.glb",
-   "bytes": 42936,
-   "display_scale_m": 0.35
+   "bytes": 25912,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "ficus-elastica",
@@ -1287,11 +1287,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-elastica.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 44736,
+   "display_scale_m": 5
   },
   {
    "species_code": "poecilia-reticulata",
@@ -1422,11 +1422,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/mikania-micrantha.glb",
-   "bytes": 42936,
-   "display_scale_m": 0.35
+   "bytes": 46288,
+   "display_scale_m": 1
   },
   {
    "species_code": "torenia-fournieri",
@@ -1542,11 +1542,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "grass",
+   "archetype": "grass-bamboo",
    "palette_source": "derived",
    "file": "species/bambusa-vulgaris.glb",
-   "bytes": 50344,
-   "display_scale_m": 0.45
+   "bytes": 77412,
+   "display_scale_m": 6
   },
   {
    "species_code": "bougainvillea-glabra",
@@ -1572,11 +1572,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/murraya-paniculata.glb",
-   "bytes": 42936,
-   "display_scale_m": 0.35
+   "bytes": 25908,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "acridotheres-cristatellus",
@@ -1617,11 +1617,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/diospyros-blancoi.glb",
-   "bytes": 42964,
-   "display_scale_m": 0.35
+   "bytes": 44740,
+   "display_scale_m": 5
   },
   {
    "species_code": "diplacodes-trivialis",
@@ -1662,11 +1662,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/ochna-serrulata.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 25904,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "triplaris-cumingiana",
@@ -1692,11 +1692,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/magnolia-champaca.glb",
-   "bytes": 42972,
-   "display_scale_m": 0.35
+   "bytes": 44772,
+   "display_scale_m": 5
   },
   {
    "species_code": "torenia-crustacea",
@@ -1737,11 +1737,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/artocarpus-heterophyllus.glb",
-   "bytes": 42956,
-   "display_scale_m": 0.35
+   "bytes": 44768,
+   "display_scale_m": 5
   },
   {
    "species_code": "plumeria-rubra",
@@ -1842,11 +1842,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/araucaria-heterophylla.glb",
-   "bytes": 42936,
-   "display_scale_m": 0.35
+   "bytes": 44744,
+   "display_scale_m": 5
   },
   {
    "species_code": "euphorbia-graminea",
@@ -1872,11 +1872,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/jatropha-integerrima.glb",
-   "bytes": 42964,
-   "display_scale_m": 0.35
+   "bytes": 25904,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "livistona-chinensis",
@@ -1902,11 +1902,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-septica.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 44736,
+   "display_scale_m": 5
   },
   {
    "species_code": "gallus-gallus",
@@ -2022,11 +2022,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/barringtonia-asiatica.glb",
-   "bytes": 42956,
-   "display_scale_m": 0.35
+   "bytes": 44744,
+   "display_scale_m": 5
   },
   {
    "species_code": "dracaena-surculosa",
@@ -2037,11 +2037,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "rosetteBlades",
    "palette_source": "derived",
    "file": "species/dracaena-surculosa.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 46444,
+   "display_scale_m": 0.6
   },
   {
    "species_code": "amata-huebneri",
@@ -2112,11 +2112,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/persea-americana.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 44756,
+   "display_scale_m": 5
   },
   {
    "species_code": "manihot-esculenta",
@@ -2277,11 +2277,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/gmelina-arborea.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 44740,
+   "display_scale_m": 5
   },
   {
    "species_code": "paederia-foetida",
@@ -2352,11 +2352,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-pseudopalma.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 44756,
+   "display_scale_m": 5
   },
   {
    "species_code": "heptapleurum-arboricola",
@@ -2487,11 +2487,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/syngonium-angustatum.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 46320,
+   "display_scale_m": 1
   },
   {
    "species_code": "thunbergia-laurifolia",
@@ -2502,11 +2502,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/thunbergia-laurifolia.glb",
-   "bytes": 42944,
-   "display_scale_m": 0.35
+   "bytes": 46264,
+   "display_scale_m": 1
   },
   {
    "species_code": "chromolaena-odorata",
@@ -2517,11 +2517,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/chromolaena-odorata.glb",
-   "bytes": 42968,
-   "display_scale_m": 0.35
+   "bytes": 25920,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "peltophorum-pterocarpum",
@@ -2532,11 +2532,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/peltophorum-pterocarpum.glb",
-   "bytes": 42952,
-   "display_scale_m": 0.35
+   "bytes": 44740,
+   "display_scale_m": 5
   },
   {
    "species_code": "dysdercus-cingulatus",
@@ -2562,11 +2562,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/clerodendrum-quadriloculare.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 25920,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "streblus-asper",
@@ -2637,11 +2637,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/leucaena-leucocephala.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 44756,
+   "display_scale_m": 5
   },
   {
    "species_code": "heteropoda-venatoria",
@@ -2757,11 +2757,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/ixora-chinensis.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 25896,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "clitoria-ternatea",
@@ -2787,11 +2787,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/coccinia-grandis.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 46284,
+   "display_scale_m": 1
   },
   {
    "species_code": "phyllanthus-niruri",
@@ -2907,11 +2907,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-variegata.glb",
-   "bytes": 42920,
-   "display_scale_m": 0.35
+   "bytes": 44748,
+   "display_scale_m": 5
   },
   {
    "species_code": "crossandra-infundibuliformis",
@@ -2922,11 +2922,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/crossandra-infundibuliformis.glb",
-   "bytes": 42984,
-   "display_scale_m": 0.35
+   "bytes": 25940,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "microporus-xanthopus",
@@ -3057,11 +3057,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-benjamina.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 44732,
+   "display_scale_m": 5
   },
   {
    "species_code": "tabebuia-heterophylla",
@@ -3072,11 +3072,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/tabebuia-heterophylla.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 44772,
+   "display_scale_m": 5
   },
   {
    "species_code": "ficus-microcarpa",
@@ -3087,11 +3087,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-microcarpa.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 44752,
+   "display_scale_m": 5
   },
   {
    "species_code": "areca-catechu",
@@ -3237,11 +3237,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/polyscias-guilfoylei.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 25916,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "hyperphyscia-adglutinata",
@@ -3312,11 +3312,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/philodendron-erubescens.glb",
-   "bytes": 42972,
-   "display_scale_m": 0.35
+   "bytes": 46320,
+   "display_scale_m": 1
   },
   {
    "species_code": "pareronia-boebera",
@@ -3462,11 +3462,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "rosetteBlades",
    "palette_source": "derived",
    "file": "species/dracaena-sanderiana.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 46452,
+   "display_scale_m": 0.6
   },
   {
    "species_code": "strobilanthes-reptans",
@@ -3492,11 +3492,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/pongamia-pinnata.glb",
-   "bytes": 42952,
-   "display_scale_m": 0.35
+   "bytes": 44756,
+   "display_scale_m": 5
   },
   {
    "species_code": "hibiscus-rosa-sinensis",
@@ -3507,11 +3507,11 @@
    "source": "inat",
    "rank": "hybrid",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/hibiscus-rosa-sinensis.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 25904,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "falco-peregrinus",
@@ -3657,11 +3657,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/eucalyptus-deglupta.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 44752,
+   "display_scale_m": 5
   },
   {
    "species_code": "coccoloba-uvifera",
@@ -3687,11 +3687,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/antidesma-bunius.glb",
-   "bytes": 42972,
-   "display_scale_m": 0.35
+   "bytes": 44744,
+   "display_scale_m": 5
   },
   {
    "species_code": "tithonia-diversifolia",
@@ -3762,11 +3762,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "aroid",
    "palette_source": "derived",
    "file": "species/xanthosoma-sagittifolium.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 39920,
+   "display_scale_m": 0.5
   },
   {
    "species_code": "bischofia-javanica",
@@ -3777,11 +3777,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/bischofia-javanica.glb",
-   "bytes": 42936,
-   "display_scale_m": 0.35
+   "bytes": 44756,
+   "display_scale_m": 5
   },
   {
    "species_code": "dicliptera-chinensis",
@@ -3807,11 +3807,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/duranta-erecta.glb",
-   "bytes": 42972,
-   "display_scale_m": 0.35
+   "bytes": 25916,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "laportea-aestuans",
@@ -3942,11 +3942,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/syzygium-myrtifolium.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 44672,
+   "display_scale_m": 5
   },
   {
    "species_code": "hexagonia-tenuis",
@@ -4077,11 +4077,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-ampelos.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 44740,
+   "display_scale_m": 5
   },
   {
    "species_code": "homalomena-philippinensis",
@@ -4092,11 +4092,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "aroid",
    "palette_source": "derived",
    "file": "species/homalomena-philippinensis.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 39936,
+   "display_scale_m": 0.5
   },
   {
    "species_code": "phintella-piatensis",
@@ -4287,11 +4287,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "aroid",
    "palette_source": "derived",
    "file": "species/pistia-stratiotes.glb",
-   "bytes": 42920,
-   "display_scale_m": 0.35
+   "bytes": 39928,
+   "display_scale_m": 0.5
   },
   {
    "species_code": "periplaneta-americana",
@@ -4422,11 +4422,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-religiosa.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 44740,
+   "display_scale_m": 5
   },
   {
    "species_code": "lucilia-sericata",
@@ -4452,11 +4452,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/acalypha-indica.glb",
-   "bytes": 42920,
-   "display_scale_m": 0.35
+   "bytes": 25916,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "achyranthes-aspera",
@@ -4497,11 +4497,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/adenanthera-pavonina.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 44752,
+   "display_scale_m": 5
   },
   {
    "species_code": "alternanthera-brasiliana",
@@ -4527,11 +4527,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/jatropha-curcas.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 25940,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "ochna-thomasiana",
@@ -4542,11 +4542,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/ochna-thomasiana.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 25904,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "gymnopus-erythropus",
@@ -4587,11 +4587,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/aglaia-odorata.glb",
-   "bytes": 42944,
-   "display_scale_m": 0.35
+   "bytes": 44756,
+   "display_scale_m": 5
   },
   {
    "species_code": "tabebuia-rosea",
@@ -4602,11 +4602,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/tabebuia-rosea.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 44756,
+   "display_scale_m": 5
   },
   {
    "species_code": "euphorbia-tithymaloides",
@@ -4722,11 +4722,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/ixora-casei.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 25908,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "pometia-pinnata",
@@ -4767,11 +4767,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-fistulosa.glb",
-   "bytes": 42920,
-   "display_scale_m": 0.35
+   "bytes": 44744,
+   "display_scale_m": 5
   },
   {
    "species_code": "zamioculcas-zamiifolia",
@@ -4812,11 +4812,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/capparis-micracantha.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 46316,
+   "display_scale_m": 1
   },
   {
    "species_code": "carebara-diversa",
@@ -4932,11 +4932,11 @@
    "source": "inat",
    "rank": "hybrid",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/hibiscus-archeri.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 25924,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "coleus-amboinicus",
@@ -4947,11 +4947,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/coleus-amboinicus.glb",
-   "bytes": 42972,
-   "display_scale_m": 0.35
+   "bytes": 25908,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "heptapleurum-ellipticum",
@@ -5127,11 +5127,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/delonix-regia.glb",
-   "bytes": 42920,
-   "display_scale_m": 0.35
+   "bytes": 44744,
+   "display_scale_m": 5
   },
   {
    "species_code": "ipomoea-triloba",
@@ -5142,11 +5142,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/ipomoea-triloba.glb",
-   "bytes": 42920,
-   "display_scale_m": 0.35
+   "bytes": 46284,
+   "display_scale_m": 1
   },
   {
    "species_code": "hedera-canariensis",
@@ -5157,11 +5157,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/hedera-canariensis.glb",
-   "bytes": 42944,
-   "display_scale_m": 0.35
+   "bytes": 46276,
+   "display_scale_m": 1
   },
   {
    "species_code": "eucalyptus-camaldulensis",
@@ -5172,11 +5172,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/eucalyptus-camaldulensis.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 44768,
+   "display_scale_m": 5
   },
   {
    "species_code": "solenopsis-geminata",
@@ -5217,11 +5217,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/senna-alata.glb",
-   "bytes": 42916,
-   "display_scale_m": 0.35
+   "bytes": 44744,
+   "display_scale_m": 5
   },
   {
    "species_code": "archontophoenix-cunninghamiana",
@@ -5292,11 +5292,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "aroid",
    "palette_source": "derived",
    "file": "species/colocasia-esculenta.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 39956,
+   "display_scale_m": 0.5
   },
   {
    "species_code": "grimmia-laevigata",
@@ -5322,11 +5322,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "rosetteBlades",
    "palette_source": "derived",
    "file": "species/dracaena-reflexa.glb",
-   "bytes": 42916,
-   "display_scale_m": 0.35
+   "bytes": 46448,
+   "display_scale_m": 0.6
   },
   {
    "species_code": "cinnyris-jugularis",
@@ -5487,11 +5487,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "rosetteBlades",
    "palette_source": "derived",
    "file": "species/sansevieria-cylindrica.glb",
-   "bytes": 42976,
-   "display_scale_m": 0.35
+   "bytes": 46452,
+   "display_scale_m": 0.6
   },
   {
    "species_code": "triplaris-americana",
@@ -5592,11 +5592,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/lantana-horrida.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 25912,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "delias-hyparete",
@@ -5682,11 +5682,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/azadirachta-indica.glb",
-   "bytes": 42944,
-   "display_scale_m": 0.35
+   "bytes": 44744,
+   "display_scale_m": 5
   },
   {
    "species_code": "tristellateia-australasiae",
@@ -6222,11 +6222,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/chrysophyllum-cainito.glb",
-   "bytes": 42944,
-   "display_scale_m": 0.35
+   "bytes": 44740,
+   "display_scale_m": 5
   },
   {
    "species_code": "hypolimnas-misippus",
@@ -6327,11 +6327,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/ocimum-basilicum.glb",
-   "bytes": 42920,
-   "display_scale_m": 0.35
+   "bytes": 25908,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "casuarina-equisetifolia",
@@ -6357,11 +6357,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/allamanda-cathartica.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 46304,
+   "display_scale_m": 1
   },
   {
    "species_code": "theobroma-cacao",
@@ -6402,11 +6402,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/cassia-fistula.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 44752,
+   "display_scale_m": 5
   },
   {
    "species_code": "technomyrmex-albipes",
@@ -6492,11 +6492,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/ipomoea-indica.glb",
-   "bytes": 42960,
-   "display_scale_m": 0.35
+   "bytes": 46288,
+   "display_scale_m": 1
   },
   {
    "species_code": "lemna-aequinoctialis",
@@ -6507,11 +6507,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "aroid",
    "palette_source": "derived",
    "file": "species/lemna-aequinoctialis.glb",
-   "bytes": 42976,
-   "display_scale_m": 0.35
+   "bytes": 39920,
+   "display_scale_m": 0.5
   },
   {
    "species_code": "pantala-flavescens",
@@ -6537,11 +6537,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/morinda-citrifolia.glb",
-   "bytes": 42944,
-   "display_scale_m": 0.35
+   "bytes": 44760,
+   "display_scale_m": 5
   },
   {
    "species_code": "conocybe-tenera",
@@ -6597,11 +6597,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "aroid",
    "palette_source": "derived",
    "file": "species/alocasia-macrorrhizos.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 39944,
+   "display_scale_m": 0.5
   },
   {
    "species_code": "centrosema-virginianum",
@@ -6612,11 +6612,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/centrosema-virginianum.glb",
-   "bytes": 42936,
-   "display_scale_m": 0.35
+   "bytes": 46320,
+   "display_scale_m": 1
   },
   {
    "species_code": "trametes-elegans",
@@ -6792,11 +6792,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/trema-orientale.glb",
-   "bytes": 42960,
-   "display_scale_m": 0.35
+   "bytes": 44752,
+   "display_scale_m": 5
   },
   {
    "species_code": "hulodes-caranea",
@@ -6852,11 +6852,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/triphasia-trifolia.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 25912,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "abelmoschus-esculentus",
@@ -6882,11 +6882,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "rosetteBlades",
    "palette_source": "derived",
    "file": "species/agave-desmetiana.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 46448,
+   "display_scale_m": 0.6
   },
   {
    "species_code": "alstonia-macrophylla",
@@ -6897,11 +6897,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/alstonia-macrophylla.glb",
-   "bytes": 42936,
-   "display_scale_m": 0.35
+   "bytes": 44760,
+   "display_scale_m": 5
   },
   {
    "species_code": "basella-alba",
@@ -6912,11 +6912,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/basella-alba.glb",
-   "bytes": 42960,
-   "display_scale_m": 0.35
+   "bytes": 46300,
+   "display_scale_m": 1
   },
   {
    "species_code": "callitriche-terrestris",
@@ -7002,11 +7002,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/graptophyllum-pictum.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 25920,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "macrothelypteris-torresiana",
@@ -7092,11 +7092,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/polyscias-scutellaria.glb",
-   "bytes": 42948,
-   "display_scale_m": 0.35
+   "bytes": 25924,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "pteris-ensiformis",
@@ -7122,11 +7122,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/tabernaemontana-divaricata.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 25948,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "xylaria-apiculata",
@@ -7182,11 +7182,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/barringtonia-racemosa.glb",
-   "bytes": 42944,
-   "display_scale_m": 0.35
+   "bytes": 44748,
+   "display_scale_m": 5
   },
   {
    "species_code": "acacia-mangium",
@@ -7407,11 +7407,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "grass",
+   "archetype": "grass-bamboo",
    "palette_source": "derived",
    "file": "species/bambusa-tuldoides.glb",
-   "bytes": 50364,
-   "display_scale_m": 0.45
+   "bytes": 77436,
+   "display_scale_m": 6
   },
   {
    "species_code": "acalypha-wilkesiana",
@@ -7422,11 +7422,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/acalypha-wilkesiana.glb",
-   "bytes": 42936,
-   "display_scale_m": 0.35
+   "bytes": 25916,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "heliconia-tortuosa",
@@ -7452,11 +7452,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "aroid",
    "palette_source": "derived",
    "file": "species/spathiphyllum-wallisii.glb",
-   "bytes": 42936,
-   "display_scale_m": 0.35
+   "bytes": 39936,
+   "display_scale_m": 0.5
   },
   {
    "species_code": "averrhoa-bilimbi",
@@ -7722,11 +7722,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/justicia-procumbens.glb",
-   "bytes": 42948,
-   "display_scale_m": 0.35
+   "bytes": 25912,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "prosotas-dubiosa",
@@ -7767,11 +7767,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/khaya-senegalensis.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 44752,
+   "display_scale_m": 5
   },
   {
    "species_code": "flagellaria-indica",
@@ -7827,11 +7827,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/litsea-glutinosa.glb",
-   "bytes": 42968,
-   "display_scale_m": 0.35
+   "bytes": 44748,
+   "display_scale_m": 5
   },
   {
    "species_code": "symplocos-cochinchinensis",
@@ -7842,11 +7842,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/symplocos-cochinchinensis.glb",
-   "bytes": 42948,
-   "display_scale_m": 0.35
+   "bytes": 44756,
+   "display_scale_m": 5
   },
   {
    "species_code": "mallotus-repandus",
@@ -7857,11 +7857,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/mallotus-repandus.glb",
-   "bytes": 42960,
-   "display_scale_m": 0.35
+   "bytes": 44744,
+   "display_scale_m": 5
   },
   {
    "species_code": "barleria-repens",
@@ -7872,11 +7872,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/barleria-repens.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 25916,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "nauclea-orientalis",
@@ -7902,11 +7902,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/terminalia-mantaly.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 44736,
+   "display_scale_m": 5
   },
   {
    "species_code": "trichomyrmex-destructor",
@@ -8082,11 +8082,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-nervosa.glb",
-   "bytes": 42936,
-   "display_scale_m": 0.35
+   "bytes": 44740,
+   "display_scale_m": 5
   },
   {
    "species_code": "heterotis-rotundifolia",
@@ -8157,11 +8157,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "grass",
+   "archetype": "grass-bamboo",
    "palette_source": "derived",
    "file": "species/bambusa-stenostachya.glb",
-   "bytes": 50380,
-   "display_scale_m": 0.45
+   "bytes": 77408,
+   "display_scale_m": 6
   },
   {
    "species_code": "cosmophasis-lami",
@@ -8187,11 +8187,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/maesa-perlarius.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 25900,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "marsdenia-tinctoria",
@@ -8217,11 +8217,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/vitex-quinata.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 44736,
+   "display_scale_m": 5
   },
   {
    "species_code": "oedignatha-scrobiculata",
@@ -8352,11 +8352,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/luffa-aegyptiaca.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 46284,
+   "display_scale_m": 1
   },
   {
    "species_code": "megathyrsus-maximus",
@@ -8667,11 +8667,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/calliandra-haematocephala.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 25924,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "albizia-julibrissin",
@@ -8682,11 +8682,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/albizia-julibrissin.glb",
-   "bytes": 42956,
-   "display_scale_m": 0.35
+   "bytes": 44752,
+   "display_scale_m": 5
   },
   {
    "species_code": "holochlora-japonica",
@@ -8727,11 +8727,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "rosetteBlades",
    "palette_source": "derived",
    "file": "species/agave-angustifolia.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 46448,
+   "display_scale_m": 0.6
   },
   {
    "species_code": "junonia-orithya",
@@ -8862,11 +8862,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/citrus-maxima.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 25904,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "ficus-benghalensis",
@@ -8877,11 +8877,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-benghalensis.glb",
-   "bytes": 42968,
-   "display_scale_m": 0.35
+   "bytes": 44752,
+   "display_scale_m": 5
   },
   {
    "species_code": "ramariopsis-kunzei",
@@ -8997,11 +8997,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/ricinus-communis.glb",
-   "bytes": 42920,
-   "display_scale_m": 0.35
+   "bytes": 25908,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "helianthus-annuus",
@@ -9102,11 +9102,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-carica.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 44752,
+   "display_scale_m": 5
   },
   {
    "species_code": "momordica-charantia",
@@ -9117,11 +9117,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/momordica-charantia.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 46308,
+   "display_scale_m": 1
   },
   {
    "species_code": "propylea-japonica",
@@ -9192,11 +9192,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/ipomoea-batatas.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 46284,
+   "display_scale_m": 1
   },
   {
    "species_code": "solanum-melongena",
@@ -9357,11 +9357,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/bauhinia-variegata.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 44744,
+   "display_scale_m": 5
   },
   {
    "species_code": "tapinoma-melanocephalum",
@@ -9387,11 +9387,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/capsicum-chinense.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 25896,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "anthurium-andraeanum",
@@ -9402,11 +9402,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "aroid",
    "palette_source": "derived",
    "file": "species/anthurium-andraeanum.glb",
-   "bytes": 42964,
-   "display_scale_m": 0.35
+   "bytes": 39932,
+   "display_scale_m": 0.5
   },
   {
    "species_code": "appias-libythea",
@@ -9537,11 +9537,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/physalis-pubescens.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 25904,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "thalictrum-dioicum",
@@ -9567,11 +9567,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/calophyllum-brasiliense.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 44744,
+   "display_scale_m": 5
   },
   {
    "species_code": "evolvulus-nummularius",
@@ -9627,11 +9627,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/syzygium-malaccense.glb",
-   "bytes": 42944,
-   "display_scale_m": 0.35
+   "bytes": 44752,
+   "display_scale_m": 5
   },
   {
    "species_code": "dioscorea-bulbifera",
@@ -9642,11 +9642,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/dioscorea-bulbifera.glb",
-   "bytes": 42964,
-   "display_scale_m": 0.35
+   "bytes": 46252,
+   "display_scale_m": 1
   },
   {
    "species_code": "tubifex-tubifex",
@@ -10002,11 +10002,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/capsicum-frutescens.glb",
-   "bytes": 42964,
-   "display_scale_m": 0.35
+   "bytes": 25912,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "phaseolus-vulgaris",
@@ -10032,11 +10032,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/vigna-radiata.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 46296,
+   "display_scale_m": 1
   },
   {
    "species_code": "cymbopogon-citratus",
@@ -10062,11 +10062,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/citrus-hystrix.glb",
-   "bytes": 42960,
-   "display_scale_m": 0.35
+   "bytes": 25892,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "agrius-convolvuli",
@@ -10272,11 +10272,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/hamelia-patens.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 25912,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "cassida-circumdata",
@@ -10302,11 +10302,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/plumbago-zeylanica.glb",
-   "bytes": 42912,
-   "display_scale_m": 0.35
+   "bytes": 25908,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "youngia-japonica",
@@ -10347,11 +10347,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/centrosema-pubescens.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 46280,
+   "display_scale_m": 1
   },
   {
    "species_code": "broussonetia-papyrifera",
@@ -10392,11 +10392,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/albizia-adianthifolia.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 44752,
+   "display_scale_m": 5
   },
   {
    "species_code": "hoya-carnosa",
@@ -10407,11 +10407,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/hoya-carnosa.glb",
-   "bytes": 42960,
-   "display_scale_m": 0.35
+   "bytes": 46300,
+   "display_scale_m": 1
   },
   {
    "species_code": "cycas-revoluta",
@@ -10512,11 +10512,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-exasperata.glb",
-   "bytes": 42972,
-   "display_scale_m": 0.35
+   "bytes": 44768,
+   "display_scale_m": 5
   },
   {
    "species_code": "impatiens-balsamina",
@@ -10572,11 +10572,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/gnetum-gnemon.glb",
-   "bytes": 42968,
-   "display_scale_m": 0.35
+   "bytes": 46280,
+   "display_scale_m": 1
   },
   {
    "species_code": "marasmius-siccus",
@@ -10602,11 +10602,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/bauhinia-acuminata.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 44732,
+   "display_scale_m": 5
   },
   {
    "species_code": "tacca-leontopetaloides",
@@ -10782,11 +10782,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/jatropha-podagrica.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 25928,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "carrhotus-viduus",
@@ -10962,11 +10962,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ardisia-elliptica.glb",
-   "bytes": 42920,
-   "display_scale_m": 0.35
+   "bytes": 44744,
+   "display_scale_m": 5
   },
   {
    "species_code": "barleria-cristata",
@@ -10977,11 +10977,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/barleria-cristata.glb",
-   "bytes": 42972,
-   "display_scale_m": 0.35
+   "bytes": 25908,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "ceratocephala-testiculata",
@@ -11097,11 +11097,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/desmanthus-virgatus.glb",
-   "bytes": 42936,
-   "display_scale_m": 0.35
+   "bytes": 25928,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "dioscorea-alata",
@@ -11112,11 +11112,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/dioscorea-alata.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 46328,
+   "display_scale_m": 1
   },
   {
    "species_code": "dumortiera-hirsuta",
@@ -11142,11 +11142,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/eranthemum-pulchellum.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 25920,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "euphorbia-milii",
@@ -11187,11 +11187,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/hedera-colchica.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 46280,
+   "display_scale_m": 1
   },
   {
    "species_code": "hedwigia-ciliata",
@@ -11247,11 +11247,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/ipomoea-aquatica.glb",
-   "bytes": 42920,
-   "display_scale_m": 0.35
+   "bytes": 46296,
+   "display_scale_m": 1
   },
   {
    "species_code": "kalanchoe-pinnata",
@@ -11337,11 +11337,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/manilkara-zapota.glb",
-   "bytes": 42964,
-   "display_scale_m": 0.35
+   "bytes": 44748,
+   "display_scale_m": 5
   },
   {
    "species_code": "marsilea-macropoda",
@@ -11502,11 +11502,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/senna-occidentalis.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 44760,
+   "display_scale_m": 5
   },
   {
    "species_code": "setaria-palmifolia",
@@ -11562,11 +11562,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/thunbergia-erecta.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 46320,
+   "display_scale_m": 1
   },
   {
    "species_code": "trichostomum-crispulum",
@@ -11697,11 +11697,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/dimocarpus-longan.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 44756,
+   "display_scale_m": 5
   },
   {
    "species_code": "excoecaria-agallocha",
@@ -11712,11 +11712,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/excoecaria-agallocha.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 25916,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "sonneratia-alba",
@@ -11967,11 +11967,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/gardenia-jasminoides.glb",
-   "bytes": 42968,
-   "display_scale_m": 0.35
+   "bytes": 25920,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "lecanora-strobilina",
@@ -12177,11 +12177,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/polyscias-balfouriana.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 25916,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "alternanthera-halimifolia",
@@ -12207,11 +12207,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/ixora-finlaysoniana.glb",
-   "bytes": 42976,
-   "display_scale_m": 0.35
+   "bytes": 25904,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "calliandra-tergemina",
@@ -12222,11 +12222,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/calliandra-tergemina.glb",
-   "bytes": 42944,
-   "display_scale_m": 0.35
+   "bytes": 25916,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "odontonema-tubaeforme",
@@ -12297,11 +12297,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/polyscias-fruticosa.glb",
-   "bytes": 42964,
-   "display_scale_m": 0.35
+   "bytes": 25920,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "malpighia-emarginata",
@@ -12357,11 +12357,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/justicia-comata.glb",
-   "bytes": 42920,
-   "display_scale_m": 0.35
+   "bytes": 25920,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "handroanthus-chrysanthus",
@@ -12477,11 +12477,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/syzygium-samarangense.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 44752,
+   "display_scale_m": 5
   },
   {
    "species_code": "caryota-maxima",
@@ -12552,11 +12552,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/syngonium-wendlandii.glb",
-   "bytes": 42952,
-   "display_scale_m": 0.35
+   "bytes": 46300,
+   "display_scale_m": 1
   },
   {
    "species_code": "acorus-gramineus",
@@ -12582,11 +12582,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/mussaenda-philippica.glb",
-   "bytes": 42936,
-   "display_scale_m": 0.35
+   "bytes": 25920,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "oxalis-triangularis",
@@ -12747,11 +12747,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/millingtonia-hortensis.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 44764,
+   "display_scale_m": 5
   },
   {
    "species_code": "neolamarckia-cadamba",
@@ -12762,11 +12762,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/neolamarckia-cadamba.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 44756,
+   "display_scale_m": 5
   },
   {
    "species_code": "atractomorpha-sinensis",
@@ -12792,11 +12792,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/cerbera-manghas.glb",
-   "bytes": 42916,
-   "display_scale_m": 0.35
+   "bytes": 44748,
+   "display_scale_m": 5
   },
   {
    "species_code": "origanum-syriacum",
@@ -12822,11 +12822,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/antidesma-montanum.glb",
-   "bytes": 42944,
-   "display_scale_m": 0.35
+   "bytes": 44748,
+   "display_scale_m": 5
   },
   {
    "species_code": "castanopsis-indica",
@@ -12837,11 +12837,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/castanopsis-indica.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 44736,
+   "display_scale_m": 5
   },
   {
    "species_code": "ideopsis-juventa",
@@ -12912,11 +12912,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/diospyros-ferrea.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 44752,
+   "display_scale_m": 5
   },
   {
    "species_code": "aglaonema-nitidum",
@@ -12927,11 +12927,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "aroid",
    "palette_source": "derived",
    "file": "species/aglaonema-nitidum.glb",
-   "bytes": 42920,
-   "display_scale_m": 0.35
+   "bytes": 39940,
+   "display_scale_m": 0.5
   },
   {
    "species_code": "abroma-augustum",
@@ -12957,11 +12957,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/brunfelsia-pauciflora.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 25920,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "tinospora-crispa",
@@ -12972,11 +12972,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/tinospora-crispa.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 46300,
+   "display_scale_m": 1
   },
   {
    "species_code": "bolbitius-aleuriatus",
@@ -13032,11 +13032,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "grass",
+   "archetype": "grass-bamboo",
    "palette_source": "derived",
    "file": "species/bambusa-oldhamii.glb",
-   "bytes": 50380,
-   "display_scale_m": 0.45
+   "bytes": 77416,
+   "display_scale_m": 6
   },
   {
    "species_code": "osmoxylon-lineare",
@@ -13047,11 +13047,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/osmoxylon-lineare.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 25916,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "clausena-excavata",
@@ -13062,11 +13062,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/clausena-excavata.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 25912,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "barringtonia-acutangula",
@@ -13077,11 +13077,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/barringtonia-acutangula.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 44764,
+   "display_scale_m": 5
   },
   {
    "species_code": "lygodium-flexuosum",
@@ -13107,11 +13107,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/dillenia-suffruticosa.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 44760,
+   "display_scale_m": 5
   },
   {
    "species_code": "pachira-glabra",
@@ -13152,11 +13152,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/artocarpus-elasticus.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 44752,
+   "display_scale_m": 5
   },
   {
    "species_code": "dendrobium-anosmum",
@@ -13182,11 +13182,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "grass",
+   "archetype": "grass-bamboo",
    "palette_source": "derived",
    "file": "species/bambusa-balcooa.glb",
-   "bytes": 50348,
-   "display_scale_m": 0.45
+   "bytes": 77412,
+   "display_scale_m": 6
   },
   {
    "species_code": "calamus-rotang",
@@ -13392,11 +13392,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/trema-tomentosum.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 44740,
+   "display_scale_m": 5
   },
   {
    "species_code": "brachyplatys-subaeneus",
@@ -13752,11 +13752,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/chamaecrista-nomame.glb",
-   "bytes": 42936,
-   "display_scale_m": 0.35
+   "bytes": 25900,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "ficus-racemosa",
@@ -13767,11 +13767,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-racemosa.glb",
-   "bytes": 42912,
-   "display_scale_m": 0.35
+   "bytes": 44756,
+   "display_scale_m": 5
   },
   {
    "species_code": "deeringia-amaranthoides",
@@ -13797,11 +13797,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/premna-serratifolia.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 44748,
+   "display_scale_m": 5
   },
   {
    "species_code": "alternanthera-denticulata",
@@ -13842,11 +13842,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/elaeocarpus-grandis.glb",
-   "bytes": 42932,
-   "display_scale_m": 0.35
+   "bytes": 44760,
+   "display_scale_m": 5
   },
   {
    "species_code": "merremia-gemella",
@@ -13857,11 +13857,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/merremia-gemella.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 46276,
+   "display_scale_m": 1
   },
   {
    "species_code": "aleurites-moluccanus",
@@ -13902,11 +13902,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/osmanthus-fragrans.glb",
-   "bytes": 42912,
-   "display_scale_m": 0.35
+   "bytes": 25920,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "gardenia-mutabilis",
@@ -13917,11 +13917,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/gardenia-mutabilis.glb",
-   "bytes": 42964,
-   "display_scale_m": 0.35
+   "bytes": 25896,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "clitopilus-hobsonii",
@@ -14007,11 +14007,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/artocarpus-lacucha.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 44756,
+   "display_scale_m": 5
   },
   {
    "species_code": "ficus-villosa",
@@ -14022,11 +14022,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-villosa.glb",
-   "bytes": 42920,
-   "display_scale_m": 0.35
+   "bytes": 44736,
+   "display_scale_m": 5
   },
   {
    "species_code": "hypolytrum-nemorum",
@@ -14097,11 +14097,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/terminalia-calamansanai.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 44760,
+   "display_scale_m": 5
   },
   {
    "species_code": "parsonsia-alboflavescens",
@@ -14127,11 +14127,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/psychotria-asiatica.glb",
-   "bytes": 42944,
-   "display_scale_m": 0.35
+   "bytes": 25912,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "parthenocissus-dalzielii",
@@ -14172,11 +14172,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/tabernaemontana-macrocarpa.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 25920,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "catopyrops-ancyra",
@@ -14217,11 +14217,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/carissa-carandas.glb",
-   "bytes": 42952,
-   "display_scale_m": 0.35
+   "bytes": 25928,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "gardenia-sootepensis",
@@ -14232,11 +14232,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/gardenia-sootepensis.glb",
-   "bytes": 42948,
-   "display_scale_m": 0.35
+   "bytes": 25892,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "frailea-castanea",
@@ -14547,11 +14547,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-rumphii.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 44756,
+   "display_scale_m": 5
   },
   {
    "species_code": "auricularia-nigricans",
@@ -15012,11 +15012,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ardisia-cornudentata.glb",
-   "bytes": 42940,
-   "display_scale_m": 0.35
+   "bytes": 44760,
+   "display_scale_m": 5
   },
   {
    "species_code": "lepidagathis-inaequalis",
@@ -15132,11 +15132,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-cumingii.glb",
-   "bytes": 42960,
-   "display_scale_m": 0.35
+   "bytes": 44740,
+   "display_scale_m": 5
   },
   {
    "species_code": "drypetes-littoralis",
@@ -15177,11 +15177,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-simplicissima.glb",
-   "bytes": 42976,
-   "display_scale_m": 0.35
+   "bytes": 44744,
+   "display_scale_m": 5
   },
   {
    "species_code": "henosepilachna-vigintioctomaculata",
@@ -15282,11 +15282,11 @@
    "source": "inat",
    "rank": "hybrid",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/citrus-microcarpa.glb",
-   "bytes": 42944,
-   "display_scale_m": 0.35
+   "bytes": 25912,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "rungia-taiwanensis",
@@ -15372,11 +15372,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "vine",
    "palette_source": "derived",
    "file": "species/piper-kawakamii.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 46276,
+   "display_scale_m": 1
   },
   {
    "species_code": "dideopsis-aegrota",
@@ -15522,11 +15522,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "rosetteBlades",
    "palette_source": "derived",
    "file": "species/sansevieria-bacularis.glb",
-   "bytes": 42964,
-   "display_scale_m": 0.35
+   "bytes": 46456,
+   "display_scale_m": 0.6
   },
   {
    "species_code": "sicyos-edulis",
@@ -15597,11 +15597,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-maclellandii.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 44740,
+   "display_scale_m": 5
   },
   {
    "species_code": "rapala-caerulescens",
@@ -15627,11 +15627,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/tabernaemontana-sphaerocarpa.glb",
-   "bytes": 42956,
-   "display_scale_m": 0.35
+   "bytes": 25912,
+   "display_scale_m": 1.5
   },
   {
    "species_code": "xylobolus-spectabilis",
@@ -15747,11 +15747,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/tabebuia-pallida.glb",
-   "bytes": 42924,
-   "display_scale_m": 0.35
+   "bytes": 44768,
+   "display_scale_m": 5
   },
   {
    "species_code": "tarlmounia-elliptica",
@@ -15822,11 +15822,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/ficus-nota.glb",
-   "bytes": 42928,
-   "display_scale_m": 0.35
+   "bytes": 44732,
+   "display_scale_m": 5
   },
   {
    "species_code": "xylaria-flabelliformis",
@@ -15927,11 +15927,11 @@
    "source": "inat",
    "rank": "hybrid",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "tree",
    "palette_source": "derived",
    "file": "species/magnolia-alba.glb",
-   "bytes": 42952,
-   "display_scale_m": 0.35
+   "bytes": 44732,
+   "display_scale_m": 5
   },
   {
    "species_code": "lucilia-porphyrina",

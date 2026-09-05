@@ -97,6 +97,21 @@ const AROID_GENUS = new Set(
 );
 const CANE_GENUS = new Set("Dracaena Cordyline Yucca Beaucarnea Nolina Sansevieria Agave Aloe Furcraea Manfreda Proophea".split(" "));
 const BAMBOO_GENUS = new Set("Bambusa Dendrocalamus Gigantochloa Schizostachyum Guadua Chusquea Melocanna".split(" "));
+
+/**
+ * genusOf() lowercases (it runs the name through norm()), but every set above
+ * is written in the capitalised form a botanist would write. `TREE_GENUS.has
+ * ("ficus")` was therefore always false, which silently disabled EVERY
+ * genus-based route since the pack was first generated: Ficus, Mangifera and
+ * the rest fell through to `herb`, so Balete — a landmark strangler fig on the
+ * curated walk list — shipped as a small stalked herb.
+ *
+ * Folded once here rather than at each call site, and the originals are kept
+ * so a capitalised lookup still works.
+ */
+for (const set of [TREE_GENUS, VINE_GENUS, SHRUB_GENUS, AROID_GENUS, CANE_GENUS, BAMBOO_GENUS]) {
+  for (const g of [...set]) set.add(g.toLowerCase());
+}
 const PALM_FAM = new Set(["Arecaceae"]);
 const FERN_FAM = new Set(
   ("Polypodiaceae Thelypteridaceae Pteridaceae Aspleniaceae Nephrolepidaceae Davalliaceae Tectariaceae Lygodiaceae " +
