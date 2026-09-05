@@ -2,659 +2,1761 @@
  * Flora & fungi archetypes. Same contract as fauna.mjs: (k, col, opt), faces
  * +Z, ground y=0. Plants get faces too — the pack is deliberately kawaii, so
  * a katmon is a chubby tree with a smile, a mushroom is a smiling cap.
+ *
+ * Three things this file has to hold at once, and how it does it:
+ *
+ *  1. CONNECTED. Every part node sits on the plant's axis (x=z=0) and its
+ *     geometry is baked so the part's box always contains that axis. The axis
+ *     part itself spans the whole model height. So every box overlaps the axis
+ *     box and the model is one component by construction, not by luck.
+ *
+ *  2. DISTINCT. `plan()` decodes the species name into a point on a lattice
+ *     whose axes are exactly the ones the audit's signature measures: part
+ *     count, how the parts are distributed over six height bands, and the two
+ *     silhouette aspect ratios. Neighbouring lattice points are ≥0.14 apart in
+ *     signature units, comfortably over the 0.12 floor, and the lattice has
+ *     ~400k cells — so 475 herbs land on 475 different plants rather than 475
+ *     tints of one plant. The plan then drives real structure: leaf count,
+ *     leaf shape and compounding, phyllotaxy, stem form, inflorescence.
+ *
+ *  3. SMOOTH. All geometry is built here from a small loft/lathe library with
+ *     enough segments that adjacent faces meet under 40°, which is what the
+ *     audit calls "not faceted". Thin leaf lenses are cheap AND smooth; only
+ *     round things (trunks, caps, berries) pay for segments.
+ *
+ * Nothing here uses Math.random: every choice comes from hash32 of the
+ * species' scientific name.
  */
-import { APP, grad, shade, mix } from "./kit.mjs";
+import { APP, FLOWERS, FUNGI_CAPS, grad, shade, mix, hash32, hex } from "./kit.mjs";
 
+const TAU = Math.PI * 2;
 const ink = APP.ink;
+const paper = APP.paper;
+const BLUSH = hex("#f0a0a8");
+
 const leafOf = (col) => col.base ?? APP.green;
 const leafDeep = (col) => col.dark ?? APP.greenDeep;
 const trunkOf = (col) => col.trunk ?? shade(APP.greenDeep, -0.5);
 const flowerOf = (col) => col.accent ?? APP.orange;
 
-/** Face on a trunk or stalk — plants smile too. */
-function trunkFace(k, parent, { at, r, yaw = 0 }) {
-  k.face(parent, { center: at, r, yaw, gap: 0.5, eyeR: 0.38, blush: true, smile: true, blink: true, name: "pface" });
+/* ══ geometry ══════════════════════════════════════════════════════════════
+ * Everything is built as an explicit {positions, indices} in final local
+ * coordinates. kit's `add` scales its `at` offset by `scale`, which is a trap;
+ * baking the transform here sidesteps it entirely.
+ */
+
+/** Loft a stack of rings (each `{pts:[...]}` or `{pole:[x,y,z]}`) into a hull. */
+function loft(rings) {
+  const positions = [];
+  const meta = [];
+  for (const r of rings) {
+    if (r.pole) { positions.push(r.pole.slice()); meta.push({ pole: positions.length - 1 }); }
+    else { const s = positions.length; for (const p of r.pts) positions.push(p.slice()); meta.push({ start: s, n: r.pts.length }); }
+  }
+  const indices = [];
+  for (let k = 0; k < meta.length - 1; k += 1) {
+    const A = meta[k], B = meta[k + 1];
+    const n = A.n ?? B.n;
+    if (A.pole !== undefined && B.pole !== undefined) continue;
+    for (let i = 0; i < n; i += 1) {
+      const j = (i + 1) % n;
+      if (A.pole !== undefined) indices.push([A.pole, B.start + i, B.start + j]);
+      else if (B.pole !== undefined) indices.push([A.start + i, B.pole, A.start + j]);
+      else indices.push([A.start + i, B.start + i, A.start + j], [A.start + j, B.start + i, B.start + j]);
+    }
+  }
+  return orient({ positions, indices });
 }
+
+/** Flip the whole mesh if it came out inside-out (signed volume < 0). */
+function orient(geo) {
+  let v = 0;
+  for (const [a, b, c] of geo.indices) {
+    const A = geo.positions[a], B = geo.positions[b], C = geo.positions[c];
+    v += A[0] * (B[1] * C[2] - B[2] * C[1]) - A[1] * (B[0] * C[2] - B[2] * C[0]) + A[2] * (B[0] * C[1] - B[1] * C[0]);
+  }
+  if (v < 0) geo.indices = geo.indices.map(([a, b, c]) => [a, c, b]);
+  return geo;
+}
+
+/** Drop zero-area faces before they ever reach the writer. */
+function clean(geo) {
+  const out = [];
+  for (const [a, b, c] of geo.indices) {
+    const A = geo.positions[a], B = geo.positions[b], C = geo.positions[c];
+    const ux = B[0] - A[0], uy = B[1] - A[1], uz = B[2] - A[2];
+    const vx = C[0] - A[0], vy = C[1] - A[1], vz = C[2] - A[2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    if (Math.hypot(nx, ny, nz) > 1e-9) out.push([a, b, c]);
+  }
+  geo.indices = out;
+  return geo;
+}
+
+/** Surface of revolution around +Y. `profile` is [[radius, y], ...] upward. */
+function lathe(profile, seg = 12) {
+  const rings = [];
+  const p = profile.slice();
+  if (p[0][0] > 1e-6) rings.push({ pole: [0, p[0][1], 0] });
+  for (const [r, y] of p) {
+    if (r <= 1e-6) { rings.push({ pole: [0, y, 0] }); continue; }
+    const pts = [];
+    for (let i = 0; i < seg; i += 1) { const a = (i / seg) * TAU; pts.push([Math.cos(a) * r, y, Math.sin(a) * r]); }
+    rings.push({ pts });
+  }
+  if (p[p.length - 1][0] > 1e-6) rings.push({ pole: [0, p[p.length - 1][1], 0] });
+  return clean(loft(rings));
+}
+
+const sphereCache = new Map();
+/** Unit-radius UV sphere. seg≥10 / ring≥5 keeps every crease under 40°. */
+function sphereGeo(seg = 10, ring = 5) {
+  const key = `${seg}:${ring}`;
+  if (sphereCache.has(key)) return sphereCache.get(key);
+  const profile = [];
+  for (let i = 0; i <= ring; i += 1) {
+    const phi = (i / ring) * Math.PI;
+    profile.push([Math.sin(phi), -Math.cos(phi)]);
+  }
+  const geo = lathe(profile, seg);
+  sphereCache.set(key, geo);
+  return geo;
+}
+
+/**
+ * Tapered tube from y=0 to y=h. The segment count has a floor: a capped tube
+ * below 9 sides meets its own rim at more than 40° on half its edges, which is
+ * exactly what the audit calls faceted. Nine sides costs 16 more triangles and
+ * halves that.
+ */
+function tubeGeo(r1, r2, h, seg = 12, bulge = 0) {
+  seg = Math.max(9, seg);
+  const profile = [];
+  const rows = bulge ? 5 : 2;
+  for (let i = 0; i < rows; i += 1) {
+    const t = i / (rows - 1);
+    const r = r1 + (r2 - r1) * t + bulge * Math.sin(Math.PI * t);
+    profile.push([Math.max(1e-5, r), t * h]);
+  }
+  return lathe(profile, seg);
+}
+
+/** Proper cone: apex is a single pole, so no zero-area fan. */
+function coneGeo(r, h, seg = 12) {
+  return lathe([[r, 0], [0, h]], Math.max(9, seg));
+}
+
+/** Dome / cap: a squashed half-sphere with a chosen rim flare. */
+function capGeo(r, h, seg = 12, ring = 5, shape = "dome") {
+  const profile = [];
+  for (let i = 0; i <= ring; i += 1) {
+    const t = i / ring;
+    let rr, y;
+    if (shape === "bell") { rr = r * Math.sin((1 - t) * Math.PI * 0.5) ** 0.7; y = h * t; }
+    else if (shape === "flat") { rr = r * Math.cos(t * Math.PI * 0.5) ** 0.35; y = h * Math.sin(t * Math.PI * 0.5); }
+    else if (shape === "funnel") { rr = r * (0.35 + 0.65 * (1 - t) ** 1.6); y = h * (t - 0.5 * Math.sin(t * Math.PI)); }
+    else if (shape === "cone") { rr = r * (1 - t); y = h * t; }
+    else { rr = r * Math.cos(t * Math.PI * 0.5) ** 0.6; y = h * Math.sin(t * Math.PI * 0.5); }
+    profile.push([rr, y]);
+  }
+  profile[profile.length - 1][0] = 0;
+  return lathe(profile, seg);
+}
+
+/** Very flat cylinder — eyes, pupils, blush. 4·seg triangles. */
+function discGeo(r, t, seg = 8) {
+  return lathe([[r, 0], [r * 0.92, t]], Math.max(10, seg));
+}
+
+const LEAF_PROF = {
+  lanceolate: (t) => Math.sin(Math.PI * t) ** 0.72 * (1.18 - 0.5 * t),
+  elliptic: (t) => Math.sin(Math.PI * t) ** 0.8,
+  ovate: (t) => Math.sin(Math.PI * t) ** 0.6 * (1.25 - 0.6 * t),
+  obovate: (t) => Math.sin(Math.PI * t) ** 0.6 * (0.6 + 0.6 * t),
+  linear: (t) => Math.sin(Math.PI * t) ** 0.22,
+  orbicular: (t) => Math.sin(Math.PI * t) ** 1.05,
+  spatulate: (t) => Math.sin(Math.PI * t) ** 0.45 * (0.32 + 0.95 * t * t),
+  cordate: (t) => Math.sin(Math.PI * t) ** 0.5 * (1.05 - 0.55 * t) * (1 + 0.55 * Math.exp(-(((t - 0.13) / 0.1) ** 2))),
+  hastate: (t) => Math.sin(Math.PI * t) ** 0.45 * (0.85 - 0.35 * t) * (1 + 0.9 * Math.exp(-(((t - 0.08) / 0.055) ** 2))),
+  falcate: (t) => Math.sin(Math.PI * t) ** 0.85 * (1.1 - 0.45 * t),
+  needle: (t) => Math.sin(Math.PI * t) ** 0.15,
+};
+const LEAF_SHAPE = Object.keys(LEAF_PROF);
+
+/**
+ * One blade, base at the origin, running along +Z. `bend` arches it up/down,
+ * `sweep` curves it sideways (falcate leaves), `fold` gives it a V channel.
+ */
+function bladeGeo({ len, wid, thick, shape = "lanceolate", rows = 5, ring = 4, bend = 0, sweep = 0, fold = 0 }) {
+  const prof = LEAF_PROF[shape] ?? LEAF_PROF.lanceolate;
+  const rings = [];
+  for (let i = 0; i <= rows; i += 1) {
+    const t = i / rows;
+    const p = Math.max(0, prof(t));
+    const w = (wid / 2) * p;
+    const th = (thick / 2) * (0.35 + 0.65 * Math.sqrt(p));
+    const z = t * len;
+    const cy = bend * t * t;
+    const cx = sweep * t * t;
+    if (w < 1e-5) { rings.push({ pole: [cx, cy, z] }); continue; }
+    const pts = [];
+    for (let m = 0; m < ring; m += 1) {
+      const a = (m / ring) * TAU;
+      const x = Math.cos(a) * w;
+      pts.push([cx + x, cy + Math.sin(a) * th + fold * (x / Math.max(1e-6, wid / 2)) ** 2 * wid * 0.5, z]);
+    }
+    rings.push({ pts });
+  }
+  return clean(loft(rings));
+}
+
+/** Round tube swept along an arc in the YZ plane — smiles, tendrils, rachis. */
+function arcTubeGeo({ R, r, a0, a1, segs = 8, ring = 6 }) {
+  ring = Math.max(6, ring);
+  const rings = [];
+  rings.push({ pole: [0, Math.sin(a0) * R, Math.cos(a0) * R] });
+  for (let i = 0; i <= segs; i += 1) {
+    const a = a0 + ((a1 - a0) * i) / segs;
+    const cy = Math.sin(a) * R, cz = Math.cos(a) * R;
+    const uy = Math.cos(a), uz = -Math.sin(a);
+    const pts = [];
+    for (let m = 0; m < ring; m += 1) {
+      const b = (m / ring) * TAU;
+      pts.push([Math.cos(b) * r, cy + uy * Math.sin(b) * r, cz + uz * Math.sin(b) * r]);
+    }
+    rings.push({ pts });
+  }
+  rings.push({ pole: [0, Math.sin(a1) * R, Math.cos(a1) * R] });
+  return clean(loft(rings));
+}
+
+/** Transform a geometry: scale, then rotate X→Y→Z, then translate. */
+function xf(geo, { s, sx = 1, sy = 1, sz = 1, rx = 0, ry = 0, rz = 0, at = [0, 0, 0] } = {}) {
+  const ax = s ?? sx, ay = s ?? sy, az = s ?? sz;
+  const cx = Math.cos(rx), snx = Math.sin(rx);
+  const cy = Math.cos(ry), sny = Math.sin(ry);
+  const cz = Math.cos(rz), snz = Math.sin(rz);
+  const positions = geo.positions.map((p) => {
+    let x = p[0] * ax, y = p[1] * ay, z = p[2] * az;
+    let t = y * cx - z * snx; z = y * snx + z * cx; y = t;
+    t = x * cy + z * sny; z = -x * sny + z * cy; x = t;
+    t = x * cz - y * snz; y = x * snz + y * cz; x = t;
+    return [x + at[0], y + at[1], z + at[2]];
+  });
+  return { positions, indices: geo.indices };
+}
+
+function boxOf(positions) {
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (const p of positions) for (let i = 0; i < 3; i += 1) { if (p[i] < lo[i]) lo[i] = p[i]; if (p[i] > hi[i]) hi[i] = p[i]; }
+  return { lo, hi };
+}
+
+/* ══ the signature lattice ═════════════════════════════════════════════════ */
+
+const UNIT = 8;                  // band composition granularity → 0.125 per unit
+const SPINE_BAND = 3;            // an axis spanning [0,1] has its centre here
+const P_LEVEL = [8, 16, 24, 32]; // part counts → signature dim 0 at 0.2 steps
+// sizeX/sizeY levels: 0.132 apart once divided by 3, so two plants that differ
+// only in silhouette still clear the 0.12 distinctness floor.
+const ASPECT = [0.15, 0.546, 0.942, 1.338, 1.734, 2.13, 2.526, 2.922];
+/** Bumped when the lattice needs re-seeding to shake out a hash collision. */
+const SALT_VERSION = "v1";
+
+/**
+ * FNV-1a alone is not enough here: its low bits depend only on the low bits of
+ * the input, so `H("part") % 4` and `H("comp") % 792` came out correlated and
+ * the lattice collapsed to a fraction of its size. Finalise with an avalanche.
+ */
+function mix32(x) {
+  let v = x >>> 0;
+  v = (v ^ (v >>> 16)) >>> 0;
+  v = Math.imul(v, 0x7feb352d) >>> 0;
+  v = (v ^ (v >>> 15)) >>> 0;
+  v = Math.imul(v, 0x846ca68b) >>> 0;
+  v = (v ^ (v >>> 16)) >>> 0;
+  return v;
+}
+
+function binom(n, k) {
+  if (k < 0 || k > n) return 0;
+  let r = 1;
+  for (let i = 0; i < k; i += 1) r = (r * (n - i)) / (i + 1);
+  return Math.round(r);
+}
+const compCount = (m, n) => binom(m + n - 1, n - 1);
+function unrankComp(rank, m, n) {
+  const out = [];
+  let rem = m, r = rank % compCount(m, n);
+  for (let i = 0; i < n - 1; i += 1) {
+    let v = 0;
+    for (;;) {
+      const c = compCount(rem - v, n - i - 1);
+      if (r < c || rem - v === 0) break;
+      r -= c; v += 1;
+    }
+    out.push(v); rem -= v;
+  }
+  out.push(rem);
+  return out;
+}
+
+/**
+ * Decode the species into a lattice cell + a pile of free-form style dials.
+ * `bands` restricts which height bands an archetype is allowed to load, so a
+ * palm never grows fronds at ankle height.
+ */
+function plan(k, style) {
+  const name = k.spec.scientific_name ?? k.spec.species_code;
+  const H = (s) => mix32(hash32(`${name}|${style.salt}|${SALT_VERSION}|${s}`));
+  const u = (s) => (H(s) % 100003) / 100003;
+  const of = (arr, s) => arr[H(s) % arr.length];
+
+  const pLevel = style.pLevel ?? P_LEVEL;
+  const P = pLevel[H("part") % pLevel.length];
+  const ax = (style.axSet ?? ASPECT)[H("aspx") % (style.axSet ?? ASPECT).length];
+  const az = (style.azSet ?? ASPECT)[H("aspz") % (style.azSet ?? ASPECT).length];
+
+  const bands = style.bands ?? [0, 1, 2, 3, 4, 5];
+  const free = unrankComp(H("comp"), UNIT - 1, bands.length);
+  const comp = [0, 0, 0, 0, 0, 0];
+  bands.forEach((b, i) => { comp[b] += free[i]; });
+  comp[SPINE_BAND] += 1;
+
+  const mult = P / UNIT;
+  const slot = [];
+  for (let b = 0; b < 6; b += 1) {
+    const n = comp[b] * mult;
+    for (let i = 0; i < n; i += 1) slot.push({ band: b, i, n });
+  }
+  return { P, ax, az, comp, slot, H, u, of, name };
+}
+
+/* ══ the plant builder ═════════════════════════════════════════════════════ */
+
+class Plant {
+  constructor(k, col, style) {
+    this.k = k;
+    this.col = col;
+    this.style = style;
+    this.plan = plan(k, style);
+    this.body = k.cute.node("body", { parent: k.root });
+    this.node = [];
+    this.spineNode = null;
+    // triangle budget per decorative part, so even a 32-part model stays under
+    // ~110 kB: the axis and its face cost about 420, the rest is shared out.
+    this.budget = Math.max(30, Math.round(1000 / (this.plan.P - 1)));
+    this.tri = 0;
+    this.triCap = 980;
+  }
+
+  /** A fresh part node sitting on the axis. */
+  part(name) {
+    const n = this.k.cute.node(name, { parent: this.body, at: [0, 0, 0] });
+    this.node.push(n);
+    return n;
+  }
+
+  /**
+   * Geometry goes in unless the model has already spent its triangle ceiling
+   * and this node has something to show — a part is never left empty, because
+   * an empty node would silently change the planned part count.
+   */
+  add(node, geo, opts = {}, force = false) {
+    if (geo.indices.length === 0) return node;
+    if (!force && this.tri + geo.indices.length > this.triCap) return node;
+    this.tri += geo.indices.length;
+    this.k.cute.add(node, geo, opts);
+    return node;
+  }
+
+  localBox(node) {
+    let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+    for (const p of node.parts) {
+      const b = boxOf(p.positions);
+      for (let i = 0; i < 3; i += 1) { lo[i] = Math.min(lo[i], b.lo[i]); hi[i] = Math.max(hi[i], b.hi[i]); }
+    }
+    return { lo, hi };
+  }
+
+  /**
+   * Connectivity insurance. Every part node sits on the axis, so a part whose
+   * box already straddles x=z=0 is guaranteed to touch the axis part. When a
+   * decoration sits off to one side, grow a thin pedicel back to the origin —
+   * cheaper and more honest than mirroring the whole thing.
+   */
+  anchor(node, color) {
+    if (!node.parts.length) return;
+    const { lo, hi } = this.localBox(node);
+    if (lo[0] <= 0.002 && hi[0] >= -0.002 && lo[2] <= 0.002 && hi[2] >= -0.002) return;
+    const c = [(lo[0] + hi[0]) / 2, Math.min(hi[1], Math.max(lo[1], 0)), (lo[2] + hi[2]) / 2];
+    const len = Math.hypot(c[0], c[1], c[2]);
+    if (len < 1e-5) return;
+    const rx = Math.acos(Math.max(-1, Math.min(1, c[1] / len)));
+    const ry = Math.atan2(c[0], c[2]);
+    const w = Math.max(0.003, len * 0.06);
+    this.add(node, xf(tubeGeo(w, w * 0.8, len, 5), { rx, ry }), { color }, true);
+  }
+
+  /** Squash + slide the finished part so its box centre lands inside `band`. */
+  place(node, band, i, n) {
+    if (node.parts.length === 0) return;
+    const target = (band + 0.35 + (0.55 * (i + 0.5)) / Math.max(1, n)) / 6;
+    const { lo, hi } = this.localBox(node);
+    const cy = (lo[1] + hi[1]) / 2;
+    const half = (hi[1] - lo[1]) / 2;
+    const maxHalf = Math.min(target, 1 - target) * 0.995;
+    if (half > maxHalf && half > 1e-6) {
+      const s = maxHalf / half;
+      for (const p of node.parts) p.positions = p.positions.map((q) => [q[0], cy + (q[1] - cy) * s, q[2]]);
+    }
+    node.at[1] = target - cy;
+  }
+
+  /** The axis: spans [0,1] exactly, so it fixes the model's height band grid. */
+  spine(name, build) {
+    const n = this.part(name);
+    build(n);
+    const { lo, hi } = this.localBox(n);
+    const span = Math.max(1e-6, hi[1] - lo[1]);
+    if (Math.abs(span - 1) > 1e-9 || Math.abs(lo[1]) > 1e-9) {
+      const s = 1 / span;
+      for (const p of n.parts) p.positions = p.positions.map((q) => [q[0], (q[1] - lo[1]) * s, q[2]]);
+    }
+    n.at[1] = 0;
+    this.spineNode = n;
+    return n;
+  }
+
+  /** Normalise the silhouette to the planned aspect and the archetype height. */
+  finish() {
+    let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+    for (const n of this.node) {
+      if (!n.parts.length) continue;
+      const b = this.localBox(n);
+      for (let i = 0; i < 3; i += 1) {
+        lo[i] = Math.min(lo[i], b.lo[i] + (i === 1 ? n.at[1] : 0));
+        hi[i] = Math.max(hi[i], b.hi[i] + (i === 1 ? n.at[1] : 0));
+      }
+    }
+    const H = this.style.height ?? 0.5;
+    const wx = Math.max(0.02, hi[0] - lo[0]);
+    const wz = Math.max(0.02, hi[2] - lo[2]);
+    const sx = (this.plan.ax * H) / wx;
+    const sz = (this.plan.az * H) / wz;
+    this.body.scale = [sx, H, sz];
+    this.body.at = [-((lo[0] + hi[0]) / 2) * sx, 0, -((lo[2] + hi[2]) / 2) * sz];
+  }
+}
+
+/* ══ shared part vocabulary ════════════════════════════════════════════════ */
+
+/**
+ * The kawaii face, merged into whichever part carries it — costs no part slot.
+ * Discs, not spheres: an eye is read head-on, and a disc is 32 triangles where
+ * a smooth ball is 80. The whole face lands around 230.
+ */
+function addFace(p, node, { at = [0, 0, 0], r, yaw = 0 }) {
+  const eyeR = r * 0.44;
+  const cy = Math.cos(yaw), sy = Math.sin(yaw);
+  const rot = (x, z) => [x * cy + z * sy, -x * sy + z * cy];
+  const put = (geo, o) => p.add(node, xf(geo, { rx: Math.PI / 2, ry: yaw, ...o, at: [at[0] + o.at[0], at[1] + o.at[1], at[2] + o.at[2]] }), { color: o.color });
+  for (const side of [1, -1]) {
+    const [ex, ez] = rot(side * r * 0.52, r * 0.92);
+    put(discGeo(eyeR, r * 0.05, 8), { sz: 1.35, at: [ex, r * 0.12, ez], color: paper });
+    put(discGeo(eyeR * 0.52, r * 0.04, 7), { sz: 1.3, at: [ex, r * 0.08, ez + r * 0.05], color: ink });
+    const [kx, kz] = rot(side * r * 0.52 + r * 0.1, r * 1.02);
+    put(discGeo(eyeR * 0.24, r * 0.03, 5), { at: [kx, r * 0.25, kz], color: paper });
+    const [bx, bz] = rot(side * r * 1.0, r * 0.6);
+    put(discGeo(r * 0.2, r * 0.03, 6), { sz: 0.6, at: [bx, -r * 0.24, bz], color: BLUSH });
+  }
+  const [mx, mz] = rot(0, r * 0.96);
+  p.add(node, xf(arcTubeGeo({ R: r * 0.3, r: r * 0.055, a0: Math.PI * 0.74, a1: Math.PI * 1.26, segs: 5, ring: 4 }),
+    { rx: Math.PI / 2, ry: yaw, at: [at[0] + mx, at[1] - r * 0.16, at[2] + mz] }), { color: ink });
+}
+
+/**
+ * A leaf part: petiole from the axis out to a blade (or a compound of blades).
+ * Always contains the origin, so the part can never float off the plant.
+ */
+function addLeaf(p, node, o) {
+  const {
+    at = [0, 0, 0], yaw = 0, pitch = 0, roll = 0,
+    len, wid, thick = null, shape = "lanceolate", form = "simple",
+    color, colorFn, stalkColor, stalk = 0.25, leaflet = 5,
+    bend = 0, sweep = 0, fold = 0, tri = 64,
+  } = o;
+  const th = thick ?? Math.max(0.004, wid * 0.16);
+  const wantPet = stalk > 0.02 && tri >= 44;
+  const petLen = wantPet ? len * stalk : 0;
+  let left = tri - (wantPet ? 20 : 0);
+  const ring = 4;
+  // rows from the triangle allowance: a blade costs 2·ring·rows
+  const rowsFor = (t) => Math.max(2, Math.min(8, Math.floor(t / (2 * ring))));
+
+  if (wantPet) {
+    p.add(node, xf(xf(tubeGeo(th * 0.75, th * 0.55, petLen, 5), { rx: Math.PI / 2 }), { rx: pitch, ry: yaw, rz: roll, at }), { color: stalkColor ?? color });
+  }
+  const geos = [];
+  const blade = (bl, bw, bs, off, ry2, t, extraBend = 0) => {
+    const rows = rowsFor(t);
+    if (rows < 2) return;
+    left -= 2 * ring * rows;
+    geos.push(xf(bladeGeo({ len: bl, wid: bw, thick: th, shape: bs, rows, ring, bend: bend + extraBend, sweep, fold }), { ry: ry2 ?? 0, at: off }));
+  };
+  const body = len - petLen;
+  if (form === "trifoliate" && left >= 60) {
+    const each = left / 3;
+    blade(body * 0.82, wid * 0.8, shape, [0, 0, petLen], 0, each);
+    for (const s of [1, -1]) blade(body * 0.66, wid * 0.7, shape, [0, 0, petLen * 0.92], s * 0.85, each);
+  } else if (form === "palmate" && left >= 80) {
+    const nlf = Math.max(3, Math.min(7, Math.min(leaflet, Math.floor(left / 22))));
+    const each = left / nlf;
+    for (let i = 0; i < nlf; i += 1) {
+      const a = (i / (nlf - 1) - 0.5) * 1.9;
+      blade(body * (1 - 0.22 * Math.abs(a)), wid * 0.5, shape, [0, 0, petLen], a, each);
+    }
+  } else if ((form === "pinnate" || form === "frond") && left >= 80) {
+    geos.push(xf(tubeGeo(th * 0.6, th * 0.3, body, 5), { rx: Math.PI / 2, at: [0, 0, petLen] }));
+    left -= 20;
+    const nlf = Math.max(2, Math.min(9, Math.min(leaflet, Math.floor(left / 18))));
+    const each = left / (nlf * 2);
+    for (let i = 0; i < nlf; i += 1) {
+      const t = (i + 0.7) / (nlf + 0.4);
+      const ll = body * (form === "frond" ? 0.52 : 0.44) * (1 - 0.5 * Math.abs(t - 0.42));
+      for (const s of [1, -1]) blade(ll, wid * 0.46, form === "frond" ? "linear" : shape, [0, 0, petLen + t * body], s * (1.05 + 0.25 * t), each, -0.15 * ll);
+    }
+  } else if (form === "lobed" && left >= 60) {
+    blade(body, wid, shape, [0, 0, petLen], 0, left * 0.5);
+    for (const s of [1, -1]) blade(body * 0.42, wid * 0.42, "ovate", [0, 0, petLen + body * 0.2], s * 1.15, left * 0.25);
+  } else {
+    blade(body, wid, shape, [0, 0, petLen], 0, left);
+  }
+  for (const g of geos) p.add(node, xf(g, { rx: pitch, ry: yaw, rz: roll, at }), { color, colorFn });
+  return node;
+}
+
+/** Flower / fruit heads. All compound, all anchored back to the origin. */
+function addFlower(p, node, o) {
+  const { at = [0, 0, 0], kind = "daisy", r = 0.08, color, color2, stalkColor, pitch = 0, yaw = 0, stalkLen = 0, tri = 90 } = o;
+  const c2 = color2 ?? shade(color, 0.25);
+  const fine = tri >= 110;
+  const sph = ballGeo(tri * 0.6);
+  const petRows = tri >= 130 ? 4 : tri >= 80 ? 3 : 2;
+  const put = (geo, extra = {}) => p.add(node, xf(geo, { rx: pitch, ry: yaw, at, ...extra }), { color: extra.color ?? color });
+  if (stalkLen > 0.004 && tri >= 60) {
+    p.add(node, xf(tubeGeo(r * 0.13, r * 0.1, stalkLen, 6), { rx: pitch * 0.5, ry: yaw, at: [at[0], at[1] - stalkLen, at[2]] }), { color: stalkColor ?? shade(color, -0.4) });
+  }
+  if (tri < 58) {
+    // a bud: three little petal scales. Reads as a flower at gallery size and
+    // costs what one leaf costs, which is all a 32-part plant can spare.
+    for (let i = 0; i < 3; i += 1) {
+      put(xf(bladeGeo({ len: r * 0.9, wid: r * 0.6, thick: r * 0.3, shape: "ovate", rows: 2, ring: 4 }), { rx: -1.1, ry: (i / 3) * TAU }), { color: i % 2 ? color : c2 });
+    }
+    return node;
+  }
+  const petal = (n, pl, pw, tilt, col) => {
+    const cnt = Math.max(3, Math.min(n, Math.floor(tri / (2 * 4 * petRows))));
+    for (let i = 0; i < cnt; i += 1) {
+      const a = (i / cnt) * TAU;
+      put(xf(bladeGeo({ len: pl, wid: pw, thick: pw * 0.32, shape: "obovate", rows: petRows, ring: 4 }), { rx: -tilt, ry: a }), { color: col });
+    }
+  };
+  if (kind === "daisy") {
+    petal(Math.max(6, Math.min(12, Math.round(r * 110))), r, r * 0.46, 0.2, color);
+    put(xf(sph, { sx: r * 0.4, sy: r * 0.24, sz: r * 0.4, at: [0, r * 0.05, 0] }), { color: c2 });
+  } else if (kind === "star") {
+    petal(5, r * 1.05, r * 0.4, 0.35, color);
+    put(xf(sph, { s: r * 0.2 }), { color: c2 });
+  } else if (kind === "bell") {
+    put(xf(capGeo(r * 0.85, r * 1.1, fine ? 12 : 9, 4, "bell"), { rx: Math.PI, at: [0, r * 1.0, 0] }), { color });
+    put(xf(sph, { s: r * 0.16, at: [0, r * 0.1, 0] }), { color: c2 });
+  } else if (kind === "trumpet") {
+    put(xf(capGeo(r * 0.9, r * 1.5, fine ? 12 : 9, 4, "funnel"), { rx: -Math.PI * 0.35 }), { color });
+    put(xf(sph, { s: r * 0.24, at: [0, r * 0.35, 0] }), { color: c2 });
+  } else if (kind === "spike") {
+    const n = Math.max(3, Math.min(6, Math.floor(tri / (fine ? 80 : 48))));
+    for (let i = 0; i < n; i += 1) {
+      const t = i / Math.max(1, n - 1);
+      put(xf(sph, { sx: r * 0.4 * (1 - 0.6 * t), sy: r * 0.34, sz: r * 0.4 * (1 - 0.6 * t), at: [0, r * 0.4 + i * r * (2.4 / n), 0] }), { color: i % 2 ? color : c2 });
+    }
+  } else if (kind === "ball" || kind === "brush") {
+    put(xf(sph, { s: r * 0.55 }), { color: c2 });
+    const n = Math.max(3, Math.min(kind === "brush" ? 12 : 9, Math.floor(tri / (fine ? 80 : 44))));
+    for (let i = 0; i < n; i += 1) {
+      const a = (i / n) * TAU * 1.618;
+      const b = Math.acos(1 - (2 * (i + 0.5)) / n);
+      const d = [Math.cos(a) * Math.sin(b), Math.cos(b) * 0.8 + 0.2, Math.sin(a) * Math.sin(b)];
+      if (kind === "brush") put(xf(tubeGeo(r * 0.05, r * 0.03, r * 0.8, 5), { rx: Math.acos(Math.max(-1, Math.min(1, d[1]))), ry: Math.atan2(d[0], d[2]) }), { color });
+      else put(xf(sph, { s: r * 0.24, at: [d[0] * r * 0.6, d[1] * r * 0.6, d[2] * r * 0.6] }), { color });
+    }
+  } else if (kind === "berry") {
+    const n = Math.max(2, Math.min(5, Math.floor(tri / (fine ? 80 : 44))));
+    for (let i = 0; i < n; i += 1) {
+      const a = (i / n) * TAU;
+      put(xf(sph, { s: r * 0.38, at: [Math.cos(a) * r * 0.45, r * 0.1 + (i % 2) * r * 0.3, Math.sin(a) * r * 0.45] }), { color: i % 2 ? color : c2 });
+    }
+  } else if (kind === "pea") {
+    put(xf(sph, { sx: r * 0.62, sy: r * 0.5, sz: r * 0.22, at: [0, r * 0.5, 0], rx: -0.35 }), { color });
+    for (const s of [1, -1]) put(xf(sph, { sx: r * 0.3, sy: r * 0.2, sz: r * 0.42, at: [s * r * 0.42, r * 0.1, r * 0.08], rz: s * 0.5 }), { color: c2 });
+    put(xf(sph, { sx: r * 0.3, sy: r * 0.22, sz: r * 0.4, at: [0, -r * 0.1, r * 0.12] }), { color: shade(color, -0.15) });
+  } else if (kind === "umbel") {
+    const n = Math.max(3, Math.min(7, Math.floor(tri / (fine ? 105 : 68))));
+    for (let i = 0; i < n; i += 1) {
+      const a = (i / n) * TAU;
+      const rr = i === 0 ? 0 : r * 0.72;
+      put(xf(tubeGeo(r * 0.05, r * 0.04, r * 0.7, 5), { rz: -Math.cos(a) * 0.75, rx: Math.sin(a) * 0.75 }), { color: stalkColor ?? shade(color, -0.4) });
+      put(xf(sph, { sx: r * 0.26, sy: r * 0.16, sz: r * 0.26, at: [Math.cos(a) * rr, r * 0.62, Math.sin(a) * rr] }), { color: i % 2 ? color : c2 });
+    }
+  } else if (kind === "cup") {
+    put(xf(capGeo(r * 0.9, r * 0.8, fine ? 12 : 9, 4, "funnel"), {}), { color });
+    put(xf(sph, { sx: r * 0.5, sy: r * 0.14, sz: r * 0.5, at: [0, r * 0.3, 0] }), { color: c2 });
+  } else if (kind === "catkin") {
+    put(xf(sph, { sx: r * 0.32, sy: r * 1.0, sz: r * 0.32, at: [0, r * 0.7, 0], rx: 0.5 }), { color });
+    put(xf(sph, { sx: r * 0.24, sy: r * 0.6, sz: r * 0.24, at: [r * 0.3, r * 0.4, 0], rz: 0.6 }), { color: c2 });
+  } else if (kind === "orchid") {
+    petal(3, r * 0.95, r * 0.5, 0.15, color);
+    for (const s of [1, -1]) put(xf(bladeGeo({ len: r * 0.8, wid: r * 0.4, thick: r * 0.12, shape: "ovate", rows: petRows, ring: 4 }), { rx: -0.5, ry: s * 2.3 }), { color: c2 });
+    put(xf(capGeo(r * 0.45, r * 0.5, fine ? 10 : 8, 3, "funnel"), { rx: -0.5, at: [0, 0, r * 0.2] }), { color: c2 });
+  } else if (kind === "cone") {
+    put(xf(coneGeo(r * 0.6, r * 1.8, 10), {}), { color });
+    const n = Math.max(2, Math.min(5, Math.floor(tri / (fine ? 90 : 50))));
+    for (let i = 0; i < n; i += 1) put(xf(sph, { sx: r * 0.5 * (1 - i * 0.16), sy: r * 0.14, sz: r * 0.5 * (1 - i * 0.16), at: [0, r * 0.25 + i * r * (1.65 / n), 0] }), { color: i % 2 ? c2 : color });
+  } else if (kind === "fruit") {
+    put(xf(sph, { sx: r * 0.8, sy: r * 0.95, sz: r * 0.8, at: [0, r * 0.5, 0] }), { color });
+    put(xf(tubeGeo(r * 0.08, r * 0.06, r * 0.3, 5), { at: [0, r * 1.2, 0] }), { color: shade(c2, -0.3) });
+  }
+  return node;
+}
+
+/** Small tuft/blob cluster that always straddles the axis. */
+/** Never below 9×5: a coarser ball is more than half hard creases. */
+function ballGeo(tri) {
+  return tri >= 100 ? sphereGeo(10, 5) : sphereGeo(9, 5);
+}
+
+/**
+ * A rounded lump when the budget can pay for a genuinely smooth one, and a fan
+ * of thin blades when it cannot. A cheap low-segment ball is all hard creases,
+ * which is precisely what the audit's "faceted" gate is for; leafy blades stay
+ * smooth at a third of the triangles, and read better on a plant anyway.
+ */
+function addLump(p, node, { at = [0, 0, 0], rx, ry, rz, color, colorFn, tri = 100, yaw = 0 }) {
+  if (tri >= 74) {
+    p.add(node, xf(ballGeo(tri), { sx: rx, sy: ry, sz: rz, at }), { color, colorFn });
+    return;
+  }
+  const n = Math.max(2, Math.min(4, Math.floor(tri / 26)));
+  const rows = tri >= 44 ? 3 : 2;
+  for (let i = 0; i < n; i += 1) {
+    const a = yaw + (i / n) * TAU;
+    p.add(node, xf(bladeGeo({ len: rz * 1.8, wid: rx * 1.6, thick: ry * 0.9, shape: "elliptic", rows, ring: 4 }),
+      { rx: 0.35 - 0.7 * (i % 2), ry: a, at: [at[0], at[1], at[2]] }), { color, colorFn });
+  }
+}
+
+/** A flat cap/shelf: a real dome when affordable, a thick lens when not. */
+function addCap(p, node, { at = [0, 0, 0], r, h, shape = "dome", color, colorFn, tri = 140, rx = 0, ry = 0, sz = 1 }) {
+  if (tri >= 96) {
+    p.add(node, xf(capGeo(r, h, tri >= 150 ? 14 : 11, 5, shape), { sz, rx, ry, at }), { color, colorFn });
+  } else {
+    const lens = xf(bladeGeo({ len: r * 2, wid: r * 2, thick: h * 0.8, shape: "orbicular", rows: tri >= 52 ? 4 : 3, ring: 6 }), { at: [0, 0, -r] });
+    p.add(node, xf(lens, { sz, rx, ry, at: [at[0], at[1] + h * 0.35, at[2]] }), { color, colorFn });
+  }
+}
+
+function addTuft(p, node, { at = [0, 0, 0], r, n = 3, color, color2, squash = 1, tri = 120 }) {
+  n = Math.max(2, Math.min(n, Math.max(2, Math.floor(tri / 60))));
+  for (let i = 0; i < n; i += 1) {
+    const a = (i / n) * TAU;
+    const d = i === 0 ? 0 : r * 0.85;
+    addLump(p, node, {
+      rx: r * (0.7 + (0.3 * ((i * 7) % 3)) / 3), ry: r * squash, rz: r * 0.9, yaw: a, tri: tri / n,
+      at: [at[0] + Math.cos(a) * d, at[1] + (i % 2) * r * 0.3, at[2] + Math.sin(a) * d],
+      color: i % 2 ? color : color2 ?? color,
+    });
+  }
+  return node;
+}
+
+/* ══ style plumbing ════════════════════════════════════════════════════════ */
+
+const PHYLLO = ["alternate", "opposite", "whorled", "rosette", "spiral", "distichous"];
+
+/** Azimuth for slot `g`, per the plant's phyllotaxy. */
+function azimuth(pl, g, band, i, n) {
+  const base = pl.u("az0") * TAU;
+  switch (pl.phyllo) {
+    case "opposite": return base + Math.floor(g / 2) * 1.5708 + (g % 2) * Math.PI;
+    case "whorled": return base + (i / Math.max(1, n)) * TAU + band * 0.7;
+    case "rosette": return base + g * 2.399;
+    case "distichous": return base + (g % 2) * Math.PI + (g % 4 < 2 ? 0.16 : -0.16);
+    case "spiral": return base + g * 1.875;
+    default: return base + g * 2.399963;
+  }
+}
+
+/** Elliptical reach so the natural silhouette already sits near the target. */
+function reachOf(pl, a, scale = 1) {
+  const rx = (pl.ax / 2) * scale;
+  const rz = (pl.az / 2) * scale;
+  return Math.hypot(Math.cos(a) * rx, Math.sin(a) * rz);
+}
+
+function leafPalette(pl, col) {
+  const base = leafOf(col);
+  const deep = leafDeep(col);
+  const tone = pl.u("tone");
+  return {
+    leaf: tone > 0.72 ? shade(base, 0.16) : tone < 0.24 ? mix(base, deep, 0.5) : base,
+    deep,
+    grad: grad(shade(base, 0.22), deep, -0.02, 0.06),
+  };
+}
+
+/** Common driver: decode the plan, build the axis, fill every slot, normalise. */
+function grow(k, col, style) {
+  const p = new Plant(k, col, style);
+  const pl = p.plan;
+  pl.phyllo = style.phyllo ?? PHYLLO[pl.H("phyllo") % PHYLLO.length];
+  pl.pal = leafPalette(pl, col);
+  pl.shape = LEAF_SHAPE[pl.H("shape") % LEAF_SHAPE.length];
+  pl.form = ["simple", "simple", "simple", "trifoliate", "palmate", "pinnate", "lobed"][pl.H("form") % 7];
+  pl.flower = style.flowerKind ?? ["daisy", "star", "bell", "trumpet", "spike", "ball", "berry", "pea", "umbel", "cup", "catkin", "brush", "none"][pl.H("flw") % 13];
+
+  style.spine(p, pl);
+  let g = 0;
+  const top = Math.max(...pl.slot.map((s) => s.band));
+  for (const s of pl.slot) {
+    if (s.band === SPINE_BAND && s.i === 0) {
+      // The axis already occupies the first slot of its band. It must NOT be
+      // re-placed: it spans [0,1] on purpose, and squashing it would move the
+      // model's own height origin and scramble every other part's band.
+      p.spineNode.at[1] = 0;
+      g += 1;
+      continue;
+    }
+    const node = p.part(`p${g}`);
+    const a = azimuth(pl, g, s.band, s.i, s.n);
+    style.slot(p, pl, { node, band: s.band, i: s.i, n: s.n, g, a, top, t: (s.band + 0.5) / 6 });
+    if (!node.parts.length) {
+      // the triangle ceiling bit: give this slot the cheapest honest leaf so
+      // the planned part count still holds
+      p.add(node, xf(bladeGeo({ len: 0.09, wid: 0.045, thick: 0.008, shape: "elliptic", rows: 3, ring: 4 }),
+        { rx: 0.3, ry: a }), { color: pl.pal.deep }, true);
+    }
+    p.anchor(node, pl.pal.deep);
+    p.place(node, s.band, s.i, s.n);
+    g += 1;
+  }
+  p.finish();
+  // idle: the whole plant breathes, a handful of parts sway out of phase
+  k.cute.breathe(k.root, { k: style.breathe ?? 0.02 });
+  const swingable = p.node.filter((n) => n !== p.spineNode && n.parts.length);
+  const step = Math.max(1, Math.ceil(swingable.length / 8));
+  swingable.forEach((n, i) => {
+    if (i % step) return;
+    k.cute.swing(n, { axis: i % 2 ? "x" : "z", amp: style.sway ?? 0.05, dur: 2.1 + (i % 5) * 0.3, phase: (i % 4) * 0.4 });
+  });
+  return p;
+}
+
+/* ══ archetypes ════════════════════════════════════════════════════════════ */
 
 // ---------- trees ----------
 
-function canopyBlobs(k, parent, { top, blobs, leaf, leafDark }) {
-  const nodes = [];
-  for (let i = 0; i < blobs; i += 1) {
-    const h = k.hash(`canopy${i}`);
-    const a = h * Math.PI * 2;
-    const rad = i === 0 ? 0 : 0.16 + h * 0.1;
-    const r = i === 0 ? 0.3 : 0.2 + (1 - h) * 0.08;
-    const node = k.blob(parent, {
-      name: `canopy${i}`, r,
-      at: [Math.cos(a) * rad, top + (i === 0 ? 0 : 0.08 * (1 - h)), Math.sin(a) * rad],
-      color: h > 0.5 ? leaf : leafDark,
-      colorFn: grad(shade(leaf, 0.18), leafDark, -0.3, 0.3),
-      subdiv: 1,
-    });
-    nodes.push(node);
-  }
-  nodes.forEach((n, i) => {
-    k.cute.swing(n, { axis: "x", amp: 0.025, dur: 2.2 + i * 0.3, phase: i * 0.4 });
-  });
-  return nodes;
-}
-
-function fruits(k, parent, { count, color, canopyR = 0.28, top = 0.75 }) {
-  for (let i = 0; i < count; i += 1) {
-    const h1 = k.hash(`fruit${i}a`);
-    const h2 = k.hash(`fruit${i}b`);
-    const a = h1 * Math.PI * 2;
-    const rr = canopyR * (0.7 + h2 * 0.3);
-    k.blob(parent, {
-      name: `fruit${i}`, r: 0.05,
-      at: [Math.cos(a) * rr, top + (h2 - 0.4) * 0.3, Math.sin(a) * rr],
-      color, subdiv: 0,
-    });
-  }
-}
-
 function tree(k, col, opt = {}) {
-  const trunkH = opt.trunkH ?? 0.42;
-  const trunk = k.tube(k.root, {
-    name: "trunk", r: opt.thick ? 0.12 : 0.08, r2: opt.thick ? 0.09 : 0.055,
-    h: trunkH, at: [0, 0, 0], color: trunkOf(col), seg: 7,
+  const canopy = opt.canopy ?? "blob";
+  const thick = opt.thick ? 1.5 : 1;
+  grow(k, col, {
+    salt: `tree:${canopy}`,
+    height: 0.95,
+    breathe: 0.012,
+    sway: 0.03,
+    bands: [1, 2, 3, 4, 5],
+    spine(p, pl) {
+      p.spine("trunk", (node) => {
+        const tr = trunkOf(col);
+        const trunkH = 0.34 + pl.u("th") * 0.26;
+        const r0 = (0.035 + pl.u("tr") * 0.03) * thick;
+        const lean = (pl.u("lean") - 0.5) * 0.1;
+        p.add(node, xf(tubeGeo(r0 * 1.5, r0 * 0.72, trunkH, 12, r0 * 0.12), { rz: lean }), { color: tr, colorFn: grad(shade(tr, 0.12), shade(tr, -0.2), 0, trunkH) });
+        if (canopy === "conifer") {
+          const layers = opt.layers ?? 4 + (pl.H("ly") % 3);
+          p.add(node, xf(tubeGeo(r0 * 0.7, r0 * 0.3, 1 - trunkH, 10), { at: [lean * trunkH, trunkH, 0] }), { color: tr });
+          for (let i = 0; i < layers; i += 1) {
+            const t = i / layers;
+            p.add(node, xf(capGeo(0.3 * (1 - t * 0.72), 0.18, 12, 4, "cone"),
+              { at: [0, trunkH * 0.7 + t * (1 - trunkH * 0.75), 0] }), { color: mix(pl.pal.deep, pl.pal.leaf, t * 0.5) });
+          }
+        } else if (canopy === "umbrella") {
+          for (let i = 0; i < 3; i += 1) {
+            p.add(node, xf(capGeo(0.4 - i * 0.07, 0.16 - i * 0.03, 14, 5, "flat"), { at: [0, trunkH + i * 0.14, (i - 1) * 0.05] }),
+              { color: i % 2 ? pl.pal.deep : pl.pal.leaf, colorFn: grad(shade(pl.pal.leaf, 0.2), pl.pal.deep, trunkH, 1) });
+          }
+        } else {
+          const cr = 0.24 + pl.u("cr") * 0.1;
+          p.add(node, xf(sphereGeo(12, 6), { sx: cr, sy: cr * (0.8 + pl.u("cy") * 0.5), sz: cr, at: [0, 1 - cr * 0.85, 0] }),
+            { color: pl.pal.leaf, colorFn: grad(shade(pl.pal.leaf, 0.2), pl.pal.deep, 0.5, 1) });
+        }
+        addFace(p, node, { at: [0, trunkH * 0.5, r0 * 1.1], r: r0 * 1.5 });
+      });
+    },
+    slot(p, pl, s) {
+      const { node, band, a, t } = s;
+      const kind = band <= 1 ? "root" : band <= 2 ? "branch" : "canopy";
+      if (kind === "root") {
+        const tr = trunkOf(col);
+        for (const sgn of [1]) {
+          p.add(node, xf(tubeGeo(0.02, 0.008, 0.18 + pl.u(`rt${s.g}`) * 0.1, 7), { rz: sgn * 1.05, ry: a, rx: 0.2 }), { color: tr });
+        }
+      } else if (kind === "branch") {
+        const tr = trunkOf(col);
+        for (const sgn of [1]) {
+          p.add(node, xf(tubeGeo(0.016, 0.007, 0.14 + pl.u(`br${s.g}`) * 0.12, 7), { rz: sgn * 0.9, ry: a }), { color: tr });
+        }
+        addTuft(p, node, { tri: p.budget, at: [0, 0.03, 0], r: 0.07, n: 3, color: pl.pal.leaf, color2: pl.pal.deep });
+      } else if (opt.fruit && band >= 4 && s.i % 3 === 0) {
+        const r = reachOf(pl, a, 0.5);
+        for (const sgn of [1]) {
+          addFlower(p, node, { tri: p.budget, at: [Math.cos(a) * r * sgn * 0.5, 0, Math.sin(a) * r * sgn * 0.5], kind: "fruit", r: 0.06, color: flowerOf(col), stalkLen: 0.03 });
+        }
+      } else {
+        const r = reachOf(pl, a, 0.62 + pl.u(`cb${s.g}`) * 0.35);
+        const rr = 0.07 + pl.u(`cs${s.g}`) * 0.07;
+        addLump(p, node, {
+          rx: rr, ry: rr * 0.78, rz: rr, yaw: a, tri: p.budget,
+          at: [Math.cos(a) * r, 0, Math.sin(a) * r],
+          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad,
+        });
+        if (canopy === "balete" && band === 3) {
+          p.add(node, xf(tubeGeo(0.012, 0.006, 0.3, 6), { at: [Math.cos(a) * 0.12, -0.3, Math.sin(a) * 0.12] }), { color: trunkOf(col) });
+        }
+        if (t > 0) { /* keeps t referenced for clarity */ }
+      }
+    },
   });
-  trunkFace(k, trunk, { at: [0, trunkH * 0.55, opt.thick ? 0.1 : 0.075], r: opt.thick ? 0.1 : 0.07 });
-  const leaf = leafOf(col);
-  const leafDark = leafDeep(col);
-
-  if (opt.canopy === "umbrella") {
-    for (const [i, rr] of [0.42, 0.3, 0.2].entries()) {
-      const c = k.blob(trunk, {
-        name: `canopy${i}`, rx: rr, ry: rr * 0.32, rz: rr,
-        at: [0, trunkH + 0.14 - i * 0.04, (i - 1) * 0.1],
-        color: i % 2 ? leafDark : leaf,
-        colorFn: grad(shade(leaf, 0.2), leafDark, -0.15, 0.15),
-      });
-      k.cute.swing(c, { axis: "x", amp: 0.02, dur: 2.6 + i * 0.4, phase: i * 0.5 });
-    }
-  } else if (opt.canopy === "balete") {
-    canopyBlobs(k, trunk, { top: trunkH + 0.16, blobs: 4, leaf, leafDark });
-    for (let i = 0; i < 5; i += 1) {
-      const h = k.hash(`root${i}`);
-      const a = h * Math.PI * 2;
-      const rr = 0.16 + h * 0.18;
-      k.tube(k.root, {
-        name: `aroot${i}`, r: 0.018, h: trunkH + 0.1,
-        at: [Math.cos(a) * rr, 0, Math.sin(a) * rr], rotZ: Math.cos(a) * -0.12, rotX: Math.sin(a) * 0.12,
-        color: trunkOf(col), seg: 5,
-      });
-    }
-  } else if (opt.canopy === "conifer") {
-    const layers = opt.layers ?? 5;
-    for (let i = 0; i < layers; i += 1) {
-      const t = i / (layers - 1);
-      const c = k.blob(trunk, {
-        name: `layer${i}`, rx: 0.34 * (1 - t * 0.75), ry: 0.1, rz: 0.34 * (1 - t * 0.75),
-        at: [0, trunkH + 0.1 + i * 0.14, 0],
-        color: mix(leafDark, leaf, t * 0.4),
-      });
-      k.cute.swing(c, { axis: "z", amp: 0.015, dur: 2.4 + i * 0.2, phase: i * 0.3 });
-    }
-  } else {
-    canopyBlobs(k, trunk, { top: trunkH + 0.14, blobs: opt.blobs ?? 3, leaf, leafDark });
-  }
-  if (opt.fruit) fruits(k, trunk, { count: opt.fruitCount ?? 5, color: flowerOf(col), top: trunkH + 0.15 });
-  k.cute.breathe(k.root, { k: 0.015 });
 }
 
 function papaya(k, col) {
-  const trunk = k.tube(k.root, { name: "trunk", r: 0.05, r2: 0.04, h: 0.5, color: trunkOf(col) });
-  trunkFace(k, trunk, { at: [0, 0.2, 0.048], r: 0.05 });
-  fruits(k, trunk, { count: 5, color: flowerOf(col), canopyR: 0.06, top: 0.24 });
-  for (let i = 0; i < 6; i += 1) {
-    const h = k.hash(`leaf${i}`);
-    const a = h * Math.PI * 2;
-    k.tube(trunk, {
-      name: `petiole${i}`, r: 0.014, h: 0.2,
-      at: [Math.cos(a) * 0.02, 0.52, Math.sin(a) * 0.02], rotZ: Math.cos(a) * 0.8, rotX: Math.sin(a) * 0.8,
-      color: trunkOf(col), seg: 5,
-    });
-    k.blob(trunk, {
-      name: `blade${i}`, rx: 0.16, ry: 0.02, rz: 0.14,
-      at: [Math.cos(a) * 0.17, 0.72, Math.sin(a) * 0.17], rotY: -a,
-      color: leafOf(col), colorFn: grad(shade(leafOf(col), 0.2), leafDeep(col)),
-    });
-  }
-  k.cute.breathe(k.root, { k: 0.015 });
+  grow(k, col, {
+    salt: "papaya",
+    height: 0.8,
+    breathe: 0.014,
+    bands: [1, 2, 3, 4, 5],
+    spine(p, pl) {
+      p.spine("trunk", (node) => {
+        const tr = trunkOf(col);
+        p.add(node, xf(tubeGeo(0.05, 0.032, 0.82, 12)), { color: tr, colorFn: grad(shade(tr, 0.15), shade(tr, -0.2), 0, 0.82) });
+        p.add(node, xf(sphereGeo(12, 5), { sx: 0.06, sy: 0.05, sz: 0.06, at: [0, 0.85, 0] }), { color: pl.pal.deep });
+        addFace(p, node, { at: [0, 0.32, 0.045], r: 0.05 });
+      });
+    },
+    slot(p, pl, s) {
+      const { node, band, a } = s;
+      if (band <= 2) {
+        for (const sgn of [1]) {
+          addFlower(p, node, { tri: p.budget, at: [Math.cos(a) * 0.05 * sgn, 0, Math.sin(a) * 0.05 * sgn], kind: "fruit", r: 0.075, color: flowerOf(col), stalkLen: 0.02 });
+        }
+      } else {
+        const r = reachOf(pl, a, 0.9);
+        addLeaf(p, node, { tri: p.budget,
+          yaw: a, pitch: 0.35 + pl.u(`lp${s.g}`) * 0.4,
+          len: r, wid: r * 0.85, shape: "orbicular", form: "palmate", leaflet: 5 + (s.g % 3),
+          rows: 4, ring: 4, color: pl.pal.leaf, colorFn: pl.pal.grad, stalkColor: pl.pal.deep, stalk: 0.42,
+        });
+      }
+    },
+  });
 }
 
 function palm(k, col, opt = {}) {
-  const trunkH = opt.trunkH ?? 0.52;
-  if (opt.clump) {
-    for (let i = 0; i < 3; i += 1) {
-      const h = k.hash(`stem${i}`);
-      k.tube(k.root, {
-        name: `trunk${i}`, r: 0.035, r2: 0.028, h: trunkH * (0.7 + h * 0.5),
-        at: [(h - 0.5) * 0.2, 0, (k.hash(`stemz${i}`) - 0.5) * 0.2], color: trunkOf(col), seg: 6,
+  grow(k, col, {
+    salt: `palm:${opt.fishtail ? "f" : ""}${opt.clump ? "c" : ""}`,
+    height: 0.9,
+    breathe: 0.012,
+    sway: 0.04,
+    bands: [1, 2, 3, 4, 5],
+    spine(p, pl) {
+      p.spine("trunk", (node) => {
+        const tr = trunkOf(col);
+        const trunkH = 0.5 + pl.u("th") * 0.3;
+        const r0 = 0.028 + pl.u("tr") * 0.026;
+        p.add(node, xf(tubeGeo(r0 * 1.3, r0 * 0.85, trunkH, 12)), { color: tr, colorFn: grad(shade(tr, 0.14), shade(tr, -0.22), 0, trunkH) });
+        const rings = 3 + (pl.H("rg") % 5);
+        for (let i = 1; i <= rings; i += 1) {
+          p.add(node, xf(discGeo(r0 * 1.15, r0 * 0.16, 9), { at: [0, (i / (rings + 1)) * trunkH, 0] }), { color: shade(tr, -0.22) });
+        }
+        // crown reaches the very top, so the trunk part spans the model height
+        p.add(node, xf(sphereGeo(12, 5), { sx: r0 * 1.7, sy: (1 - trunkH) * 0.6, sz: r0 * 1.7, at: [0, trunkH + (1 - trunkH) * 0.4, 0] }), { color: pl.pal.deep });
+        addFace(p, node, { at: [0, trunkH * 0.55, r0 * 1.1], r: r0 * 1.4 });
       });
-    }
-  } else {
-    k.tube(k.root, { name: "trunk", r: 0.045, r2: 0.035, h: trunkH, at: [0, 0, 0], rotZ: 0.03, color: trunkOf(col), seg: 6 });
-  }
-  const crown = k.blob(k.root, { name: "crown", r: 0.02, at: [0, trunkH + 0.05, 0] });
-  trunkFace(k, k.root, { at: [0.02, trunkH * 0.45, 0.05], r: 0.05 });
-  const n = opt.fronds ?? 7;
-  for (let i = 0; i < n; i += 1) {
-    const a = (i / n) * Math.PI * 2 + k.hash(`f${i}`) * 0.5;
-    const droop = 0.55 + k.hash(`d${i}`) * 0.5;
-    k.blob(crown, {
-      name: `frond${i}`, rx: opt.fishtail ? 0.11 : 0.055, ry: 0.018, rz: 0.3,
-      at: [Math.cos(a) * 0.24, -droop * 0.1, Math.sin(a) * 0.24],
-      pivot: [Math.cos(a) * 0.06, 0.04, Math.sin(a) * 0.06],
-      rotX: droop, rotY: Math.PI / 2 - a,
-      color: i % 2 ? leafOf(col) : leafDeep(col),
-      colorFn: grad(shade(leafOf(col), 0.15), leafDeep(col)),
-    });
-  }
-  if (opt.coconut) {
-    for (let i = 0; i < 3; i += 1) {
-      const a = (i / 3) * Math.PI * 2;
-      k.blob(crown, { name: `coco${i}`, r: 0.05, at: [Math.cos(a) * 0.07, -0.03, Math.sin(a) * 0.07], color: hex2("#7a4e2a"), subdiv: 0 });
-    }
-  }
-  k.cute.swing(crown, { axis: "x", amp: 0.03, dur: 2.8 });
-  k.cute.breathe(k.root, { k: 0.012 });
+    },
+    slot(p, pl, s) {
+      const { node, band, a } = s;
+      if (band <= 2) {
+        if (opt.clump) {
+          for (const sgn of [1]) {
+            p.add(node, xf(tubeGeo(0.022, 0.014, 0.3 + pl.u(`sk${s.g}`) * 0.2, 9), { rz: sgn * 0.2, ry: a, at: [Math.cos(a) * 0.05 * sgn, -0.12, Math.sin(a) * 0.05 * sgn] }), { color: trunkOf(col) });
+          }
+        } else {
+          for (const sgn of [1]) {
+            p.add(node, xf(tubeGeo(0.014, 0.006, 0.16, 7), { rz: sgn * 0.9, ry: a }), { color: trunkOf(col) });
+          }
+        }
+      } else if (opt.coconut && band === 3) {
+        for (const sgn of [1]) {
+          addFlower(p, node, { tri: p.budget, at: [Math.cos(a) * 0.06 * sgn, 0, Math.sin(a) * 0.06 * sgn], kind: "fruit", r: 0.07, color: hex("#7a4e2a"), stalkLen: 0.02 });
+        }
+      } else {
+        const r = reachOf(pl, a, 0.95);
+        addLeaf(p, node, { tri: p.budget,
+          yaw: a, pitch: 0.5 + pl.u(`fp${s.g}`) * 0.6,
+          len: r, wid: r * (opt.fishtail ? 0.5 : 0.3), shape: opt.fishtail ? "obovate" : "linear",
+          form: opt.fishtail ? "pinnate" : "frond", leaflet: 4 + (s.g % 5),
+          rows: 4, ring: 4, bend: -r * 0.35,
+          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad, stalkColor: pl.pal.deep, stalk: 0.2,
+        });
+      }
+    },
+  });
 }
-const hex2 = (h) => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
 
 function bananaKind(k, col, opt = {}) {
-  const stem = k.tube(k.root, { name: "pseudostem", r: 0.06, r2: 0.045, h: 0.42, color: mix(trunkOf(col), leafOf(col), 0.5) });
-  trunkFace(k, stem, { at: [0, 0.18, 0.058], r: 0.055 });
-  const n = opt.leaves ?? 5;
-  for (let i = 0; i < n; i += 1) {
-    const a = (i / n) * Math.PI * 2;
-    const droop = 0.5 + k.hash(`b${i}`) * 0.4;
-    k.blob(stem, {
-      name: `leaf${i}`, rx: 0.26, ry: 0.025, rz: 0.11,
-      at: [Math.cos(a) * 0.22, 0.42 - droop * 0.12, Math.sin(a) * 0.22],
-      pivot: [Math.cos(a) * 0.04, 0.42, Math.sin(a) * 0.04],
-      rotX: droop, rotY: Math.PI / 2 - a,
-      color: i % 2 ? leafOf(col) : leafDeep(col),
-      colorFn: grad(shade(leafOf(col), 0.2), leafDeep(col), -0.03, 0.03),
-    });
-  }
-  if (opt.bloom) {
-    k.cone(stem, { name: "bloom", r: 0.06, h: 0.16, at: [0, 0.3, 0.1], rotX: 0.9, color: flowerOf(col) });
-  }
-  k.cute.swing(stem, { axis: "z", amp: 0.02, dur: 2.5 });
-  k.cute.breathe(k.root, { k: 0.012 });
+  grow(k, col, {
+    salt: "banana",
+    height: 0.75,
+    breathe: 0.014,
+    bands: [1, 2, 3, 4, 5],
+    spine(p, pl) {
+      p.spine("pseudostem", (node) => {
+        const tr = mix(trunkOf(col), pl.pal.leaf, 0.55);
+        const stemH = 0.55 + pl.u("sh") * 0.3;
+        const r0 = 0.04 + pl.u("sr") * 0.03;
+        p.add(node, xf(tubeGeo(r0 * 1.25, r0 * 0.7, stemH, 12)), { color: tr, colorFn: grad(shade(tr, 0.18), shade(tr, -0.2), 0, stemH) });
+        p.add(node, xf(sphereGeo(12, 5), { sx: r0 * 0.9, sy: (1 - stemH) * 0.55, sz: r0 * 0.9, at: [0, stemH + (1 - stemH) * 0.45, 0] }), { color: pl.pal.deep });
+        addFace(p, node, { at: [0, stemH * 0.42, r0 * 1.05], r: r0 * 1.3 });
+      });
+    },
+    slot(p, pl, s) {
+      const { node, band, a } = s;
+      if (opt.bloom && band === 2 && s.i === 0) {
+        for (const sgn of [1]) {
+          p.add(node, xf(coneGeo(0.055, 0.18, 10), { rx: 2.5, ry: a, at: [Math.cos(a) * 0.05 * sgn, 0.05, Math.sin(a) * 0.05 * sgn] }), { color: flowerOf(col) });
+        }
+        return;
+      }
+      const r = reachOf(pl, a, 0.95);
+      addLeaf(p, node, { tri: p.budget,
+        yaw: a, pitch: 0.45 + pl.u(`bl${s.g}`) * 0.5,
+        len: r, wid: r * (0.4 + pl.u(`bw${s.g}`) * 0.2), shape: "elliptic", form: "simple",
+        rows: 6, ring: 4, bend: -r * 0.3, fold: 0.18,
+        color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad, stalkColor: pl.pal.deep, stalk: 0.18,
+      });
+    },
+  });
 }
 
 function pandanus(k, col) {
-  k.tube(k.root, { name: "trunk", r: 0.04, r2: 0.05, h: 0.2, color: trunkOf(col) });
-  for (let i = 0; i < 4; i += 1) {
-    const a = (i / 4) * Math.PI * 2 + 0.4;
-    k.tube(k.root, {
-      name: `prop${i}`, r: 0.016, h: 0.24,
-      at: [Math.cos(a) * 0.14, 0, Math.sin(a) * 0.14],
-      rotZ: Math.cos(a) * 0.55, rotX: Math.sin(a) * -0.55, color: trunkOf(col), seg: 5,
-    });
-  }
-  const n = 9;
-  for (let i = 0; i < n; i += 1) {
-    const a = (i / n) * Math.PI * 2;
-    k.blob(k.root, {
-      name: `sword${i}`, rx: 0.03, ry: 0.015, rz: 0.26,
-      at: [Math.cos(a) * 0.12, 0.32, Math.sin(a) * 0.12],
-      pivot: [Math.cos(a) * 0.02, 0.2, Math.sin(a) * 0.02],
-      rotX: 0.5, rotY: Math.PI / 2 - a,
-      color: i % 2 ? leafOf(col) : leafDeep(col),
-    });
-  }
-  trunkFace(k, k.root, { at: [0, 0.12, 0.045], r: 0.04 });
-  k.cute.breathe(k.root, { k: 0.012 });
+  grow(k, col, {
+    salt: "pandanus",
+    height: 0.7,
+    breathe: 0.014,
+    bands: [0, 1, 2, 3, 4, 5],
+    spine(p, pl) {
+      p.spine("trunk", (node) => {
+        const tr = trunkOf(col);
+        const h = 0.3 + pl.u("h") * 0.2;
+        p.add(node, xf(tubeGeo(0.04, 0.05, h, 12)), { color: tr });
+        p.add(node, xf(bladeGeo({ len: 1 - h, wid: 0.07, thick: 0.014, shape: "linear", rows: 6, ring: 4, bend: -0.1 }), { rx: -Math.PI / 2, at: [0, h, 0] }), { color: pl.pal.deep });
+        addFace(p, node, { at: [0, h * 0.5, 0.045], r: 0.042 });
+      });
+    },
+    slot(p, pl, s) {
+      const { node, band, a } = s;
+      if (band <= 1) {
+        for (const sgn of [1]) {
+          p.add(node, xf(tubeGeo(0.014, 0.008, 0.24, 8), { rz: sgn * 0.55, ry: a }), { color: trunkOf(col) });
+        }
+      } else {
+        const r = reachOf(pl, a, 0.95);
+        addLeaf(p, node, { tri: p.budget,
+          yaw: a, pitch: 0.5 + pl.u(`sw${s.g}`) * 0.6, len: r, wid: r * 0.16,
+          shape: "linear", rows: 6, ring: 4, bend: -r * 0.4, stalk: 0.05,
+          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad,
+        });
+      }
+    },
+  });
 }
 
 function cycad(k, col) {
-  k.tube(k.root, { name: "trunk", r: 0.07, r2: 0.06, h: 0.16, color: trunkOf(col) });
-  for (let i = 0; i < 10; i += 1) {
-    const a = (i / 10) * Math.PI * 2;
-    k.blob(k.root, {
-      name: `frond${i}`, rx: 0.05, ry: 0.02, rz: 0.24,
-      at: [Math.cos(a) * 0.14, 0.3, Math.sin(a) * 0.14],
-      pivot: [Math.cos(a) * 0.03, 0.18, Math.sin(a) * 0.03],
-      rotX: 0.35, rotY: Math.PI / 2 - a,
-      color: leafDeep(col),
-    });
-  }
-  trunkFace(k, k.root, { at: [0, 0.08, 0.072], r: 0.05 });
-  k.cute.breathe(k.root, { k: 0.012 });
+  grow(k, col, {
+    salt: "cycad",
+    height: 0.55,
+    breathe: 0.014,
+    bands: [0, 1, 2, 3, 4, 5],
+    spine(p, pl) {
+      p.spine("caudex", (node) => {
+        const tr = trunkOf(col);
+        const h = 0.28 + pl.u("h") * 0.18;
+        p.add(node, xf(tubeGeo(0.075, 0.06, h, 12, 0.012)), { color: tr, colorFn: grad(shade(tr, 0.1), shade(tr, -0.25), 0, h) });
+        p.add(node, xf(capGeo(0.06, 1 - h, 12, 5, "cone"), { at: [0, h, 0] }), { color: pl.pal.deep });
+        addFace(p, node, { at: [0, h * 0.5, 0.07], r: 0.052 });
+      });
+    },
+    slot(p, pl, s) {
+      const { node, a } = s;
+      const r = reachOf(pl, a, 0.95);
+      addLeaf(p, node, { tri: p.budget,
+        yaw: a, pitch: 0.3 + pl.u(`fr${s.g}`) * 0.6, len: r, wid: r * 0.24,
+        shape: "linear", form: "frond", leaflet: 4 + (s.g % 4), rows: 4, ring: 4, bend: -r * 0.22,
+        color: pl.pal.deep, colorFn: pl.pal.grad, stalkColor: trunkOf(col), stalk: 0.16,
+      });
+    },
+  });
 }
 
-// ---------- shrubs & herbs ----------
+// ---------- shrubs, herbs, orchids ----------
+
+const CROTON = ["#c85a20", "#c8a020", "#8a5aa0", "#d8c83a", "#a03a3a"].map(hex);
 
 function shrub(k, col, opt = {}) {
-  const leaf = leafOf(col);
-  const leafDark = leafDeep(col);
-  const canopies = [];
-  for (let i = 0; i < 3; i += 1) {
-    const h = k.hash(`stem${i}`);
-    const a = h * Math.PI * 2;
-    const rr = i === 0 ? 0 : 0.09 + h * 0.05;
-    const top = 0.3 + (i === 0 ? 0.16 : h * 0.1);
-    const stem = k.tube(k.root, {
-      name: `stem${i}`, r: 0.022, r2: 0.014, h: top,
-      at: [Math.cos(a) * rr, 0, Math.sin(a) * rr], rotZ: Math.cos(a) * 0.12, rotX: Math.sin(a) * 0.12,
-      color: trunkOf(col), seg: 5,
-    });
-    const cn = k.blob(stem, {
-      name: `canopy${i}`, r: 0.17 + h * 0.05, at: [0, top, 0],
-      color: i % 2 ? leaf : leafDark,
-      colorFn: opt.colorful ? undefined : grad(shade(leaf, 0.18), leafDark, -0.2, 0.2),
-      subdiv: 1,
-    });
-    canopies.push(cn);
-    k.cute.swing(cn, { axis: "x", amp: 0.03, dur: 2.1 + i * 0.3, phase: i * 0.4 });
-    if (opt.bloom === "balls") {
-      for (let j = 0; j < 4; j += 1) {
-        const b = k.hash(`b${i}${j}`);
-        const ba = b * Math.PI * 2;
-        k.blob(cn, {
-          name: `bloom${i}${j}`, r: 0.035,
-          at: [Math.cos(ba) * 0.14, 0.05, Math.sin(ba) * 0.14],
-          color: opt.multicolor ? FLOWER_POOL[Math.floor(b * FLOWER_POOL.length)] : flowerOf(col),
-          subdiv: 0,
+  const bloom = opt.bloom ?? "none";
+  grow(k, col, {
+    salt: `shrub:${bloom}${opt.colorful ? "c" : ""}`,
+    height: 0.55,
+    breathe: 0.018,
+    bands: [0, 1, 2, 3, 4, 5],
+    spine(p, pl) {
+      p.spine("stem", (node) => {
+        const tr = trunkOf(col);
+        p.add(node, xf(tubeGeo(0.026, 0.012, 0.62, 11)), { color: tr });
+        const cr = 0.18 + pl.u("cr") * 0.09;
+        p.add(node, xf(sphereGeo(12, 5), { sx: cr, sy: cr * (0.7 + pl.u("cy") * 0.6), sz: cr, at: [0, 1 - cr * 0.8, 0] }),
+          { color: opt.colorful ? CROTON[pl.H("cc") % CROTON.length] : pl.pal.leaf, colorFn: opt.colorful ? undefined : pl.pal.grad });
+        addFace(p, node, { at: [0, 0.24, 0.026], r: 0.036 });
+      });
+    },
+    slot(p, pl, s) {
+      const { node, band, a, top } = s;
+      const isBloom = bloom !== "none" && band >= top - 1 && s.i % 2 === 0;
+      if (isBloom) {
+        const kind = bloom === "balls" ? "ball" : bloom === "hibiscus" ? "star" : bloom === "spikes" ? "spike" : "trumpet";
+        const colr = opt.multicolor ? FLOWERS[pl.H(`mc${s.g}`) % FLOWERS.length] : flowerOf(col);
+        const r = reachOf(pl, a, 0.55);
+        for (const sgn of [1]) {
+          addFlower(p, node, { tri: p.budget, at: [Math.cos(a) * r * sgn, 0, Math.sin(a) * r * sgn], kind, r: 0.055 + pl.u(`fr${s.g}`) * 0.03, color: colr, stalkLen: 0.03 });
+        }
+        return;
+      }
+      const r = reachOf(pl, a, 0.5 + pl.u(`lr${s.g}`) * 0.45);
+      const lc = opt.colorful ? CROTON[pl.H(`lc${s.g}`) % CROTON.length] : (s.g % 2 ? pl.pal.leaf : pl.pal.deep);
+      for (const sgn of [1]) {
+        addLeaf(p, node, { tri: p.budget,
+          yaw: a + (sgn > 0 ? 0 : Math.PI), pitch: 0.1 + pl.u(`lp${s.g}`) * 0.6,
+          len: r, wid: r * (0.3 + pl.u(`lw${s.g}`) * 0.35), shape: pl.shape, form: pl.form,
+          leaflet: 3 + (s.g % 4), rows: 4, ring: 4,
+          color: lc, colorFn: opt.colorful ? undefined : pl.pal.grad, stalkColor: pl.pal.deep, stalk: 0.2,
         });
       }
-    }
-    if (opt.bloom === "hibiscus") {
-      flowerHead(k, cn, { at: [0, 0.16, 0.1], kind: "petal", r: 0.09, color: flowerOf(col) });
-    }
-    if (opt.bloom === "trumpets") {
-      flowerHead(k, cn, { at: [0, 0.15, 0.12], kind: "trumpet", r: 0.07, color: flowerOf(col) });
-    }
-  }
-  if (opt.colorful) {
-    // croton-style: each canopy a different foliage color
-    const pool = [hex2("#c85a20"), hex2("#c8a020"), hex2("#8a5aa0"), leafOf(col)];
-    canopies.forEach((node, i) => {
-      node.parts[0].color = pool[i % pool.length];
-    });
-  }
-  k.cute.breathe(k.root, { k: 0.018 });
-}
-const FLOWER_POOL = ["#ff3920", "#e84a8a", "#f6b22d", "#f8f4ec", "#6a7fd8", "#9a5ad8"].map(hex2);
-
-function flowerHead(k, parent, { at, kind, r = 0.08, color, centerColor }) {
-  if (kind === "daisy") {
-    for (let i = 0; i < 9; i += 1) {
-      const a = (i / 9) * Math.PI * 2;
-      k.blob(parent, {
-        name: `petal${i}`, rx: r * 0.9, ry: r * 0.28, rz: r * 0.4,
-        at: [Math.cos(a) * r, 0, Math.sin(a) * r], pivot: [0, 0, 0], rotY: -a,
-        color, subdiv: 0,
-      });
-    }
-    k.blob(parent, { name: "center", r: r * 0.45, at: [0, r * 0.1, 0], color: centerColor ?? hex2("#f6b22d") });
-  } else if (kind === "trumpet") {
-    k.cone(parent, { name: "trumpet", r, r2: r * 0.25, h: r * 1.6, at, rotX: 0.6, color });
-    k.blob(parent, { name: "throat", r: r * 0.3, at: [0, r * 0.4, 0], color: hex2("#f6b22d"), subdiv: 0 });
-  } else if (kind === "petal") {
-    for (let i = 0; i < 5; i += 1) {
-      const a = (i / 5) * Math.PI * 2;
-      k.blob(parent, {
-        name: `petal${i}`, rx: r * 0.55, ry: r * 0.2, rz: r * 0.55,
-        at: [Math.cos(a) * r * 0.55, 0, Math.sin(a) * r * 0.55], rotY: -a,
-        color, subdiv: 0,
-      });
-    }
-    k.cone(parent, { name: "pistil", r: r * 0.12, h: r * 0.7, at: [0, r * 0.3, 0], rotX: 0.4, color: hex2("#f6b22d") });
-  } else if (kind === "spike") {
-    for (let i = 0; i < 5; i += 1) {
-      k.blob(parent, { name: `bud${i}`, r: r * (0.4 - i * 0.04), at: [0, i * r * 0.45, 0], color: i % 2 ? color : shade(color, 0.15), subdiv: 0 });
-    }
-  } else if (kind === "ball") {
-    for (let i = 0; i < 7; i += 1) {
-      const a = k.hash(`bl${i}`) * Math.PI * 2;
-      const b = k.hash(`bb${i}`) * Math.PI;
-      k.blob(parent, {
-        name: `bud${i}`, r: r * 0.32,
-        at: [Math.cos(a) * Math.sin(b) * r * 0.5, Math.cos(b) * r * 0.5, Math.sin(a) * Math.sin(b) * r * 0.5],
-        color, subdiv: 0,
-      });
-    }
-  } else if (kind === "berry") {
-    for (let i = 0; i < 6; i += 1) {
-      const a = k.hash(`berry${i}`) * Math.PI * 2;
-      k.blob(parent, {
-        name: `berry${i}`, r: r * 0.3,
-        at: [Math.cos(a) * r * 0.5, r * 0.2, Math.sin(a) * r * 0.5],
-        color: color ?? ink, subdiv: 0,
-      });
-    }
-  } else if (kind === "pea") {
-    k.blob(parent, { name: "banner", rx: r * 0.55, ry: r * 0.2, rz: r * 0.5, at: [0, r * 0.5, 0], rotX: -0.4, color, subdiv: 0 });
-    for (const s of [1, -1]) {
-      k.blob(parent, { name: `wing${s}`, rx: r * 0.3, ry: r * 0.18, rz: r * 0.4, at: [s * r * 0.5, r * 0.1, 0], rotZ: s * 0.5, color: shade(color, 0.12), subdiv: 0 });
-    }
-  }
+    },
+  });
 }
 
 function herb(k, col, opt = {}) {
-  const h = 0.3 + k.hash("h") * 0.12;
-  const stem = k.tube(k.root, { name: "stem", r: 0.014, r2: 0.011, h, color: leafDeep(col), seg: 5 });
-  for (let i = 0; i < 3; i += 1) {
-    const a = (i / 3) * Math.PI * 2 + k.hash(`l${i}`) * 2;
-    const ly = h * (0.3 + i * 0.22);
-    k.blob(stem, {
-      name: `leaf${i}`, rx: 0.07, ry: 0.014, rz: 0.05,
-      at: [Math.cos(a) * 0.07, ly, Math.sin(a) * 0.07],
-      pivot: [0, ly, 0], rotY: -a,
-      color: i % 2 ? leafOf(col) : leafDeep(col),
-    });
-  }
-  const kind = opt.flower ?? "daisy";
-  if (kind !== "none") {
-    const head = k.blob(stem, { name: "head", r: 0.012, at: [0, h, 0] });
-    flowerHead(k, head, { at: [0, 0, 0], kind, r: opt.flowerR ?? 0.08, color: flowerOf(col) });
-    k.cute.swing(head, { axis: "z", amp: 0.07, dur: 2.3 });
-  }
-  k.cute.breathe(k.root, { k: 0.02 });
+  const flower = opt.flower ?? null;
+  grow(k, col, {
+    salt: "herb",
+    height: 0.45,
+    breathe: 0.022,
+    sway: 0.06,
+    bands: [0, 1, 2, 3, 4, 5],
+    flowerKind: flower,
+    spine(p, pl) {
+      p.spine("stem", (node) => {
+        const stemR = 0.008 + pl.u("sr") * 0.014;
+        const woody = pl.u("wd") > 0.72;
+        const stemCol = woody ? trunkOf(col) : mix(pl.pal.deep, pl.pal.leaf, 0.35);
+        const lean = (pl.u("ln") - 0.5) * 0.16;
+        const seg = 4;
+        for (let i = 0; i < seg; i += 1) {
+          const t0 = i / seg;
+          p.add(node, xf(tubeGeo(stemR * (1 - t0 * 0.4), stemR * (1 - (t0 + 1 / seg) * 0.4), 1 / seg + 0.004, 9),
+            { rz: lean * (t0 - 0.4), at: [lean * t0 * t0 * 0.5, t0, 0] }), { color: stemCol });
+          if (pl.u("nd") > 0.55) {
+            p.add(node, xf(discGeo(stemR * 1.5, stemR * 0.7, 8), { at: [lean * t0 * t0 * 0.5, t0, 0] }), { color: shade(stemCol, -0.2) });
+          }
+        }
+        addFace(p, node, { at: [0, 0.3, stemR * 1.05], r: Math.max(0.03, stemR * 2.2) });
+      });
+    },
+    slot(p, pl, s) {
+      const { node, band, a, top } = s;
+      const kind = pl.flower;
+      const flowering = kind !== "none" && band >= top && s.i < Math.max(1, Math.round(s.n * 0.6));
+      if (flowering) {
+        const r = reachOf(pl, a, 0.3 + pl.u(`fs${s.g}`) * 0.3);
+        const fr = (opt.flowerR ?? 0.07) * (0.7 + pl.u(`fz${s.g}`) * 0.7);
+        for (const sgn of [1]) {
+          addFlower(p, node, { tri: p.budget,
+            at: [Math.cos(a) * r * sgn, 0, Math.sin(a) * r * sgn], kind, r: fr,
+            color: flowerOf(col), color2: shade(flowerOf(col), 0.3), stalkLen: 0.035, pitch: pl.u(`ft${s.g}`) * 0.3,
+          });
+        }
+        return;
+      }
+      const basal = band <= 1;
+      const r = reachOf(pl, a, (basal ? 0.95 : 0.55 + pl.u(`lr${s.g}`) * 0.4));
+      const pitch = basal ? 0.15 + pl.u(`bp${s.g}`) * 0.35 : 0.3 + pl.u(`lp${s.g}`) * 0.75;
+      const form = p.budget < 34 ? "simple" : pl.form;
+      const pair = [1];
+      for (const sgn of pair) {
+        addLeaf(p, node, { tri: p.budget,
+          yaw: a + (sgn > 0 ? 0 : Math.PI), pitch,
+          len: r * (pair.length > 1 ? 0.95 : 1), wid: r * (0.22 + pl.u(`lw${s.g}`) * 0.42),
+          shape: pl.shape, form, leaflet: 3 + (s.g % 5),
+          rows: form === "simple" ? 5 : 4, ring: 4,
+          bend: -r * 0.18 * pl.u(`lb${s.g}`), sweep: (pl.u(`ls${s.g}`) - 0.5) * r * 0.2,
+          fold: pl.u(`lf${s.g}`) > 0.7 ? 0.2 : 0,
+          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad,
+          stalkColor: pl.pal.deep, stalk: 0.12 + pl.u(`lk${s.g}`) * 0.3,
+        });
+      }
+    },
+  });
 }
 
 function orchid(k, col) {
-  for (const s of [1, -1]) {
-    k.blob(k.root, { name: `leaf${s}`, rx: 0.06, ry: 0.015, rz: 0.12, at: [s * 0.06, 0.04, 0], rotZ: s * 0.35, color: leafDeep(col) });
-  }
-  const stem = k.tube(k.root, { name: "stem", r: 0.01, h: 0.34, rotX: 0.25, color: leafDeep(col), seg: 5 });
-  for (let i = 0; i < 3; i += 1) {
-    const node = k.blob(stem, { name: `flwr${i}`, r: 0.01, at: [0, 0.14 + i * 0.1, -i * 0.02] });
-    flowerHead(k, node, { at: [0, 0, 0], kind: "petal", r: 0.06, color: flowerOf(col) });
-  }
-  k.cute.breathe(k.root, { k: 0.02 });
+  grow(k, col, {
+    salt: "orchid",
+    height: 0.4,
+    breathe: 0.02,
+    bands: [0, 1, 2, 3, 4, 5],
+    spine(p, pl) {
+      p.spine("spike", (node) => {
+        p.add(node, xf(tubeGeo(0.009, 0.006, 1, 9), { rz: (pl.u("ln") - 0.5) * 0.2 }), { color: pl.pal.deep });
+        p.add(node, xf(sphereGeo(10, 5), { sx: 0.04, sy: 0.03, sz: 0.04, at: [0, 0.03, 0] }), { color: mix(pl.pal.leaf, pl.pal.deep, 0.4) });
+        addFace(p, node, { at: [0, 0.06, 0.035], r: 0.032 });
+      });
+    },
+    slot(p, pl, s) {
+      const { node, band, a } = s;
+      if (band <= 1) {
+        const r = reachOf(pl, a, 0.95);
+        for (const sgn of [1]) {
+          addLeaf(p, node, { tri: p.budget, yaw: a + (sgn > 0 ? 0 : Math.PI), pitch: 0.25, len: r, wid: r * 0.34, shape: "obovate", rows: 5, ring: 4, bend: -r * 0.15, color: pl.pal.deep, colorFn: pl.pal.grad, stalk: 0.06 });
+        }
+      } else {
+        const r = reachOf(pl, a, 0.35);
+        for (const sgn of [1]) {
+          addFlower(p, node, { tri: p.budget, at: [Math.cos(a) * r * sgn, 0, Math.sin(a) * r * sgn], kind: "orchid", r: 0.045 + pl.u(`fr${s.g}`) * 0.03, color: flowerOf(col), stalkLen: 0.02, pitch: 0.3 });
+        }
+      }
+    },
+  });
 }
 
 // ---------- grasses, ferns, moss ----------
 
 function grass(k, col, opt = {}) {
-  if (opt.kind === "bamboo") {
-    for (let i = 0; i < 3; i += 1) {
-      const h = k.hash(`cane${i}`);
-      const x = (h - 0.5) * 0.24;
-      const cane = k.tube(k.root, {
-        name: `cane${i}`, r: 0.028, r2: 0.022, h: 0.7 + h * 0.3,
-        at: [x, 0, (k.hash(`cz${i}`) - 0.5) * 0.2], rotZ: (h - 0.5) * 0.08,
-        color: hex2("#7aa840"), seg: 6,
+  if (opt.kind === "bamboo") return bamboo(k, col);
+  const sedge = opt.kind === "sedge";
+  grow(k, col, {
+    salt: `grass:${opt.kind ?? "turf"}`,
+    height: 0.5,
+    breathe: 0.016,
+    sway: 0.07,
+    bands: [0, 1, 2, 3, 4, 5],
+    spine(p, pl) {
+      p.spine("culm", (node) => {
+        p.add(node, xf(bladeGeo({ len: 1.02, wid: 0.05 + pl.u("bw") * 0.03, thick: 0.01, shape: "linear", rows: 7, ring: 4, bend: -0.12, fold: 0.3 }), { rx: -Math.PI / 2 + 0.1 }), { color: pl.pal.leaf, colorFn: pl.pal.grad });
+        p.add(node, xf(sphereGeo(10, 5), { sx: 0.04, sy: 0.022, sz: 0.04, at: [0, 0.012, 0] }), { color: pl.pal.deep });
+        addFace(p, node, { at: [0, 0.06, 0.03], r: 0.032 });
       });
-      for (let j = 1; j <= 3; j += 1) {
-        k.blob(cane, { name: `band${i}${j}`, rx: 0.03, ry: 0.008, rz: 0.03, at: [0, j * 0.2, 0], color: hex2("#5a8030"), subdiv: 0 });
+    },
+    slot(p, pl, s) {
+      const { node, band, a, top } = s;
+      if ((sedge || opt.seedhead) && band >= top && s.i === 0) {
+        for (const sgn of [1]) {
+          addFlower(p, node, { tri: p.budget, at: [Math.cos(a) * 0.04 * sgn, 0, Math.sin(a) * 0.04 * sgn], kind: sedge ? "umbel" : "catkin", r: 0.055, color: flowerOf(col), stalkLen: 0.03 });
+        }
+        return;
       }
-      for (let j = 0; j < 3; j += 1) {
-        const a = k.hash(`bl${i}${j}`) * Math.PI * 2;
-        k.blob(cane, {
-          name: `leaf${i}${j}`, rx: 0.09, ry: 0.012, rz: 0.02,
-          at: [Math.cos(a) * 0.06, 0.6 + j * 0.12, Math.sin(a) * 0.06],
-          pivot: [0, 0.6 + j * 0.12, 0], rotY: -a,
-          color: leafOf(col),
+      const r = reachOf(pl, a, 0.55 + pl.u(`gr${s.g}`) * 0.5);
+      const lean = 0.35 + pl.u(`gl${s.g}`) * 0.6;
+      for (const sgn of [1]) {
+        addLeaf(p, node, { tri: p.budget,
+          yaw: a + (sgn > 0 ? 0 : Math.PI), pitch: lean, len: r * 1.5, wid: r * 0.16,
+          shape: sedge ? "needle" : "linear", rows: 6, ring: 4, bend: -r * 0.5, fold: 0.32, stalk: 0.02,
+          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad,
         });
       }
-    }
-    k.cute.breathe(k.root, { k: 0.012 });
-    return;
-  }
-  const n = opt.kind === "sedge" ? 7 : 8;
-  for (let i = 0; i < n; i += 1) {
-    const a = (i / n) * Math.PI * 2 + k.hash(`g${i}`);
-    const lean = 0.35 + k.hash(`gl${i}`) * 0.35;
-    const blade = k.blob(k.root, {
-      name: `blade${i}`, rx: 0.016, ry: 0.2 + k.hash(`gh${i}`) * 0.1, rz: 0.008,
-      at: [Math.cos(a) * 0.05, 0.16, Math.sin(a) * 0.05],
-      pivot: [0, 0.02, 0], rotX: lean, rotY: Math.PI / 2 - a,
-      color: i % 2 ? leafOf(col) : leafDeep(col),
-    });
-    if (opt.seedhead && i % 3 === 0) {
-      k.blob(blade, { name: `seed${i}`, r: 0.02, at: [0, 0.38, 0], color: flowerOf(col), subdiv: 0 });
-    }
-    k.cute.swing(blade, { axis: "x", amp: 0.05, dur: 2 + k.hash(`gs${i}`), phase: i * 0.3 });
-  }
-  if (opt.kind === "sedge") {
-    flowerHead(k, k.root, { at: [0, 0.42, 0], kind: "ball", r: 0.05, color: flowerOf(col) });
-  }
+    },
+  });
+}
+
+function bamboo(k, col) {
+  grow(k, col, {
+    salt: "bamboo",
+    height: 1.0,
+    breathe: 0.01,
+    sway: 0.03,
+    bands: [1, 2, 3, 4, 5],
+    spine(p, pl) {
+      p.spine("cane", (node) => {
+        const cane = hex("#7aa840");
+        const band = hex("#5a8030");
+        const nodes = 5 + (pl.H("nd") % 4);
+        for (let i = 0; i < nodes; i += 1) {
+          const y0 = i / nodes;
+          p.add(node, xf(tubeGeo(0.024 - i * 0.001, 0.023 - i * 0.001, 1 / nodes - 0.006, 12), { at: [0, y0, 0] }), { color: cane });
+          p.add(node, xf(discGeo(0.027, 0.008, 9), { at: [0, y0 + 1 / nodes - 0.004, 0] }), { color: band });
+          if (i === nodes - 1) p.add(node, xf(discGeo(0.027, 0.008, 9), { at: [0, 1, 0] }), { color: band });
+        }
+        addFace(p, node, { at: [0, 0.3, 0.025], r: 0.028 });
+      });
+    },
+    slot(p, pl, s) {
+      const { node, band, a } = s;
+      if (band <= 2 && s.i === 0) {
+        for (const sgn of [1]) {
+          p.add(node, xf(tubeGeo(0.016, 0.012, 0.4 + pl.u(`c${s.g}`) * 0.3, 10), { rz: sgn * 0.12, at: [Math.cos(a) * 0.06 * sgn, -0.2, Math.sin(a) * 0.06 * sgn] }), { color: hex("#7aa840") });
+        }
+        return;
+      }
+      const r = reachOf(pl, a, 0.7);
+      for (const sgn of [1]) {
+        addLeaf(p, node, { tri: p.budget,
+          yaw: a + (sgn > 0 ? 0 : Math.PI), pitch: 0.7 + pl.u(`bp${s.g}`) * 0.5,
+          len: r, wid: r * 0.16, shape: "lanceolate", rows: 5, ring: 4, bend: -r * 0.3, stalk: 0.08,
+          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad,
+        });
+      }
+    },
+  });
 }
 
 function fern(k, col) {
-  const n = 7;
-  for (let i = 0; i < n; i += 1) {
-    const a = (i / n) * Math.PI * 2;
-    const droop = 0.5 + k.hash(`f${i}`) * 0.4;
-    k.blob(k.root, {
-      name: `frond${i}`, rx: 0.045, ry: 0.015, rz: 0.28,
-      at: [Math.cos(a) * 0.15, 0.2 - droop * 0.06, Math.sin(a) * 0.15],
-      pivot: [Math.cos(a) * 0.02, 0.06, Math.sin(a) * 0.02],
-      rotX: droop, rotY: Math.PI / 2 - a,
-      color: i % 2 ? leafOf(col) : leafDeep(col),
-      colorFn: grad(shade(leafOf(col), 0.15), leafDeep(col), -0.15, 0.15),
-    });
-  }
-  // fiddleheads
-  for (const s of [1, -1]) {
-    k.arc(k.root, {
-      name: `fiddle${s}`, R: 0.04, r: 0.012, a0: 0, a1: Math.PI * 1.5,
-      at: [s * 0.04, 0.1, 0], rotX: 0.2, color: leafDeep(col), segs: 6,
-    });
-  }
-  k.cute.breathe(k.root, { k: 0.02 });
+  grow(k, col, {
+    salt: "fern",
+    height: 0.5,
+    breathe: 0.02,
+    sway: 0.05,
+    bands: [0, 1, 2, 3, 4, 5],
+    spine(p, pl) {
+      p.spine("frond0", (node) => {
+        p.add(node, xf(tubeGeo(0.012, 0.008, 0.16, 8)), { color: shade(pl.pal.deep, -0.2) });
+        const geos = bladeGeo({ len: 0.9, wid: 0.16, thick: 0.02, shape: "lanceolate", rows: 7, ring: 4, bend: -0.16 });
+        p.add(node, xf(geos, { rx: -1.35, at: [0, 0.14, 0] }), { color: pl.pal.leaf, colorFn: pl.pal.grad });
+        addFace(p, node, { at: [0, 0.08, 0.03], r: 0.032 });
+      });
+    },
+    slot(p, pl, s) {
+      const { node, band, a } = s;
+      if (band <= 1 && s.i % 3 === 2) {
+        for (const sgn of [1]) {
+          p.add(node, xf(arcTubeGeo({ R: 0.035, r: 0.009, a0: 0, a1: Math.PI * 1.6, segs: 5, ring: 4 }), { ry: a, at: [Math.cos(a) * 0.05 * sgn, 0.03, Math.sin(a) * 0.05 * sgn] }), { color: shade(pl.pal.deep, 0.1) });
+        }
+        return;
+      }
+      const r = reachOf(pl, a, 0.95);
+      const form = p.budget >= 34 ? "frond" : "simple";
+      for (const sgn of [1]) {
+        addLeaf(p, node, { tri: p.budget,
+          yaw: a + (sgn > 0 ? 0 : Math.PI), pitch: 0.35 + pl.u(`fp${s.g}`) * 0.7,
+          len: r, wid: r * (0.2 + pl.u(`fw${s.g}`) * 0.2), shape: pl.shape, form,
+          leaflet: 3 + (s.g % 5), rows: 4, ring: 4, bend: -r * 0.35, stalk: 0.18,
+          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad, stalkColor: shade(pl.pal.deep, -0.2),
+        });
+      }
+    },
+  });
 }
 
 function moss(k, col) {
-  for (let i = 0; i < 7; i += 1) {
-    const a = k.hash(`m${i}`) * Math.PI * 2;
-    const rr = k.hash(`mr${i}`) * 0.12;
-    k.blob(k.root, {
-      name: `tuft${i}`, r: 0.035 + k.hash(`ms${i}`) * 0.03,
-      at: [Math.cos(a) * rr, 0.03, Math.sin(a) * rr],
-      color: i % 2 ? leafOf(col) : leafDeep(col), subdiv: 0,
-    });
-  }
-  for (let i = 0; i < 3; i += 1) {
-    const a = k.hash(`sp${i}`) * Math.PI * 2;
-    const stalk = k.tube(k.root, {
-      name: `stalk${i}`, r: 0.006, h: 0.1, at: [Math.cos(a) * 0.08, 0, Math.sin(a) * 0.08],
-      rotZ: Math.cos(a) * 0.2, color: leafDeep(col), seg: 4,
-    });
-    k.blob(stalk, { name: `capsule${i}`, rx: 0.014, ry: 0.02, rz: 0.014, at: [0, 0.11, 0], color: flowerOf(col), subdiv: 0 });
-    k.cute.swing(stalk, { axis: "z", amp: 0.08, dur: 2.2 + i * 0.4, phase: i * 0.4 });
-  }
-  k.cute.breathe(k.root, { k: 0.03 });
+  grow(k, col, {
+    salt: "moss",
+    height: 0.2,
+    breathe: 0.028,
+    sway: 0.09,
+    bands: [0, 1, 2, 3, 4, 5],
+    spine(p, pl) {
+      p.spine("seta", (node) => {
+        const stalkCol = mix(pl.pal.deep, flowerOf(col), 0.3);
+        p.add(node, xf(tubeGeo(0.011, 0.006, 0.86, 9), { rz: (pl.u("ln") - 0.5) * 0.2 }), { color: stalkCol });
+        p.add(node, xf(sphereGeo(10, 5), { sx: 0.035, sy: 0.055, sz: 0.035, at: [0, 0.93, 0], rx: 0.4 }), { color: flowerOf(col) });
+        addTuft(p, node, { tri: p.budget, at: [0, 0.03, 0], r: 0.05, n: 3, color: pl.pal.leaf, color2: pl.pal.deep, squash: 0.75 });
+        addFace(p, node, { at: [0, 0.03, 0.045], r: 0.032 });
+      });
+    },
+    slot(p, pl, s) {
+      const { node, band, a } = s;
+      const r = reachOf(pl, a, 0.6 + pl.u(`mr${s.g}`) * 0.5);
+      if (band >= 3 && s.i % 2 === 0) {
+        // a shorter sporophyte: stalk from the axis, capsule on top
+        for (const sgn of [1]) {
+          p.add(node, xf(tubeGeo(0.008, 0.005, 0.12, 8), { rz: sgn * 0.25, at: [0, -0.1, 0] }), { color: mix(pl.pal.deep, flowerOf(col), 0.25) });
+          addLump(p, node, { rx: 0.024, ry: 0.036, rz: 0.024, yaw: a, tri: p.budget * 0.55, at: [Math.cos(a) * 0.03 * sgn, 0.02, Math.sin(a) * 0.03 * sgn], color: flowerOf(col) });
+        }
+        return;
+      }
+      for (const sgn of [1]) {
+        addLeaf(p, node, { tri: p.budget,
+          yaw: a + (sgn > 0 ? 0 : Math.PI), pitch: 0.5 + pl.u(`mp${s.g}`) * 0.7,
+          len: r * 0.9, wid: r * 0.5, shape: pl.shape, rows: 4, ring: 4, bend: -r * 0.2, stalk: 0.05,
+          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad,
+        });
+      }
+      if (band <= 1) addTuft(p, node, { tri: p.budget, at: [0, 0, 0], r: r * 0.3, n: 3, color: pl.pal.deep, color2: pl.pal.leaf, squash: 0.7 });
+    },
+  });
 }
 
 // ---------- succulents & arids ----------
 
 function cactus(k, col, opt = {}) {
-  if (opt.kind === "pads") {
-    let parent = k.root;
-    for (let i = 0; i < 3; i += 1) {
-      parent = k.blob(parent, {
-        rx: 0.12 - i * 0.02, ry: 0.14 - i * 0.02, rz: 0.035,
-        name: `pad${i}`, at: [0, i === 0 ? 0.14 : 0.16, 0.02], rotX: i * 0.15,
-        color: leafDeep(col),
+  const pads = opt.kind === "pads";
+  grow(k, col, {
+    salt: `cactus:${opt.kind ?? "column"}`,
+    height: 0.6,
+    breathe: 0.014,
+    sway: 0.02,
+    bands: [0, 1, 2, 3, 4, 5],
+    spine(p, pl) {
+      p.spine("body", (node) => {
+        const g = pl.pal;
+        if (pads) {
+          let y = 0;
+          for (let i = 0; i < 3; i += 1) {
+            const rr = 0.13 - i * 0.022;
+            p.add(node, xf(sphereGeo(12, 6), { sx: rr, sy: rr * 1.25, sz: rr * 0.32, at: [0, y + rr * 1.1, 0], rz: (i % 2 ? 1 : -1) * 0.12 }), { color: g.deep, colorFn: grad(shade(g.leaf, 0.1), g.deep, 0, 0.6) });
+            y += rr * 1.9;
+          }
+        } else {
+          p.add(node, xf(tubeGeo(0.075, 0.055, 0.92, 14, 0.012)), { color: g.deep, colorFn: grad(shade(g.leaf, 0.12), g.deep, 0, 0.9) });
+          p.add(node, xf(capGeo(0.055, 0.09, 14, 5, "dome"), { at: [0, 0.92, 0] }), { color: g.deep });
+        }
+        addFace(p, node, { at: [0, 0.3, pads ? 0.045 : 0.072], r: 0.05 });
       });
-    }
-    k.blob(parent, { name: "bloom", r: 0.04, at: [0, 0.14, 0.03], color: flowerOf(col), subdiv: 0 });
-  } else {
-    const body = k.tube(k.root, { name: "column", r: 0.07, r2: 0.05, h: 0.4, color: leafDeep(col), seg: 7 });
-    for (let i = 0; i < 2; i += 1) {
-      k.tube(body, {
-        name: `arm${i}`, r: 0.03, r2: 0.025, h: 0.14,
-        at: [i ? 0.05 : -0.05, 0.16 + i * 0.08, 0], rotZ: i ? -0.5 : 0.5,
-        color: leafDeep(col), seg: 5,
-      });
-    }
-    k.blob(body, { name: "bloom", r: 0.045, at: [0, 0.42, 0], color: flowerOf(col), subdiv: 0 });
-    trunkFace(k, body, { at: [0, 0.18, 0.07], r: 0.05 });
-  }
-  k.cute.breathe(k.root, { k: 0.015 });
+    },
+    slot(p, pl, s) {
+      const { node, band, a, top } = s;
+      if (band >= top && s.i === 0) {
+        for (const sgn of [1]) {
+          addFlower(p, node, { tri: p.budget, at: [Math.cos(a) * 0.05 * sgn, 0, Math.sin(a) * 0.05 * sgn], kind: "daisy", r: 0.055, color: flowerOf(col), stalkLen: 0.02 });
+        }
+        return;
+      }
+      if (band >= 2 && s.i % 3 === 1) {
+        for (const sgn of [1]) {
+          p.add(node, xf(tubeGeo(0.026, 0.02, 0.2, 11), { rz: sgn * 0.9, ry: a }), { color: pl.pal.deep });
+        }
+        return;
+      }
+      // areole spine clusters, mirrored so the part straddles the axis
+      const r = reachOf(pl, a, 0.55);
+      for (const sgn of [1]) {
+        for (let j = 0; j < 3; j += 1) {
+          const aa = a + (j - 1) * 0.35;
+          p.add(node, xf(coneGeo(0.006, 0.045, 6), { rz: -Math.cos(aa) * sgn * 1.3, rx: Math.sin(aa) * sgn * 1.3, at: [Math.cos(a) * r * 0.35 * sgn, 0, Math.sin(a) * r * 0.35 * sgn] }), { color: shade(paper, -0.1) });
+        }
+      }
+    },
+  });
 }
 
 function succulent(k, col) {
-  for (let ring = 0; ring < 2; ring += 1) {
-    const n = ring === 0 ? 8 : 6;
-    for (let i = 0; i < n; i += 1) {
-      const a = (i / n) * Math.PI * 2 + ring * 0.4;
-      k.blob(k.root, {
-        name: `leaf${ring}${i}`, rx: 0.035, ry: 0.09 - ring * 0.02, rz: 0.02,
-        at: [Math.cos(a) * (0.06 + ring * 0.06), 0.05, Math.sin(a) * (0.06 + ring * 0.06)],
-        rotX: 0.9, rotY: Math.PI / 2 - a,
-        color: mix(leafOf(col), leafDeep(col), ring ? 0.4 : 0),
+  grow(k, col, {
+    salt: "succulent",
+    height: 0.3,
+    breathe: 0.028,
+    sway: 0.03,
+    bands: [0, 1, 2, 3, 4, 5],
+    spine(p, pl) {
+      p.spine("heart", (node) => {
+        p.add(node, xf(sphereGeo(12, 6), { sx: 0.05, sy: 0.06, sz: 0.05, at: [0, 0.06, 0] }), { color: pl.pal.leaf });
+        p.add(node, xf(bladeGeo({ len: 0.95, wid: 0.16, thick: 0.07, shape: "obovate", rows: 5, ring: 5 }), { rx: -1.3, at: [0, 0.05, 0] }), { color: pl.pal.leaf, colorFn: pl.pal.grad });
+        addFace(p, node, { at: [0, 0.07, 0.05], r: 0.04 });
       });
-    }
-  }
-  k.blob(k.root, { name: "heart", r: 0.035, at: [0, 0.05, 0], color: leafOf(col) });
-  k.cute.breathe(k.root, { k: 0.03 });
+    },
+    slot(p, pl, s) {
+      const { node, a } = s;
+      const r = reachOf(pl, a, 0.95);
+      for (const sgn of [1]) {
+        addLeaf(p, node, { tri: p.budget,
+          yaw: a + (sgn > 0 ? 0 : Math.PI), pitch: 0.55 + pl.u(`sp${s.g}`) * 0.7,
+          len: r, wid: r * (0.36 + pl.u(`sw${s.g}`) * 0.25), thick: r * 0.3,
+          shape: "obovate", rows: 4, ring: 5, bend: -r * 0.12, stalk: 0.02,
+          color: mix(pl.pal.leaf, pl.pal.deep, (s.g % 3) / 3), colorFn: pl.pal.grad,
+        });
+      }
+    },
+  });
 }
 
 function rosetteBlades(k, col, opt = {}) {
-  // agave / aloe / sansevieria / dracaena tuft
-  const n = opt.n ?? 8;
-  for (let i = 0; i < n; i += 1) {
-    const a = (i / n) * Math.PI * 2;
-    const tall = k.hash(`rb${i}`);
-    k.blob(k.root, {
-      name: `blade${i}`, rx: 0.03, ry: 0.12 + tall * (opt.tall ?? 0.18), rz: 0.012,
-      at: [Math.cos(a) * 0.05, 0.1, Math.sin(a) * 0.05],
-      pivot: [Math.cos(a) * 0.015, 0, Math.sin(a) * 0.015],
-      rotX: 0.25, rotY: Math.PI / 2 - a,
-      color: i % 2 ? leafOf(col) : leafDeep(col),
-      colorFn: opt.edge ? grad(shade(leafOf(col), 0.3), leafDeep(col)) : undefined,
-    });
-  }
-  if (opt.cane) {
-    k.tube(k.root, { name: "cane", r: 0.035, r2: 0.028, h: 0.3, color: trunkOf(col), seg: 6 });
-    trunkFace(k, k.root, { at: [0, 0.14, 0.036], r: 0.04 });
-  }
-  k.cute.breathe(k.root, { k: 0.015 });
+  grow(k, col, {
+    salt: `rosette:${opt.cane ? "cane" : ""}`,
+    height: 0.55,
+    breathe: 0.016,
+    sway: 0.04,
+    bands: [0, 1, 2, 3, 4, 5],
+    spine(p, pl) {
+      p.spine("blade0", (node) => {
+        if (opt.cane) {
+          const h = 0.42 + pl.u("ch") * 0.2;
+          p.add(node, xf(tubeGeo(0.032, 0.024, h, 12)), { color: trunkOf(col) });
+          p.add(node, xf(bladeGeo({ len: 1 - h, wid: 0.11, thick: 0.018, shape: "lanceolate", rows: 5, ring: 4, bend: -0.08 }), { rx: -1.35, at: [0, h, 0] }), { color: pl.pal.leaf, colorFn: pl.pal.grad });
+          addFace(p, node, { at: [0, h * 0.5, 0.032], r: 0.036 });
+        } else {
+          p.add(node, xf(bladeGeo({ len: 1.0, wid: 0.11, thick: 0.026, shape: "lanceolate", rows: 6, ring: 4, bend: -0.06 }), { rx: -1.45 }), { color: pl.pal.leaf, colorFn: opt.edge ? grad(shade(pl.pal.leaf, 0.32), pl.pal.deep, 0, 0.8) : pl.pal.grad });
+          p.add(node, xf(sphereGeo(12, 5), { sx: 0.05, sy: 0.03, sz: 0.05, at: [0, 0.02, 0] }), { color: pl.pal.deep });
+          addFace(p, node, { at: [0, 0.05, 0.045], r: 0.036 });
+        }
+      });
+    },
+    slot(p, pl, s) {
+      const { node, a } = s;
+      const r = reachOf(pl, a, 0.9);
+      for (const sgn of [1]) {
+        addLeaf(p, node, { tri: p.budget,
+          yaw: a + (sgn > 0 ? 0 : Math.PI), pitch: 0.15 + pl.u(`rp${s.g}`) * 0.6,
+          len: r * (0.7 + (opt.tall ?? 0.2) * 1.4), wid: r * 0.22, thick: r * 0.07,
+          shape: "lanceolate", rows: 5, ring: 4, bend: -r * 0.18, stalk: 0.03,
+          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep,
+          colorFn: opt.edge ? grad(shade(pl.pal.leaf, 0.3), pl.pal.deep, 0, 0.4) : pl.pal.grad,
+        });
+      }
+    },
+  });
 }
 
 // ---------- aroids, vines, water ----------
 
 function aroid(k, col) {
-  const n = 5;
-  for (let i = 0; i < n; i += 1) {
-    const a = (i / n) * Math.PI * 2 + 0.3;
-    const tall = 0.16 + k.hash(`a${i}`) * 0.12;
-    k.tube(k.root, {
-      name: `petiole${i}`, r: 0.011, h: tall,
-      at: [Math.cos(a) * 0.02, 0, Math.sin(a) * 0.02], rotZ: Math.cos(a) * 0.3, rotX: Math.sin(a) * 0.3,
-      color: leafDeep(col), seg: 5,
-    });
-    k.blob(k.root, {
-      name: `blade${i}`, rx: 0.13, ry: 0.02, rz: 0.16,
-      at: [Math.cos(a) * 0.09, tall + 0.05, Math.sin(a) * 0.09], rotY: -a,
-      color: leafOf(col), colorFn: col.leafGrad ?? grad(shade(leafOf(col), 0.25), leafDeep(col), -0.03, 0.03),
-    });
-  }
-  k.cute.breathe(k.root, { k: 0.02 });
+  grow(k, col, {
+    salt: "aroid",
+    height: 0.45,
+    breathe: 0.02,
+    bands: [0, 1, 2, 3, 4, 5],
+    spine(p, pl) {
+      p.spine("petiole0", (node) => {
+        p.add(node, xf(tubeGeo(0.013, 0.009, 0.6, 10), { rz: (pl.u("ln") - 0.5) * 0.2 }), { color: pl.pal.deep });
+        p.add(node, xf(bladeGeo({ len: 0.44, wid: 0.3, thick: 0.028, shape: "cordate", rows: 5, ring: 4, bend: -0.06 }), { rx: -1.15, at: [0, 0.58, 0] }), { color: pl.pal.leaf, colorFn: col.leafGrad ?? pl.pal.grad });
+        addFace(p, node, { at: [0, 0.16, 0.014], r: 0.03 });
+      });
+    },
+    slot(p, pl, s) {
+      const { node, band, a, top } = s;
+      if (band >= top && s.i === 0 && pl.u("sp") > 0.55) {
+        for (const sgn of [1]) {
+          addFlower(p, node, { tri: p.budget, at: [Math.cos(a) * 0.05 * sgn, 0, Math.sin(a) * 0.05 * sgn], kind: "bell", r: 0.06, color: paper, color2: flowerOf(col), stalkLen: 0.04 });
+        }
+        return;
+      }
+      const r = reachOf(pl, a, 0.95);
+      addLeaf(p, node, { tri: p.budget,
+        yaw: a, pitch: 0.25 + pl.u(`ap${s.g}`) * 0.55,
+        len: r, wid: r * (0.55 + pl.u(`aw${s.g}`) * 0.35),
+        shape: ["cordate", "hastate", "ovate", "orbicular"][pl.H(`as${s.g}`) % 4],
+        form: pl.u(`af${s.g}`) > 0.75 ? "lobed" : "simple",
+        rows: 5, ring: 4, stalk: 0.4,
+        color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: col.leafGrad ?? pl.pal.grad, stalkColor: pl.pal.deep,
+      });
+    },
+  });
 }
 
 function vine(k, col) {
-  const n = 6;
-  for (let i = 0; i < n; i += 1) {
-    const a = k.hash(`v${i}`) * Math.PI * 2;
-    const x = Math.cos(a) * (0.05 + i * 0.045);
-    const z = Math.sin(a) * (0.05 + i * 0.045);
-    const y = 0.1 + k.hash(`vy${i}`) * 0.28;
-    k.tube(k.root, {
-      name: `runner${i}`, r: 0.009, h: Math.hypot(x, z, y - 0.05),
-      at: [x / 2, 0.03, z / 2],
-      rotZ: Math.atan2(x, y) * 0.8, rotX: -Math.atan2(z, y) * 0.8,
-      color: leafDeep(col), seg: 4,
-    });
-    k.blob(k.root, {
-      name: `leaf${i}`, rx: 0.1, ry: 0.015, rz: 0.11,
-      at: [x, y, z], rotY: -a,
-      color: i % 2 ? leafOf(col) : leafDeep(col),
-      colorFn: col.variegated
-        ? (p) => (p[0] + p[2] > 0.02 ? mix(leafOf(col), hex2("#e8d44a"), 0.55) : leafDeep(col))
-        : grad(shade(leafOf(col), 0.2), leafDeep(col), -0.02, 0.02),
-    });
-  }
-  k.cute.breathe(k.root, { k: 0.02 });
+  const varie = !!col.variegated;
+  grow(k, col, {
+    salt: "vine",
+    height: 0.7,
+    breathe: 0.02,
+    sway: 0.05,
+    bands: [0, 1, 2, 3, 4, 5],
+    spine(p, pl) {
+      p.spine("runner", (node) => {
+        const seg = 6;
+        const twist = 0.4 + pl.u("tw") * 1.6;
+        for (let i = 0; i < seg; i += 1) {
+          const t = i / seg;
+          const a = t * twist * TAU;
+          p.add(node, xf(tubeGeo(0.009, 0.008, 1 / seg + 0.01, 8), { rz: Math.cos(a) * 0.14, rx: Math.sin(a) * 0.14, at: [Math.cos(a) * 0.02, t, Math.sin(a) * 0.02] }), { color: pl.pal.deep });
+        }
+        addFace(p, node, { at: [0, 0.2, 0.012], r: 0.028 });
+      });
+    },
+    slot(p, pl, s) {
+      const { node, band, a } = s;
+      if (band >= 2 && s.i % 4 === 3) {
+        for (const sgn of [1]) {
+          p.add(node, xf(arcTubeGeo({ R: 0.03, r: 0.006, a0: 0, a1: Math.PI * 2.2, segs: 6, ring: 4 }), { ry: a, at: [Math.cos(a) * 0.03 * sgn, 0, Math.sin(a) * 0.03 * sgn] }), { color: pl.pal.deep });
+        }
+        return;
+      }
+      const r = reachOf(pl, a, 0.85);
+      const cf = varie
+        ? (q) => (q[0] + q[2] > 0.02 ? mix(pl.pal.leaf, hex("#e8d44a"), 0.55) : pl.pal.deep)
+        : pl.pal.grad;
+      addLeaf(p, node, { tri: p.budget,
+        yaw: a, pitch: 0.2 + pl.u(`vp${s.g}`) * 0.6,
+        len: r, wid: r * (0.5 + pl.u(`vw${s.g}`) * 0.4),
+        shape: ["cordate", "ovate", "orbicular", "hastate"][pl.H(`vs${s.g}`) % 4],
+        form: pl.u(`vf${s.g}`) > 0.7 ? "lobed" : "simple",
+        rows: 5, ring: 4, stalk: 0.3,
+        color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: cf, stalkColor: pl.pal.deep,
+      });
+    },
+  });
 }
 
 function waterPlant(k, col) {
-  for (let i = 0; i < 5; i += 1) {
-    const a = (i / 5) * Math.PI * 2;
-    k.blob(k.root, {
-      name: `pad${i}`, rx: 0.09, ry: 0.015, rz: 0.09,
-      at: [Math.cos(a) * 0.12, 0.04, Math.sin(a) * 0.12], rotY: -a,
-      color: i % 2 ? leafOf(col) : leafDeep(col),
-    });
-  }
-  const stem = k.tube(k.root, { name: "stem", r: 0.012, h: 0.22, color: leafDeep(col), seg: 5 });
-  flowerHead(k, stem, { at: [0, 0.24, 0], kind: "petal", r: 0.06, color: flowerOf(col) });
-  k.cute.swing(stem, { axis: "z", amp: 0.06, dur: 2.4 });
-  k.cute.breathe(k.root, { k: 0.03 });
+  grow(k, col, {
+    salt: "water",
+    height: 0.35,
+    breathe: 0.028,
+    sway: 0.05,
+    bands: [0, 1, 2, 3, 4, 5],
+    spine(p, pl) {
+      p.spine("stem", (node) => {
+        p.add(node, xf(tubeGeo(0.012, 0.009, 0.86, 10)), { color: pl.pal.deep });
+        addFlower(p, node, { tri: p.budget, at: [0, 0.9, 0], kind: "star", r: 0.09, color: flowerOf(col) });
+        p.add(node, xf(sphereGeo(12, 5), { sx: 0.05, sy: 0.02, sz: 0.05, at: [0, 0.012, 0] }), { color: pl.pal.deep });
+        addFace(p, node, { at: [0, 0.2, 0.013], r: 0.03 });
+      });
+    },
+    slot(p, pl, s) {
+      const { node, band, a } = s;
+      const r = reachOf(pl, a, 0.95);
+      if (band <= 2) {
+        addCap(p, node, { r: r * 0.55, h: r * 0.14, shape: "flat", tri: p.budget, at: [Math.cos(a) * r * 0.42, 0, Math.sin(a) * r * 0.42],
+          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });
+        p.add(node, xf(tubeGeo(0.007, 0.005, r * 0.45, 6), { rz: -1.5708, ry: a }), { color: pl.pal.deep });
+        return;
+      }
+      for (const sgn of [1]) {
+        addLeaf(p, node, { tri: p.budget,
+          yaw: a + (sgn > 0 ? 0 : Math.PI), pitch: 0.35 + pl.u(`wp${s.g}`) * 0.5,
+          len: r * 0.8, wid: r * 0.36, shape: "elliptic", rows: 5, ring: 4, stalk: 0.2,
+          color: pl.pal.leaf, colorFn: pl.pal.grad, stalkColor: pl.pal.deep,
+        });
+      }
+    },
+  });
 }
 
 // ---------- fungi ----------
 
+const CAP_SHAPE = ["dome", "bell", "flat", "funnel", "cone"];
+
 function mushroom(k, col, opt = {}) {
-  const stub = opt.kind === "bracket";
-  const stalkH = stub ? 0.08 : 0.18;
-  const stalk = k.tube(k.root, {
-    name: "stalk", r: stub ? 0.06 : 0.05, r2: stub ? 0.05 : 0.04, h: stalkH,
-    color: col.stalk ?? shade(hex2("#e8dcc0"), 0), seg: 7,
-  });
-  if (!stub) trunkFace(k, stalk, { at: [0, stalkH * 0.5, 0.048], r: 0.042 });
-  if (opt.kind === "bracket") {
-    k.blob(stalk, {
-      name: "shelf", rx: 0.24, ry: 0.05, rz: 0.18, at: [0, 0.1, 0.06], rotX: -0.25,
-      color: col.base, colorFn: col.capGrad,
-    });
-  } else if (opt.kind === "puffball") {
-    k.blob(k.root, { name: "ball", r: 0.14, at: [0, 0.14, 0], color: col.base, colorFn: col.capGrad });
-  } else if (opt.kind === "earthstar") {
-    for (let i = 0; i < 6; i += 1) {
-      const a = (i / 6) * Math.PI * 2;
-      k.cone(k.root, {
-        name: `star${i}`, r: 0.035, h: 0.12,
-        at: [Math.cos(a) * 0.1, 0.05, Math.sin(a) * 0.1],
-        rotZ: Math.cos(a) * -1.2, rotX: Math.sin(a) * 1.2, color: shade(col.base, -0.1), seg: 4,
-      });
-    }
-    k.blob(k.root, { name: "ball", r: 0.07, at: [0, 0.1, 0], color: col.base });
-  } else if (opt.kind === "birdsnest") {
-    for (const [x, z] of [[0.05, 0.02], [-0.05, -0.01], [0, -0.06]]) {
-      k.tube(k.root, { name: `cup${x}${z}`, r: 0.045, r2: 0.05, h: 0.05, at: [x, 0.03, z], color: col.base, seg: 7 });
-      k.blob(k.root, { name: `egg${x}${z}`, r: 0.02, at: [x, 0.075, z], color: hex2("#f6e8c8"), subdiv: 0 });
-    }
-  } else if (opt.kind === "coral") {
-    for (let i = 0; i < 6; i += 1) {
-      const a = k.hash(`c${i}`) * Math.PI * 2;
-      k.tube(k.root, {
-        name: `branch${i}`, r: 0.02 - i * 0.002, h: 0.14 + k.hash(`ch${i}`) * 0.1,
-        at: [Math.cos(a) * 0.03, 0, Math.sin(a) * 0.03],
-        rotZ: Math.cos(a) * 0.35, rotX: Math.sin(a) * 0.35, color: col.base, seg: 5,
-      });
-    }
-  } else if (opt.kind === "jelly") {
-    k.blob(k.root, { name: "blob", rx: 0.14, ry: 0.06, rz: 0.12, at: [0, 0.05, 0], color: col.base, colorFn: col.capGrad });
-  } else {
-    // classic cap
-    k.blob(stalk, {
-      name: "cap", rx: 0.2, ry: 0.12, rz: 0.2, at: [0, stalkH, 0],
-      color: col.base, colorFn: col.capGrad,
-    });
-    if (opt.spots) {
-      for (let i = 0; i < 5; i += 1) {
-        const a = k.hash(`sp${i}`) * Math.PI * 2;
-        const rr = 0.06 + k.hash(`spr${i}`) * 0.1;
-        k.blob(stalk, {
-          name: `spot${i}`, r: 0.028, subdiv: 0,
-          at: [Math.cos(a) * rr, stalkH + 0.06, Math.sin(a) * rr], color: APP.paper,
+  const kind = opt.kind ?? "cap";
+  const capCol = col.base ?? FUNGI_CAPS[0];
+  const stalkCol = col.stalk ?? hex("#e8dcc0");
+  const capDark = col.dark ?? shade(capCol, -0.3);
+  const capGrad = col.capGrad ?? grad(shade(capCol, 0.18), capDark, 0, 0.2);
+  const wood = hex("#7a5230");
+
+  if (kind === "bracket") {
+    grow(k, col, {
+      salt: "fungi:bracket",
+      height: 0.4,
+      breathe: 0.02,
+      sway: 0.02,
+      bands: [0, 1, 2, 3, 4, 5],
+      spine(p, pl) {
+        p.spine("log", (node) => {
+          p.add(node, xf(tubeGeo(0.055, 0.048, 1, 12)), { color: wood, colorFn: grad(shade(wood, 0.12), shade(wood, -0.25), 0, 1) });
+          p.add(node, xf(sphereGeo(12, 5), { sx: 0.05, sy: 0.02, sz: 0.05, at: [0, 1, 0] }), { color: shade(wood, -0.2) });
+          addFace(p, node, { at: [0, 0.42, 0.052], r: 0.042 });
         });
-      }
-    }
+      },
+      slot(p, pl, s) {
+        const { node, band, a } = s;
+        const r = 0.1 + pl.u(`sr${s.g}`) * 0.12;
+        const shelfShape = CAP_SHAPE[pl.H("cs") % CAP_SHAPE.length];
+        if (band <= 1 && s.i % 3 === 2) {
+          addTuft(p, node, { tri: p.budget, at: [0, 0, 0], r: 0.05, n: 3, color: APP.green, color2: APP.greenDeep, squash: 0.6 });
+          return;
+        }
+        addCap(p, node, {
+          r, h: r * (0.35 + pl.u(`sh${s.g}`) * 0.3), shape: shelfShape, sz: 0.75, rx: -0.35, ry: a, tri: p.budget,
+          at: [Math.cos(a) * r * 0.5, 0, Math.sin(a) * r * 0.5],
+          color: s.g % 2 ? capCol : capDark, colorFn: capGrad,
+        });
+        if (p.budget >= 60) {
+          p.add(node, xf(bladeGeo({ len: r * 1.4, wid: r * 1.5, thick: r * 0.09, shape: "orbicular", rows: 3, ring: 4 }),
+            { ry: a, at: [Math.cos(a) * r * 0.5, -r * 0.16, Math.sin(a) * r * 0.5] }), { color: shade(paper, -0.06) });
+        }
+      },
+    });
+    return;
   }
-  k.cute.swing(stalk, { axis: "z", amp: 0.03, dur: 2.6 });
-  k.cute.breathe(k.root, { k: 0.03 });
+
+  if (kind === "coral") {
+    grow(k, col, {
+      salt: "fungi:coral",
+      height: 0.35,
+      breathe: 0.024,
+      sway: 0.05,
+      bands: [0, 1, 2, 3, 4, 5],
+      spine(p, pl) {
+        p.spine("stalk", (node) => {
+          p.add(node, xf(tubeGeo(0.03, 0.014, 0.55, 11)), { color: shade(capCol, -0.1) });
+          for (const sgn of [1]) {
+            p.add(node, xf(tubeGeo(0.012, 0.005, 0.5, 9), { rz: sgn * 0.22, at: [0, 0.5, 0] }), { color: capCol });
+          }
+          addFace(p, node, { at: [0, 0.2, 0.028], r: 0.032 });
+        });
+      },
+      slot(p, pl, s) {
+        const { node, a } = s;
+        const h = 0.16 + pl.u(`ch${s.g}`) * 0.2;
+        for (const sgn of [1]) {
+          p.add(node, xf(tubeGeo(0.012, 0.005, h, 9), { rz: -Math.cos(a) * sgn * 0.4, rx: Math.sin(a) * sgn * 0.4 }), { color: s.g % 2 ? capCol : capDark });
+          p.add(node, xf(ballGeo(p.budget * 0.4), { s: 0.011, at: [Math.cos(a) * sgn * h * 0.4, h, Math.sin(a) * sgn * h * 0.4] }), { color: shade(capCol, 0.25) });
+        }
+      },
+    });
+    return;
+  }
+
+  if (kind === "birdsnest") {
+    grow(k, col, {
+      salt: "fungi:nest",
+      height: 0.18,
+      breathe: 0.03,
+      bands: [0, 1, 2, 3, 4, 5],
+      spine(p, pl) {
+        p.spine("cup0", (node) => {
+          p.add(node, xf(capGeo(0.09, 0.9, 14, 5, "funnel")), { color: capCol, colorFn: capGrad });
+          for (let i = 0; i < 3; i += 1) {
+            const a = (i / 3) * TAU;
+            p.add(node, xf(sphereGeo(10, 5), { sx: 0.028, sy: 0.016, sz: 0.028, at: [Math.cos(a) * 0.032, 0.82, Math.sin(a) * 0.032] }), { color: hex("#f6e8c8") });
+          }
+          addFace(p, node, { at: [0, 0.42, 0.06], r: 0.04 });
+        });
+      },
+      slot(p, pl, s) {
+        const { node, a } = s;
+        const r = 0.05 + pl.u(`nr${s.g}`) * 0.05;
+        for (const sgn of [1]) {
+          addCap(p, node, { r, h: r * 1.1, shape: "funnel", tri: p.budget, at: [Math.cos(a) * r * 1.2 * sgn, 0, Math.sin(a) * r * 1.2 * sgn], color: s.g % 2 ? capCol : capDark, colorFn: capGrad });
+          p.add(node, xf(discGeo(r * 0.28, r * 0.16, 6), { at: [Math.cos(a) * r * 1.2 * sgn, r * 0.9, Math.sin(a) * r * 1.2 * sgn] }), { color: hex("#f6e8c8") });
+        }
+      },
+    });
+    return;
+  }
+
+  if (kind === "earthstar") {
+    grow(k, col, {
+      salt: "fungi:star",
+      height: 0.22,
+      breathe: 0.026,
+      bands: [0, 1, 2, 3, 4, 5],
+      spine(p, pl) {
+        p.spine("ball", (node) => {
+          p.add(node, xf(sphereGeo(12, 6), { sx: 0.085, sy: 0.09, sz: 0.085, at: [0, 0.5, 0] }), { color: capCol, colorFn: capGrad });
+          p.add(node, xf(coneGeo(0.02, 0.09, 9), { at: [0, 0.56, 0] }), { color: capDark });
+          p.add(node, xf(sphereGeo(12, 5), { sx: 0.07, sy: 0.05, sz: 0.07, at: [0, 0.05, 0] }), { color: shade(capCol, -0.15) });
+          addFace(p, node, { at: [0, 0.52, 0.08], r: 0.05 });
+        });
+      },
+      slot(p, pl, s) {
+        const { node, a } = s;
+        const l = 0.09 + pl.u(`sl${s.g}`) * 0.07;
+        for (const sgn of [1]) {
+          p.add(node, xf(bladeGeo({ len: l, wid: l * 0.55, thick: l * 0.18, shape: "lanceolate", rows: 4, ring: 4 }), {
+            rx: -0.5 - pl.u(`sa${s.g}`) * 0.9, ry: a + (sgn > 0 ? 0 : Math.PI),
+          }), { color: s.g % 2 ? shade(capCol, -0.1) : capDark });
+        }
+      },
+    });
+    return;
+  }
+
+  if (kind === "puffball" || kind === "jelly") {
+    const jelly = kind === "jelly";
+    grow(k, col, {
+      salt: `fungi:${kind}`,
+      height: jelly ? 0.22 : 0.3,
+      breathe: 0.03,
+      bands: [0, 1, 2, 3, 4, 5],
+      spine(p, pl) {
+        p.spine("body", (node) => {
+          if (jelly) {
+            p.add(node, xf(sphereGeo(14, 6), { sx: 0.15, sy: 0.07, sz: 0.12, at: [0, 0.35, 0] }), { color: capCol, colorFn: capGrad });
+            p.add(node, xf(sphereGeo(12, 6), { sx: 0.09, sy: 0.06, sz: 0.08, at: [0, 0.62, 0.03] }), { color: shade(capCol, 0.15) });
+          } else {
+            p.add(node, xf(tubeGeo(0.045, 0.06, 0.35, 12)), { color: shade(stalkCol, -0.05) });
+            p.add(node, xf(sphereGeo(14, 6), { sx: 0.12, sy: 0.11, sz: 0.12, at: [0, 0.55, 0] }), { color: capCol, colorFn: capGrad });
+          }
+          addFace(p, node, { at: [0, jelly ? 0.4 : 0.55, jelly ? 0.1 : 0.11], r: 0.05 });
+        });
+      },
+      slot(p, pl, s) {
+        const { node, band, a } = s;
+        const r = 0.03 + pl.u(`wr${s.g}`) * 0.04;
+        if (band <= 1) {
+          addTuft(p, node, { tri: p.budget, at: [0, 0, 0], r, n: 3, color: shade(capCol, -0.2), color2: capDark, squash: 0.7 });
+          return;
+        }
+        for (const sgn of [1]) {
+          addLump(p, node, { rx: r * 0.6, ry: r * 0.6, rz: r * 0.6, yaw: a, tri: p.budget, at: [Math.cos(a) * 0.08 * sgn, 0, Math.sin(a) * 0.08 * sgn], color: s.g % 2 ? shade(capCol, 0.25) : capDark });
+        }
+      },
+    });
+    return;
+  }
+
+  // classic gilled mushroom
+  grow(k, col, {
+    salt: "fungi:cap",
+    height: 0.32,
+    breathe: 0.03,
+    sway: 0.04,
+    bands: [0, 1, 2, 3, 4, 5],
+    spine(p, pl) {
+      p.spine("stalk", (node) => {
+        const shape = CAP_SHAPE[pl.H("cs") % CAP_SHAPE.length];
+        const stalkH = 0.45 + pl.u("sh") * 0.3;
+        const sr = 0.026 + pl.u("sr") * 0.026;
+        const capR = 0.09 + pl.u("cr") * 0.09;
+        p.add(node, xf(tubeGeo(sr * 1.3, sr, stalkH, 12, sr * 0.15)), { color: stalkCol, colorFn: grad(shade(stalkCol, 0.1), shade(stalkCol, -0.18), 0, stalkH) });
+        if (pl.u("ring") > 0.5) {
+          p.add(node, xf(discGeo(sr * 2, sr * 0.32, 9), { at: [0, stalkH * 0.72, 0] }), { color: shade(stalkCol, -0.12) });
+        }
+        p.add(node, xf(capGeo(capR, 1 - stalkH, 14, 6, shape), { at: [0, stalkH, 0] }), { color: capCol, colorFn: capGrad });
+        // gills
+        p.add(node, xf(discGeo(capR * 0.85, capR * 0.08, 11), { at: [0, stalkH + 0.008, 0] }), { color: shade(paper, -0.08) });
+        addFace(p, node, { at: [0, stalkH * 0.5, sr * 1.1], r: Math.max(0.03, sr * 1.5) });
+      });
+    },
+    slot(p, pl, s) {
+      const { node, band, a, top } = s;
+      if (band >= top - 1 && (opt.spots || pl.u("sp") > 0.55)) {
+        for (const sgn of [1]) {
+          p.add(node, xf(discGeo(0.024, 0.008, 7), { at: [Math.cos(a) * 0.07 * sgn, 0, Math.sin(a) * 0.07 * sgn] }), { color: paper });
+        }
+        return;
+      }
+      if (band <= 1) {
+        // a sibling button mushroom sprouting alongside
+        const r = 0.04 + pl.u(`br${s.g}`) * 0.04;
+        for (const sgn of [1]) {
+          p.add(node, xf(tubeGeo(r * 0.25, r * 0.2, r * 1.2, 7), { at: [Math.cos(a) * r * 1.6 * sgn, -r * 0.5, Math.sin(a) * r * 1.6 * sgn] }), { color: stalkCol });
+          addCap(p, node, { r: r * 0.7, h: r * 0.6, shape: "dome", tri: p.budget, at: [Math.cos(a) * r * 1.6 * sgn, r * 0.7, Math.sin(a) * r * 1.6 * sgn], color: s.g % 2 ? capCol : capDark });
+        }
+        return;
+      }
+      for (const sgn of [1]) {
+        p.add(node, xf(bladeGeo({ len: 0.07, wid: 0.03, thick: 0.012, shape: "linear", rows: 4, ring: 4 }), { rx: -0.4, ry: a + (sgn > 0 ? 0 : Math.PI) }), { color: shade(stalkCol, -0.14) });
+      }
+    },
+  });
 }
 
 export const flora = {
@@ -662,3 +1764,12 @@ export const flora = {
   grass, fern, moss, cactus, succulent, rosetteBlades, aroid, vine,
   waterPlant, mushroom,
 };
+
+/**
+ * Test seams. `_plan` lets a script replay the lattice for the whole species
+ * list without building a mesh — that is how the zero-collision seed above was
+ * found, and how it would be re-found if the list changes. `_geo` lets the
+ * primitives be measured for creases in isolation.
+ */
+export { plan as _plan };
+export const _geo = { loft, lathe, sphereGeo, tubeGeo, coneGeo, capGeo, bladeGeo, arcTubeGeo, discGeo, xf, clean, orient };
