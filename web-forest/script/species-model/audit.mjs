@@ -66,7 +66,26 @@ export const GATE = {
      detail. Trees and flowers were the specific complaint. */
   min_triangle: 120,
   max_low_poly_model: 0,
+  /*
+   * "Reads as a tree." The first pass of this audit had no aesthetic gate, so
+   * the distinctness metric could be satisfied by flattening a tree into a
+   * wide lens on a stub — which is exactly what happened to Narra, Dao, Rain
+   * tree and Balete: 2.9x wider than tall, with the widest part down at the
+   * base. Goodhart, caught by eye and then made measurable.
+   *
+   * An upright plant must be no more than this many times wider than tall...
+   */
+  max_upright_spread: 1.6,
+  /* ...and must be TOP-heavy: the widest thing in the bottom third, over the
+     widest thing in the top half. A trunk is narrower than its own crown. */
+  max_trunk_over_canopy: 0.85,
+  max_topheavy_model: 0,
 };
+
+/** Archetypes that are supposed to stand up on a trunk or stem. */
+export const UPRIGHT = new Set([
+  "tree", "tree-balete", "palm", "shrub", "bananaKind", "papaya", "cycad", "pandanus",
+]);
 
 /* ── glb parsing ─────────────────────────────────────────────────────────── */
 
@@ -260,6 +279,34 @@ export function meshQuality(json, bin) {
   };
 }
 
+/* ── silhouette ───────────────────────────────────────────────────────────
+ *
+ * Two numbers that together say "this stands up like a plant": how wide it is
+ * against its height, and whether its mass is carried above its base.
+ */
+export function silhouette(part) {
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (const p of part) for (let k = 0; k < 3; k += 1) {
+    if (p.lo[k] < lo[k]) lo[k] = p.lo[k];
+    if (p.hi[k] > hi[k]) hi[k] = p.hi[k];
+  }
+  const width = Math.max(hi[0] - lo[0], hi[2] - lo[2]);
+  const height = Math.max(1e-6, hi[1] - lo[1]);
+  const base = lo[1] + height * 0.30, crown = lo[1] + height * 0.5;
+  let baseWide = 0, crownWide = 0;
+  for (const p of part) {
+    const cy = (p.lo[1] + p.hi[1]) / 2;
+    const w = Math.max(p.hi[0] - p.lo[0], p.hi[2] - p.lo[2]);
+    if (cy < base) baseWide = Math.max(baseWide, w);
+    if (cy > crown) crownWide = Math.max(crownWide, w);
+  }
+  return {
+    spread: width / height,
+    /* No crown at all is maximally bottom-heavy, not "fine". */
+    trunk_over_canopy: crownWide > 1e-6 ? baseWide / crownWide : Infinity,
+  };
+}
+
 /* ── 3. distinctness ─────────────────────────────────────────────────────── */
 
 /**
@@ -335,6 +382,7 @@ function main() {
       component: conn.component,
       floating: conn.floating,
       ...q,
+      ...silhouette(part),
       sig: signature(json, bin, part),
     });
   }
@@ -364,6 +412,10 @@ function main() {
   const duplicate = result.filter((r) => Number.isFinite(r.nn) && r.nn < GATE.min_neighbour_distance);
   const faceted = result.filter((r) => r.hard_edge_ratio > GATE.max_hard_edge_ratio);
   const lowPoly = result.filter((r) => r.tri < GATE.min_triangle);
+  const topheavy = result.filter(
+    (r) => UPRIGHT.has(r.archetype) &&
+      (r.spread > GATE.max_upright_spread || r.trunk_over_canopy > GATE.max_trunk_over_canopy),
+  );
 
   const fail = [];
   const check = (label, got, cap) => {
@@ -379,6 +431,7 @@ function main() {
   check("near-duplicate models", duplicate.length, GATE.max_duplicate_model);
   check("faceted models", faceted.length, GATE.max_faceted_model);
   check("under-detailed models", lowPoly.length, GATE.max_low_poly_model);
+  check("wrong-silhouette models", topheavy.length, GATE.max_topheavy_model);
 
   const med = (a) => { const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)] ?? 0; };
   console.log(`\nmedian triangles ${med(result.map((r) => r.tri))} · median parts ${med(result.map((r) => r.part))}` +
@@ -407,7 +460,15 @@ function main() {
   }
 
   if (jsonAt >= 0 && arg[jsonAt + 1]) {
-    writeFileSync(arg[jsonAt + 1], JSON.stringify({ gate: GATE, result }, null, 1));
+    /* Infinity does not survive JSON — it becomes null, and `isFinite(null)`
+       is true, so a naive consumer counts every single-member archetype as a
+       duplicate. Emit the finite ones only and say so explicitly instead. */
+    const clean = result.map((r) => ({
+      ...r,
+      nn: Number.isFinite(r.nn) ? r.nn : null,
+      is_only_member: !Number.isFinite(r.nn),
+    }));
+    writeFileSync(arg[jsonAt + 1], JSON.stringify({ gate: GATE, result: clean }, null, 1));
     console.log(`\nwrote ${arg[jsonAt + 1]}`);
   }
 

@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T04:49:21.818Z",
+ "generated_at": "2026-09-05T04:50:43.043Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -1137,10 +1137,10 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Reptilia",
-   "archetype": "snake",
+   "archetype": "lizard",
    "palette_source": "known",
    "file": "species/eutropis-multifasciata.glb",
-   "bytes": 48916,
+   "bytes": 50960,
    "display_scale_m": 0.25
   },
   {
@@ -2397,10 +2397,10 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Reptilia",
-   "archetype": "snake",
+   "archetype": "lizard",
    "palette_source": "known",
    "file": "species/hemidactylus-frenatus.glb",
-   "bytes": 49048,
+   "bytes": 45772,
    "display_scale_m": 0.11
   },
   {
@@ -6162,10 +6162,10 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Reptilia",
-   "archetype": "snake",
+   "archetype": "lizard",
    "palette_source": "known",
    "file": "species/hemidactylus-brookii.glb",
-   "bytes": 49028,
+   "bytes": 48040,
    "display_scale_m": 0.11
   },
   {
@@ -6447,10 +6447,10 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Reptilia",
-   "archetype": "snake",
+   "archetype": "lizard",
    "palette_source": "known",
    "file": "species/varanus-marmoratus.glb",
-   "bytes": 49508,
+   "bytes": 57348,
    "display_scale_m": 1.1
   },
   {
@@ -8637,10 +8637,10 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Reptilia",
-   "archetype": "snake",
+   "archetype": "lizard",
    "palette_source": "known",
    "file": "species/gehyra-mutilata.glb",
-   "bytes": 49000,
+   "bytes": 43200,
    "display_scale_m": 0.1
   },
   {
