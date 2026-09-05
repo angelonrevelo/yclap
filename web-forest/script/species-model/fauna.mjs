@@ -1765,10 +1765,14 @@ function lepidoptera(k, col, opt = {}) {
   // forewing: a swept triangle, chord a real fraction of span
   const foreX = v.f("fx", 0.21, 0.32) * (hawk ? 1.25 : skipper ? 0.78 : 1) * giant;
   const foreZ = foreX * v.f("fzr", 0.62, 1.0) * (skipper ? 0.78 : hawk ? 0.42 : 1);
+  /* Saturniids: a hooked (falcate) forewing apex and a clear window in the
+     middle of every wing. Attacus is one of the largest moths alive and both
+     are what you actually see of it — ours had neither. */
+  const saturniid = /^(attacus|samia|actias|antheraea|cricula|loepa|rhodinia)-/.test(who(k));
   const foreOut = wingShape(FOREWING, foreX, foreZ, {
-    scallop: v.on("fsc", 0.4) ? v.f("fscm", 0.4, 1) : 0,
-    apex: v.f("fap", 0.88, 1.16),
-    sweep: v.f("fsw", -0.22, 0.16),
+    scallop: saturniid ? 0 : v.on("fsc", 0.4) ? v.f("fscm", 0.4, 1) : 0,
+    apex: saturniid ? v.f("fap", 1.45, 1.7) : v.f("fap", 0.88, 1.16),
+    sweep: saturniid ? v.f("fsw", 0.3, 0.44) : v.f("fsw", -0.22, 0.16),
   });
   /* Wing carriage: a moth holds its wings flat, roofed or tented and a
      butterfly holds them open or clapped over its back. It is the single
@@ -1868,6 +1872,19 @@ function lepidoptera(k, col, opt = {}) {
         rx: foreX * 0.34, ry: 0.014, rz: foreZ * 0.78,
         at: [s * foreX * 0.74, 0, foreZ * 0.06], color: col.border ?? hex("#2a2622"), subdiv: 0,
       });
+    }
+  }
+  if (saturniid) {
+    for (const [wi, pair] of [[0, foreWing], [1, hindWing]]) {
+      const rx = wi ? hindX : foreX;
+      const rz = wi ? hindZ : foreZ;
+      for (const [si, w] of pair.entries()) {
+        const sd = si === 0 ? 1 : -1;
+        ball(k, w, `window${wi}${si}`, { merge: true,
+          rx: rx * 0.2, ry: 0.016, rz: rz * 0.3,
+          at: [sd * rx * 0.46, 0, rz * 0.04], color: mix(col.base, paper, 0.72), subdiv: 0,
+        });
+      }
     }
   }
   const bandN = v.i("bandn", 0, 3);
@@ -3173,7 +3190,17 @@ function spider(k, col, opt = {}) {
      silhouette — they should span two to four times the body. Nephila is the
      extreme case the review named, and it is a real one. */
   const giantOrb = /^(nephila|nephilengys|herennia|argiope|leucauge|tetragnatha)-/.test(who(k));
-  const legLen = B.leg * (jumping ? v.f("legl", 0.2, 0.3) : v.f("legl", 0.36, 0.52)) * (giantOrb ? 1.35 : 1);
+  /* But the corrections COMPOUND: a `stilt` build at 1.7 on a long-jawed orb
+     weaver at 1.35 reached 1.19 against an abdomen 0.115 across — a ten-to-one
+     leg span, which the gallery normalises to the legs and renders as an empty
+     tile with a sliver in it. Four spiders were shipping like that. The reach
+     is capped against the animal's OWN body, which is what "long-legged" means
+     in the first place. */
+  const abdR = (jumping ? 0.085 : 0.115) * v.f("ar", 0.78, 1.3) * (giantOrb ? 1.2 : 1);
+  const legLen = Math.min(
+    B.leg * (jumping ? v.f("legl", 0.2, 0.3) : v.f("legl", 0.36, 0.52)) * (giantOrb ? 1.25 : 1),
+    abdR * (giantOrb ? 5.4 : 4.4),
+  );
   const stand = v.f("stand", 0.08, 0.2);
   const cx = (jumping ? 0.095 : 0.07) * v.f("cx", 0.85, 1.3);
   const cz = cx * (jumping ? v.f("cz", 0.9, 1.15) : v.f("cz", 1.0, 1.5));
@@ -3184,7 +3211,7 @@ function spider(k, col, opt = {}) {
 
   // abdomen: four genuinely different bodies, not four tints of one
   const abdForm = spiny ? "spiny" : v.pick("abdf", ["round", "oval", "long", "teardrop", "round"]);
-  const ar = (jumping ? 0.085 : 0.115) * v.f("ar", 0.78, 1.3);
+  const ar = abdR;
   const shape = {
     round: [1, 0.95, 1], oval: [0.8, 0.72, 1.35], long: [0.62, 0.6, 1.8],
     teardrop: [0.95, 1.15, 1.05],

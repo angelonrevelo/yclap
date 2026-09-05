@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T08:16:48.318Z",
+ "generated_at": "2026-09-05T08:20:08.939Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -330,7 +330,7 @@
    "archetype": "spider",
    "palette_source": "known",
    "file": "species/leucauge-fastigata.glb",
-   "bytes": 79432,
+   "bytes": 79492,
    "display_scale_m": 0.03
   },
   {
@@ -1050,7 +1050,7 @@
    "archetype": "spider",
    "palette_source": "known",
    "file": "species/nephila-pilipes.glb",
-   "bytes": 81540,
+   "bytes": 81496,
    "display_scale_m": 0.07
   },
   {
@@ -3990,7 +3990,7 @@
    "archetype": "spider",
    "palette_source": "known",
    "file": "species/leucauge-argentina.glb",
-   "bytes": 80432,
+   "bytes": 80412,
    "display_scale_m": 0.025
   },
   {
@@ -5985,7 +5985,7 @@
    "archetype": "spider",
    "palette_source": "derived",
    "file": "species/eriovixia-laglaizei.glb",
-   "bytes": 79548,
+   "bytes": 79572,
    "display_scale_m": 0.035
   },
   {
@@ -7485,7 +7485,7 @@
    "archetype": "spider",
    "palette_source": "known",
    "file": "species/pardosa-pseudoannulata.glb",
-   "bytes": 92692,
+   "bytes": 92700,
    "display_scale_m": 0.02
   },
   {
@@ -7710,7 +7710,7 @@
    "archetype": "spider",
    "palette_source": "known",
    "file": "species/argiope-aemula.glb",
-   "bytes": 91780,
+   "bytes": 91696,
    "display_scale_m": 0.035
   },
   {
@@ -8235,7 +8235,7 @@
    "archetype": "spider",
    "palette_source": "derived",
    "file": "species/oedignatha-scrobiculata.glb",
-   "bytes": 81128,
+   "bytes": 81172,
    "display_scale_m": 0.035
   },
   {
@@ -12045,7 +12045,7 @@
    "archetype": "spider",
    "palette_source": "derived",
    "file": "species/neoscona-punctigera.glb",
-   "bytes": 83092,
+   "bytes": 83116,
    "display_scale_m": 0.035
   },
   {
@@ -13725,7 +13725,7 @@
    "archetype": "spider",
    "palette_source": "derived",
    "file": "species/cyrtophora-cylindroides.glb",
-   "bytes": 98380,
+   "bytes": 98400,
    "display_scale_m": 0.035
   },
   {
@@ -13995,7 +13995,7 @@
    "archetype": "spider",
    "palette_source": "known",
    "file": "species/argiope-catenulata.glb",
-   "bytes": 94408,
+   "bytes": 94440,
    "display_scale_m": 0.03
   },
   {
@@ -14730,7 +14730,7 @@
    "archetype": "spider",
    "palette_source": "known",
    "file": "species/leucauge-tessellata.glb",
-   "bytes": 76524,
+   "bytes": 76536,
    "display_scale_m": 0.035
   },
   {
@@ -15450,7 +15450,7 @@
    "archetype": "lepidoptera-moth",
    "palette_source": "known",
    "file": "species/attacus-lorquinii.glb",
-   "bytes": 103824,
+   "bytes": 106188,
    "display_scale_m": 0.13
   },
   {
@@ -16155,7 +16155,7 @@
    "archetype": "spider",
    "palette_source": "derived",
    "file": "species/bijoaraneus-mitificus.glb",
-   "bytes": 72656,
+   "bytes": 72668,
    "display_scale_m": 0.035
   },
   {
