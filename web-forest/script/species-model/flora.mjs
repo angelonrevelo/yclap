@@ -4132,6 +4132,16 @@ function mushroom(k, col, opt = {}) {
   // classic gilled mushroom
   grow(k, col, {
     salt: "fungi:cap",
+    /*
+     * Roughly as wide as it is tall. With no pool of its own this fell through
+     * to the general one, which runs from 0.15 to 2.9 — and a toadstool at
+     * either end is not a toadstool. At the wide end the cap flattens into a
+     * disc broader than the whole model is high and the stalk disappears under
+     * it: eleven "pancakes", Mycena and Marasmius and Hygrocybe among them. At
+     * the narrow end it is a rocket, which is the other two.
+     */
+    axSet: [0.6, 0.85, 1.1, 1.35],
+    azSet: [0.6, 0.85, 1.1, 1.35],
     height: 0.32,
     breathe: 0.03,
     sway: 0.04,
@@ -4140,8 +4150,13 @@ function mushroom(k, col, opt = {}) {
       p.spine("stalk", (node) => {
         const shape = CAP_SHAPE[pl.H("cs") % CAP_SHAPE.length];
         const stalkH = 0.45 + pl.u("sh") * 0.3;
-        const sr = 0.026 + pl.u("sr") * 0.026;
-        const capR = 0.09 + pl.u("cr") * 0.09;
+        /* Slimmer. At 0.026-0.052 against a cap of 0.09-0.18 the stalk was a
+           tin can with a lid on it. */
+        const sr = 0.017 + pl.u("sr") * 0.019;
+        const capR = 0.085 + pl.u("cr") * 0.085;
+        pl.capR = capR;
+        pl.stalkH = stalkH;
+        pl.sr = sr;
         p.add(node, xf(tubeGeo(sr * 1.3, sr, stalkH, 12, sr * 0.15)), { color: stalkCol, colorFn: grad(shade(stalkCol, 0.1), shade(stalkCol, -0.18), 0, stalkH) });
         if (pl.u("ring") > 0.5) {
           p.add(node, xf(discGeo(sr * 2, sr * 0.32, 9), { at: [0, stalkH * 0.72, 0] }), { color: shade(stalkCol, -0.12) });
@@ -4154,26 +4169,49 @@ function mushroom(k, col, opt = {}) {
     },
     slot(p, pl, s) {
       const { node, band, a, top } = s;
+      /*
+       * Cap spots, and they have to be ON the cap. They were placed at a fixed
+       * radius of 0.07 whatever the cap's own radius was and whatever height
+       * the band put them at, so on six models the spots hung in the air beside
+       * the mushroom and read as a rendering failure. The band target is known
+       * before the part is placed, so the cap's radius at that height is too.
+       */
       if (band >= top - 1 && (opt.spots || pl.u("sp") > 0.55)) {
-        for (const sgn of [1]) {
-          p.add(node, xf(discGeo(0.024, 0.008, 7), { at: [Math.cos(a) * 0.07 * sgn, 0, Math.sin(a) * 0.07 * sgn] }), { color: paper });
+        const ty = (band + 0.35 + (0.55 * (s.i + 0.5)) / Math.max(1, s.n)) / 6;
+        const up = (ty - pl.stalkH) / Math.max(1e-6, 1 - pl.stalkH);
+        if (up > 0 && up < 1) {
+          const rr = pl.capR * Math.sqrt(Math.max(0, 1 - up * up)) * 0.82;
+          p.add(node, xf(discGeo(Math.min(0.026, rr * 0.4), 0.008, 7), { at: [Math.cos(a) * rr, 0, Math.sin(a) * rr] }), { color: paper });
+          return;
         }
-        return;
       }
       if (band <= 1) {
-        // a sibling button mushroom sprouting alongside
+        /*
+         * A sibling button sprouting alongside — and CLOSE alongside. At 1.6
+         * radii out its box cleared the axis, so the connectivity pedicel fired
+         * and every sibling ended up as a little cap on the end of a visible
+         * wire sticking out of the stalk. A troop of mushrooms crowds the
+         * parent; at 0.6 radii the button's own box straddles the axis and no
+         * wire is drawn at all.
+         */
         const r = 0.04 + pl.u(`br${s.g}`) * 0.04;
-        for (const sgn of [1]) {
-          p.add(node, xf(tubeGeo(r * 0.25, r * 0.2, r * 1.2, 7), { at: [Math.cos(a) * r * 1.6 * sgn, -r * 0.5, Math.sin(a) * r * 1.6 * sgn] }), { color: stalkCol });
-          /* A real little dome. Under 96 triangles addCap falls back to a thick
-             lens, and a lens on its side is a flat red wedge sticking out of
-             the stalk, not a button mushroom. */
-          addCap(p, node, { r: r * 0.7, h: r * 0.6, shape: "dome", tri: Math.max(110, p.budget), at: [Math.cos(a) * r * 1.6 * sgn, r * 0.7, Math.sin(a) * r * 1.6 * sgn], color: s.g % 2 ? capCol : capDark });
-        }
+        const off = r * 0.6;
+        p.add(node, xf(tubeGeo(r * 0.25, r * 0.2, r * 1.3, 9), { at: [Math.cos(a) * off, -r * 0.6, Math.sin(a) * off] }), { color: stalkCol });
+        /* A real little dome. Under 96 triangles addCap falls back to a thick
+           lens, and a lens on its side is a flat red wedge sticking out of
+           the stalk, not a button mushroom. */
+        addCap(p, node, { r: r * 0.7, h: r * 0.62, shape: "dome", tri: Math.max(110, p.budget), at: [Math.cos(a) * off, r * 0.7, Math.sin(a) * off], color: s.g % 2 ? capCol : capDark });
         return;
       }
-      for (const sgn of [1]) {
-        p.add(node, xf(bladeGeo({ len: 0.07, wid: 0.03, thick: 0.012, shape: "linear", rows: 4, ring: 4 }), { rx: -0.4, ry: a + (sgn > 0 ? 0 : Math.PI) }), { color: shade(stalkCol, -0.14) });
+      /* Veil scales pressed against the stalk. These slots used to be a single
+         horizontal strap sticking straight out of the stalk at every height,
+         which reads as whiskers on a toadstool. A scale lying along the stalk
+         reads as the scurf a real one carries. */
+      for (let j = 0; j < 2; j += 1) {
+        const aa = a + (j - 0.5) * 0.9;
+        p.add(node, xf(bladeGeo({ len: pl.sr * 1.5, wid: pl.sr * 0.7, thick: pl.sr * 0.24, shape: "lanceolate", rows: 4, ring: 4 }),
+          { rx: -2.7, ry: aa, at: [Math.cos(aa) * pl.sr * 0.8, pl.sr * 0.6, Math.sin(aa) * pl.sr * 0.8] }),
+        { color: shade(stalkCol, j % 2 ? -0.14 : -0.05) });
       }
     },
   });
