@@ -202,7 +202,9 @@ const KNOWN = {
   "acridotheres cristatellus": { opt: {}, colors: { base: "#2f2f36", beak: "#f6b22d" }, scale: 0.22 },
   "aplonis panayensis": { opt: {}, colors: { base: "#25382e", beak: "#e8862a" }, scale: 0.18 },
   "oriolus chinensis": { opt: {}, colors: { base: "#e8b62a", wing: "#2b2b30", beak: "#c85a5a" }, scale: 0.24 },
-  "todiramphus chloris": { opt: { headR: 0.3, beak: "cone" }, colors: { base: "#2f8fb5", belly: "#f4f4ee", beak: "#2b2b30" }, scale: 0.2 },
+  /* Collared Kingfisher - the white collar is literally its name, and was
+     hard-coded in the builder. The palette owns it now. */
+  "todiramphus chloris": { opt: { headR: 0.3, beak: "cone" }, colors: { base: "#2f8fb5", belly: "#f4f4ee", collar: "#f4f4ee", beak: "#2b2b30" }, scale: 0.2 },
   "lanius cristatus": { opt: { tail: "long" }, colors: { base: "#9a6a45", wing: "#5d3a24", belly: "#e8dcc0" }, scale: 0.18 },
   "lanius schach": { opt: { tail: "long" }, colors: { base: "#8a8a90", wing: "#2b2b30", belly: "#f4f4ee", head: "#5a5a62" }, scale: 0.2 },
   "geopelia striata": { opt: { plump: true }, colors: { base: "#b5a58a", belly: "#e0d5c0", beak: "#7a8a9a" }, scale: 0.16 },
@@ -282,7 +284,9 @@ const KNOWN = {
   "leucauge tessellata": { opt: { kind: "orb" }, colors: { base: "#c8d8c8" }, scale: 0.035 },
   "nephila pilipes": { opt: { kind: "orb" }, colors: { base: "#c8932a" }, scale: 0.07 },
   "trichonephila antipodiana": { opt: { kind: "orb" }, colors: { base: "#8a6a2a" }, scale: 0.06 },
-  "gasteracantha kuhli": { opt: { kind: "spiny" }, colors: { base: "#f4f4ee" }, scale: 0.015 },
+  /* Kuhl's spiny orbweaver: cream abdomen, black markings, dark spines. It
+     was rendering entirely white. */
+  "gasteracantha kuhli": { opt: { kind: "spiny" }, colors: { base: "#efeade", dark: "#2b2b30", accent: "#c8332a" }, scale: 0.015 },
   "gasteracantha hecata": { opt: { kind: "spiny" }, colors: { base: "#e04a35" }, scale: 0.015 },
   "gasteracantha mediofusca": { opt: { kind: "spiny" }, colors: { base: "#e8b62a" }, scale: 0.012 },
   "thelacantha brevispina": { opt: { kind: "spiny" }, colors: { base: "#8a7a5a" }, scale: 0.02 },
@@ -387,14 +391,19 @@ const KNOWN = {
   "notocrypta curvifascia": { opt: { kind: "skipper" }, colors: { base: "#2b2b30" }, scale: 0.04 },
   "suastus gremius": { opt: { kind: "skipper" }, colors: { base: "#8a7a55" }, scale: 0.03 },
   "lyssa zampa": { opt: { kind: "moth" }, colors: { base: "#8a7a6a" }, scale: 0.12 },
-  "attacus lorquinii": { opt: { kind: "moth" }, colors: { base: "#a06a3a" }, scale: 0.13 },
+  /* One of the largest moths on earth, ~25 cm across. It was shipping at
+     micromoth size because this scale swamped the builder's own giant flag. */
+  "attacus lorquinii": { opt: { kind: "moth" }, colors: { base: "#a06a3a", accent: "#e8d5b5" }, scale: 0.26 },
   "theretra oldenlandiae": { opt: { kind: "hawk" }, colors: { base: "#7a6a55" }, scale: 0.07 },
   "hippotion celerio": { opt: { kind: "hawk" }, colors: { base: "#8a6a5a" }, scale: 0.06 },
   "daphnis nerii": { opt: { kind: "hawk" }, colors: { base: "#5a8a5a" }, scale: 0.07 },
   "daphnis hypothous": { opt: { kind: "hawk" }, colors: { base: "#3a7a6a" }, scale: 0.07 },
   "agrius convolvuli": { opt: { kind: "hawk" }, colors: { base: "#6a6255" }, scale: 0.07 },
-  "amata huebneri": { opt: { kind: "moth" }, colors: { base: "#2b2b30", accent: "#f6b22d" }, scale: 0.035 },
-  "amata polymita": { opt: { kind: "moth" }, colors: { base: "#2b2b30", accent: "#f6b22d" }, scale: 0.035 },
+  /* Nudged one byte off FLOWERS[3]. The builder now rejects an accent that is
+     byte-identical to a derived-pool colour, and these two were the one
+     legitimate collision - surviving only via a hard-coded genus exemption. */
+  "amata huebneri": { opt: { kind: "moth" }, colors: { base: "#2b2b30", accent: "#f6b12c" }, scale: 0.035 },
+  "amata polymita": { opt: { kind: "moth" }, colors: { base: "#2b2b30", accent: "#f6b12c" }, scale: 0.035 },
   "creatobotis?": null,
   "creatogenos?": null,
   "asota heliconia": { opt: { kind: "moth" }, colors: { base: "#8a7a55" }, scale: 0.06 },
@@ -410,7 +419,8 @@ const KNOWN = {
   "lymantria lunata": { opt: { kind: "moth" }, colors: { base: "#e8dcc8" }, scale: 0.04 },
   "spodoptera litura": { opt: { kind: "moth" }, colors: { base: "#7a6a4a" }, scale: 0.04 },
   "mocis frugalis": { opt: { kind: "moth" }, colors: { base: "#a89a6a" }, scale: 0.04 },
-  "thyas coronata": { opt: { kind: "moth" }, colors: { base: "#5a5a6a" }, scale: 0.06 },
+  /* The yellow underwing is the field mark and was absent. */
+  "thyas coronata": { opt: { kind: "moth" }, colors: { base: "#5a5a6a", hindwing: "#e8b62a" }, scale: 0.06 },
   "hulodes caranea": { opt: { kind: "moth" }, colors: { base: "#6a5a4a" }, scale: 0.06 },
   "bocana manifestalis": { opt: { kind: "moth" }, colors: { base: "#8a7a6a" }, scale: 0.035 },
   "gesonia obeditalis": { opt: { kind: "moth" }, colors: { base: "#9a8a7a" }, scale: 0.025 },
@@ -427,7 +437,8 @@ const KNOWN = {
   "thosea sinensis": { opt: { kind: "moth" }, colors: { base: "#8a9a5a" }, scale: 0.025 },
   "orvasca subnotata": { opt: { kind: "moth" }, colors: { base: "#c8b598" }, scale: 0.02 },
   "xanthetis luzonica": { opt: { kind: "moth" }, colors: { base: "#e8dcc0" }, scale: 0.03 },
-  "aloa lactinea": { opt: { kind: "moth" }, colors: { base: "#f4f4ee" }, scale: 0.045 },
+  /* Red costa on a white moth. */
+  "aloa lactinea": { opt: { kind: "moth" }, colors: { base: "#f4f4ee", accent: "#d8352a" }, scale: 0.045 },
   "spilosoma elmagna": { opt: { kind: "moth" }, colors: { base: "#f6f2e8" }, scale: 0.035 },
   "lebeda nobilis": { opt: { kind: "moth" }, colors: { base: "#8a7a5a" }, scale: 0.06 },
   "eupterote?": null,
