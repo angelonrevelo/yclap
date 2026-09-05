@@ -541,7 +541,8 @@ const KNOWN = {
   "caryota mitis": { archetype: "palm", opt: { fishtail: true, clump: true }, scale: 4 },
   "ptychosperma propinquum": { archetype: "palm", opt: { clump: true }, scale: 4 },
   "rhapis excelsa": { archetype: "palm", opt: { clump: true, trunkH: 0.3 }, scale: 1.8 },
-  "roystonea regia": { archetype: "palm", opt: { trunkH: 0.62 }, scale: 12 },
+  /* Royal palm: the trunk is pale grey-white, not the default warm brown. */
+  "roystonea regia": { archetype: "palm", opt: { trunkH: 0.62 }, colors: { trunk: "#b9bcb4" }, scale: 12 },
   "musa acuminata": { archetype: "bananaKind", opt: { bloom: true }, scale: 3 },
   "musa paradisiaca": { archetype: "bananaKind", opt: { bloom: true }, scale: 3.5 },
   "musa textilis": { archetype: "bananaKind", scale: 3 },
@@ -550,12 +551,15 @@ const KNOWN = {
   "moringa oleifera": { archetype: "tree", scale: 6 },
   "epipremnum aureum": { archetype: "vine", opt: {}, colors: { variegated: true }, scale: 1 },
   "epipremnum pinnatum": { archetype: "vine", scale: 1.2 },
-  "dieffenbachia seguine": { archetype: "aroid", scale: 1.2 },
-  "caladium bicolor": { archetype: "aroid", scale: 0.4 },
+  /* Dumb cane: cream-mottled blade. Was shipping plain green. */
+  "dieffenbachia seguine": { archetype: "aroid", colors: { base: "#2f7d3a", accent: "#eff3dc", variegated: true }, scale: 1.2 },
+  /* Heart of Jesus: pink/white over green. Was shipping solid dark green. */
+  "caladium bicolor": { archetype: "aroid", colors: { base: "#2e7d32", accent: "#e8698f", variegated: true }, scale: 0.4 },
   "aglaonema?": null,
   "dracaena fragrans": { archetype: "rosetteBlades", opt: { cane: true, tall: 0.22 }, scale: 1.5 },
   "cordyline fruticosa": { archetype: "rosetteBlades", opt: { tall: 0.25 }, colors: { base: "#a0305a" }, scale: 1.2 },
-  "sansevieria trifasciata": { archetype: "rosetteBlades", opt: { tall: 0.28, edge: true }, scale: 0.6 },
+  /* Snake plant: pale cross-banding on stiff upright blades. */
+  "sansevieria trifasciata": { archetype: "rosetteBlades", opt: { tall: 0.28, edge: true }, colors: { base: "#2e6b3c", accent: "#cdd68a", variegated: true }, scale: 0.6 },
   "agave attenuata": { archetype: "rosetteBlades", opt: { tall: 0.2, n: 12 }, scale: 1 },
   "aloe vera": { archetype: "rosetteBlades", opt: { tall: 0.18 }, scale: 0.5 },
   "codiaeum variegatum": { archetype: "shrub", opt: { colorful: true }, scale: 1.5 },
