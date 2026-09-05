@@ -421,8 +421,18 @@ function plan(k, style) {
 
   const pLevel = style.pLevel ?? P_LEVEL;
   const P = pLevel[H("part") % pLevel.length];
-  const ax = (style.axSet ?? ASPECT)[H("aspx") % (style.axSet ?? ASPECT).length];
-  const az = (style.azSet ?? ASPECT)[H("aspz") % (style.azSet ?? ASPECT).length];
+  let ax = (style.axSet ?? ASPECT)[H("aspx") % (style.axSet ?? ASPECT).length];
+  let az = (style.azSet ?? ASPECT)[H("aspz") % (style.azSet ?? ASPECT).length];
+  /*
+   * The two aspects are drawn independently, which lets a plant come out
+   * nineteen times wider in x than in z. Nothing in the audit minds — the
+   * signature caps both at three — but every round thing in such a plant is
+   * rolled flat, which is where a lot of "flat slivers seen from above" came
+   * from, the Norfolk Island Pine's pancake crown among them. Cap the ratio.
+   */
+  const aniso = style.maxAniso ?? 3.2;
+  if (ax / az > aniso) az = ax / aniso;
+  else if (az / ax > aniso) ax = az / aniso;
 
   const bands = style.bands ?? [0, 1, 2, 3, 4, 5];
   /* An upright also reserves a unit high in the canopy. Without it a plan can
@@ -514,7 +524,10 @@ class Plant {
     if (len < 1e-5) return;
     const rx = Math.acos(Math.max(-1, Math.min(1, c[1] / len)));
     const ry = Math.atan2(c[0], c[2]);
-    const w = Math.max(0.003, len * 0.06);
+    /* Thin. This is a pedicel, not a branch: at six per cent of its own length
+       it reads as a bare brown stick poking out of the plant, and a shrub with
+       a flower on every other slot grows a fistful of them. */
+    const w = Math.max(0.0022, len * 0.028);
     this.add(node, xf(tubeGeo(w, w * 0.8, len, 5), { rx, ry }), { color }, true);
   }
 
@@ -922,17 +935,27 @@ function ballGeo(tri) {
  * smooth at a third of the triangles, and read better on a plant anyway.
  */
 function addLump(p, node, { at = [0, 0, 0], rx, ry, rz, color, colorFn, tri = 100, yaw = 0 }) {
-  if (tri >= 74) {
+  /* The threshold is deliberately BELOW what a smooth ball costs. A nine-by-five
+     lathe is seventy-two triangles with not one hard edge; the blade fallback is
+     cheaper per piece but every lens has two knife edges, and a crown made
+     entirely of them is what pushed four trees past the faceted gate. Spending
+     a little over budget here is paid back by the model-wide triangle ceiling. */
+  if (tri >= 62) {
     p.add(node, xf(ballGeo(tri), { sx: rx, sy: ry, sz: rz, at }), { color, colorFn });
     return;
   }
-  const n = Math.max(2, Math.min(4, Math.floor(tri / 26)));
-  const rows = tri >= 44 ? 3 : 2;
+  /* Thin leafy blades, not a ball: the flat lens keeps its two broad faces
+     nearly coplanar, which is why it stays under the crease line where a
+     cheap low-segment sphere would be all facets. Merged into one primitive. */
+  const n = Math.max(2, Math.min(3, Math.floor(tri / 30)));
+  const rows = 4;
+  const g = [];
   for (let i = 0; i < n; i += 1) {
     const a = yaw + (i / n) * TAU;
-    p.add(node, xf(bladeGeo({ len: rz * 1.8, wid: rx * 1.6, thick: ry * 0.9, shape: "elliptic", rows, ring: 4 }),
-      { rx: 0.35 - 0.7 * (i % 2), ry: a, at: [at[0], at[1], at[2]] }), { color, colorFn });
+    g.push(xf(bladeGeo({ len: rz * 1.8, wid: rx * 1.6, thick: ry * 0.9, shape: "elliptic", rows, ring: 4 }),
+      { rx: 0.35 - 0.7 * (i % 2), ry: a, at: [at[0], at[1], at[2]] }));
   }
+  p.add(node, mergeGeo(g), { color, colorFn });
 }
 
 /** A flat cap/shelf: a real dome when affordable, a thick lens when not. */
@@ -1191,23 +1214,48 @@ function crownCore(p, pl, node, form, th, cw, leaf, deep) {
   return { coreR, coreY };
 }
 
+/**
+ * Conifers, picked by GENUS. The tiered-conical crown path already existed and
+ * Araucaria columnaris found it because the routing table happened to name it;
+ * its congener A. heterophylla — the Norfolk Island Pine, the most conical
+ * tree on campus — missed it and came out a broad flat blob, because the crown
+ * form was chosen by hash. A hash is not a way to decide whether something is
+ * a pine.
+ */
+const CONIFER_GENUS = new Set((
+  "araucaria pinus picea abies casuarina agathis podocarpus cupressus thuja " +
+  "juniperus cryptomeria taxodium cedrus larix"
+).split(" "));
+
 function tree(k, col, opt = {}) {
   const spec = bloomOf(k);
-  const forced = opt.canopy === "conifer" ? "conical"
+  const conifer = CONIFER_GENUS.has(genusOf(k));
+  const forced = conifer ? "conical"
+    : opt.canopy === "conifer" ? "conical"
     : opt.canopy === "umbrella" ? "broad"
       : opt.canopy === "balete" ? "round"
         : null;
   grow(k, col, {
-    salt: "tree:" + (opt.canopy ?? "auto") + (spec ? "b" : ""),
+    /* Fruit and bloom are part of the salt: they change what a tree carries, so
+       two trees that differ only in whether they fruit should not be handed the
+       same lattice cell. Dao and Katmon landed 0.116 apart without this, just
+       under the 0.12 distinctness floor. */
+    salt: "tree:" + (opt.canopy ?? "auto") + (spec ? "b" : "") + (conifer ? "c" : "") + (opt.fruit ? "f" : "") + (opt.thick ? "t" : ""),
     upright: true,
-    axSet: ASPECT_UP,
-    azSet: ASPECT_UP,
+    // a conifer is a spire: it never gets to be as wide as it is tall
+    axSet: conifer ? [0.3, 0.5, 0.7] : ASPECT_UP,
+    azSet: conifer ? [0.3, 0.5, 0.7] : ASPECT_UP,
+    maxAniso: 1.9,
+    // fewer, better-fed canopy sprays: at thirty-two parts each one is down to
+    // forty-eight triangles, which buys two two-row blades and reads as facets
+    pLevel: [10, 16, 22, 28],
     height: (pl) => 0.7 + pl.u("size") * 0.55,
     breathe: 0.012,
     sway: 0.03,
     bands: [0, 1, 2, 3, 4, 5],
     spine(p, pl) {
       pl.crownForm = forced ?? CROWN_FORM[pl.H("crownform") % CROWN_FORM.length];
+      pl.conifer = conifer;
       // a pencil footprint has to carry a pencil crown, or it reads as a ball
       // skewered on a stick
       if (Math.max(pl.ax, pl.az) <= 0.2) pl.crownForm = pl.H("col") % 2 ? "columnar" : "conical";
@@ -1256,17 +1304,24 @@ function tree(k, col, opt = {}) {
         return;
       }
       if (band === 2) {
-        // a bare branch off the trunk; its angle is the crown form's signature
+        /* A branch and its foliage, MIRRORED. Drawn on one side only it is a
+           horizontal bar with a ball on the end sticking out sideways like a
+           scarecrow's arm — about fifteen trees shipped that barbell — and it
+           also drags the whole crown off the trunk axis. */
         const rise = pl.crownForm === "columnar" ? 1.15
           : pl.crownForm === "vase" ? 1.0
             : pl.crownForm === "weeping" ? 0.3 : 0.7;
         const len = reachOf(pl, a, 0.5 + pl.u("bl" + s.g) * 0.35);
-        p.add(node, xf(tubeGeo(0.015, 0.007, len, 9), { rz: -Math.cos(a) * (1.57 - rise), rx: Math.sin(a) * (1.57 - rise) }), { color: tr });
-        addLump(p, node, {
-          rx: len * 0.3, ry: len * 0.22, rz: len * 0.3, yaw: a, tri: p.budget,
-          at: [Math.cos(a) * len * 0.72, len * 0.3, Math.sin(a) * len * 0.72],
-          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad,
-        });
+        for (const sgn of [1, -1]) {
+          const aa = a + (sgn > 0 ? 0 : Math.PI);
+          const L = len * (sgn > 0 ? 1 : 0.78);
+          p.add(node, xf(tubeGeo(0.015, 0.007, L, 9), { rz: -Math.cos(aa) * (1.57 - rise), rx: Math.sin(aa) * (1.57 - rise) }), { color: tr });
+          addLump(p, node, {
+            rx: L * 0.3, ry: L * 0.22, rz: L * 0.3, yaw: aa, tri: p.budget * 0.55,
+            at: [Math.cos(aa) * L * 0.72, L * 0.3, Math.sin(aa) * L * 0.72],
+            color: (s.g + (sgn > 0 ? 0 : 1)) % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad,
+          });
+        }
         return;
       }
       /* Flowering trees. Spathodea is the African tulip, Delonix the
@@ -1274,8 +1329,12 @@ function tree(k, col, opt = {}) {
          reason anyone knows the tree, and all of them shipped plain green. */
       if (spec && band >= 3 && s.g % 3 === 1) {
         const r = reachOf(pl, a, 0.62);
+        /* Deliberately over the per-part budget. addFlower falls back to a
+           three-scale BUD under 58 triangles, and a bud is invisible at
+           gallery size — which is the whole complaint about the flowering
+           trees. A crown spray can afford to be one lump smaller. */
         addFlower(p, node, {
-          tri: p.budget, at: [Math.cos(a) * r, 0, Math.sin(a) * r], yaw: a,
+          tri: Math.max(120, p.budget), at: [Math.cos(a) * r, 0, Math.sin(a) * r], yaw: a,
           kind: spec.kind, r: spec.r, color: spec.color, color2: shade(spec.color, 0.28), stalkLen: 0.025,
         });
         return;
@@ -1299,14 +1358,19 @@ function tree(k, col, opt = {}) {
               : 1 - t * 0.18;
       const r = reachOf(pl, a, (0.55 + pl.u("cb" + s.g) * 0.4) * shapeR);
       const rr = Math.max(0.032, r * (0.34 + pl.u("cs" + s.g) * 0.3));
-      const fan = p.budget >= 52 ? 2 : 1;
-      for (let j = 0; j < fan; j += 1) {
-        const aa = a + (j - (fan - 1) / 2) * 0.62;
-        addLump(p, node, {
-          rx: rr, ry: rr * (0.62 + pl.u("cf" + s.g) * 0.4), rz: rr, yaw: aa, tri: p.budget / fan,
-          at: [Math.cos(aa) * r, (j % 2) * rr * 0.35, Math.sin(aa) * r],
-          color: (s.g + j) % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad,
-        });
+      /* Both sides, always. One-sided sprays are what pushed crowns off the
+         trunk axis; the far side is smaller so the crown still has a shape. */
+      const side = [[0, 1, 0.62], [Math.PI, 0.72, 0.4]];
+      const fan = p.budget >= 110 ? 2 : 1;
+      for (const [off, k2, share] of side) {
+        for (let j = 0; j < fan; j += 1) {
+          const aa = a + off + (j - (fan - 1) / 2) * 0.62;
+          addLump(p, node, {
+            rx: rr * k2, ry: rr * k2 * (0.62 + pl.u("cf" + s.g) * 0.4), rz: rr * k2, yaw: aa, tri: (p.budget * share) / fan,
+            at: [Math.cos(aa) * r * k2, (j % 2) * rr * 0.35, Math.sin(aa) * r * k2],
+            color: (s.g + j + (k2 < 1 ? 1 : 0)) % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad,
+          });
+        }
       }
       if (pl.crownForm === "weeping" && p.budget >= 40) {
         p.add(node, xf(bladeGeo({ len: r * 0.8, wid: r * 0.14, thick: 0.008, shape: "linear", rows: 4, ring: 4, bend: -r * 0.3 }),
@@ -1812,7 +1876,8 @@ function shrub(k, col, opt = {}) {
           : opt.multicolor ? FLOWERS[pl.H("mc" + s.g) % FLOWERS.length] : flowerOf(col);
         const r = reachOf(pl, a, 0.6);
         addFlower(p, node, {
-          tri: p.budget, at: [Math.cos(a) * r, 0, Math.sin(a) * r], kind,
+          tri: spec ? Math.max(120, p.budget) : p.budget,
+          at: [Math.cos(a) * r, 0, Math.sin(a) * r], kind,
           r: (spec?.r ?? 0.045) + pl.u("fr" + s.g) * 0.03, color: colr,
           color2: spec ? shade(colr, 0.3) : undefined, stalkLen: 0.03, yaw: a,
         });
@@ -1867,7 +1932,7 @@ function herb(k, col, opt = {}) {
         const r = reachOf(pl, a, 0.3 + pl.u(`fs${s.g}`) * 0.3);
         const fr = (opt.flowerR ?? spec?.r ?? 0.07) * (0.75 + pl.u(`fz${s.g}`) * 0.6);
         const fc = spec?.color ?? flowerOf(col);
-        addFlower(p, node, { tri: p.budget,
+        addFlower(p, node, { tri: Math.max(110, p.budget),
           at: [Math.cos(a) * r, 0, Math.sin(a) * r], kind, r: fr, yaw: a,
           color: fc, color2: shade(fc, 0.3), stalkLen: 0.035, pitch: pl.u(`ft${s.g}`) * 0.3,
         });
