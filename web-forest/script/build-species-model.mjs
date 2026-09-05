@@ -96,7 +96,51 @@ const AROID_GENUS = new Set(
     "Schismatoglottis Amorphophallus Arisaema Pinellia Syngoniumcaladium Pistia Lemna Wolffia Spirodela").split(" "),
 );
 const CANE_GENUS = new Set("Dracaena Cordyline Yucca Beaucarnea Nolina Sansevieria Agave Aloe Furcraea Manfreda Proophea".split(" "));
-const BAMBOO_GENUS = new Set("Bambusa Dendrocalamus Gigantochloa Schizostachyum Guadua Chusquea Melocanna".split(" "));
+const BAMBOO_GENUS = new Set("Bambusa Dendrocalamus Gigantochloa Schizostachyum Guadua Chusquea Melocanna Phyllostachys Dinochloa".split(" "));
+
+/*
+ * Second routing sweep, 2026-09-05. A visual review of all 449 plant models
+ * found that `herb` was still a catch-all: 123 of its 278 members were not
+ * herbs at all, and every one of them had a correct archetype that already
+ * existed. These are the genera that were falling through, classified by what
+ * the plant actually is. Enumerated from the manifest (206 distinct genera in
+ * `herb`), not from a sample, so the pass is exhaustive rather than anecdotal.
+ */
+for (const g of ("Ceiba Lagerstroemia Hevea Theobroma Fraxinus Ulmus Aleurites Sterculia Acacia Handroanthus " +
+  "Broussonetia Sonneratia Pachira Muntingia Morus Annona Coccoloba Machilus Laurus Pipturus Meryta " +
+  "Citharexylum Pterocymbium Picea Kleinhovia Triplaris Monoon Cynometra Cenostigma Pometia Schizolobium " +
+  "Xanthostemon Wendlandia Lucuma Styphnolobium Anthocleista Garcinia Averrhoa Nauclea Zanthoxylum Bergera " +
+  "Cespedesia Adinandra Drypetes Streblus Ehretia Cascabela Abroma Melanolepis Hoheria").split(" ")) {
+  TREE_GENUS.add(g.toLowerCase());
+}
+for (const g of ("Vitis Entada Parthenocissus Paederia Malaisia Causonis Distimake Muehlenbeckia Tarlmounia " +
+  "Sicyos Abrus Schisandra Parsonsia Rhaphidophora Decalobanthus Gynochthodes Marsdenia Phanera " +
+  "Tristellateia Galactia").split(" ")) {
+  VINE_GENUS.add(g.toLowerCase());
+}
+for (const g of "Malpighia Leea Viburnum Wikstroemia Cotoneaster Spiraea Tecoma Buxus Megaskepasma Sanchezia Odontonema Pachystachys Strobilanthes Rauvolfia".split(" ")) {
+  SHRUB_GENUS.add(g.toLowerCase());
+}
+for (const g of "Thaumatophyllum Typhonium Zamioculcas Acorus".split(" ")) {
+  AROID_GENUS.add(g.toLowerCase());
+}
+/* Strappy-bladed monocots and bromeliads — a rosette of blades, not broad
+   dicot leaves. CANE_GENUS is what routes to `rosetteBlades`. */
+for (const g of "Crinum Hymenocallis Chlorophytum Trimezia Guzmania Billbergia Curculigo Xiphidium".split(" ")) {
+  CANE_GENUS.add(g.toLowerCase());
+}
+
+/** Free-floating and marsh plants — there is a `waterPlant` builder. */
+const WATER_GENUS = new Set(
+  "ludwigia callitriche neptunia limnophila hydrocotyle pistia lemna wolffia spirodela".split(" "),
+);
+
+/** Caudex and leaf-succulents — there is a `succulent` builder. */
+const SUCCULENT_GENUS = new Set("adenium haworthiopsis kalanchoe sedum crassula portulaca talinum".split(" "));
+
+/** Cycads and screw-pines each have their own builder, unexercised until now. */
+const CYCAD_GENUS = new Set(["cycas", "zamia", "dioon"]);
+const PANDAN_GENUS = new Set(["pandanus", "freycinetia"]);
 
 /**
  * genusOf() lowercases (it runs the name through norm()), but every set above
@@ -629,6 +673,20 @@ function route(row, ctx) {
     const order = ctx.order ?? "";
     // lichen-forming orders read better as mossy crusts than as mushrooms
     if (["Lecanorales", "Teloschistales", "Peltigerales", "Caliciales", "Arthoniales", "Graphidales", "Ostropales", "Pertusariales", "Baeomycetales", "Rhizocarpales", "Gyalectales", "Lichinales"].includes(order)) return "moss";
+    /*
+     * Genera that are stalkless in life — crusts, brackets and pleurotoid
+     * (side-attached) fungi. They were all shipping as classic stalked
+     * toadstools because their ORDER is Agaricales or Russulales, which the
+     * order test below reads as "gilled mushroom". A visual review of all 59
+     * caught them; the bracket builder already exists, so this is a re-route,
+     * not new work. Stereum and Xylobolus are Russulales crusts; Schizophyllum,
+     * Crepidotus, Clitopilus, Resupinatus and Favolaschia are Agaricales but
+     * grow as fans and shelves on wood with no central stipe.
+     */
+    const STALKLESS_GENUS = new Set(
+      "stereum xylobolus schizophyllum crepidotus clitopilus resupinatus favolaschia".split(" "),
+    );
+    if (STALKLESS_GENUS.has(genus)) return "mushroom-bracket";
     if (["Polyporales", "Hymenochaetales", "Gloeophyllales", "Corticiales", "Thelephorales", "Trechisporales"].includes(order)) return "mushroom-bracket";
     if (order === "Geastrales") return "mushroom-earthstar";
     if (order === "Nidulariales" || order === "Agaricales" && genus === "Cyathus") return "mushroom-birdsnest";
@@ -691,10 +749,47 @@ function route(row, ctx) {
     }
   }
   if (iconic === "Plantae") {
+    /*
+     * Species-level corrections. A genus is usually a good proxy for growth
+     * form, but not always: Thunbergia is mostly climbers yet T. erecta is a
+     * bush, Capparis mostly climbs but C. micracantha does not, Gnetum gnemon
+     * is a small tree among lianas, and Calamus is a CLIMBING rattan sitting
+     * in a family of trunked palms. Lygodium and Flagellaria climb but sit in
+     * fern and grass families. Checked before any genus rule.
+     */
+    const SPECIES_FORM = {
+      "thunbergia erecta": "shrub",
+      "capparis micracantha": "shrub",
+      "gnetum gnemon": "tree",
+      "flagellaria indica": "vine",
+      "lygodium japonicum": "vine",
+      "lygodium flexuosum": "vine",
+      "calamus rotang": "vine",
+      "calamus formosanus": "vine",
+    };
+    const bySpecies = SPECIES_FORM[sci.split(" ").slice(0, 2).join(" ")];
+    if (bySpecies) return bySpecies;
+
     if (ORCHID_FAM.has(fams[0]) || hasFam(ORCHID_FAM)) return "orchid";
     if (genus === "Cycas") return "cycad";
     if (genus === "Pandanus" || genus === "Freycinetia") return "pandanus";
     if (hasFam(PALM_FAM) || genus === "Roystonea" || genus === "Cocos") return "palm";
+
+    /*
+     * Cladophora columbiana is a marine green ALGA, not a plant — it was
+     * shipping as a leafy flowering herb with a stem and broad dicot leaves.
+     * There is no algal builder and inventing one for a single species is not
+     * worth it, so it takes `moss`: a low tufted cushion is the closest honest
+     * form available, and it is at least not pretending to be a flowering
+     * plant. The manifest still records what it actually is.
+     */
+    if (genus === "cladophora") return "moss";
+
+    /* Most specific first: these were all landing in `herb`. */
+    if (CYCAD_GENUS.has(genus)) return "cycad";
+    if (PANDAN_GENUS.has(genus)) return "pandanus";
+    if (WATER_GENUS.has(genus)) return "waterPlant";
+    if (SUCCULENT_GENUS.has(genus)) return "succulent";
     if (BAMBOO_GENUS.has(genus)) return "grass-bamboo";
     if (hasFam(BANANA_FAM)) return "bananaKind";
     if (genus === "Carica") return "papaya";
