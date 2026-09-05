@@ -206,7 +206,8 @@ const KNOWN = {
   "lanius cristatus": { opt: { tail: "long" }, colors: { base: "#9a6a45", wing: "#5d3a24", belly: "#e8dcc0" }, scale: 0.18 },
   "lanius schach": { opt: { tail: "long" }, colors: { base: "#8a8a90", wing: "#2b2b30", belly: "#f4f4ee", head: "#5a5a62" }, scale: 0.2 },
   "geopelia striata": { opt: { plump: true }, colors: { base: "#b5a58a", belly: "#e0d5c0", beak: "#7a8a9a" }, scale: 0.16 },
-  "columba livia": { opt: { plump: true }, colors: { base: "#7a8a9a", head: "#5a6a7a", beak: "#d8c8a8" }, scale: 0.24 },
+  /* Rock pigeon: two black wing bars over blue-grey. */
+  "columba livia": { opt: { plump: true }, colors: { base: "#7a8a9a", head: "#5a6a7a", beak: "#d8c8a8", wing: "#5a6675" }, scale: 0.24 },
   "yungipicus maculatus": { opt: { crest: "crest", beak: "chisel" }, colors: { base: "#d8d0c0", wing: "#2b2b30", head: "#d8d0c0" }, scale: 0.15 },
   "psilopogon haemacephalus": { opt: { plump: true }, colors: { base: "#4a9e46", head: "#e04a35", belly: "#e8e0c0" }, scale: 0.16 },
   "hirundo javanica": { opt: { tail: "fork", wingShape: "sickle" }, colors: { base: "#2e4a7a", belly: "#f0e8d8", head: "#8a4530" }, scale: 0.13 },
@@ -235,7 +236,8 @@ const KNOWN = {
   "rhipidura nigritorquis": { opt: { tail: "long" }, colors: { base: "#2b2b30", belly: "#f4f4ee", head: "#2b2b30" }, scale: 0.14 },
 
   // reptiles & amphibians
-  "eutropis multifasciata": { opt: { kind: "skink" }, colors: { base: "#8a9a5a" }, scale: 0.25 },
+  /* Common sun skink: bronze-brown with orange flanks, not olive. */
+  "eutropis multifasciata": { opt: { kind: "skink" }, colors: { base: "#8a6a3e", accent: "#d8792a" }, scale: 0.25 },
   "hemidactylus frenatus": { opt: { kind: "gecko" }, colors: { base: "#c8b598" }, scale: 0.11 },
   "hemidactylus brookii": { opt: { kind: "gecko" }, colors: { base: "#b5a088" }, scale: 0.11 },
   "gehara mutilata": null,
@@ -258,7 +260,8 @@ const KNOWN = {
   "gymnocorymbus ternetzi": { opt: {}, colors: { base: "#8a8a90" }, scale: 0.05 },
   "pterophyllum scalare": { opt: { kind: "angel" }, colors: { base: "#c8c4b8" }, scale: 0.1 },
   "labidochromis caeruleus": { opt: {}, colors: { base: "#f6d028" }, scale: 0.09 },
-  "xiphophorus hellerii": { opt: {}, colors: { base: "#e04a35" }, scale: 0.07 },
+  /* Green swordtail: olive body, red lateral stripe and sword — not solid red. */
+  "xiphophorus hellerii": { opt: {}, colors: { base: "#7a8a52", accent: "#d8442e" }, scale: 0.07 },
   "oreochromis niloticus": { opt: {}, colors: { base: "#8a9aa0" }, scale: 0.25 },
   "pseudanthias hypselosoma": { opt: {}, colors: { base: "#e87a8a" }, scale: 0.08 },
   "trachinotus anak": { opt: {}, colors: { base: "#9ab0b8" }, scale: 0.5 },
@@ -300,7 +303,8 @@ const KNOWN = {
   "luzonomorpha picea": { opt: { kind: "millipede" }, colors: { base: "#2b2b30" }, scale: 0.05 },
   "leptogoniulus sorornus": { opt: { kind: "millipede", banded: true }, colors: { base: "#a0522d" }, scale: 0.06 },
   "oxidus gracilis": { opt: { kind: "millipede", banded: true }, colors: { base: "#8a4a3a" }, scale: 0.025 },
-  "rhysida longipes": { opt: { kind: "centipede" }, colors: { base: "#8a4a3a" }, scale: 0.1 },
+  /* "Blueleg" centipede — the fauna lane added a `leg` key for exactly this. */
+  "rhysida longipes": { opt: { kind: "centipede" }, colors: { base: "#8a4a3a", leg: "#3a6ab5" }, scale: 0.1 },
   "scutigera coleoptrata": { opt: { kind: "house-centipede" }, colors: { base: "#b5a878" }, scale: 0.05 },
   "platydemus manokwari": { opt: {}, archetype: "flatworm", colors: { base: "#2b2b30" }, scale: 0.05 },
   "bipalium kewense": { opt: {}, archetype: "flatworm", colors: { base: "#d8c8a0" }, scale: 0.2 },
@@ -321,12 +325,14 @@ const KNOWN = {
   "technomyrmex albipes": { opt: { kind: "ant" }, colors: { base: "#3a3a3e" }, scale: 0.005 },
   "trichomyrmex destructor": { opt: { kind: "ant" }, colors: { base: "#4a4038" }, scale: 0.006 },
   "monomorium floricola": { opt: { kind: "ant" }, colors: { base: "#2b2b30" }, scale: 0.004 },
-  "tapinoma melanocephalum": { opt: { kind: "ant" }, colors: { base: "#3a3a3e" }, scale: 0.004 },
+  /* Ghost Ant: pale translucent body, DARK head — the name is the pattern. */
+  "tapinoma melanocephalum": { opt: { kind: "ant" }, colors: { base: "#d8cfc0", head: "#2b2b30" }, scale: 0.004 },
   "anoplolepis gracilipes": { opt: { kind: "ant" }, colors: { base: "#d8c878" }, scale: 0.01 },
   "apis dorsata": { opt: { kind: "bee" }, colors: { base: "#e8b62a" }, scale: 0.02 },
   "apis cerana": { opt: { kind: "bee" }, colors: { base: "#d8a02a" }, scale: 0.013 },
   "vespa tropica": { opt: { kind: "hornet" }, colors: { base: "#e8b62a", dark: "#2b2b30" }, scale: 0.03 },
-  "vespa luctuosa": { opt: { kind: "hornet" }, colors: { base: "#c84a5a", dark: "#2b2b30" }, scale: 0.025 },
+  /* Black hornet with an orange abdomen — was rendering pink. */
+  "vespa luctuosa": { opt: { kind: "hornet" }, colors: { base: "#2b2b30", accent: "#e8862a", dark: "#1a1a1e" }, scale: 0.025 },
   "xylocopa latipes": { opt: { kind: "bee" }, colors: { base: "#2b2b30" }, scale: 0.025 },
   "hypolimnas bolina": { opt: { kind: "butterfly", spots: true }, colors: { base: "#2b2b52" }, scale: 0.08 },
   "hypolimnas misippus": { opt: { kind: "butterfly", spots: true }, colors: { base: "#2b2b30" }, scale: 0.07 },
@@ -343,7 +349,8 @@ const KNOWN = {
   "papilio demoleus": { opt: { kind: "butterfly" }, colors: { base: "#c8b848" }, scale: 0.08 },
   "papilio deiphobus": { opt: { kind: "butterfly" }, colors: { base: "#2b2b30" }, scale: 0.09 },
   "papilio clytia": { opt: { kind: "butterfly" }, colors: { base: "#4a4438" }, scale: 0.09 },
-  "graphium agamemnon": { opt: { kind: "butterfly" }, colors: { base: "#3a9a5a" }, scale: 0.08 },
+  /* Tailed Jay: black wings with green SPOTS, not solid green. */
+  "graphium agamemnon": { opt: { kind: "butterfly" }, colors: { base: "#22242a", accent: "#5cc46a" }, scale: 0.08 },
   "graphium sarpedon": { opt: { kind: "butterfly" }, colors: { base: "#2b7ab5" }, scale: 0.08 },
   "troides aeacus": { opt: { kind: "butterfly" }, colors: { base: "#2b2b30", accent: "#e8b62a" }, scale: 0.13 },
   "troides rhadamantus": { opt: { kind: "butterfly" }, colors: { base: "#2b2b30", accent: "#e8c93a" }, scale: 0.12 },
@@ -432,7 +439,8 @@ const KNOWN = {
   "diplacina braueri": { opt: { kind: "dragonfly" }, colors: { base: "#3a8ad8" }, scale: 0.035 },
   "pseudagrion pilidorsum": { opt: { kind: "damselfly" }, colors: { base: "#d84a5a" }, scale: 0.035 },
   "agriocnemis femina": { opt: { kind: "damselfly" }, colors: { base: "#5aa858" }, scale: 0.02 },
-  "chrysomya megacephala": { opt: { kind: "fly" }, colors: { base: "#c8932a" }, scale: 0.012 },
+  /* Oriental latrine fly is metallic blue-green, not tan. */
+  "chrysomya megacephala": { opt: { kind: "fly" }, colors: { base: "#2f7a6a", dark: "#1d4f46" }, scale: 0.012 },
   "musca domestica": { opt: { kind: "fly" }, colors: { base: "#4a4a48" }, scale: 0.01 },
   "hermetia illucens": { opt: { kind: "fly" }, colors: { base: "#2b2b30" }, scale: 0.015 },
   "hermetia sexmaculata": { opt: { kind: "fly" }, colors: { base: "#2b2b30" }, scale: 0.014 },
