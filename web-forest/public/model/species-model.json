@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T06:12:45.654Z",
+ "generated_at": "2026-09-05T06:18:00.490Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -315,7 +315,7 @@
    "archetype": "grass",
    "palette_source": "known",
    "file": "species/axonopus-compressus.glb",
-   "bytes": 74732,
+   "bytes": 43256,
    "display_scale_m": 0.3
   },
   {
@@ -375,7 +375,7 @@
    "archetype": "bananaKind",
    "palette_source": "known",
    "file": "species/heliconia-psittacorum.glb",
-   "bytes": 60732,
+   "bytes": 76564,
    "display_scale_m": 1.2
   },
   {
@@ -690,7 +690,7 @@
    "archetype": "grass",
    "palette_source": "known",
    "file": "species/cyperus-mindorensis.glb",
-   "bytes": 37196,
+   "bytes": 72932,
    "display_scale_m": 0.6
   },
   {
@@ -1545,7 +1545,7 @@
    "archetype": "grass-bamboo",
    "palette_source": "derived",
    "file": "species/bambusa-vulgaris.glb",
-   "bytes": 75844,
+   "bytes": 78688,
    "display_scale_m": 6
   },
   {
@@ -1965,7 +1965,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/heliconia-rostrata.glb",
-   "bytes": 73992,
+   "bytes": 64576,
    "display_scale_m": 2.8
   },
   {
@@ -2865,7 +2865,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/costus-pictus.glb",
-   "bytes": 89180,
+   "bytes": 74564,
    "display_scale_m": 2.8
   },
   {
@@ -3195,7 +3195,7 @@
    "archetype": "grass",
    "palette_source": "derived",
    "file": "species/oplismenus-hirtellus.glb",
-   "bytes": 37460,
+   "bytes": 84428,
    "display_scale_m": 0.45
   },
   {
@@ -3345,7 +3345,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/musa-laterita.glb",
-   "bytes": 88812,
+   "bytes": 58348,
    "display_scale_m": 2.8
   },
   {
@@ -3360,7 +3360,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/costus-woodsonii.glb",
-   "bytes": 61080,
+   "bytes": 75588,
    "display_scale_m": 2.8
   },
   {
@@ -3630,7 +3630,7 @@
    "archetype": "grass",
    "palette_source": "derived",
    "file": "species/eleusine-indica.glb",
-   "bytes": 37376,
+   "bytes": 77332,
    "display_scale_m": 0.45
   },
   {
@@ -3750,7 +3750,7 @@
    "archetype": "bananaKind",
    "palette_source": "known",
    "file": "species/musa-acuminata.glb",
-   "bytes": 51524,
+   "bytes": 56844,
    "display_scale_m": 3
   },
   {
@@ -4920,7 +4920,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/hellenia-speciosa.glb",
-   "bytes": 65172,
+   "bytes": 70756,
    "display_scale_m": 2.8
   },
   {
@@ -5430,7 +5430,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/heliconia-latispatha.glb",
-   "bytes": 60768,
+   "bytes": 77104,
    "display_scale_m": 2.8
   },
   {
@@ -5445,7 +5445,7 @@
    "archetype": "grass",
    "palette_source": "derived",
    "file": "species/oplismenus-compositus.glb",
-   "bytes": 52660,
+   "bytes": 39216,
    "display_scale_m": 0.45
   },
   {
@@ -5895,7 +5895,7 @@
    "archetype": "grass",
    "palette_source": "derived",
    "file": "species/cyperus-brevifolius.glb",
-   "bytes": 74528,
+   "bytes": 56624,
    "display_scale_m": 0.45
   },
   {
@@ -6765,7 +6765,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/canna-indica.glb",
-   "bytes": 38952,
+   "bytes": 72708,
    "display_scale_m": 2.8
   },
   {
@@ -6825,7 +6825,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/alpinia-purpurata.glb",
-   "bytes": 62144,
+   "bytes": 63072,
    "display_scale_m": 2.8
   },
   {
@@ -7410,7 +7410,7 @@
    "archetype": "grass-bamboo",
    "palette_source": "derived",
    "file": "species/bambusa-tuldoides.glb",
-   "bytes": 84480,
+   "bytes": 87160,
    "display_scale_m": 6
   },
   {
@@ -7440,7 +7440,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/heliconia-tortuosa.glb",
-   "bytes": 75028,
+   "bytes": 69360,
    "display_scale_m": 2.8
   },
   {
@@ -8160,7 +8160,7 @@
    "archetype": "grass-bamboo",
    "palette_source": "derived",
    "file": "species/bambusa-stenostachya.glb",
-   "bytes": 75244,
+   "bytes": 78440,
    "display_scale_m": 6
   },
   {
@@ -8370,7 +8370,7 @@
    "archetype": "grass",
    "palette_source": "derived",
    "file": "species/megathyrsus-maximus.glb",
-   "bytes": 54452,
+   "bytes": 91600,
    "display_scale_m": 0.45
   },
   {
@@ -9465,7 +9465,7 @@
    "archetype": "grass",
    "palette_source": "derived",
    "file": "species/dactyloctenium-aegyptium.glb",
-   "bytes": 75648,
+   "bytes": 80832,
    "display_scale_m": 0.45
   },
   {
@@ -9870,7 +9870,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/curcuma-longa.glb",
-   "bytes": 61828,
+   "bytes": 51372,
    "display_scale_m": 2.8
   },
   {
@@ -10050,7 +10050,7 @@
    "archetype": "grass",
    "palette_source": "derived",
    "file": "species/cymbopogon-citratus.glb",
-   "bytes": 55940,
+   "bytes": 67488,
    "display_scale_m": 0.45
   },
   {
@@ -11085,7 +11085,7 @@
    "archetype": "grass",
    "palette_source": "derived",
    "file": "species/cyperus-compressus.glb",
-   "bytes": 70948,
+   "bytes": 56800,
    "display_scale_m": 0.45
   },
   {
@@ -11235,7 +11235,7 @@
    "archetype": "grass",
    "palette_source": "derived",
    "file": "species/imperata-cylindrica.glb",
-   "bytes": 57160,
+   "bytes": 85556,
    "display_scale_m": 0.45
   },
   {
@@ -11400,7 +11400,7 @@
    "archetype": "grass-bamboo",
    "palette_source": "derived",
    "file": "species/phyllostachys-nigra.glb",
-   "bytes": 55284,
+   "bytes": 62052,
    "display_scale_m": 6
   },
   {
@@ -11520,7 +11520,7 @@
    "archetype": "grass",
    "palette_source": "derived",
    "file": "species/setaria-palmifolia.glb",
-   "bytes": 37208,
+   "bytes": 84716,
    "display_scale_m": 0.45
   },
   {
@@ -12330,7 +12330,7 @@
    "archetype": "grass",
    "palette_source": "derived",
    "file": "species/urochloa-reptans.glb",
-   "bytes": 82104,
+   "bytes": 56456,
    "display_scale_m": 0.45
   },
   {
@@ -12540,7 +12540,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/musa-ornata.glb",
-   "bytes": 86816,
+   "bytes": 70956,
    "display_scale_m": 2.8
   },
   {
@@ -13035,7 +13035,7 @@
    "archetype": "grass-bamboo",
    "palette_source": "derived",
    "file": "species/bambusa-oldhamii.glb",
-   "bytes": 85276,
+   "bytes": 87080,
    "display_scale_m": 6
   },
   {
@@ -13185,7 +13185,7 @@
    "archetype": "grass-bamboo",
    "palette_source": "derived",
    "file": "species/bambusa-balcooa.glb",
-   "bytes": 49768,
+   "bytes": 65428,
    "display_scale_m": 6
   },
   {
@@ -13830,7 +13830,7 @@
    "archetype": "grass",
    "palette_source": "derived",
    "file": "species/oplismenus-undulatifolius.glb",
-   "bytes": 56536,
+   "bytes": 74508,
    "display_scale_m": 0.45
   },
   {
@@ -14040,7 +14040,7 @@
    "archetype": "grass",
    "palette_source": "derived",
    "file": "species/hypolytrum-nemorum.glb",
-   "bytes": 54840,
+   "bytes": 57700,
    "display_scale_m": 0.45
   },
   {
@@ -14700,7 +14700,7 @@
    "archetype": "grass",
    "palette_source": "derived",
    "file": "species/panicum-brevifolium.glb",
-   "bytes": 73276,
+   "bytes": 67760,
    "display_scale_m": 0.45
   },
   {
@@ -16290,7 +16290,7 @@
    "archetype": "grass",
    "palette_source": "derived",
    "file": "species/urochloa-distachyos.glb",
-   "bytes": 82504,
+   "bytes": 81488,
    "display_scale_m": 0.45
   },
   {
@@ -16455,7 +16455,7 @@
    "archetype": "grass-bamboo",
    "palette_source": "derived",
    "file": "species/dinochloa-acutiflora.glb",
-   "bytes": 87428,
+   "bytes": 86416,
    "display_scale_m": 6
   },
   {
