@@ -495,8 +495,33 @@ function buildFilters() {
   row = manifest.model.map((r, i) => ({ ...r, phase: (i % 17) * 0.37, el: null }));
   shown = row;
   buildFilters();
+
+  /* URL parameters, so a contact sheet for one archetype can be captured
+     reproducibly instead of by clicking. ?archetype= is an exact match on the
+     manifest field, which ?q= cannot do — searching "tree" also catches every
+     species with "tree" in its common name. */
+  const param = new URLSearchParams(location.search);
+  const arch = param.get("archetype");
+  if (arch) {
+    row = row.filter((r) => r.archetype === arch);
+    shown = row;
+  }
+  if (param.get("q")) {
+    query = param.get("q").toLowerCase();
+    document.getElementById("q").value = param.get("q");
+  }
+  if (param.get("tile")) {
+    tile = Number(param.get("tile"));
+    document.getElementById("size").value = String(tile);
+  }
+  if (param.get("still") === "1") {
+    spinning = false;
+    const b = document.getElementById("spin");
+    b.classList.remove("on");
+    b.textContent = "still";
+  }
   applyGridSize();
-  render();
+  recompute();
 
   document.getElementById("q").addEventListener("input", (e) => {
     query = e.target.value.trim().toLowerCase();
