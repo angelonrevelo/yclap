@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T06:38:29.111Z",
+ "generated_at": "2026-09-05T06:42:32.505Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -4155,7 +4155,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/collybiopsis-subpruinosa.glb",
-   "bytes": 74704,
+   "bytes": 73116,
    "display_scale_m": 0.1
   },
   {
@@ -4560,7 +4560,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/gymnopus-erythropus.glb",
-   "bytes": 58984,
+   "bytes": 55372,
    "display_scale_m": 0.1
   },
   {
@@ -6060,7 +6060,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/mycena-tenerrima.glb",
-   "bytes": 83652,
+   "bytes": 78248,
    "display_scale_m": 0.1
   },
   {
@@ -7305,7 +7305,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/marasmius-epiphyllus.glb",
-   "bytes": 82280,
+   "bytes": 81436,
    "display_scale_m": 0.1
   },
   {
@@ -7560,7 +7560,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/marasmius-haematocephalus.glb",
-   "bytes": 86128,
+   "bytes": 85644,
    "display_scale_m": 0.1
   },
   {
@@ -8025,7 +8025,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/marasmius-sullivantii.glb",
-   "bytes": 93724,
+   "bytes": 94192,
    "display_scale_m": 0.1
   },
   {
@@ -8430,7 +8430,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/heimiomyces-tenuipes.glb",
-   "bytes": 92736,
+   "bytes": 93844,
    "display_scale_m": 0.1
   },
   {
@@ -8490,7 +8490,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/dacrymyces-spathularia.glb",
-   "bytes": 85736,
+   "bytes": 85316,
    "display_scale_m": 0.1
   },
   {
@@ -9240,7 +9240,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/macrolepiota-procera.glb",
-   "bytes": 92844,
+   "bytes": 93312,
    "display_scale_m": 0.1
   },
   {
@@ -10140,7 +10140,7 @@
    "archetype": "succulent",
    "palette_source": "derived",
    "file": "species/adenium-obesum.glb",
-   "bytes": 56484,
+   "bytes": 72100,
    "display_scale_m": 0.2
   },
   {
@@ -10815,7 +10815,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/pluteus-longistriatus.glb",
-   "bytes": 79488,
+   "bytes": 72116,
    "display_scale_m": 0.1
   },
   {
@@ -11265,7 +11265,7 @@
    "archetype": "succulent",
    "palette_source": "derived",
    "file": "species/kalanchoe-pinnata.glb",
-   "bytes": 74488,
+   "bytes": 79952,
    "display_scale_m": 0.2
   },
   {
@@ -11550,7 +11550,7 @@
    "archetype": "succulent",
    "palette_source": "derived",
    "file": "species/talinum-paniculatum.glb",
-   "bytes": 37636,
+   "bytes": 86296,
    "display_scale_m": 0.2
   },
   {
@@ -12030,7 +12030,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/trypethelium-eluteriae.glb",
-   "bytes": 86072,
+   "bytes": 85952,
    "display_scale_m": 0.1
   },
   {
@@ -12870,7 +12870,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/hemimycena-lactea.glb",
-   "bytes": 92660,
+   "bytes": 93064,
    "display_scale_m": 0.1
   },
   {
@@ -12990,7 +12990,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/bolbitius-aleuriatus.glb",
-   "bytes": 60532,
+   "bytes": 55436,
    "display_scale_m": 0.1
   },
   {
@@ -13245,7 +13245,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/coleosporium-plumeriae.glb",
-   "bytes": 85188,
+   "bytes": 81520,
    "display_scale_m": 0.1
   },
   {
@@ -13365,7 +13365,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/pluteus-umbrosus.glb",
-   "bytes": 83252,
+   "bytes": 82464,
    "display_scale_m": 0.1
   },
   {
@@ -13950,7 +13950,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/pestalotiopsis-funerea.glb",
-   "bytes": 60628,
+   "bytes": 57008,
    "display_scale_m": 0.1
   },
   {
@@ -14625,7 +14625,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/phloeomana-speirea.glb",
-   "bytes": 81252,
+   "bytes": 79412,
    "display_scale_m": 0.1
   },
   {
@@ -14775,7 +14775,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/leucocoprinus-cretaceus.glb",
-   "bytes": 53240,
+   "bytes": 52392,
    "display_scale_m": 0.1
   },
   {
@@ -14970,7 +14970,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/mycetinis-opacus.glb",
-   "bytes": 85928,
+   "bytes": 82412,
    "display_scale_m": 0.1
   },
   {
@@ -15060,7 +15060,7 @@
    "archetype": "succulent",
    "palette_source": "derived",
    "file": "species/haworthiopsis-attenuata.glb",
-   "bytes": 37612,
+   "bytes": 80680,
    "display_scale_m": 0.2
   },
   {
@@ -15480,7 +15480,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/cyclocybe-parasitica.glb",
-   "bytes": 85092,
+   "bytes": 84556,
    "display_scale_m": 0.1
   },
   {
@@ -15975,7 +15975,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/pseudosperma-rimosum.glb",
-   "bytes": 94904,
+   "bytes": 93916,
    "display_scale_m": 0.1
   },
   {
@@ -16080,7 +16080,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/candolleomyces-candolleanus.glb",
-   "bytes": 73764,
+   "bytes": 70088,
    "display_scale_m": 0.1
   },
   {
@@ -16305,7 +16305,7 @@
    "archetype": "mushroom",
    "palette_source": "derived",
    "file": "species/lichenomphalia-ericetorum.glb",
-   "bytes": 85748,
+   "bytes": 85944,
    "display_scale_m": 0.1
   },
   {

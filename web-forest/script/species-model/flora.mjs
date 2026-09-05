@@ -2809,31 +2809,67 @@ function cactus(k, col, opt = {}) {
   });
 }
 
+/**
+ * Succulents. A rosette of fat leaves standing UP out of a swollen base — the
+ * same positive-pitch droop as the rosettes and the herbs had laid all four
+ * of them out flat on the ground. Adenium is not a rosette at all: it is a
+ * caudex, a bottle of a trunk with a tuft on top.
+ */
 function succulent(k, col) {
+  const caudex = ["adenium", "pachypodium", "jatropha", "cyphostemma"].includes(genusOf(k));
   grow(k, col, {
-    salt: "succulent",
-    height: 0.3,
+    salt: `succulent:${caudex ? "caudex" : "rosette"}`,
+    axSet: caudex ? [0.55, 0.9, 1.25] : [0.75, 1.15, 1.55],
+    azSet: caudex ? [0.55, 0.9, 1.25] : [0.75, 1.15, 1.55],
+    height: caudex ? 0.45 : 0.32,
     breathe: 0.028,
     sway: 0.03,
     bands: [0, 1, 2, 3, 4, 5],
     spine(p, pl) {
+      pl.caudex = caudex;
+      pl.anchorColor = pl.pal.deep;
       p.spine("heart", (node) => {
-        p.add(node, xf(sphereGeo(12, 6), { sx: 0.05, sy: 0.06, sz: 0.05, at: [0, 0.06, 0] }), { color: pl.pal.leaf });
-        p.add(node, xf(bladeGeo({ len: 0.95, wid: 0.16, thick: 0.07, shape: "obovate", rows: 5, ring: 5 }), { rx: -1.3, at: [0, 0.05, 0] }), { color: pl.pal.leaf, colorFn: pl.pal.grad });
-        addFace(p, node, { at: [0, 0.07, 0.05], r: 0.04 });
+        if (caudex) {
+          const tr = mix(trunkOf(col), hex("#c8b89a"), 0.5);
+          p.add(node, xf(tubeGeo(0.16, 0.05, 0.62, 13, 0.05)), { color: tr, colorFn: grad(shade(tr, 0.16), shade(tr, -0.2), 0, 0.62) });
+          const tuft = [];
+          for (let i = 0; i < 6; i += 1) {
+            const a = i * 2.399 + pl.u("t0") * TAU;
+            tuft.push(xf(bladeGeo({ len: 0.34, wid: 0.13, thick: 0.03, shape: "obovate", rows: 4, ring: 5, bend: -0.06 }),
+              { rx: -1.1 + (i % 3) * 0.22, ry: a, at: [0, 0.62, 0] }));
+          }
+          p.add(node, mergeGeo(tuft), { color: pl.pal.leaf, colorFn: pl.pal.grad });
+          addFace(p, node, { at: [0, 0.3, 0.11], r: 0.06, tri: p.budget * 8 });
+        } else {
+          p.add(node, xf(sphereGeo(12, 6), { sx: 0.08, sy: 0.05, sz: 0.08, at: [0, 0.04, 0] }), { color: pl.pal.deep });
+          const rose = [[], []];
+          for (let i = 0; i < 7; i += 1) {
+            const a = i * 2.399 + pl.u("r0") * TAU;
+            rose[i % 2].push(xf(bladeGeo({ len: 0.68 - (i % 3) * 0.07, wid: 0.2, thick: 0.09, shape: "obovate", rows: 4, ring: 5, bend: 0.05 }),
+              { rx: -1.25 + (i % 3) * 0.22, ry: a, at: [0, 0.05, 0] }));
+          }
+          p.add(node, mergeGeo(rose[0]), { color: pl.pal.leaf, colorFn: pl.pal.grad });
+          p.add(node, mergeGeo(rose[1]), { color: mix(pl.pal.leaf, pl.pal.deep, 0.5) });
+          addFace(p, node, { at: [0, 0.06, 0.08], r: 0.05, tri: p.budget * 8 });
+        }
       });
     },
     slot(p, pl, s) {
-      const { node, a } = s;
-      const r = reachOf(pl, a, 0.95);
-      for (const sgn of [1]) {
-        addLeaf(p, node, { tri: p.budget,
-          yaw: a + (sgn > 0 ? 0 : Math.PI), pitch: 0.55 + pl.u(`sp${s.g}`) * 0.7,
-          len: r, wid: r * (0.36 + pl.u(`sw${s.g}`) * 0.25), thick: r * 0.3,
-          shape: "obovate", rows: 4, ring: 5, bend: -r * 0.12, stalk: 0.02,
-          color: mix(pl.pal.leaf, pl.pal.deep, (s.g % 3) / 3), colorFn: pl.pal.grad,
-        });
+      const { node, band, a } = s;
+      const t = (band + 0.5) / 6;
+      const r = reachOf(pl, a, 0.95 * (pl.caudex ? 1 : 1 - 0.45 * t));
+      if (pl.caudex && band <= 2) {
+        const br = baseReach(pl, 0.4);
+        p.add(node, xf(tubeGeo(br * 0.3, br * 0.16, br * 1.6, 9), { rz: -Math.cos(a) * 0.5, rx: Math.sin(a) * 0.5 }),
+          { color: mix(trunkOf(col), hex("#c8b89a"), 0.5) });
+        return;
       }
+      addLeaf(p, node, { tri: p.budget,
+        yaw: a, pitch: -1.05 + pl.u(`sp${s.g}`) * 0.75,
+        len: r, wid: r * (0.34 + pl.u(`sw${s.g}`) * 0.22), thick: r * 0.28,
+        shape: "obovate", rows: 4, ring: 5, bend: r * 0.06, stalk: 0.02,
+        color: mix(pl.pal.leaf, pl.pal.deep, (s.g % 3) / 3), colorFn: pl.pal.grad,
+      });
     },
   });
 }
@@ -3640,7 +3676,10 @@ function mushroom(k, col, opt = {}) {
         const r = 0.04 + pl.u(`br${s.g}`) * 0.04;
         for (const sgn of [1]) {
           p.add(node, xf(tubeGeo(r * 0.25, r * 0.2, r * 1.2, 7), { at: [Math.cos(a) * r * 1.6 * sgn, -r * 0.5, Math.sin(a) * r * 1.6 * sgn] }), { color: stalkCol });
-          addCap(p, node, { r: r * 0.7, h: r * 0.6, shape: "dome", tri: p.budget, at: [Math.cos(a) * r * 1.6 * sgn, r * 0.7, Math.sin(a) * r * 1.6 * sgn], color: s.g % 2 ? capCol : capDark });
+          /* A real little dome. Under 96 triangles addCap falls back to a thick
+             lens, and a lens on its side is a flat red wedge sticking out of
+             the stalk, not a button mushroom. */
+          addCap(p, node, { r: r * 0.7, h: r * 0.6, shape: "dome", tri: Math.max(110, p.budget), at: [Math.cos(a) * r * 1.6 * sgn, r * 0.7, Math.sin(a) * r * 1.6 * sgn], color: s.g % 2 ? capCol : capDark });
         }
         return;
       }
