@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T06:16:39.586Z",
+ "generated_at": "2026-09-05T06:24:10.685Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -255,7 +255,7 @@
    "archetype": "myriapod",
    "palette_source": "known",
    "file": "species/anoplodesmus-saussurii.glb",
-   "bytes": 77684,
+   "bytes": 77712,
    "display_scale_m": 0.05
   },
   {
@@ -1095,7 +1095,7 @@
    "archetype": "myriapod",
    "palette_source": "known",
    "file": "species/luzonomorpha-picea.glb",
-   "bytes": 92964,
+   "bytes": 92940,
    "display_scale_m": 0.05
   },
   {
@@ -1170,7 +1170,7 @@
    "archetype": "coleoptera-rhino",
    "palette_source": "known",
    "file": "species/xylotrupes-philippinensis.glb",
-   "bytes": 52216,
+   "bytes": 53296,
    "display_scale_m": 0.045
   },
   {
@@ -2175,7 +2175,7 @@
    "archetype": "snail",
    "palette_source": "known",
    "file": "species/bradybaena-similaris.glb",
-   "bytes": 58156,
+   "bytes": 58248,
    "display_scale_m": 0.015
   },
   {
@@ -3885,7 +3885,7 @@
    "archetype": "hymenoptera-bee",
    "palette_source": "known",
    "file": "species/apis-dorsata.glb",
-   "bytes": 58108,
+   "bytes": 58040,
    "display_scale_m": 0.02
   },
   {
@@ -3915,7 +3915,7 @@
    "archetype": "hymenoptera-bee",
    "palette_source": "known",
    "file": "species/apis-cerana.glb",
-   "bytes": 53896,
+   "bytes": 53940,
    "display_scale_m": 0.013
   },
   {
@@ -4200,7 +4200,7 @@
    "archetype": "snake",
    "palette_source": "known",
    "file": "species/cyclocorus-lineatus.glb",
-   "bytes": 48908,
+   "bytes": 61916,
    "display_scale_m": 0.5
   },
   {
@@ -4695,7 +4695,7 @@
    "archetype": "coleoptera-rhino",
    "palette_source": "known",
    "file": "species/oryctes-rhinoceros.glb",
-   "bytes": 46416,
+   "bytes": 47500,
    "display_scale_m": 0.045
   },
   {
@@ -4875,7 +4875,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/phimenes-curvatus.glb",
-   "bytes": 59112,
+   "bytes": 59144,
    "display_scale_m": 0.025
   },
   {
@@ -5745,7 +5745,7 @@
    "archetype": "myriapod-centipede",
    "palette_source": "known",
    "file": "species/rhysida-longipes.glb",
-   "bytes": 44156,
+   "bytes": 44204,
    "display_scale_m": 0.1
   },
   {
@@ -5835,7 +5835,7 @@
    "archetype": "myriapod",
    "palette_source": "known",
    "file": "species/leptogoniulus-sorornus.glb",
-   "bytes": 87428,
+   "bytes": 87400,
    "display_scale_m": 0.06
   },
   {
@@ -5955,7 +5955,7 @@
    "archetype": "snake",
    "palette_source": "known",
    "file": "species/indotyphlops-braminus.glb",
-   "bytes": 42260,
+   "bytes": 57156,
    "display_scale_m": 0.15
   },
   {
@@ -6015,7 +6015,7 @@
    "archetype": "coleoptera",
    "palette_source": "known",
    "file": "species/chrysodema-dalmanni.glb",
-   "bytes": 42668,
+   "bytes": 43752,
    "display_scale_m": 0.03
   },
   {
@@ -6720,7 +6720,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/scolia-superciliaris.glb",
-   "bytes": 51720,
+   "bytes": 51684,
    "display_scale_m": 0.03
   },
   {
@@ -6780,7 +6780,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/leptodialepis-bipartitus.glb",
-   "bytes": 58852,
+   "bytes": 58888,
    "display_scale_m": 0.028
   },
   {
@@ -7605,7 +7605,7 @@
    "archetype": "coleoptera",
    "palette_source": "known",
    "file": "species/aulacophora-indica.glb",
-   "bytes": 46228,
+   "bytes": 47312,
    "display_scale_m": 0.01
   },
   {
@@ -7815,7 +7815,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/vespa-tropica.glb",
-   "bytes": 50792,
+   "bytes": 50716,
    "display_scale_m": 0.03
   },
   {
@@ -8145,7 +8145,7 @@
    "archetype": "coleoptera-longhorn",
    "palette_source": "known",
    "file": "species/epepeotes-ambigenus.glb",
-   "bytes": 42640,
+   "bytes": 43732,
    "display_scale_m": 0.03
   },
   {
@@ -8280,7 +8280,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/ropalidia-flavobrunnea.glb",
-   "bytes": 56548,
+   "bytes": 56424,
    "display_scale_m": 0.018
   },
   {
@@ -8325,7 +8325,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/scolia-clypeata.glb",
-   "bytes": 55720,
+   "bytes": 55604,
    "display_scale_m": 0.028
   },
   {
@@ -8475,7 +8475,7 @@
    "archetype": "coleoptera",
    "palette_source": "known",
    "file": "species/holotrichia-bipunctata.glb",
-   "bytes": 37052,
+   "bytes": 38136,
    "display_scale_m": 0.02
   },
   {
@@ -9135,7 +9135,7 @@
    "archetype": "coleoptera-ladybird",
    "palette_source": "known",
    "file": "species/propylea-japonica.glb",
-   "bytes": 42688,
+   "bytes": 43768,
    "display_scale_m": 0.008
   },
   {
@@ -9975,7 +9975,7 @@
    "archetype": "snail",
    "palette_source": "known",
    "file": "species/pomacea-canaliculata.glb",
-   "bytes": 58328,
+   "bytes": 58440,
    "display_scale_m": 0.07
   },
   {
@@ -10290,7 +10290,7 @@
    "archetype": "coleoptera",
    "palette_source": "known",
    "file": "species/cassida-circumdata.glb",
-   "bytes": 41232,
+   "bytes": 42316,
    "display_scale_m": 0.01
   },
   {
@@ -10740,7 +10740,7 @@
    "archetype": "snail",
    "palette_source": "known",
    "file": "species/telescopium-telescopium.glb",
-   "bytes": 53136,
+   "bytes": 53100,
    "display_scale_m": 0.09
   },
   {
@@ -11610,7 +11610,7 @@
    "archetype": "slug",
    "palette_source": "known",
    "file": "species/parmarion-martensi.glb",
-   "bytes": 18816,
+   "bytes": 18904,
    "display_scale_m": 0.045
   },
   {
@@ -11925,7 +11925,7 @@
    "archetype": "snail",
    "palette_source": "known",
    "file": "species/subulina-octona.glb",
-   "bytes": 51932,
+   "bytes": 51912,
    "display_scale_m": 0.012
   },
   {
@@ -13215,7 +13215,7 @@
    "archetype": "coleoptera-ladybird",
    "palette_source": "known",
    "file": "species/coccinella-transversalis.glb",
-   "bytes": 46188,
+   "bytes": 47268,
    "display_scale_m": 0.008
   },
   {
@@ -13635,7 +13635,7 @@
    "archetype": "hymenoptera-bee",
    "palette_source": "known",
    "file": "species/xylocopa-latipes.glb",
-   "bytes": 55092,
+   "bytes": 55060,
    "display_scale_m": 0.025
   },
   {
@@ -13890,7 +13890,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/sceliphron-madraspatanum.glb",
-   "bytes": 54216,
+   "bytes": 54264,
    "display_scale_m": 0.025
   },
   {
@@ -14355,7 +14355,7 @@
    "archetype": "coleoptera",
    "palette_source": "known",
    "file": "species/aethina-tumida.glb",
-   "bytes": 39548,
+   "bytes": 40632,
    "display_scale_m": 0.008
   },
   {
@@ -14655,7 +14655,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/ropalidia-stigma.glb",
-   "bytes": 57516,
+   "bytes": 57432,
    "display_scale_m": 0.018
   },
   {
@@ -14685,7 +14685,7 @@
    "archetype": "coleoptera",
    "palette_source": "known",
    "file": "species/eucorynus-crassicornis.glb",
-   "bytes": 45076,
+   "bytes": 46160,
    "display_scale_m": 0.02
   },
   {
@@ -14925,7 +14925,7 @@
    "archetype": "coleoptera",
    "palette_source": "known",
    "file": "species/anomala-pallida.glb",
-   "bytes": 39484,
+   "bytes": 40572,
    "display_scale_m": 0.02
   },
   {
@@ -14985,7 +14985,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/rhynchium-haemorrhoidale.glb",
-   "bytes": 60900,
+   "bytes": 60824,
    "display_scale_m": 0.02
   },
   {
@@ -15195,7 +15195,7 @@
    "archetype": "coleoptera-ladybird",
    "palette_source": "known",
    "file": "species/henosepilachna-vigintioctomaculata.glb",
-   "bytes": 40596,
+   "bytes": 41680,
    "display_scale_m": 0.01
   },
   {
@@ -15510,7 +15510,7 @@
    "archetype": "coleoptera",
    "palette_source": "known",
    "file": "species/protaetia-philippensis.glb",
-   "bytes": 40432,
+   "bytes": 41516,
    "display_scale_m": 0.035
   },
   {
@@ -15810,7 +15810,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/vespa-luctuosa.glb",
-   "bytes": 50296,
+   "bytes": 50304,
    "display_scale_m": 0.025
   },
   {
@@ -16035,7 +16035,7 @@
    "archetype": "coleoptera",
    "palette_source": "known",
    "file": "species/protaetia-ferruginea.glb",
-   "bytes": 38316,
+   "bytes": 39404,
    "display_scale_m": 0.035
   },
   {
@@ -16095,7 +16095,7 @@
    "archetype": "coleoptera-longhorn",
    "palette_source": "known",
    "file": "species/rhytiphora-bankii.glb",
-   "bytes": 52556,
+   "bytes": 53640,
    "display_scale_m": 0.025
   },
   {
@@ -16215,7 +16215,7 @@
    "archetype": "snake",
    "palette_source": "known",
    "file": "species/tropidonophis-spilogaster.glb",
-   "bytes": 46960,
+   "bytes": 58216,
    "display_scale_m": 0.7
   },
   {

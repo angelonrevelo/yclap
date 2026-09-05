@@ -1264,16 +1264,20 @@ function snake(k, col, opt = {}) {
   const v = vary(k);
   col = toned(k, col);
   const tiny = opt.kind === "blind";
-  const form = tiny ? "coil" : v.pick("form", ["coil", "ess", "coil", "loop"]);
+  /* All three snakes were shipping as a tight ball of beads with no readable
+     body — "coil" won the pick twice out of four and a wound coil at this
+     scale is a doughnut. A partly extended S is the pose that reads as a
+     snake, so it is the default and the loop is the exception. */
+  const form = tiny ? "loop" : v.pick("form", ["ess", "ess", "loop", "ess"]);
   const thick = (tiny ? 0.035 : v.f("thick", 0.055, 0.095));
-  const turn = v.f("turn", 1.7, 3.1);
+  const turn = v.f("turn", 1.3, 2.3);
   const bandN = v.i("band", 0, 4);
-  const amp = v.f("amp", 0.12, 0.24);
+  const amp = v.f("amp", 0.16, 0.3);
   const rad = v.f("rad", 0.12, 0.22);
   const rise = v.f("rise", 0.03, 0.18);
 
   const path = (t) => {
-    if (form === "ess") return [Math.sin(t * Math.PI * turn) * amp, 0.06 + t * rise * 0.7, -0.36 + t * 0.66];
+    if (form === "ess") return [Math.sin(t * Math.PI * turn) * amp, 0.06 + t * rise * 0.7, -0.42 + t * 0.86];
     if (form === "loop") {
       const a = t * Math.PI * turn;
       return [Math.cos(a) * rad * (1 - t * 0.2), 0.06 + t * rise, Math.sin(a) * rad * (1 - t * 0.2)];
@@ -1285,34 +1289,41 @@ function snake(k, col, opt = {}) {
   /* Bead count is a species knob, but the bead SPACING is a contract: walk the
      count up until neighbours overlap, so a tightly wound coil never ships as
      a string of separate blobs the way it used to. */
-  let n = tiny ? v.i("n", 5, 7) : v.i("n", 9, 15);
-  let pos = [];
-  for (let guard = 0; guard < 24; guard += 1) {
-    pos = [];
-    for (let i = 0; i < n; i += 1) pos.push(path(i / (n - 1)));
-    let worst = 0;
-    for (let i = 1; i < n; i += 1) {
-      worst = Math.max(worst, Math.hypot(pos[i][0] - pos[i - 1][0], pos[i][1] - pos[i - 1][1], pos[i][2] - pos[i - 1][2]));
-    }
-    if (worst <= thick * 0.62 || n >= 14) break;
-    n += 1;
+  /* Bead spacing is a contract: neighbours must overlap or the snake ships as
+     a string of separate blobs. The old code held that contract by SHRINKING
+     THE WHOLE PATH when the beads came out too far apart — with a bead count
+     capped at fourteen, an extended S collapsed to a third of its length and
+     all three snakes shipped as a tight ball of spheres with no readable body.
+     Resample by arc length instead and let the count follow the curve: the
+     pose survives, and the beads merge into one mesh so the extra ones cost
+     triangles rather than a kilobyte of glTF bookkeeping each. */
+  const SAMPLE = 240;
+  const walk = [];
+  let arc = 0;
+  for (let i = 0; i <= SAMPLE; i += 1) {
+    const q = path(i / SAMPLE);
+    if (i > 0) arc += Math.hypot(q[0] - walk[i - 1].p[0], q[1] - walk[i - 1].p[1], q[2] - walk[i - 1].p[2]);
+    walk.push({ p: q, s: arc });
   }
-  /* Beads cost triangles, so the count stops at 14; past that the coil itself
-     tightens instead, which keeps the overlap contract without the file. */
-  let worst = 0;
-  for (let i = 1; i < n; i += 1) {
-    worst = Math.max(worst, Math.hypot(pos[i][0] - pos[i - 1][0], pos[i][1] - pos[i - 1][1], pos[i][2] - pos[i - 1][2]));
+  const n = clamp(Math.ceil(arc / (thick * 0.55)) + 1, tiny ? 7 : 12, 34);
+  const pos = [];
+  for (let i = 0; i < n; i += 1) {
+    const want = (arc * i) / (n - 1);
+    let j = 1;
+    while (j < walk.length - 1 && walk[j].s < want) j += 1;
+    const a = walk[j - 1], b = walk[j];
+    const u = b.s > a.s ? (want - a.s) / (b.s - a.s) : 0;
+    pos.push([0, 1, 2].map((c) => a.p[c] + (b.p[c] - a.p[c]) * u));
   }
-  if (worst > thick * 0.62) {
-    const f = (thick * 0.62) / worst;
-    pos = pos.map((p) => [pos[0][0] + (p[0] - pos[0][0]) * f, pos[0][1] + (p[1] - pos[0][1]) * f, pos[0][2] + (p[2] - pos[0][2]) * f]);
-  }
+  const bodyNode = k.cute.node("body", { parent: k.root, at: [0, 0, 0] });
   for (let i = 0; i < n; i += 1) {
     const t = i / (n - 1);
     const r = thick * (0.55 + 0.45 * Math.sin(Math.PI * clamp(t * 1.15, 0, 1)));
-    ball(k, k.root, `coil${i}`, {
-      rx: r, ry: r * v.f("flat", 0.7, 1), rz: r,
-      at: pos[i], color: bandN && i % Math.max(2, Math.round(n / bandN)) === 0 ? shade(col.base, -0.36) : shade(col.base, (i % 2 ? 0.06 : -0.03)),
+    k.cute.add(bodyNode, ballGeo(r, r * v.f("flat", 0.7, 1), r, 1), {
+      at: pos[i],
+      color: bandN && i % Math.max(2, Math.round(n / bandN)) === 0
+        ? shade(col.base, -0.36)
+        : shade(col.base, (i % 2 ? 0.06 : -0.03)),
     });
   }
   const headR = tiny ? thick * 1.25 : thick * v.f("hr", 1.15, 1.55);
@@ -1847,7 +1858,7 @@ function hymenoptera(k, col, opt = {}) {
     for (const [i, dz] of [thoraxR * 0.15, -thoraxR * 0.5].entries()) {
       bladeWings(k, thorax, {
         at: [0, thoraxR * 0.7, dz], gap: thoraxR * 0.25,
-        outline: bladeOutline(wl * (1 - i * 0.3), v.f("ww", 0.05, 0.075) * (1 - i * 0.18), { n: 12, taper: v.f("wt", 0.08, 0.34) }),
+        outline: bladeOutline(wl * (1 - i * 0.3), v.f("ww", 0.072, 0.1) * (1 - i * 0.18), { n: 12, taper: v.f("wt", 0.08, 0.34) }),
         thick: 0.009, reach: wl * 0.82, tilt: v.f("wtl", -0.18, 0.02),
         yaw: v.f("wyaw", 0.6, 0.85) + i * 0.12, roll: v.f("wrl", 0.05, 0.22),
         color: membrane, flap: v.f("wf", 0.22, 0.4), dur: v.f("wd", 0.32, 0.5), phase: i * 0.15, name: `wing${i}`,
@@ -1893,7 +1904,7 @@ function coleoptera(k, col, opt = {}) {
      one line that says "beetle" rather than "bug", so it is not a coin flip —
      every beetle in the pack gets one, standing proud of the shell so it reads
      at gallery size instead of sinking inside the ellipsoid. */
-  ball(k, body, "suture", { merge: true, rx: bx * 0.05, ry: by * 1.04, rz: bz * 0.94, at: [0, by * 0.16, -bz * 0.04], color: shade(col.base, -0.55), subdiv: 0 });
+  ball(k, body, "suture", { merge: true, rx: bx * 0.055, ry: by * 1.02, rz: bz * 0.95, at: [0, by * 0.34, -bz * 0.04], color: shade(col.base, -0.6), subdiv: 1 });
   /* Where the two elytra meet the pronotum they step in — the shoulder notch. */
   for (const sd of [1, -1]) {
     ball(k, body, `shoulder-${sd > 0 ? "l" : "r"}`, { merge: true,
@@ -2928,7 +2939,7 @@ function snail(k, col, opt = {}) {
      a compact foot under a coil. Same builder, two genuinely different
      animals — the three leatherleaf slugs in the pack were shipping with a
      shell because this branch was unreachable dead code. */
-  const footL = slug ? v.f("footl", 0.34, 0.46) : v.f("footl", 0.2, 0.28);
+  const footL = slug ? v.f("footl", 0.34, 0.46) : v.f("footl", 0.26, 0.36);
   const footR = slug ? v.f("footr", 0.075, 0.105) : v.f("footr", 0.075, 0.11);
   const foot = ball(k, k.root, "foot", {
     rx: footR, ry: footR * (slug ? v.f("footh", 0.3, 0.44) : v.f("footh", 0.45, 0.62)),
@@ -2995,11 +3006,11 @@ function snail(k, col, opt = {}) {
     const cone0 = kind === "cone";
     const turn = cone0 ? v.f("turn", 2.4, 3.4) : v.f("turn", 2.1, 2.9);
     const beadN = v.i("beadn", 24, 32);
-    const r0 = v.f("shellr", 0.15, 0.2);
+    const r0 = v.f("shellr", 0.115, 0.155);
     const tight = v.f("tight", 1.5, 2.2);
     const spire = r0 * (cone0 ? v.f("spire", 0.7, 1.2) : v.f("spire", 0.12, 0.42));
     const lean = v.f("lean", -0.3, 0.3);
-    const shell = k.cute.node("shell", { parent: k.root, at: [0, footR * 0.62, -footL * 0.06], rot: [lean, 0, 0] });
+    const shell = k.cute.node("shell", { parent: k.root, at: [0, footR * 1.05, -footL * 0.3], rot: [lean, 0, 0] });
     for (let i = 0; i < beadN; i += 1) {
       const t = i / (beadN - 1);
       const a = t * turn * Math.PI * 2;
@@ -3079,16 +3090,20 @@ function myriapod(k, col, opt = {}) {
   });
   beadEyes(k, head, { r: headR * v.f("eyer", 0.24, 0.4), at: [0, headR * 0.15, headR * 0.45], gap: headR * 0.5, color: ink, pupil: paper, spark: true });
 
-  const legLen = house ? v.f("legl", 0.16, 0.26) : cent ? v.f("legl", 0.08, 0.14) : v.f("legl", 0.07, 0.11);
-  const splay = house ? v.f("splay", 1.5, 1.9) : v.f("splay", 1.25, 1.6);
+  const legLen = house ? v.f("legl", 0.16, 0.26) : cent ? v.f("legl", 0.09, 0.15) : v.f("legl", 0.095, 0.14);
+  const splay = house ? v.f("splay", 1.5, 1.9) : v.f("splay", 1.32, 1.66);
+  /* `col.leg` when a species has legs of its own colour — Rhysida longipes is
+     literally the Blueleg Centipede, and painting it one flat tint loses the
+     only field mark in its name. */
+  const legCol = col.leg ?? dark;
   const pairPerSeg = mille ? 2 : 1;
   for (const [i, node] of seg.entries()) {
     for (let q = 0; q < pairPerSeg; q += 1) {
       for (const s of [1, -1]) {
         spindle(k, node, `leg${i}${q}-${s > 0 ? "l" : "r"}`, {
           merge: pairPerSeg > 1, r: house ? 0.007 : 0.009, len: legLen * (house ? 1 - i * 0.05 : 1),
-          at: [s * r0 * 0.5, -r0 * flat * 0.2, segLen * (0.25 - q * 0.5)],
-          rot: [v.f("legrake", -0.3, 0.3), 0, s * -splay], color: dark, seg: 7,
+          at: [s * r0 * 0.5, -r0 * flat * 0.25, segLen * (0.25 - q * 0.5)],
+          rot: [v.f("legrake", -0.3, 0.3), 0, s * -splay], color: legCol, seg: 7,
         });
       }
     }
@@ -3097,7 +3112,7 @@ function myriapod(k, col, opt = {}) {
     for (const s of [1, -1]) {
       spindle(k, seg[seg.length - 1], `cercus-${s > 0 ? "l" : "r"}`, {
         r: 0.008, len: v.f("cercl", 0.06, 0.14), at: [s * r0 * 0.3, 0, -segLen * 0.5],
-        rot: [-1.5, 0, s * 0.35], color: dark, seg: 8,
+        rot: [-1.5, 0, s * 0.35], color: legCol, seg: 8,
       });
     }
   }
