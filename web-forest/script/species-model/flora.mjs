@@ -895,10 +895,14 @@ class Plant {
       }
     }
     /*
-     * Last, once every part is where it will ship: close the holes. Twice,
-     * because a stem changes the body box a hair and therefore the fit — and
-     * at a tolerance tighter than the gate's own, so that hair cannot reopen
-     * anything.
+     * LAST, once every part — the face included — is where it will ship: close
+     * the holes.
+     *
+     * After the face correction, not before: that correction moves vertices,
+     * and a stem measured against a vertex that then moves is a stem that
+     * misses. Re-fitting between passes because a stem changes the body box a
+     * hair and therefore the scales, and at a tolerance tighter than the gate's
+     * own so that hair cannot reopen anything.
      */
     for (let pass = 0; pass < 4; pass += 1) {
       if (this.repairConnection(f.sx, H, f.sz, 0.05) <= 1) break;
@@ -3740,37 +3744,167 @@ function vine(k, col) {
   });
 }
 
+/**
+ * Water plants, and they are NOT one plant.
+ *
+ * Six of the twelve shipped the same template — floating pads plus a small
+ * emergent shoot — whatever the species was, which erased duckweed's
+ * millimetre fronds, both Marsilea's four-leaflet clover, Pistia's fluted
+ * rosette, Neptunia's bipinnate leaf and Hydrilla's whorled stem. Each of those
+ * IS the identification, so each gets a body of its own; the rest keep the pads
+ * and the emergent shoot, which is right for them.
+ */
+const WATER_FORM = {
+  lemna: "frond",
+  wolffia: "frond",
+  spirodela: "frond",
+  marsilea: "clover",
+  pistia: "rosette",
+  neptunia: "pinnate",
+  hydrilla: "whorl",
+  egeria: "whorl",
+  elodea: "whorl",
+  ceratophyllum: "whorl",
+};
+
 function waterPlant(k, col) {
+  const form = WATER_FORM[genusOf(k)] ?? "pad";
   grow(k, col, {
-    salt: "water",
-    height: 0.35,
+    salt: `water:${form}`,
+    /* Duckweed is a raft of tiny fronds and reads flat; a whorled stem is a
+       column. One pool for all twelve is how they came to look alike. */
+    axSet: form === "frond" ? [1.3, 1.7, 2.1] : form === "whorl" ? [0.5, 0.75, 1.0] : [0.9, 1.25, 1.6],
+    azSet: form === "frond" ? [1.3, 1.7, 2.1] : form === "whorl" ? [0.5, 0.75, 1.0] : [0.9, 1.25, 1.6],
+    /* Not FLATTER than 1.3 to 1, and not shorter than 0.22. The face is scaled
+       back to isotropic about its seat using the smallest of the three body
+       scales, and on a model whose height is a tenth of its width that pick
+       leaves the face a razor in z — which the face gate reads, correctly, as
+       a face that vanishes edge-on. Duckweed is small, not two-dimensional. */
+    height: form === "frond" ? 0.16 : form === "whorl" ? 0.5 : 0.35,
     breathe: 0.028,
     sway: 0.05,
     bands: [0, 1, 2, 3, 4, 5],
     spine(p, pl) {
+      pl.form = form;
       p.spine("stem", (node) => {
-        p.add(node, xf(tubeGeo(0.012, 0.009, 0.86, 10)), { color: pl.pal.deep });
+        const { leaf, deep } = pl.pal;
+        if (form === "frond") {
+          /* Duckweed: a raft of tiny flat fronds with a single root under some
+             of them. No stem at all — the whole plant is two millimetres. */
+          /* The raft floats at the TOP of the part, with the roots hanging
+             the rest of the way down. That is not decoration: the axis is
+             renormalised to span exactly one unit, so a body only six
+             hundredths of a unit deep gets stretched sixteen-fold in y — and
+             the face, which is baked into this part, is stretched with it into
+             a tall sliver that the face gate reads as a razor. A duckweed with
+             its roots on is a body of ordinary proportions. */
+          const raft = [[], []];
+          const top = 0.5;
+          for (let i = 0; i < 11; i += 1) {
+            const a = i * 2.399 + pl.u("d0") * TAU;
+            const rr = 0.34 * Math.sqrt((i + 0.4) / 11);
+            raft[i % 2].push(xf(sphereGeo(10, 4), { sx: 0.11, sy: 0.035, sz: 0.085, at: [Math.cos(a) * rr, top + (i % 2) * 0.02, Math.sin(a) * rr], ry: a }));
+            if (i % 3 === 0) {
+              raft[1].push(xf(tubeGeo(0.007, 0.004, top - 0.02, 6), { rx: Math.PI, at: [Math.cos(a) * rr, top, Math.sin(a) * rr] }));
+            }
+          }
+          p.add(node, mergeGeo(raft[0]), { color: leaf, colorFn: pl.pal.grad });
+          p.add(node, mergeGeo(raft[1]), { color: deep });
+          addFace(p, node, { at: [0, top + 0.02, 0.07], r: 0.05, tri: p.budget * 8 });
+          return;
+        }
+        if (form === "rosette") {
+          /* Pistia: a funnel rosette of fluted wedge leaves sitting on the
+             water, with a beard of roots under it. */
+          const rose = [[], []];
+          for (let i = 0; i < 9; i += 1) {
+            const a = i * 2.399 + pl.u("r0") * TAU;
+            rose[i % 2].push(xf(bladeGeo({
+              len: 0.6 - (i % 3) * 0.06, wid: 0.34, thick: 0.03, shape: "spatulate", rows: 5, ring: 5, fold: 0.55, bend: 0.14,
+            }), { rx: -0.95 - (i % 3) * 0.12, ry: a, at: [Math.cos(a) * 0.035, 0.12, Math.sin(a) * 0.035] }));
+          }
+          p.add(node, mergeGeo(rose[0]), { color: leaf, colorFn: pl.pal.grad });
+          p.add(node, mergeGeo(rose[1]), { color: mix(leaf, deep, 0.5) });
+          const root = [];
+          for (let i = 0; i < 5; i += 1) {
+            const a = i * 1.257 + pl.u("t0") * TAU;
+            root.push(xf(tubeGeo(0.008, 0.004, 0.12, 6), { rx: Math.PI - 0.2, ry: a, at: [Math.cos(a) * 0.03, 0.12, Math.sin(a) * 0.03] }));
+          }
+          p.add(node, mergeGeo(root), { color: shade(deep, -0.2) });
+          addFace(p, node, { at: [0, 0.24, 0.09], r: 0.055, tri: p.budget * 8 });
+          return;
+        }
+        if (form === "whorl") {
+          /* Hydrilla: a slender stem in WHORLS of little strap leaves, five to
+             a node, all the way up. */
+          p.add(node, xf(tubeGeo(0.014, 0.009, 1, 9)), { color: deep, colorFn: grad(shade(leaf, 0.15), deep, 0, 1) });
+          const whorl = [[], []];
+          for (let i = 0; i < 7; i += 1) {
+            const y = 0.1 + i * 0.13;
+            for (let j = 0; j < 5; j += 1) {
+              const a = (j / 5) * TAU + i * 0.5 + pl.u("w0") * TAU;
+              whorl[j % 2].push(xf(bladeGeo({ len: 0.13, wid: 0.03, thick: 0.008, shape: "linear", rows: 3, ring: 4, bend: -0.02 }),
+                { rx: -0.5, ry: a, at: [Math.cos(a) * 0.012, y, Math.sin(a) * 0.012] }));
+            }
+          }
+          p.add(node, mergeGeo(whorl[0]), { color: leaf, colorFn: pl.pal.grad });
+          p.add(node, mergeGeo(whorl[1]), { color: deep });
+          addFace(p, node, { at: [0, 0.3, 0.016], r: 0.032, tri: p.budget * 8 });
+          return;
+        }
+        p.add(node, xf(tubeGeo(0.012, 0.009, 0.86, 10)), { color: deep });
         addFlower(p, node, { tri: p.budget, at: [0, 0.9, 0], kind: "star", r: 0.09, color: flowerOf(col) });
-        p.add(node, xf(sphereGeo(12, 5), { sx: 0.05, sy: 0.02, sz: 0.05, at: [0, 0.012, 0] }), { color: pl.pal.deep });
+        p.add(node, xf(sphereGeo(12, 5), { sx: 0.05, sy: 0.02, sz: 0.05, at: [0, 0.012, 0] }), { color: deep });
         addFace(p, node, { at: [0, 0.2, 0.013], r: 0.03 });
       });
     },
     slot(p, pl, s) {
       const { node, band, a } = s;
       const r = reachOf(pl, a, 0.95);
+      if (pl.form === "clover") {
+        /* Marsilea: FOUR leaflets on a long petiole. A water fern that looks
+           like a four-leaf clover is recognised by that and by nothing else. */
+        const L = r * 0.75;
+        p.add(node, xf(tubeGeo(0.008, 0.006, L, 7), { rz: -Math.cos(a) * 0.28, rx: Math.sin(a) * 0.28 }), { color: pl.pal.deep });
+        const tip = [Math.cos(a) * L * Math.sin(0.28), L * Math.cos(0.28), Math.sin(a) * L * Math.sin(0.28)];
+        const lobe = [];
+        for (let j = 0; j < 4; j += 1) {
+          lobe.push(xf(bladeGeo({ len: r * 0.34, wid: r * 0.3, thick: 0.008, shape: "obovate", rows: 3, ring: 4 }),
+            { rx: 1.42, ry: a + (j / 4) * TAU + 0.78, at: tip }));
+        }
+        p.add(node, mergeGeo(lobe), { color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });
+        return;
+      }
+      if (pl.form === "pinnate") {
+        // Neptunia: a bipinnate mimosa leaf on a floating stolon
+        addLeaf(p, node, {
+          tri: Math.max(96, p.budget), yaw: a, pitch: 0.15 + pl.u(`np${s.g}`) * 0.4,
+          len: r * 0.95, wid: r * 0.3, shape: "elliptic", form: "frond", leaflet: 9,
+          rows: 3, ring: 4, stalk: 0.3,
+          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad, stalkColor: pl.pal.deep,
+        });
+        return;
+      }
+      if (pl.form === "frond" || pl.form === "rosette" || pl.form === "whorl") {
+        // the axis carries the whole plant; the slots are outliers of the raft
+        const rr = Math.min(r, pl.form === "whorl" ? 0.12 : 0.42);
+        p.add(node, xf(sphereGeo(10, 4), {
+          sx: pl.form === "whorl" ? 0.03 : 0.1, sy: pl.form === "whorl" ? 0.012 : 0.028, sz: pl.form === "whorl" ? 0.024 : 0.08,
+          at: [Math.cos(a) * rr * 0.7, 0, Math.sin(a) * rr * 0.7], ry: a,
+        }), { color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });
+        return;
+      }
       if (band <= 2) {
         addCap(p, node, { r: r * 0.55, h: r * 0.14, shape: "flat", tri: p.budget, at: [Math.cos(a) * r * 0.42, 0, Math.sin(a) * r * 0.42],
           color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });
         p.add(node, xf(tubeGeo(0.007, 0.005, r * 0.45, 6), { rz: -1.5708, ry: a }), { color: pl.pal.deep });
         return;
       }
-      for (const sgn of [1]) {
-        addLeaf(p, node, { tri: p.budget,
-          yaw: a + (sgn > 0 ? 0 : Math.PI), pitch: 0.35 + pl.u(`wp${s.g}`) * 0.5,
-          len: r * 0.8, wid: r * 0.36, shape: "elliptic", rows: 5, ring: 4, stalk: 0.2,
-          color: pl.pal.leaf, colorFn: pl.pal.grad, stalkColor: pl.pal.deep,
-        });
-      }
+      addLeaf(p, node, { tri: p.budget,
+        yaw: a, pitch: 0.35 + pl.u(`wp${s.g}`) * 0.5,
+        len: r * 0.8, wid: r * 0.36, shape: "elliptic", rows: 5, ring: 4, stalk: 0.2,
+        color: pl.pal.leaf, colorFn: pl.pal.grad, stalkColor: pl.pal.deep,
+      });
     },
   });
 }
