@@ -1987,7 +1987,11 @@ function bananaKind(k, col, opt = {}) {
         return;
       }
       // the inflorescence: the one thing that names the species
-      if (band === 2 || (band >= top - 1 && s.i === 0 && !pl.musa)) {
+      /* ONE inflorescence per tier, not one per slot. Band 2 was handed to the
+         bract wholesale, so a plan that put four units there drew four cones
+         and almost no foliage — Heliconia psittacorum and Curcuma longa both
+         came out as spiky cones with nothing green on them. */
+      if ((band === 2 && s.i === 0) || (band >= top - 1 && s.i === 0 && !pl.musa)) {
         const br = baseReach(pl, 0.8);
         if (pl.claw) {
           lobsterClaw(p, node, {
@@ -2071,6 +2075,11 @@ function cycad(k, col) {
     upright: true,
     axSet: ASPECT_CROWN,
     azSet: ASPECT_CROWN,
+    /* Few fronds, each of them actually pinnate. addLeaf will not cut pinnae
+       under eighty triangles, and at thirty-two parts the budget leaves
+       twenty-eight — so Cycas revoluta, whose stiff pinnate frond is the whole
+       plant, drew broad entire straps. */
+    pLevel: [8, 10, 12, 16],
     // a crown-tufted plant carries its leaves at the top, so band 3 is left
     // to the axis alone and the foliage units can only land in 4 and 5
     height: (pl) => 0.45 + pl.u("size") * 0.3,
@@ -2094,9 +2103,11 @@ function cycad(k, col) {
         return;
       }
       const r = reachOf(pl, a, 0.95);
+      /* Up and arching, not hanging. A cycad crown is a shuttlecock; a positive
+         pitch on every frond laid the whole plant flat. */
       addLeaf(p, node, {
-        tri: p.budget, yaw: a, pitch: 0.3 + pl.u("fr" + s.g) * 0.6, len: r, wid: r * 0.24,
-        shape: "linear", form: "frond", leaflet: 4 + (s.g % 4), bend: -r * 0.22,
+        tri: p.budget, yaw: a, pitch: -0.72 + pl.u("fr" + s.g) * 0.75, len: r * 1.15, wid: r * 0.26,
+        shape: "linear", form: "frond", leaflet: 9, bend: r * 0.3,
         color: pl.pal.deep, colorFn: pl.pal.grad, stalkColor: trunkOf(col), stalk: 0.16,
       });
     },
@@ -3233,8 +3244,13 @@ function cactus(k, col, opt = {}) {
        it rescales x and z independently to the planned aspect, so the thin
        axis of a pad gets inflated back into a barrel. Giving the pad body a
        narrow az against a wide ax is the only way to keep it a pad. */
-    axSet: kind === "pads" ? [0.85, 1.15, 1.45] : kind === "globe" ? [0.85, 1.2, 1.55] : [0.3, 0.55, 0.8],
-    azSet: kind === "pads" ? [0.3, 0.44, 0.58] : kind === "globe" ? [0.85, 1.2, 1.55] : [0.3, 0.55, 0.8],
+    /* The pad pool is NARROW in x as well as thin in z. A pad chain fills the
+       height and the spine then normalises that height to one unit, so a wide
+       x aspect makes every pad come back out wider than it is tall — which is
+       exactly the "flat horizontal discs" both Opuntia were shipping, and no
+       amount of drawing them upright fixes it. */
+    axSet: kind === "pads" ? [0.32, 0.44, 0.56] : kind === "globe" ? [0.85, 1.2, 1.55] : [0.3, 0.55, 0.8],
+    azSet: kind === "pads" ? [0.2, 0.29, 0.38] : kind === "globe" ? [0.85, 1.2, 1.55] : [0.3, 0.55, 0.8],
     height: kind === "globe" ? 0.34 : 0.62,
     breathe: 0.014,
     sway: 0.015,
@@ -3246,19 +3262,26 @@ function cactus(k, col, opt = {}) {
         const gp = pl.pal;
         const cg = grad(shade(gp.leaf, 0.14), gp.deep, 0, 0.9);
         if (kind === "pads") {
-          // a chain of flat oval pads, each joined to the last at its foot
+          /* A chain of UPRIGHT pads, each joined to the last at its foot. Thin
+             matters more than it looks: the silhouette pass rescales x and z
+             independently to the planned aspect, so a pad drawn at 0.3 of its
+             own width in z comes back out as a barrel and both Opuntia read as
+             flat discs stacked horizontally. Draw them thinner AND narrow the
+             z aspect pool, or the normalisation undoes it. */
           let y = 0;
           let lean = 0;
-          for (let i = 0; i < 4; i += 1) {
-            const rr = 0.185 - i * 0.026;
-            lean += (i % 2 ? 1 : -1) * 0.2;
-            p.add(node, xf(sphereGeo(13, 7), { sx: rr, sy: rr * 1.45, sz: rr * 0.3, at: [Math.sin(lean) * rr * 0.5, y + rr * 1.3, 0], rz: lean }),
+          pl.bodyR = 0.15;
+          for (let i = 0; i < 3; i += 1) {
+            const rr = 0.15 - i * 0.022;
+            lean += (i % 2 ? 1 : -1) * 0.22;
+            p.add(node, xf(sphereGeo(13, 7), { sx: rr, sy: rr * 2.2, sz: rr * 0.17, at: [Math.sin(lean) * rr * 0.6, y + rr * 2, 0], rz: lean }),
               { color: gp.deep, colorFn: cg });
-            y += rr * 2.3;
+            y += rr * 3.4;
           }
-          addFace(p, node, { at: [0, 0.32, 0.06], r: 0.055, tri: p.budget * 8 });
+          addFace(p, node, { at: [0, 0.32, 0.045], r: 0.055, tri: p.budget * 8 });
         } else if (kind === "globe") {
           // a squat ribbed globe under a fur of spines
+          pl.bodyR = 0.4;
           p.add(node, xf(sphereGeo(15, 8), { sx: 0.4, sy: 0.5, sz: 0.4, at: [0, 0.5, 0] }), { color: gp.deep, colorFn: grad(shade(gp.leaf, 0.16), gp.deep, 0.1, 0.9) });
           /* Mammillaria is named for its tubercles and worn under a dense
              white fur; a bare green egg with five spines is not it. */
@@ -3274,6 +3297,7 @@ function cactus(k, col, opt = {}) {
           }
           addFace(p, node, { at: [0, 0.55, 0.42], r: 0.09, tri: p.budget * 8 });
         } else {
+          pl.bodyR = 0.075;
           p.add(node, xf(tubeGeo(0.075, 0.055, 0.92, 14, 0.012)), { color: gp.deep, colorFn: cg });
           p.add(node, xf(capGeo(0.055, 0.09, 14, 5, "dome"), { at: [0, 0.92, 0] }), { color: gp.deep });
           addFace(p, node, { at: [0, 0.3, 0.072], r: 0.05, tri: p.budget * 8 });
@@ -3294,9 +3318,14 @@ function cactus(k, col, opt = {}) {
         if (p.budget >= 56) areole(p, node, { at: [Math.cos(a) * rr * 1.1, rr * 1.7, Math.sin(a) * rr * 1.1], r: 0.007, n: 4, len: 0.05, color: spineCol });
         return;
       }
-      // areole spine clusters: short, white, and paired across the axis so the
-      // part is connected without a pedicel
-      const r = reachOf(pl, a, pl.kind === "globe" ? 0.42 : 0.5);
+      /*
+       * Areole spine clusters: short, white, paired across the axis so the part
+       * is connected without a pedicel — and pinned to the BODY's own radius.
+       * The reach came from the plan's aspect, which on a column runs to four
+       * times the stem's own width, so the spine tufts hung in the air a body
+       * away from the plant: Euphorbia lactea and Opuntia ficus-indica both.
+       */
+      const r = Math.min((pl.bodyR ?? 0.1) * 0.96, reachOf(pl, a, pl.kind === "globe" ? 0.42 : 0.5));
       const len = pl.kind === "globe" ? 0.075 : 0.055;
       for (const sgn of [1, -1]) {
         areole(p, node, {
@@ -3485,9 +3514,19 @@ function rosetteBlades(k, col, opt = {}) {
       });
       // Agave finishes every blade with a hard terminal spine
       if (pl.form === "rigid" && p.budget >= 52) {
-        const y = Math.sin(-pitch) * len, rr = Math.cos(-pitch) * len;
-        p.add(node, xf(coneGeo(r * 0.035, r * 0.16, 7), { rz: -Math.cos(a) * (1.5708 + pitch), rx: Math.sin(a) * (1.5708 + pitch), at: [Math.cos(a) * rr, y, Math.sin(a) * rr] }),
-          { color: shade(trunkOf(col), -0.2) });
+        /*
+         * At the blade's OWN tip. addLeaf lays a blade along +Z and then turns
+         * it by pitch about x and yaw about y, which puts the tip at
+         * (L·cosP·sinA, −L·sinP, L·cosP·cosA); the spine was placed with cos
+         * and sin swapped, so every one of them sat ninety degrees round from
+         * the leaf it belongs to. That is Agave desmetiana's "brown triangles
+         * floating detached around the rosette".
+         */
+        const d = [Math.cos(pitch) * Math.sin(a), -Math.sin(pitch), Math.cos(pitch) * Math.cos(a)];
+        const tip = [d[0] * len, d[1] * len, d[2] * len];
+        p.add(node, xf(coneGeo(r * 0.035, r * 0.16, 7), {
+          rx: Math.acos(Math.max(-1, Math.min(1, d[1]))), ry: Math.atan2(d[0], d[2]), at: tip,
+        }), { color: shade(trunkOf(col), -0.2) });
       }
     },
   });
@@ -3830,6 +3869,24 @@ function zoneFn(band, r0, r) {
   return (q) => band[Math.max(0, Math.floor(((Math.hypot(q[0], q[2]) - r0) / span) * band.length * 1.4)) % band.length];
 }
 
+/**
+ * An open CUP: a wall rising from a narrow foot to a wide rim, then back down
+ * the inside. `capGeo`'s funnel cannot do this — it forces its last ring to
+ * zero radius, so it closes to a point, and Auricularia nigricans shipped as a
+ * pointed witch's hat. An ear fungus is a concavity; the concavity is the
+ * identification.
+ */
+function cupGeo({ r, h, wall = 0.16, seg = 14, rows = 5 }) {
+  const prof = [];
+  const out = (t) => r * (0.24 + 0.76 * t ** 0.65);
+  for (let i = 0; i <= rows; i += 1) prof.push([out(i / rows), h * (i / rows)]);
+  for (let i = rows; i >= 0; i -= 1) {
+    const t = i / rows;
+    prof.push([Math.max(0.003, out(t) * (1 - wall)), h * t * 0.94 + h * 0.05]);
+  }
+  return clean(lathe(prof, seg));
+}
+
 /** A frilly ruffled lobe — snow fungus, and the rim of an ear. */
 function ruffleGeo({ len, wid, thick, waves = 3, rows = 5, ring = 4 }) {
   const g = bladeGeo({ len, wid, thick, shape: "orbicular", rows, ring });
@@ -3989,6 +4046,11 @@ function mushroom(k, col, opt = {}) {
        horizontal starburst of thin spikes lying flat on the ground. */
     grow(k, col, {
       salt: "fungi:coral",
+      /* A coral's branches are SIX tubes per slot, and the fair-share allowance
+         grows by 1.4 budgets — so at thirty-two parts the whole candelabra was
+         rejected and the slot fell back to one leaf. Ramariopsis kunzei shipped
+         with two branches where a coral needs many. */
+      pLevel: [8, 10, 14],
       axSet: [0.35, 0.6, 0.85],
       azSet: [0.35, 0.6, 0.85],
       height: 0.4,
@@ -4153,6 +4215,12 @@ function mushroom(k, col, opt = {}) {
     const frilly = jelly && (g === "tremella" || g === "dacryopinax" || g === "phaeotremella");
     grow(k, col, {
       salt: `fungi:${kind}${ear ? ":ear" : frilly ? ":frill" : ""}`,
+      /* An ear is roughly round in plan. With no pool of its own this fell
+         through to the general one, which runs to 2.9, and Auricularia
+         polytricha came out as a cup rolled flat with its face sliding off the
+         rim. */
+      axSet: ear ? [0.75, 1.0, 1.25] : jelly ? [0.6, 0.95, 1.3, 1.65] : undefined,
+      azSet: ear ? [0.75, 1.0, 1.25] : jelly ? [0.6, 0.95, 1.3, 1.65] : undefined,
       height: jelly ? 0.26 : 0.3,
       breathe: 0.03,
       bands: [0, 1, 2, 3, 4, 5],
@@ -4161,10 +4229,10 @@ function mushroom(k, col, opt = {}) {
         p.spine("body", (node) => {
           if (ear) {
             // the ear/cup concavity is the whole of Auricularia
-            p.add(node, xf(capGeo(0.24, 0.62, 14, 6, "funnel"), { rx: -0.5, at: [0, 0.16, 0] }), { color: capCol, colorFn: capGrad });
-            p.add(node, xf(capGeo(0.19, 0.44, 13, 5, "funnel"), { rx: -0.5, at: [0, 0.24, 0.02] }), { color: shade(capCol, -0.22) });
-            p.add(node, xf(tubeGeo(0.03, 0.05, 0.2, 10)), { color: shade(capCol, -0.3) });
-            addFace(p, node, { at: [0, 0.5, 0.16], r: 0.062, tri: p.budget * 8 });
+            p.add(node, xf(cupGeo({ r: 0.3, h: 0.6, wall: 0.14, seg: 15 }), { rx: -0.42, at: [0, 0.14, 0] }), { color: capCol, colorFn: capGrad });
+            p.add(node, xf(cupGeo({ r: 0.2, h: 0.38, wall: 0.2, seg: 12 }), { rx: -0.42, at: [0, 0.2, 0.05] }), { color: shade(capCol, -0.24) });
+            p.add(node, xf(tubeGeo(0.03, 0.05, 0.18, 10)), { color: shade(capCol, -0.3) });
+            addFace(p, node, { at: [0, 0.34, 0.13], r: 0.058, tri: p.budget * 8 });
           } else if (frilly) {
             const lobe = [];
             for (let i = 0; i < 7; i += 1) {
@@ -4206,7 +4274,7 @@ function mushroom(k, col, opt = {}) {
         if (pl.ear) {
           const rr = reachOf(pl, a, 0.55);
           for (const sgn of [1, -1]) {
-            p.add(node, xf(capGeo(rr * 0.6, rr * 1.1, 11, 4, "funnel"), { rx: -0.6, ry: a + (sgn > 0 ? 0 : Math.PI), at: [Math.cos(a) * rr * 0.4 * sgn, 0, Math.sin(a) * rr * 0.4 * sgn] }),
+            p.add(node, xf(cupGeo({ r: rr * 0.62, h: rr * 1.0, wall: 0.18, seg: 11, rows: 4 }), { rx: -0.6, ry: a + (sgn > 0 ? 0 : Math.PI), at: [Math.cos(a) * rr * 0.4 * sgn, 0, Math.sin(a) * rr * 0.4 * sgn] }),
               { color: s.g % 2 ? capCol : capDark, colorFn: capGrad });
           }
           return;

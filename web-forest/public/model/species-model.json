@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T08:16:42.810Z",
+ "generated_at": "2026-09-05T08:25:18.510Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -375,7 +375,7 @@
    "archetype": "bananaKind",
    "palette_source": "known",
    "file": "species/heliconia-psittacorum.glb",
-   "bytes": 78344,
+   "bytes": 71396,
    "display_scale_m": 1.2
   },
   {
@@ -2010,7 +2010,7 @@
    "archetype": "cactus",
    "palette_source": "derived",
    "file": "species/opuntia-cochenillifera.glb",
-   "bytes": 71132,
+   "bytes": 65412,
    "display_scale_m": 1
   },
   {
@@ -2865,7 +2865,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/costus-pictus.glb",
-   "bytes": 74572,
+   "bytes": 71684,
    "display_scale_m": 2.8
   },
   {
@@ -3345,7 +3345,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/musa-laterita.glb",
-   "bytes": 61412,
+   "bytes": 60408,
    "display_scale_m": 2.8
   },
   {
@@ -3360,7 +3360,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/costus-woodsonii.glb",
-   "bytes": 75596,
+   "bytes": 70096,
    "display_scale_m": 2.8
   },
   {
@@ -3750,7 +3750,7 @@
    "archetype": "bananaKind",
    "palette_source": "known",
    "file": "species/musa-acuminata.glb",
-   "bytes": 58192,
+   "bytes": 75376,
    "display_scale_m": 3
   },
   {
@@ -5430,7 +5430,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/heliconia-latispatha.glb",
-   "bytes": 77112,
+   "bytes": 70276,
    "display_scale_m": 2.8
   },
   {
@@ -6735,7 +6735,7 @@
    "archetype": "mushroom-jelly",
    "palette_source": "derived",
    "file": "species/tremella-fuciformis.glb",
-   "bytes": 105204,
+   "bytes": 105384,
    "display_scale_m": 0.06
   },
   {
@@ -6765,7 +6765,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/canna-indica.glb",
-   "bytes": 74200,
+   "bytes": 67520,
    "display_scale_m": 2.8
   },
   {
@@ -6825,7 +6825,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/alpinia-purpurata.glb",
-   "bytes": 63076,
+   "bytes": 61368,
    "display_scale_m": 2.8
   },
   {
@@ -6885,7 +6885,7 @@
    "archetype": "rosetteBlades",
    "palette_source": "derived",
    "file": "species/agave-desmetiana.glb",
-   "bytes": 86576,
+   "bytes": 86496,
    "display_scale_m": 0.6
   },
   {
@@ -7140,7 +7140,7 @@
    "archetype": "mushroom-coral",
    "palette_source": "derived",
    "file": "species/xylaria-apiculata.glb",
-   "bytes": 52072,
+   "bytes": 80760,
    "display_scale_m": 0.08
   },
   {
@@ -7440,7 +7440,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/heliconia-tortuosa.glb",
-   "bytes": 69360,
+   "bytes": 62956,
    "display_scale_m": 2.8
   },
   {
@@ -7500,7 +7500,7 @@
    "archetype": "mushroom-jelly",
    "palette_source": "derived",
    "file": "species/auricularia-polytricha.glb",
-   "bytes": 83972,
+   "bytes": 72460,
    "display_scale_m": 0.06
   },
   {
@@ -8895,7 +8895,7 @@
    "archetype": "mushroom-coral",
    "palette_source": "derived",
    "file": "species/ramariopsis-kunzei.glb",
-   "bytes": 67508,
+   "bytes": 52800,
    "display_scale_m": 0.08
   },
   {
@@ -9180,7 +9180,7 @@
    "archetype": "cactus",
    "palette_source": "derived",
    "file": "species/euphorbia-lactea.glb",
-   "bytes": 85932,
+   "bytes": 83700,
    "display_scale_m": 1
   },
   {
@@ -9285,7 +9285,7 @@
    "archetype": "cactus",
    "palette_source": "derived",
    "file": "species/opuntia-ficus-indica.glb",
-   "bytes": 67216,
+   "bytes": 68288,
    "display_scale_m": 1
   },
   {
@@ -9870,7 +9870,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/curcuma-longa.glb",
-   "bytes": 52572,
+   "bytes": 52020,
    "display_scale_m": 2.8
   },
   {
@@ -10425,7 +10425,7 @@
    "archetype": "cycad",
    "palette_source": "derived",
    "file": "species/cycas-revoluta.glb",
-   "bytes": 73308,
+   "bytes": 50444,
    "display_scale_m": 1.5
   },
   {
@@ -11160,7 +11160,7 @@
    "archetype": "cactus",
    "palette_source": "derived",
    "file": "species/euphorbia-milii.glb",
-   "bytes": 98672,
+   "bytes": 95716,
    "display_scale_m": 1
   },
   {
@@ -12540,7 +12540,7 @@
    "archetype": "bananaKind",
    "palette_source": "derived",
    "file": "species/musa-ornata.glb",
-   "bytes": 75548,
+   "bytes": 74072,
    "display_scale_m": 2.8
   },
   {
@@ -14565,7 +14565,7 @@
    "archetype": "mushroom-jelly",
    "palette_source": "derived",
    "file": "species/auricularia-nigricans.glb",
-   "bytes": 63532,
+   "bytes": 68932,
    "display_scale_m": 0.06
   },
   {
@@ -15840,7 +15840,7 @@
    "archetype": "mushroom-coral",
    "palette_source": "derived",
    "file": "species/xylaria-flabelliformis.glb",
-   "bytes": 64004,
+   "bytes": 80960,
    "display_scale_m": 0.08
   },
   {
