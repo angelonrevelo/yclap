@@ -1384,6 +1384,18 @@ const BLOOM = {
   impatiens: { kind: "star", color: "#e84a8a", r: 0.055 },
   cosmos: { kind: "daisy", color: "#e84a8a", r: 0.09 },
   chrysanthemum: { kind: "daisy", color: "#f6d028", r: 0.08 },
+  /* Asteraceae whose flower head IS the plant. Nine of them shipped plain
+     green — a sunflower with no sunflower — because nothing named them and the
+     hashed flower pool has a "none" in it. */
+  leucanthemum: { kind: "daisy", color: "#fbfbf4", c2: "#f4c62a", r: 0.075 },
+  mauranthemum: { kind: "daisy", color: "#fbfbf4", c2: "#f4c62a", r: 0.055 },
+  melampodium: { kind: "daisy", color: "#f7c81f", r: 0.05 },
+  sphagneticola: { kind: "daisy", color: "#f8ca22", r: 0.055 },
+  wollastonia: { kind: "daisy", color: "#f6c62c", r: 0.05 },
+  tridax: { kind: "daisy", color: "#fbf6e2", c2: "#f4c62a", r: 0.05 },
+  bidens: { kind: "daisy", color: "#fbf6e2", c2: "#f4c62a", r: 0.048 },
+  emilia: { kind: "brush", color: "#e05a86", r: 0.04 },
+  ageratum: { kind: "brush", color: "#9d9ade", r: 0.042 },
   tagetes: { kind: "daisy", color: "#f6b22d", r: 0.075 },
   zinnia: { kind: "daisy", color: "#ff3920", r: 0.08 },
   celosia: { kind: "spike", color: "#ff3920", r: 0.06 },
@@ -1412,7 +1424,15 @@ function bloomOf(k) {
 
 // ---------- trees ----------
 
-const CROWN_FORM = ["round", "broad", "conical", "vase", "layered", "columnar", "weeping", "open"];
+/*
+ * Broadleaf crowns only. `conical` is NOT in here: it is the conifer skirt, and
+ * while it was in the hashed pool twelve broadleaf trees drew it — Narra and
+ * Dao among them, both curated walk-list natives, both shipping as Christmas
+ * trees standing next to the real Araucaria with the identical silhouette. A
+ * hash is not a way to decide whether something is a pine; only genus is, and
+ * `forced` is the only way in now.
+ */
+const CROWN_FORM = ["round", "broad", "vase", "layered", "columnar", "weeping", "open"];
 
 /**
  * The crown core, drawn into the trunk part so that part carries the model to
@@ -1444,15 +1464,27 @@ function crownCore(p, pl, node, form, th, cw, leaf, deep) {
     p.add(node, xf(capGeo(cw * 0.4, depth, 12, 5, "funnel"), { at: [0, th, 0] }), { color: leaf, colorFn: g });
     coreR = cw * 0.4; coreY = th + depth * 0.72;
   } else if (form === "columnar") {
-    p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.26, sy: depth * 0.52, sz: cw * 0.26, at: [0, th + depth * 0.5, 0] }), { color: leaf, colorFn: g });
-    coreR = cw * 0.26; coreY = th + depth * 0.5;
+    /* Wider than it was. A columnar crown at a quarter of the crown width on a
+       trunk that is already narrow is a green pole — thirteen trees shipped as
+       one, Tamarind and Diospyros and Jackfruit among them. */
+    p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.36, sy: depth * 0.52, sz: cw * 0.36, at: [0, th + depth * 0.5, 0] }), { color: leaf, colorFn: g });
+    coreR = cw * 0.36; coreY = th + depth * 0.5;
   } else if (form === "open") {
-    p.add(node, xf(sphereGeo(10, 5), { sx: cw * 0.22, sy: depth * 0.28, sz: cw * 0.22, at: [0, 1 - depth * 0.3, 0] }), { color: leaf, colorFn: g });
-    coreR = cw * 0.22; coreY = 1 - depth * 0.3;
+    const cy = th + depth * 0.6;
+    p.add(node, xf(sphereGeo(10, 5), { sx: cw * 0.24, sy: cy - th, sz: cw * 0.24, at: [0, cy, 0] }), { color: leaf, colorFn: g });
+    coreR = cw * 0.24; coreY = cy;
   } else {
-    const d = 0.44 + pl.u("cy") * 0.16;
-    p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.38, sy: depth * d * 0.85, sz: cw * 0.38, at: [0, 1 - depth * d, 0] }), { color: leaf, colorFn: g });
-    coreR = cw * 0.38; coreY = 1 - depth * d;
+    /*
+     * Seated ON the trunk. The round crown used to be a ball whose radius was
+     * set independently of where its centre sat, so at the shallow end of the
+     * range its underside floated a seventh of the model's height clear of the
+     * trunk top — that is Katmon's gap, and Katmon is on the walk list. The
+     * half-depth is now whatever it takes to reach the collar.
+     */
+    const d = 0.5 + pl.u("cy") * 0.1;
+    const cy = th + depth * d;
+    p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.38, sy: cy - th, sz: cw * 0.38, at: [0, cy, 0] }), { color: leaf, colorFn: g });
+    coreR = cw * 0.38; coreY = cy;
   }
   return { coreR, coreY };
 }
@@ -1486,13 +1518,17 @@ function tree(k, col, opt = {}) {
     salt: "tree:" + (opt.canopy ?? "auto") + (spec ? "b" : "") + (conifer ? "c" : "") + (opt.fruit ? "f" : "") + (opt.thick ? "t" : ""),
     upright: true,
     // a conifer is a spire: it never gets to be as wide as it is tall
-    axSet: conifer ? [0.3, 0.5, 0.7] : ASPECT_UP,
-    azSet: conifer ? [0.3, 0.5, 0.7] : ASPECT_UP,
+    /* Broadleaf trees get their OWN pool rather than the shared upright one,
+       whose bottom rung is 0.15. A crown a seventh as wide as the tree is tall
+       is a green pole with a bark boot, which is what Diospyros, Jackfruit and
+       Tamarind were: not a crown form problem, a footprint problem. */
+    axSet: conifer ? [0.3, 0.5, 0.7] : [0.42, 0.72, 1.02, 1.32],
+    azSet: conifer ? [0.3, 0.5, 0.7] : [0.42, 0.72, 1.02, 1.32],
     maxAniso: 1.9,
     // fewer, better-fed canopy sprays: at thirty-two parts each one is down to
     // forty-eight triangles, which buys two two-row blades and reads as facets
     pLevel: [10, 16, 22, 28],
-    height: (pl) => 0.7 + pl.u("size") * 0.55,
+    height: (pl) => 0.68 + pl.u("size") * 0.42,
     breathe: 0.012,
     sway: 0.03,
     bands: [0, 1, 2, 3, 4, 5],
@@ -1501,10 +1537,10 @@ function tree(k, col, opt = {}) {
       pl.conifer = conifer;
       // a pencil footprint has to carry a pencil crown, or it reads as a ball
       // skewered on a stick
-      if (Math.max(pl.ax, pl.az) <= 0.2) pl.crownForm = pl.H("col") % 2 ? "columnar" : "conical";
+      if (Math.max(pl.ax, pl.az) <= 0.2) pl.crownForm = "columnar";
       // how much bare trunk shows under the foliage: the other half of "reads
       // as a tree", and it costs the silhouette nothing
-      pl.trunkH = 0.2 + pl.u("th") * 0.34;
+      pl.trunkH = 0.26 + pl.u("th") * 0.3;
       pl.crownW = ((pl.ax + pl.az) / 2) * 0.92;
       pl.anchorColor = shade(trunkOf(col), 0.05);
       const tr = trunkOf(col);
@@ -1512,7 +1548,10 @@ function tree(k, col, opt = {}) {
       const r0 = (0.026 + pl.u("tr") * 0.03) * thick;
       const lean = (pl.u("lean") - 0.5) * 0.14;
       p.spine("trunk", (node) => {
-        p.add(node, xf(tubeGeo(r0 * (1.2 + pl.u("flare") * 0.7), r0 * (0.4 + pl.u("taper") * 0.45), pl.trunkH + 0.05, 12, r0 * 0.1), { rz: lean }),
+        /* The taper has a FLOOR. At 0.4 the trunk reaches a hairline at the
+           collar and reads as no trunk at all under the crown — Katmon and Teak
+           both. A tree narrows; it does not vanish. */
+        p.add(node, xf(tubeGeo(r0 * (1.2 + pl.u("flare") * 0.7), r0 * (0.6 + pl.u("taper") * 0.3), pl.trunkH + 0.05, 12, r0 * 0.1), { rz: lean }),
           { color: tr, colorFn: grad(shade(tr, 0.14), shade(tr, -0.22), 0, pl.trunkH) });
         const core = crownCore(p, pl, node, pl.crownForm, pl.trunkH, pl.crownW, pl.pal.leaf, pl.pal.deep);
         // The face belongs in the crown — a tree that smiles from its ankles
@@ -1600,7 +1639,7 @@ function tree(k, col, opt = {}) {
       const shapeR = pl.crownForm === "conical" ? 1 - t * 0.62
         : pl.crownForm === "vase" ? 0.55 + t * 0.45
           : pl.crownForm === "broad" ? 1 - t * 0.3
-            : pl.crownForm === "columnar" ? 0.62
+            : pl.crownForm === "columnar" ? 0.84
               : 1 - t * 0.18;
       const r = reachOf(pl, a, (0.55 + pl.u("cb" + s.g) * 0.4) * shapeR);
       const rr = Math.max(0.032, r * (0.34 + pl.u("cs" + s.g) * 0.3));
@@ -2189,6 +2228,40 @@ function shrub(k, col, opt = {}) {
   });
 }
 
+/**
+ * Leaf architecture that is a DIAGNOSTIC, keyed on the name.
+ *
+ * Cassava is palmate, both Oxalis are trifoliate, Mimosa pudica is bipinnate,
+ * the umbrella trees are palmate. Twenty herbs whose leaf is the whole point of
+ * recognising them were drawing whatever the hash handed them, which was a
+ * plain strap most of the time — a palmate cassava leaf and a simple lanceolate
+ * one are not close enough for a hash to choose between.
+ */
+const LEAF_FORM = {
+  "manihot esculenta": "palmate",
+  oxalis: "trifoliate",
+  "mimosa pudica": "pinnate",
+  mimosa: "pinnate",
+  heptapleurum: "palmate",
+  schefflera: "palmate",
+  "tacca leontopetaloides": "palmate",
+  thaumatophyllum: "pinnate",
+  philodendron: "pinnate",
+  "zamioculcas zamiifolia": "pinnate",
+  "biophytum sensitivum": "pinnate",
+  vicia: "pinnate",
+  desmodium: "trifoliate",
+  senna: "pinnate",
+  chamaecrista: "pinnate",
+  moringa: "pinnate",
+  leucaena: "pinnate",
+  trifolium: "trifoliate",
+  medicago: "trifoliate",
+  "phyllanthus niruri": "pinnate",
+  murdannia: "simple",
+};
+const leafFormOf = (k) => LEAF_FORM[sciOf(k)] ?? LEAF_FORM[genusOf(k)] ?? null;
+
 function herb(k, col, opt = {}) {
   const spec = bloomOf(k);
   const flower = opt.flower ?? spec?.kind ?? null;
@@ -2199,12 +2272,18 @@ function herb(k, col, opt = {}) {
        sheets like a folded tarp" are at the wide end of it. */
     axSet: [0.4, 0.8, 1.2, 1.6, 2.0, 2.4],
     azSet: [0.4, 0.8, 1.2, 1.6, 2.0, 2.4],
+    /* Denser. The general pool starts at eight parts, and eight parts on a herb
+       is a bare stick carrying two leaves and a coloured dot — about
+       twenty-five of the family looked exactly like that, Abelmoschus with no
+       leaves at all. A herb is a leafy thing; it needs the slots. */
+    pLevel: [16, 22, 28, 34],
     height: 0.5,
     breathe: 0.022,
     sway: 0.06,
     bands: [0, 1, 2, 3, 4, 5],
     flowerKind: flower,
     spine(p, pl) {
+      pl.leafForm = leafFormOf(k);
       p.spine("stem", (node) => {
         const stemR = 0.008 + pl.u("sr") * 0.014;
         const woody = pl.u("wd") > 0.72;
@@ -2219,16 +2298,52 @@ function herb(k, col, opt = {}) {
             p.add(node, xf(discGeo(stemR * 1.5, stemR * 0.7, 8), { at: [lean * t0 * t0 * 0.5, t0, 0] }), { color: shade(stemCol, -0.2) });
           }
         }
+        /* A skirt of basal leaves in the axis. A herb drawn as a bare vertical
+           wire with the slots hung off it reads as a stick even when the slots
+           are full — the plant has to have a base. */
+        const br = baseReach(pl, 0.5);
+        for (let i = 0; i < 5; i += 1) {
+          const aa = i * 2.399 + pl.u("b0") * TAU;
+          p.add(node, xf(bladeGeo({
+            len: br * (0.8 + ((i * 3) % 4) * 0.1), wid: br * 0.34, thick: 0.01,
+            shape: pl.shape, rows: 4, ring: 4, bend: -br * 0.18,
+          }), { rx: 0.55 + (i % 3) * 0.16, ry: aa, at: [0, 0.035 + (i % 2) * 0.03, 0] }),
+          { color: i % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });
+        }
+        /*
+         * A TERMINAL head, in the axis, for the species whose flower is the
+         * reason anyone knows the plant. Leaving it to the slots meant it
+         * depended on how the band lottery fell — Helianthus annuus, a
+         * sunflower, could and did ship with no sunflower on it. In the axis it
+         * is not a lottery.
+         */
+        if (spec) {
+          addFlower(p, node, {
+            tri: 260, at: [0, 0.965, 0], kind: spec.kind, r: spec.r * 1.5, yaw: pl.u("tf") * TAU,
+            color: spec.color, color2: spec.color2 ?? shade(spec.color, 0.3), stalkLen: 0.05,
+            stalkColor: mix(pl.pal.deep, pl.pal.leaf, 0.35), pitch: 0.18,
+          });
+        } else {
+          // otherwise the stem ends in a shoot tip, not in a bare wire
+          for (let i = 0; i < 3; i += 1) {
+            p.add(node, xf(bladeGeo({ len: 0.1, wid: 0.045, thick: 0.01, shape: pl.shape, rows: 4, ring: 4, bend: -0.03 }),
+              { rx: -0.5 + i * 0.45, ry: i * 2.1 + pl.u("t0") * TAU, at: [0, 0.9, 0] }),
+            { color: i % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });
+          }
+        }
         addFace(p, node, { at: [0, 0.3, stemR * 1.05], r: Math.max(0.03, stemR * 2.2) });
       });
     },
     slot(p, pl, s) {
       const { node, band, a, top } = s;
       const kind = pl.flower;
-      const flowering = kind !== "none" && band >= top && s.i < Math.max(1, Math.round(s.n * 0.6));
+      /* The top TWO bands, and most of each. One flower in the top band alone
+         is a coloured dot on a stick, which is what the review saw; a herb that
+         is grown for its flower carries a head, not a pixel. */
+      const flowering = kind !== "none" && band >= top - 1 && s.i < Math.max(1, Math.round(s.n * 0.75));
       if (flowering) {
         const r = reachOf(pl, a, 0.3 + pl.u(`fs${s.g}`) * 0.3);
-        const fr = (opt.flowerR ?? spec?.r ?? 0.07) * (0.75 + pl.u(`fz${s.g}`) * 0.6);
+        const fr = (opt.flowerR ?? spec?.r ?? 0.075) * (0.85 + pl.u(`fz${s.g}`) * 0.5);
         const fc = spec?.color ?? flowerOf(col);
         addFlower(p, node, { tri: Math.max(110, p.budget),
           at: [Math.cos(a) * r, 0, Math.sin(a) * r], kind, r: fr, yaw: a,
@@ -2242,7 +2357,7 @@ function herb(k, col, opt = {}) {
          wide aspect is a plant seen from above rather than from the side.
          Basal leaves still spread; stem leaves are carried up and out. */
       const pitch = basal ? 0.1 + pl.u(`bp${s.g}`) * 0.35 : -0.55 + pl.u(`lp${s.g}`) * 0.9;
-      const form = p.budget < 34 ? "simple" : pl.form;
+      const form = pl.leafForm ?? (p.budget < 34 ? "simple" : pl.form);
       const pair = [1];
       for (const sgn of pair) {
         addLeaf(p, node, { tri: p.budget,
