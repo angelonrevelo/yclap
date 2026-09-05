@@ -1092,21 +1092,21 @@ const BLOOM = {
   "hibiscus rosa-sinensis": { kind: "trumpet", color: "#ff3920", r: 0.085 },
   hibiscus: { kind: "trumpet", color: "#ff3920", r: 0.08 },
   ixora: { kind: "ball", color: "#ff3920", r: 0.055 },
-  gardenia: { kind: "daisy", color: "#f8f4ec", r: 0.06 },
+  gardenia: { kind: "daisy", color: "#f8f4ec", r: 0.075, c2: "#f6d028" },
   calliandra: { kind: "brush", color: "#e8496a", r: 0.06 },
-  mussaenda: { kind: "star", color: "#f8f4ec", r: 0.07 },
+  mussaenda: { kind: "star", color: "#f8f4ec", r: 0.07, c2: "#f6b22d" },
   hamelia: { kind: "trumpet", color: "#ff6a20", r: 0.05 },
   caesalpinia: { kind: "brush", color: "#ff6a20", r: 0.065 },
   lantana: { kind: "ball", color: "#f6b22d", r: 0.05 },
   duranta: { kind: "spike", color: "#6a7fd8", r: 0.05 },
-  tabernaemontana: { kind: "daisy", color: "#f8f4ec", r: 0.055 },
+  tabernaemontana: { kind: "daisy", color: "#f8f4ec", r: 0.055, c2: "#f6d028" },
   nerium: { kind: "star", color: "#e84a8a", r: 0.055 },
   allamanda: { kind: "trumpet", color: "#f6d028", r: 0.075 },
   brunfelsia: { kind: "star", color: "#9a5ad8", r: 0.055 },
   clerodendrum: { kind: "ball", color: "#e84a8a", r: 0.06 },
   rosa: { kind: "daisy", color: "#e84a8a", r: 0.06 },
   bougainvillea: { kind: "star", color: "#e84a8a", r: 0.05 },
-  jasminum: { kind: "star", color: "#f8f4ec", r: 0.045 },
+  jasminum: { kind: "star", color: "#f8f4ec", r: 0.045, c2: "#ffef8a" },
   plumbago: { kind: "star", color: "#6a7fd8", r: 0.045 },
   turnera: { kind: "daisy", color: "#f6d028", r: 0.05 },
   // the poinsettia is a BRACT, and only pulcherrima has it
@@ -1121,19 +1121,19 @@ const BLOOM = {
   peltophorum: { kind: "spike", color: "#f6d028", r: 0.06 },
   tabebuia: { kind: "trumpet", color: "#e8a0c8", r: 0.07 },
   handroanthus: { kind: "trumpet", color: "#f6d028", r: 0.07 },
-  plumeria: { kind: "star", color: "#f8f4ec", r: 0.06 },
+  plumeria: { kind: "star", color: "#f8f4ec", r: 0.06, c2: "#f6d028" },
   lagerstroemia: { kind: "brush", color: "#c84ab5", r: 0.06 },
-  millingtonia: { kind: "trumpet", color: "#f8f4ec", r: 0.055 },
+  millingtonia: { kind: "trumpet", color: "#f8f4ec", r: 0.055, c2: "#f6d028" },
   bauhinia: { kind: "star", color: "#e84a8a", r: 0.065 },
   cananga: { kind: "star", color: "#d8d84a", r: 0.055 },
-  barringtonia: { kind: "brush", color: "#f8f4ec", r: 0.06 },
+  barringtonia: { kind: "brush", color: "#f8f4ec", r: 0.06, c2: "#e8496a" },
   erythrina: { kind: "brush", color: "#ff3920", r: 0.06 },
   callistemon: { kind: "brush", color: "#ff3920", r: 0.06 },
   jacaranda: { kind: "trumpet", color: "#9a5ad8", r: 0.06 },
   pterocarpus: { kind: "spike", color: "#f6d028", r: 0.05 },
   saraca: { kind: "ball", color: "#ff8c5a", r: 0.055 },
-  michelia: { kind: "daisy", color: "#ffef8a", r: 0.05 },
-  magnolia: { kind: "daisy", color: "#f8f4ec", r: 0.07 },
+  michelia: { kind: "daisy", color: "#ffef8a", r: 0.05, c2: "#f6b22d" },
+  magnolia: { kind: "daisy", color: "#f8f4ec", r: 0.07, c2: "#f6d028" },
 
   // herbs
   helianthus: { kind: "daisy", color: "#f6c22d", r: 0.12 },
@@ -1162,7 +1162,7 @@ const BLOOM = {
 function bloomOf(k) {
   const spec = BLOOM[sciOf(k)] ?? BLOOM[genusOf(k)];
   if (!spec) return null;
-  return { kind: spec.kind, color: hex(spec.color), r: spec.r ?? 0.055 };
+  return { kind: spec.kind, color: hex(spec.color), color2: spec.c2 ? hex(spec.c2) : null, r: spec.r ?? 0.055 };
 }
 
 /* ══ archetypes ════════════════════════════════════════════════════════════ */
@@ -1193,23 +1193,23 @@ function crownCore(p, pl, node, form, th, cw, leaf, deep) {
     const n = form === "broad" ? 2 : 3;
     for (let i = 0; i < n; i += 1) {
       const t = i / (n - 1);
-      p.add(node, xf(capGeo(cw * (0.64 - t * 0.2), depth * (0.4 - t * 0.1), 12, 4, "flat"),
+      p.add(node, xf(capGeo(cw * (0.46 - t * 0.14), depth * (0.36 - t * 0.09), 12, 4, "flat"),
         { at: [0, th + t * depth * 0.66, 0] }), { color: i % 2 ? deep : leaf, colorFn: g });
     }
-    coreR = cw * 0.64; coreY = th + depth * 0.2;
+    coreR = cw * 0.46; coreY = th + depth * 0.2;
   } else if (form === "vase") {
-    p.add(node, xf(capGeo(cw * 0.58, depth, 12, 5, "funnel"), { at: [0, th, 0] }), { color: leaf, colorFn: g });
-    coreR = cw * 0.58; coreY = th + depth * 0.72;
+    p.add(node, xf(capGeo(cw * 0.4, depth, 12, 5, "funnel"), { at: [0, th, 0] }), { color: leaf, colorFn: g });
+    coreR = cw * 0.4; coreY = th + depth * 0.72;
   } else if (form === "columnar") {
-    p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.34, sy: depth * 0.52, sz: cw * 0.34, at: [0, th + depth * 0.5, 0] }), { color: leaf, colorFn: g });
-    coreR = cw * 0.34; coreY = th + depth * 0.5;
+    p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.26, sy: depth * 0.52, sz: cw * 0.26, at: [0, th + depth * 0.5, 0] }), { color: leaf, colorFn: g });
+    coreR = cw * 0.26; coreY = th + depth * 0.5;
   } else if (form === "open") {
-    p.add(node, xf(sphereGeo(10, 5), { sx: cw * 0.3, sy: depth * 0.3, sz: cw * 0.3, at: [0, 1 - depth * 0.3, 0] }), { color: leaf, colorFn: g });
-    coreR = cw * 0.3; coreY = 1 - depth * 0.3;
+    p.add(node, xf(sphereGeo(10, 5), { sx: cw * 0.22, sy: depth * 0.28, sz: cw * 0.22, at: [0, 1 - depth * 0.3, 0] }), { color: leaf, colorFn: g });
+    coreR = cw * 0.22; coreY = 1 - depth * 0.3;
   } else {
     const d = 0.44 + pl.u("cy") * 0.16;
-    p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.55, sy: depth * d, sz: cw * 0.55, at: [0, 1 - depth * d, 0] }), { color: leaf, colorFn: g });
-    coreR = cw * 0.55; coreY = 1 - depth * d;
+    p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.38, sy: depth * d * 0.85, sz: cw * 0.38, at: [0, 1 - depth * d, 0] }), { color: leaf, colorFn: g });
+    coreR = cw * 0.38; coreY = 1 - depth * d;
   }
   return { coreR, coreY };
 }
@@ -1327,15 +1327,18 @@ function tree(k, col, opt = {}) {
       /* Flowering trees. Spathodea is the African tulip, Delonix the
          flamboyant, Cassia fistula the golden shower: the flower is the whole
          reason anyone knows the tree, and all of them shipped plain green. */
-      if (spec && band >= 3 && s.g % 3 === 1) {
-        const r = reachOf(pl, a, 0.62);
+      if (spec && band >= 3 && s.i % 2 === 0) {
+        /* Out at the crown SURFACE. At 0.62 of the reach the flowers were
+           genuinely in the file — a hundred and seventy red vertices on the
+           African tulip — and every one of them was buried inside the foliage. */
+        const r = reachOf(pl, a, 1.0);
         /* Deliberately over the per-part budget. addFlower falls back to a
            three-scale BUD under 58 triangles, and a bud is invisible at
            gallery size — which is the whole complaint about the flowering
            trees. A crown spray can afford to be one lump smaller. */
         addFlower(p, node, {
           tri: Math.max(120, p.budget), at: [Math.cos(a) * r, 0, Math.sin(a) * r], yaw: a,
-          kind: spec.kind, r: spec.r, color: spec.color, color2: shade(spec.color, 0.28), stalkLen: 0.025,
+          kind: spec.kind, r: spec.r, color: spec.color, color2: spec.color2 ?? shade(spec.color, 0.28), stalkLen: 0.025,
         });
         return;
       }
@@ -1400,7 +1403,7 @@ function papaya(k, col) {
         const tr = trunkOf(col);
         p.add(node, xf(tubeGeo(0.05, 0.03, 0.84, 12)), { color: tr, colorFn: grad(shade(tr, 0.15), shade(tr, -0.2), 0, 0.84) });
         p.add(node, xf(sphereGeo(11, 5), { sx: 0.055, sy: 0.07, sz: 0.055, at: [0, 0.9, 0] }), { color: pl.pal.deep });
-        addFace(p, node, { at: [0, 0.72, 0.037], r: 0.042, tri: p.budget * 8 });
+        addFace(p, node, { at: [0, 0.62, 0.036], r: 0.055, tri: p.budget * 8 });
       });
     },
     slot(p, pl, s) {
@@ -1413,11 +1416,14 @@ function papaya(k, col) {
         });
         return;
       }
-      const r = reachOf(pl, a, 0.9);
+      // a papaya holds its palmate blades OUT on long petioles, level with the
+      // crown or above it; drooping them turns the crown into a mop
+      const r = reachOf(pl, a, 0.95);
       addLeaf(p, node, {
-        tri: p.budget, yaw: a, pitch: 0.35 + pl.u("lp" + s.g) * 0.4,
-        len: r, wid: r * 0.85, shape: "orbicular", form: "palmate", leaflet: 5 + (s.g % 3),
-        color: pl.pal.leaf, colorFn: pl.pal.grad, stalkColor: pl.pal.deep, stalk: 0.42,
+        tri: p.budget, yaw: a, pitch: -0.45 + pl.u("lp" + s.g) * 0.55,
+        len: r, wid: r * 0.8, shape: "orbicular", form: "palmate", leaflet: 5 + (s.g % 3),
+        bend: -r * 0.2,
+        color: pl.pal.leaf, colorFn: pl.pal.grad, stalkColor: pl.pal.deep, stalk: 0.48,
       });
     },
   });
@@ -1879,12 +1885,14 @@ function shrub(k, col, opt = {}) {
           : bloom === "balls" ? "ball" : bloom === "hibiscus" ? "star" : bloom === "spikes" ? "spike" : "trumpet";
         const colr = spec ? spec.color
           : opt.multicolor ? FLOWERS[pl.H("mc" + s.g) % FLOWERS.length] : flowerOf(col);
-        const r = reachOf(pl, a, 0.6);
+        // close in to the foliage: a flower out at 0.6 of the reach shows more
+        // of its own pedicel than of itself
+        const r = reachOf(pl, a, 0.45);
         addFlower(p, node, {
           tri: spec ? Math.max(120, p.budget) : p.budget,
           at: [Math.cos(a) * r, 0, Math.sin(a) * r], kind,
           r: (spec?.r ?? 0.045) + pl.u("fr" + s.g) * 0.03, color: colr,
-          color2: spec ? shade(colr, 0.3) : undefined, stalkLen: 0.03, yaw: a,
+          color2: spec ? (spec.color2 ?? shade(colr, 0.3)) : undefined, stalkLen: 0.03, yaw: a,
         });
         return;
       }
@@ -1949,7 +1957,7 @@ function herb(k, col, opt = {}) {
         const fc = spec?.color ?? flowerOf(col);
         addFlower(p, node, { tri: Math.max(110, p.budget),
           at: [Math.cos(a) * r, 0, Math.sin(a) * r], kind, r: fr, yaw: a,
-          color: fc, color2: shade(fc, 0.3), stalkLen: 0.035, pitch: pl.u(`ft${s.g}`) * 0.3,
+          color: fc, color2: spec?.color2 ?? shade(fc, 0.3), stalkLen: 0.035, pitch: pl.u(`ft${s.g}`) * 0.3,
         });
         return;
       }
