@@ -613,7 +613,15 @@ function route(row, ctx) {
   if (iconic === "Aves") return "bird";
   if (iconic === "Mammalia") return "mammal";
   if (iconic === "Amphibia") return "frog";
-  if (iconic === "Reptilia") return ["Eutropis", "Hemidactylus", "Gehyra", "Varanus"].includes(genus) ? "lizard" : "snake";
+  if (iconic === "Reptilia") {
+    /* Same capitalisation trap as the genus sets: `genus` is lowercased by
+       genusOf(), so this list never matched and EVERY reptile was built by the
+       snake builder — the skink, both house geckos, the four-clawed gecko and
+       the marbled water monitor all shipped as snakes, and `lizard` was dead
+       code that had never once run. The three actual snakes in the pack
+       (Cyclocorus, Indotyphlops, Tropidonophis) are the fall-through. */
+    return ["eutropis", "hemidactylus", "gehyra", "varanus"].includes(genus) ? "lizard" : "snake";
+  }
   if (iconic === "Actinopterygii") return "fish";
   if (iconic === "Arachnida") return "spider";
   if (iconic === "Mollusca") return fams.includes("Veronicellidae") ? "snail" : "snail";
