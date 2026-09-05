@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T06:30:17.999Z",
+ "generated_at": "2026-09-05T06:33:52.660Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -150,7 +150,7 @@
    "archetype": "shrub",
    "palette_source": "known",
    "file": "species/lagundi.glb",
-   "bytes": 61880,
+   "bytes": 61052,
    "display_scale_m": 1.5
   },
   {
@@ -210,7 +210,7 @@
    "archetype": "shrub",
    "palette_source": "known",
    "file": "species/caesalpinia-pulcherrima.glb",
-   "bytes": 59216,
+   "bytes": 59428,
    "display_scale_m": 2.5
   },
   {
@@ -345,7 +345,7 @@
    "archetype": "shrub",
    "palette_source": "known",
    "file": "species/codiaeum-variegatum.glb",
-   "bytes": 74004,
+   "bytes": 67420,
    "display_scale_m": 1.5
   },
   {
@@ -510,7 +510,7 @@
    "archetype": "shrub",
    "palette_source": "known",
    "file": "species/ixora-coccinea.glb",
-   "bytes": 53716,
+   "bytes": 53080,
    "display_scale_m": 1.5
   },
   {
@@ -675,7 +675,7 @@
    "archetype": "shrub",
    "palette_source": "known",
    "file": "species/excoecaria-cochinchinensis.glb",
-   "bytes": 94156,
+   "bytes": 88060,
    "display_scale_m": 1.2
   },
   {
@@ -1035,7 +1035,7 @@
    "archetype": "shrub",
    "palette_source": "known",
    "file": "species/lantana-camara.glb",
-   "bytes": 87164,
+   "bytes": 89980,
    "display_scale_m": 1.2
   },
   {
@@ -1215,7 +1215,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/coleus-scutellarioides.glb",
-   "bytes": 74404,
+   "bytes": 72668,
    "display_scale_m": 1.5
   },
   {
@@ -1275,7 +1275,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/plumbago-auriculata.glb",
-   "bytes": 59652,
+   "bytes": 58640,
    "display_scale_m": 1.5
   },
   {
@@ -1335,7 +1335,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/pachystachys-coccinea.glb",
-   "bytes": 91812,
+   "bytes": 92956,
    "display_scale_m": 1.5
   },
   {
@@ -1575,7 +1575,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/murraya-paniculata.glb",
-   "bytes": 86212,
+   "bytes": 86756,
    "display_scale_m": 1.5
   },
   {
@@ -1665,7 +1665,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/ochna-serrulata.glb",
-   "bytes": 92220,
+   "bytes": 92764,
    "display_scale_m": 1.5
   },
   {
@@ -1875,7 +1875,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/jatropha-integerrima.glb",
-   "bytes": 53016,
+   "bytes": 52508,
    "display_scale_m": 1.5
   },
   {
@@ -2460,7 +2460,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/malpighia-coccigera.glb",
-   "bytes": 68736,
+   "bytes": 68712,
    "display_scale_m": 1.5
   },
   {
@@ -2520,7 +2520,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/chromolaena-odorata.glb",
-   "bytes": 75460,
+   "bytes": 77340,
    "display_scale_m": 1.5
   },
   {
@@ -2565,7 +2565,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/clerodendrum-quadriloculare.glb",
-   "bytes": 91660,
+   "bytes": 92488,
    "display_scale_m": 1.5
   },
   {
@@ -2760,7 +2760,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/ixora-chinensis.glb",
-   "bytes": 77428,
+   "bytes": 77872,
    "display_scale_m": 1.5
   },
   {
@@ -2925,7 +2925,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/crossandra-infundibuliformis.glb",
-   "bytes": 85316,
+   "bytes": 85352,
    "display_scale_m": 1.5
   },
   {
@@ -3240,7 +3240,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/polyscias-guilfoylei.glb",
-   "bytes": 45408,
+   "bytes": 44324,
    "display_scale_m": 1.5
   },
   {
@@ -3480,7 +3480,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/strobilanthes-reptans.glb",
-   "bytes": 91280,
+   "bytes": 91972,
    "display_scale_m": 1.5
   },
   {
@@ -3510,7 +3510,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/hibiscus-rosa-sinensis.glb",
-   "bytes": 51796,
+   "bytes": 54008,
    "display_scale_m": 1.5
   },
   {
@@ -3810,7 +3810,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/duranta-erecta.glb",
-   "bytes": 73188,
+   "bytes": 73728,
    "display_scale_m": 1.5
   },
   {
@@ -4140,7 +4140,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/sanchezia-tigrina.glb",
-   "bytes": 86036,
+   "bytes": 85616,
    "display_scale_m": 1.5
   },
   {
@@ -4215,7 +4215,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/tecoma-stans.glb",
-   "bytes": 65708,
+   "bytes": 65100,
    "display_scale_m": 1.5
   },
   {
@@ -4455,7 +4455,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/acalypha-indica.glb",
-   "bytes": 51176,
+   "bytes": 51380,
    "display_scale_m": 1.5
   },
   {
@@ -4530,7 +4530,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/jatropha-curcas.glb",
-   "bytes": 46760,
+   "bytes": 46392,
    "display_scale_m": 1.5
   },
   {
@@ -4545,7 +4545,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/ochna-thomasiana.glb",
-   "bytes": 70720,
+   "bytes": 70280,
    "display_scale_m": 1.5
   },
   {
@@ -4725,7 +4725,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/ixora-casei.glb",
-   "bytes": 82740,
+   "bytes": 82868,
    "display_scale_m": 1.5
   },
   {
@@ -4815,7 +4815,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/capparis-micracantha.glb",
-   "bytes": 48060,
+   "bytes": 49040,
    "display_scale_m": 1.5
   },
   {
@@ -4935,7 +4935,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/hibiscus-archeri.glb",
-   "bytes": 93232,
+   "bytes": 93388,
    "display_scale_m": 1.5
   },
   {
@@ -4950,7 +4950,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/coleus-amboinicus.glb",
-   "bytes": 46764,
+   "bytes": 46752,
    "display_scale_m": 1.5
   },
   {
@@ -5595,7 +5595,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/lantana-horrida.glb",
-   "bytes": 73868,
+   "bytes": 75532,
    "display_scale_m": 1.5
   },
   {
@@ -6330,7 +6330,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/ocimum-basilicum.glb",
-   "bytes": 45256,
+   "bytes": 45736,
    "display_scale_m": 1.5
   },
   {
@@ -6855,7 +6855,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/triphasia-trifolia.glb",
-   "bytes": 48940,
+   "bytes": 49960,
    "display_scale_m": 1.5
   },
   {
@@ -7005,7 +7005,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/graptophyllum-pictum.glb",
-   "bytes": 84884,
+   "bytes": 85252,
    "display_scale_m": 1.5
   },
   {
@@ -7035,7 +7035,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/malpighia-glabra.glb",
-   "bytes": 69208,
+   "bytes": 69428,
    "display_scale_m": 1.5
   },
   {
@@ -7095,7 +7095,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/polyscias-scutellaria.glb",
-   "bytes": 80396,
+   "bytes": 80640,
    "display_scale_m": 1.5
   },
   {
@@ -7125,7 +7125,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/tabernaemontana-divaricata.glb",
-   "bytes": 92204,
+   "bytes": 91920,
    "display_scale_m": 1.5
   },
   {
@@ -7425,7 +7425,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/acalypha-wilkesiana.glb",
-   "bytes": 88476,
+   "bytes": 88200,
    "display_scale_m": 1.5
   },
   {
@@ -7650,7 +7650,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/leea-guineensis.glb",
-   "bytes": 81120,
+   "bytes": 81564,
    "display_scale_m": 1.5
   },
   {
@@ -7725,7 +7725,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/justicia-procumbens.glb",
-   "bytes": 70492,
+   "bytes": 69884,
    "display_scale_m": 1.5
   },
   {
@@ -7875,7 +7875,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/barleria-repens.glb",
-   "bytes": 83880,
+   "bytes": 84108,
    "display_scale_m": 1.5
   },
   {
@@ -8190,7 +8190,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/maesa-perlarius.glb",
-   "bytes": 72420,
+   "bytes": 72908,
    "display_scale_m": 1.5
   },
   {
@@ -8265,7 +8265,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/strobilanthes-auriculata.glb",
-   "bytes": 69664,
+   "bytes": 70292,
    "display_scale_m": 1.5
   },
   {
@@ -8295,7 +8295,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/strobilanthes-crispa.glb",
-   "bytes": 87652,
+   "bytes": 88892,
    "display_scale_m": 1.5
   },
   {
@@ -8670,7 +8670,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/calliandra-haematocephala.glb",
-   "bytes": 93684,
+   "bytes": 93912,
    "display_scale_m": 1.5
   },
   {
@@ -8865,7 +8865,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/citrus-maxima.glb",
-   "bytes": 81096,
+   "bytes": 81964,
    "display_scale_m": 1.5
   },
   {
@@ -9000,7 +9000,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/ricinus-communis.glb",
-   "bytes": 91356,
+   "bytes": 91408,
    "display_scale_m": 1.5
   },
   {
@@ -9390,7 +9390,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/capsicum-chinense.glb",
-   "bytes": 70316,
+   "bytes": 69688,
    "display_scale_m": 1.5
   },
   {
@@ -9540,7 +9540,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/physalis-pubescens.glb",
-   "bytes": 52524,
+   "bytes": 53076,
    "display_scale_m": 1.5
   },
   {
@@ -10005,7 +10005,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/capsicum-frutescens.glb",
-   "bytes": 56664,
+   "bytes": 56192,
    "display_scale_m": 1.5
   },
   {
@@ -10065,7 +10065,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/citrus-hystrix.glb",
-   "bytes": 69416,
+   "bytes": 69592,
    "display_scale_m": 1.5
   },
   {
@@ -10245,7 +10245,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/spiraea-cantoniensis.glb",
-   "bytes": 82676,
+   "bytes": 80592,
    "display_scale_m": 1.5
   },
   {
@@ -10275,7 +10275,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/hamelia-patens.glb",
-   "bytes": 86516,
+   "bytes": 86084,
    "display_scale_m": 1.5
   },
   {
@@ -10305,7 +10305,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/plumbago-zeylanica.glb",
-   "bytes": 94564,
+   "bytes": 94404,
    "display_scale_m": 1.5
   },
   {
@@ -10650,7 +10650,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/megaskepasma-erythrochlamys.glb",
-   "bytes": 71964,
+   "bytes": 71568,
    "display_scale_m": 1.5
   },
   {
@@ -10785,7 +10785,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/jatropha-podagrica.glb",
-   "bytes": 53264,
+   "bytes": 53644,
    "display_scale_m": 1.5
   },
   {
@@ -10830,7 +10830,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/pachystachys-lutea.glb",
-   "bytes": 57680,
+   "bytes": 57116,
    "display_scale_m": 1.5
   },
   {
@@ -10980,7 +10980,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/barleria-cristata.glb",
-   "bytes": 61516,
+   "bytes": 60960,
    "display_scale_m": 1.5
   },
   {
@@ -11055,7 +11055,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/cotoneaster-dammeri.glb",
-   "bytes": 82484,
+   "bytes": 82724,
    "display_scale_m": 1.5
   },
   {
@@ -11100,7 +11100,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/desmanthus-virgatus.glb",
-   "bytes": 83060,
+   "bytes": 83656,
    "display_scale_m": 1.5
   },
   {
@@ -11145,7 +11145,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/eranthemum-pulchellum.glb",
-   "bytes": 85012,
+   "bytes": 82440,
    "display_scale_m": 1.5
   },
   {
@@ -11430,7 +11430,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/rauvolfia-tetraphylla.glb",
-   "bytes": 85020,
+   "bytes": 84804,
    "display_scale_m": 1.5
   },
   {
@@ -11565,7 +11565,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/thunbergia-erecta.glb",
-   "bytes": 93532,
+   "bytes": 93048,
    "display_scale_m": 1.5
   },
   {
@@ -11715,7 +11715,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/excoecaria-agallocha.glb",
-   "bytes": 87444,
+   "bytes": 88504,
    "display_scale_m": 1.5
   },
   {
@@ -11910,7 +11910,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/buxus-microphylla.glb",
-   "bytes": 82144,
+   "bytes": 82364,
    "display_scale_m": 1.5
   },
   {
@@ -11970,7 +11970,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/gardenia-jasminoides.glb",
-   "bytes": 94508,
+   "bytes": 93368,
    "display_scale_m": 1.5
   },
   {
@@ -12180,7 +12180,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/polyscias-balfouriana.glb",
-   "bytes": 61716,
+   "bytes": 61708,
    "display_scale_m": 1.5
   },
   {
@@ -12210,7 +12210,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/ixora-finlaysoniana.glb",
-   "bytes": 83888,
+   "bytes": 83596,
    "display_scale_m": 1.5
   },
   {
@@ -12225,7 +12225,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/calliandra-tergemina.glb",
-   "bytes": 83776,
+   "bytes": 73312,
    "display_scale_m": 1.5
   },
   {
@@ -12240,7 +12240,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/odontonema-tubaeforme.glb",
-   "bytes": 90716,
+   "bytes": 91148,
    "display_scale_m": 1.5
   },
   {
@@ -12300,7 +12300,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/polyscias-fruticosa.glb",
-   "bytes": 89416,
+   "bytes": 89072,
    "display_scale_m": 1.5
   },
   {
@@ -12315,7 +12315,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/malpighia-emarginata.glb",
-   "bytes": 61944,
+   "bytes": 61712,
    "display_scale_m": 1.5
   },
   {
@@ -12360,7 +12360,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/justicia-comata.glb",
-   "bytes": 55600,
+   "bytes": 53724,
    "display_scale_m": 1.5
   },
   {
@@ -12585,7 +12585,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/mussaenda-philippica.glb",
-   "bytes": 70824,
+   "bytes": 75892,
    "display_scale_m": 1.5
   },
   {
@@ -12960,7 +12960,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/brunfelsia-pauciflora.glb",
-   "bytes": 84188,
+   "bytes": 84692,
    "display_scale_m": 1.5
   },
   {
@@ -13050,7 +13050,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/osmoxylon-lineare.glb",
-   "bytes": 91308,
+   "bytes": 91424,
    "display_scale_m": 1.5
   },
   {
@@ -13065,7 +13065,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/clausena-excavata.glb",
-   "bytes": 82384,
+   "bytes": 84024,
    "display_scale_m": 1.5
   },
   {
@@ -13170,7 +13170,7 @@
    "archetype": "orchid",
    "palette_source": "derived",
    "file": "species/dendrobium-anosmum.glb",
-   "bytes": 86504,
+   "bytes": 75524,
    "display_scale_m": 0.35
   },
   {
@@ -13470,7 +13470,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/viburnum-odoratissimum.glb",
-   "bytes": 89128,
+   "bytes": 88308,
    "display_scale_m": 1.5
   },
   {
@@ -13740,7 +13740,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/wikstroemia-indica.glb",
-   "bytes": 92244,
+   "bytes": 90108,
    "display_scale_m": 1.5
   },
   {
@@ -13755,7 +13755,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/chamaecrista-nomame.glb",
-   "bytes": 48124,
+   "bytes": 47948,
    "display_scale_m": 1.5
   },
   {
@@ -13905,7 +13905,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/osmanthus-fragrans.glb",
-   "bytes": 85068,
+   "bytes": 84700,
    "display_scale_m": 1.5
   },
   {
@@ -13920,7 +13920,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/gardenia-mutabilis.glb",
-   "bytes": 60996,
+   "bytes": 60432,
    "display_scale_m": 1.5
   },
   {
@@ -14130,7 +14130,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/psychotria-asiatica.glb",
-   "bytes": 78924,
+   "bytes": 79984,
    "display_scale_m": 1.5
   },
   {
@@ -14175,7 +14175,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/tabernaemontana-macrocarpa.glb",
-   "bytes": 88552,
+   "bytes": 82284,
    "display_scale_m": 1.5
   },
   {
@@ -14220,7 +14220,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/carissa-carandas.glb",
-   "bytes": 45920,
+   "bytes": 46192,
    "display_scale_m": 1.5
   },
   {
@@ -14235,7 +14235,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/gardenia-sootepensis.glb",
-   "bytes": 92072,
+   "bytes": 86192,
    "display_scale_m": 1.5
   },
   {
@@ -14415,7 +14415,7 @@
    "archetype": "orchid",
    "palette_source": "derived",
    "file": "species/goodyera-foliosa.glb",
-   "bytes": 87704,
+   "bytes": 87792,
    "display_scale_m": 0.35
   },
   {
@@ -15285,7 +15285,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/citrus-microcarpa.glb",
-   "bytes": 69036,
+   "bytes": 69520,
    "display_scale_m": 1.5
   },
   {
@@ -15585,7 +15585,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/strobilanthes-alternata.glb",
-   "bytes": 68684,
+   "bytes": 69184,
    "display_scale_m": 1.5
   },
   {
@@ -15630,7 +15630,7 @@
    "archetype": "shrub",
    "palette_source": "derived",
    "file": "species/tabernaemontana-sphaerocarpa.glb",
-   "bytes": 88184,
+   "bytes": 87640,
    "display_scale_m": 1.5
   },
   {

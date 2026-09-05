@@ -1786,8 +1786,13 @@ function shrub(k, col, opt = {}) {
   grow(k, col, {
     salt: "shrub:" + bloom + (opt.colorful ? "c" : ""),
     upright: true,
-    axSet: ASPECT_UP_WIDE,
-    azSet: ASPECT_UP_WIDE,
+    /* Broader than the general upright pool. A shrub is a bush; at 0.35 of its
+       own height it is a pod on a stick, which is what Graptophyllum and the
+       narrow tail of the family were. Three levels, not four: the audit caps
+       an upright at 1.6 times wider than tall, and four levels inside that
+       range sit closer together than the 0.12 distinctness floor. */
+    axSet: [0.65, 1.1, 1.55],
+    azSet: [0.65, 1.1, 1.55],
     height: (pl) => 0.42 + pl.u("size") * 0.32,
     breathe: 0.018,
     bands: [0, 1, 2, 3, 4, 5],
@@ -1833,8 +1838,8 @@ function shrub(k, col, opt = {}) {
           }
           coreR = cw * 0.36; coreY = pl.stemH + depth * 0.16;
         } else if (pl.bush === "upright") {
-          p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.26, sy: depth * 0.48, sz: cw * 0.26, at: [0, pl.stemH + depth * 0.46, 0] }), { color: leaf, colorFn: g });
-          coreR = cw * 0.26; coreY = pl.stemH + depth * 0.46;
+          p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.34, sy: depth * 0.42, sz: cw * 0.34, at: [0, pl.stemH + depth * 0.46, 0] }), { color: leaf, colorFn: g });
+          coreR = cw * 0.34; coreY = pl.stemH + depth * 0.46;
         } else if (pl.bush === "airy") {
           for (let i = 0; i < 3; i += 1) {
             const a = i * 2.399 + pl.u("a0") * TAU;
@@ -1859,7 +1864,7 @@ function shrub(k, col, opt = {}) {
       if (band <= 1) {
         // another shoot out of the clump, leafy right down to its foot
         const br = baseReach(pl, 0.36);
-        p.add(node, xf(tubeGeo(br * 0.22, br * 0.12, br * 2.4, 9), { rz: -Math.cos(a) * 0.34, rx: Math.sin(a) * 0.34 }), { color: trunkOf(col) });
+        p.add(node, xf(tubeGeo(br * 0.2, br * 0.11, br * 1.5, 9), { rz: -Math.cos(a) * 0.34, rx: Math.sin(a) * 0.34 }), { color: trunkOf(col) });
         addLump(p, node, {
           rx: br * 0.5, ry: br * 0.42, rz: br * 0.5, yaw: a, tri: p.budget * 0.6,
           at: [Math.cos(a) * br * 0.5, br * 0.7, Math.sin(a) * br * 0.5],
@@ -1885,7 +1890,12 @@ function shrub(k, col, opt = {}) {
       }
       const droop = pl.bush === "arching" ? 0.75 : pl.bush === "upright" ? -0.35 : 0.2;
       const r = reachOf(pl, a, (0.7 + pl.u("lr" + s.g) * 0.35) * (pl.bush === "airy" ? 1.05 : 1));
-      const lc = opt.colorful ? CROTON[pl.H("lc" + s.g) % CROTON.length] : (s.g % 2 ? pl.pal.leaf : pl.pal.deep);
+      /* A variegated shrub is still mostly a LEAF. Painting every blade from
+         the croton pool left Excoecaria as magenta spikes radiating from a
+         point with no green mass at all. */
+      const lc = opt.colorful
+        ? (s.g % 3 === 0 ? pl.pal.deep : CROTON[pl.H("lc" + s.g) % CROTON.length])
+        : (s.g % 2 ? pl.pal.leaf : pl.pal.deep);
       addLeaf(p, node, {
         tri: p.budget, yaw: a, pitch: droop + pl.u("lp" + s.g) * 0.5,
         len: r, wid: r * (0.34 + pl.u("lw" + s.g) * 0.34), shape: pl.shape, form: pl.form,
@@ -1967,32 +1977,87 @@ function herb(k, col, opt = {}) {
   });
 }
 
+/**
+ * Two orchids, and they are not the same plant. Dendrobium is an epiphytic
+ * CANE with a pendant raceme; Goodyera is a terrestrial jewel orchid — a low
+ * rosette of broad patterned leaves with a slender flower spike out of the
+ * middle — and it was shipping as a featureless blob on a wire.
+ */
+const CANE_ORCHID = new Set("dendrobium bulbophyllum cymbidium vanda coelogyne eria".split(" "));
+
 function orchid(k, col) {
+  const cane = CANE_ORCHID.has(genusOf(k));
   grow(k, col, {
-    salt: "orchid",
-    height: 0.4,
+    salt: `orchid:${cane ? "cane" : "jewel"}`,
+    axSet: cane ? [0.5, 0.8, 1.1] : [0.9, 1.3, 1.7],
+    azSet: cane ? [0.5, 0.8, 1.1] : [0.9, 1.3, 1.7],
+    height: cane ? 0.55 : 0.32,
     breathe: 0.02,
+    sway: 0.03,
     bands: [0, 1, 2, 3, 4, 5],
     spine(p, pl) {
-      p.spine("spike", (node) => {
-        p.add(node, xf(tubeGeo(0.009, 0.006, 1, 9), { rz: (pl.u("ln") - 0.5) * 0.2 }), { color: pl.pal.deep });
-        p.add(node, xf(sphereGeo(10, 5), { sx: 0.04, sy: 0.03, sz: 0.04, at: [0, 0.03, 0] }), { color: mix(pl.pal.leaf, pl.pal.deep, 0.4) });
-        addFace(p, node, { at: [0, 0.06, 0.035], r: 0.032 });
+      pl.cane = cane;
+      pl.anchorColor = pl.pal.deep;
+      p.spine(cane ? "cane" : "rosette", (node) => {
+        if (cane) {
+          const stem = mix(pl.pal.deep, trunkOf(col), 0.2);
+          p.add(node, xf(tubeGeo(0.02, 0.014, 0.94, 11, 0.006)), { color: stem, colorFn: grad(shade(stem, 0.18), stem, 0, 0.94) });
+          const leaf = [];
+          for (let i = 0; i < 6; i += 1) {
+            const y = 0.24 + i * 0.12;
+            const a = i * Math.PI + (i % 2) * 0.3;
+            leaf.push(xf(bladeGeo({ len: 0.3, wid: 0.09, thick: 0.014, shape: "lanceolate", rows: 4, ring: 4, bend: -0.08 }),
+              { rx: -0.9, ry: a, at: [0, y, 0] }));
+          }
+          p.add(node, mergeGeo(leaf), { color: pl.pal.leaf, colorFn: pl.pal.grad });
+          addFace(p, node, { at: [0, 0.36, 0.02], r: 0.032, tri: p.budget * 8 });
+        } else {
+          // the jewel-orchid rosette: broad ovate leaves flat on the ground,
+          // and a slender erect spike carrying the flowers above them
+          const leaf = [[], []];
+          for (let i = 0; i < 7; i += 1) {
+            const a = i * 2.399 + pl.u("r0") * TAU;
+            leaf[i % 2].push(xf(bladeGeo({ len: 0.5 - (i % 3) * 0.05, wid: 0.3, thick: 0.035, shape: "ovate", rows: 4, ring: 4, bend: -0.06 }),
+              { rx: 0.1 + (i % 3) * 0.1, ry: a, at: [0, 0.05, 0] }));
+          }
+          p.add(node, mergeGeo(leaf[0]), { color: pl.pal.leaf, colorFn: grad(shade(pl.pal.leaf, 0.3), pl.pal.deep, 0, 0.1) });
+          p.add(node, mergeGeo(leaf[1]), { color: pl.pal.deep });
+          p.add(node, xf(tubeGeo(0.012, 0.008, 0.82, 9), { rz: (pl.u("ln") - 0.5) * 0.16, at: [0, 0.08, 0] }), { color: mix(pl.pal.deep, flowerOf(col), 0.2) });
+          addFlower(p, node, { tri: 200, at: [0, 0.9, 0], kind: "orchid", r: 0.055, color: flowerOf(col), pitch: 0.3 });
+          addFace(p, node, { at: [0, 0.1, 0.1], r: 0.05, tri: p.budget * 8 });
+        }
       });
     },
     slot(p, pl, s) {
       const { node, band, a } = s;
-      if (band <= 1) {
-        const r = reachOf(pl, a, 0.95);
-        for (const sgn of [1]) {
-          addLeaf(p, node, { tri: p.budget, yaw: a + (sgn > 0 ? 0 : Math.PI), pitch: 0.25, len: r, wid: r * 0.34, shape: "obovate", rows: 5, ring: 4, bend: -r * 0.15, color: pl.pal.deep, colorFn: pl.pal.grad, stalk: 0.06 });
+      if (pl.cane) {
+        if (band <= 1) {
+          // a second cane out of the clump
+          const br = baseReach(pl, 0.5);
+          p.add(node, xf(tubeGeo(br * 0.22, br * 0.15, br * 2.6, 9), { rz: -Math.cos(a) * 0.18, rx: Math.sin(a) * 0.18 }), { color: mix(pl.pal.deep, trunkOf(col), 0.2) });
+          return;
         }
-      } else {
-        const r = reachOf(pl, a, 0.35);
-        for (const sgn of [1]) {
-          addFlower(p, node, { tri: p.budget, at: [Math.cos(a) * r * sgn, 0, Math.sin(a) * r * sgn], kind: "orchid", r: 0.045 + pl.u(`fr${s.g}`) * 0.03, color: flowerOf(col), stalkLen: 0.02, pitch: 0.3 });
+        const r = reachOf(pl, a, 0.9);
+        if (s.g % 3 === 1) {
+          addFlower(p, node, { tri: Math.max(120, p.budget), at: [Math.cos(a) * r * 0.5, 0, Math.sin(a) * r * 0.5], kind: "orchid", r: 0.05 + pl.u(`fr${s.g}`) * 0.025, color: flowerOf(col), stalkLen: 0.03, pitch: 0.5, yaw: a });
+          return;
         }
+        addLeaf(p, node, { tri: p.budget, yaw: a, pitch: -0.8 + pl.u(`op${s.g}`) * 0.5,
+          len: r, wid: r * 0.26, shape: "lanceolate", rows: 5, ring: 4, bend: -r * 0.3, stalk: 0.04,
+          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });
+        return;
       }
+      if (band >= 3) {
+        const r = reachOf(pl, a, 0.28);
+        addFlower(p, node, { tri: Math.max(110, p.budget), at: [Math.cos(a) * r, 0, Math.sin(a) * r], kind: "orchid", r: 0.04 + pl.u(`fr${s.g}`) * 0.02, color: flowerOf(col), stalkLen: 0.02, pitch: 0.4, yaw: a });
+        return;
+      }
+      const r = reachOf(pl, a, 0.95);
+      addLeaf(p, node, { tri: p.budget, yaw: a, pitch: 0.08 + pl.u(`jp${s.g}`) * 0.28,
+        len: r, wid: r * (0.5 + pl.u(`jw${s.g}`) * 0.22), thick: r * 0.1,
+        shape: "ovate", rows: 5, ring: 4, bend: -r * 0.12, stalk: 0.08,
+        color: s.g % 2 ? pl.pal.leaf : pl.pal.deep,
+        colorFn: grad(shade(pl.pal.leaf, 0.32), pl.pal.deep, -r * 0.1, r * 0.1) });
     },
   });
 }
