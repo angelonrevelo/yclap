@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T07:57:27.102Z",
+ "generated_at": "2026-09-05T08:00:49.974Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -900,7 +900,7 @@
    "archetype": "hemiptera-cicada",
    "palette_source": "known",
    "file": "species/orientopsaltria-fuliginosa.glb",
-   "bytes": 62764,
+   "bytes": 71148,
    "display_scale_m": 0.05
   },
   {
@@ -2550,7 +2550,7 @@
    "archetype": "hemiptera",
    "palette_source": "known",
    "file": "species/dysdercus-cingulatus.glb",
-   "bytes": 64084,
+   "bytes": 68984,
    "display_scale_m": 0.015
   },
   {
@@ -4905,7 +4905,7 @@
    "archetype": "hemiptera",
    "palette_source": "known",
    "file": "species/ectrychotes-haematogaster.glb",
-   "bytes": 60248,
+   "bytes": 69684,
    "display_scale_m": 0.018
   },
   {
@@ -6090,7 +6090,7 @@
    "archetype": "hemiptera-cicada",
    "palette_source": "derived",
    "file": "species/asianopleura-fulvigera.glb",
-   "bytes": 63828,
+   "bytes": 72288,
    "display_scale_m": 0.045
   },
   {
@@ -7695,7 +7695,7 @@
    "archetype": "hemiptera",
    "palette_source": "known",
    "file": "species/physomerus-grossipes.glb",
-   "bytes": 55848,
+   "bytes": 64456,
    "display_scale_m": 0.02
   },
   {
@@ -8130,7 +8130,7 @@
    "archetype": "hemiptera",
    "palette_source": "known",
    "file": "species/eysarcoris-guttigerus.glb",
-   "bytes": 59476,
+   "bytes": 72764,
    "display_scale_m": 0.01
   },
   {
@@ -8340,7 +8340,7 @@
    "archetype": "hemiptera",
    "palette_source": "known",
    "file": "species/hemisphaerius-coccinelloides.glb",
-   "bytes": 69888,
+   "bytes": 78332,
    "display_scale_m": 0.01
   },
   {
@@ -10710,7 +10710,7 @@
    "archetype": "hemiptera",
    "palette_source": "known",
    "file": "species/leptocorisa-oratoria.glb",
-   "bytes": 65616,
+   "bytes": 68844,
    "display_scale_m": 0.02
   },
   {
@@ -12525,7 +12525,7 @@
    "archetype": "hemiptera",
    "palette_source": "known",
    "file": "species/corythucha-juglandis.glb",
-   "bytes": 64068,
+   "bytes": 72532,
    "display_scale_m": 0.006
   },
   {
@@ -12690,7 +12690,7 @@
    "archetype": "hemiptera",
    "palette_source": "known",
    "file": "species/peregrinus-maidis.glb",
-   "bytes": 66068,
+   "bytes": 74476,
    "display_scale_m": 0.008
   },
   {
@@ -13410,7 +13410,7 @@
    "archetype": "hemiptera",
    "palette_source": "known",
    "file": "species/brachyplatys-subaeneus.glb",
-   "bytes": 58340,
+   "bytes": 71320,
    "display_scale_m": 0.01
   },
   {
@@ -13485,7 +13485,7 @@
    "archetype": "hemiptera",
    "palette_source": "known",
    "file": "species/euagoras-plagiatus.glb",
-   "bytes": 60556,
+   "bytes": 71868,
    "display_scale_m": 0.018
   },
   {
@@ -14325,7 +14325,7 @@
    "archetype": "hemiptera",
    "palette_source": "known",
    "file": "species/plautia-stali.glb",
-   "bytes": 63244,
+   "bytes": 72368,
    "display_scale_m": 0.015
   },
   {
@@ -14865,7 +14865,7 @@
    "archetype": "hemiptera",
    "palette_source": "known",
    "file": "species/charagochilus-longicornis.glb",
-   "bytes": 56736,
+   "bytes": 65644,
    "display_scale_m": 0.008
   },
   {
@@ -15075,7 +15075,7 @@
    "archetype": "hemiptera",
    "palette_source": "derived",
    "file": "species/delacampius-flavipes.glb",
-   "bytes": 56632,
+   "bytes": 65048,
    "display_scale_m": 0.015
   },
   {
@@ -15405,7 +15405,7 @@
    "archetype": "hemiptera",
    "palette_source": "known",
    "file": "species/ectomocoris-elegans.glb",
-   "bytes": 63084,
+   "bytes": 69792,
    "display_scale_m": 0.02
   },
   {
@@ -16470,7 +16470,7 @@
    "archetype": "hemiptera",
    "palette_source": "known",
    "file": "species/machaerota-ensifera.glb",
-   "bytes": 65048,
+   "bytes": 69808,
    "display_scale_m": 0.015
   },
   {
@@ -16485,7 +16485,7 @@
    "archetype": "hemiptera",
    "palette_source": "derived",
    "file": "species/riptortus-linearis.glb",
-   "bytes": 66064,
+   "bytes": 69696,
    "display_scale_m": 0.015
   }
  ]

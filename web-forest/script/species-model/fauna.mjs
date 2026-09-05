@@ -2446,9 +2446,20 @@ function hemiptera(k, col, opt = {}) {
   const lace = /^(corythucha|stephanitis|leptodictya|gargaphia)-/.test(who(k));
   const domed = /^(hemisphaerius|hysteropterum|issus)-/.test(who(k));
   if (scale) { hemipteraScale(k, col, v); return; }
-  const bx = cicada ? v.f("bx", 0.09, 0.13) : v.f("bx", 0.1, 0.19) * (lace ? 0.8 : domed ? 1.1 : 1);
-  const by = cicada ? v.f("by", 0.08, 0.12) : v.f("by", 0.05, 0.1) * (lace ? 0.55 : domed ? 1.6 : 1);
-  const bz = cicada ? v.f("bz", 0.17, 0.24) : v.f("bz", 0.15, 0.26) * (domed ? 0.8 : 1);
+  /* Body PLAN, not body tint. Nine of the seventeen were one stout torpedo:
+     shield bugs that were not shield-shaped, assassin bugs with no neck, and
+     slender alydids and coreids as fat as a stink bug. The three plans differ
+     in the two proportions the eye actually reads — how wide the animal is
+     against how long, and how flat it is. */
+  const shieldBug = /^(eysarcoris|plautia|nezara|halyomorpha|dolycoris|antestiopsis|piezodorus|erthesina|cantao|catacanthus|chrysocoris|scotinophara|brachyplatys|coptosoma|megacopta|agonoscelis)-/.test(who(k));
+  const assassin = /^(euagoras|ectomocoris|ectrychotes|sycanus|rhynocoris|reduvius|amphibolus|acanthaspis|coranus|isyndus|velinus|delacampus|sirthenea)-/.test(who(k));
+  const slender = /^(riptortus|leptocorisa|charagochilus|homoeocerus|cletus|anoplocnemis|mictis|hygia|alydus|megalotomus|physomerus|dysdercus|machaerota|stenocoris)-/.test(who(k));
+  const wide = shieldBug ? 1.34 : assassin ? 0.62 : slender ? 0.56 : 1;
+  const flat = shieldBug ? 0.72 : slender ? 0.86 : 1;
+  const long = shieldBug ? 0.86 : assassin ? 1.34 : slender ? 1.62 : 1;
+  const bx = cicada ? v.f("bx", 0.09, 0.13) : v.f("bx", 0.1, 0.19) * (lace ? 0.8 : domed ? 1.1 : 1) * wide;
+  const by = cicada ? v.f("by", 0.08, 0.12) : v.f("by", 0.05, 0.1) * (lace ? 0.55 : domed ? 1.6 : 1) * flat;
+  const bz = cicada ? v.f("bz", 0.17, 0.24) : v.f("bz", 0.15, 0.26) * (domed ? 0.8 : 1) * long;
   const bodyY = by * 1.2;
   const body = ball(k, k.root, "body", {
     rx: bx, ry: by, rz: bz, at: [0, bodyY, -bz * 0.1],
@@ -2474,7 +2485,10 @@ function hemiptera(k, col, opt = {}) {
      back down the abdomen. On a shield bug it covers most of the back; on a
      leaf-footed bug it is a small triangle. Either way it is the piece that
      says "true bug" rather than "beetle", so every hemipteran gets one. */
-  const scut = v.pick("scut", ["small", "big", "shield"]);
+  /* On a pentatomid the scutellum is most of the back — that big triangle IS
+     the shield in "shield bug". On an assassin bug or an alydid it is a small
+     one. Picking it at random gave a stink bug a token triangle. */
+  const scut = shieldBug ? "shield" : (assassin || slender) ? "small" : v.pick("scut", ["small", "big", "shield"]);
   const scutLen = bz * (scut === "shield" ? v.f("scutl", 0.95, 1.25) : scut === "big" ? v.f("scutl", 0.55, 0.8) : v.f("scutl", 0.3, 0.45));
   const scutW = bx * (scut === "shield" ? 0.86 : 0.62);
   blade(k, body, "scutellum", {
@@ -2488,15 +2502,37 @@ function hemiptera(k, col, opt = {}) {
     rx: bx * v.f("pw", 0.85, 1.12), ry: by * v.f("ph", 0.8, 1.1), rz: bz * v.f("pz", 0.2, 0.38),
     at: [0, by * 0.12, bz * 0.62], color: dark,
   });
-  if (v.on("shoulder", 0.4)) {
+  if (shieldBug || (!assassin && !slender && v.on("shoulder", 0.4))) {
     for (const s of [1, -1]) {
       cone(k, pronotum, `shoulder-${s > 0 ? "l" : "r"}`, { r: by * 0.35, h: bx * v.f("shl", 0.3, 0.6), at: [s * bx * 0.7, by * 0.1, 0], rotZ: s * -1.4, color: shade(dark, -0.1) });
     }
   }
-  const headR = bx * v.f("hr", 0.32, 0.5);
-  const head = ball(k, pronotum, "head", { rx: headR * v.f("hw", 0.9, 1.4), ry: headR * 0.75, rz: headR, at: [0, -by * 0.05, bz * 0.22 + headR * 0.5], color: dark });
-  const rostrum = v.f("rostrum", 0.05, 0.14);
-  spindle(k, head, "rostrum", { r: 0.008, len: rostrum, at: [0, -headR * 0.38, headR * 0.28], rot: [v.f("rosta", 1.4, 2.4), 0, 0], root: 0.02, color: shade(dark, -0.1), seg: 8 });
+  const headR = bx * v.f("hr", 0.32, 0.5) * (assassin || slender ? 1.5 : 1);
+  /* The assassin bug's neck. A reduviid's head is a narrow bead on a stalk in
+     front of the pronotum, and that constriction plus the curved beak tucked
+     under it is the whole family. Ours were shipping a shield bug's head set
+     straight into the shoulders. */
+  const neck = assassin
+    ? ball(k, pronotum, "neck", {
+      rx: headR * 0.42, ry: headR * 0.42, rz: headR * v.f("neckl", 0.9, 1.4),
+      at: [0, -by * 0.02, bz * 0.2 + headR * 0.4], color: shade(dark, -0.1),
+    })
+    : pronotum;
+  const head = ball(k, neck, "head", {
+    rx: headR * v.f("hw", 0.9, 1.4) * (assassin ? 0.62 : 1), ry: headR * (assassin ? 0.62 : 0.75), rz: headR * (assassin ? 0.8 : 1),
+    at: assassin ? [0, 0, headR * 1.0] : [0, -by * 0.05, bz * 0.22 + headR * 0.5],
+    color: dark,
+  });
+  /* The rostrum. An assassin bug's is a stout curved dagger it holds folded
+     back under the thorax, not a bristle — it is how it kills things. */
+  const rostrum = v.f("rostrum", 0.05, 0.14) * (assassin ? 2.0 : 1);
+  // merged collar so the head has vertices where the beak leaves it
+  ball(k, head, "gula", { merge: true, r: headR * 0.42, at: [0, -headR * 0.34, headR * 0.24], color: shade(dark, -0.1), subdiv: 0 });
+  spindle(k, head, "rostrum", {
+    r: assassin ? 0.014 : 0.008, len: rostrum, tip: assassin ? 0.2 : 0,
+    at: [0, -headR * 0.38, headR * 0.28], rot: [assassin ? v.f("rosta", 2.3, 2.7) : v.f("rosta", 1.4, 2.4), 0, 0],
+    root: 0.02, color: shade(dark, -0.1), seg: 8,
+  });
   antennaPair(k, head, {
     at: [0, headR * 0.2, headR * 0.5], gap: headR * 0.5,
     len: v.f("antl", 0.06, 0.16), r: 0.007, spread: v.f("ants", 0.5, 1.0), joint: 2, form: v.pick("antf", ["thread", "club"]), color: dark,
@@ -2557,8 +2593,8 @@ function hemiptera(k, col, opt = {}) {
       color: i % 2 ? ink : paper, subdiv: 0,
     });
   }
-  insectLegs(k, k.root, {
-    at: [0, bodyY - by * 0.4, bz * 0.15], gap: bx * 0.5, pair: 3,
+  insectLegs(k, body, {
+    at: [0, -by * 0.4, bz * 0.25], gap: bx * 0.5, pair: 3,
     len: v.f("legl", 0.09, 0.17), r: 0.011, spanZ: bz * v.f("legspan", 0.35, 0.65),
     splay: v.f("splay", 1.05, 1.4), bend: v.f("bend", 0.8, 1.25), color: dark, lenMix: v.f("lenmix", -0.3, 0.3), arch: by * 0.35,
   });
