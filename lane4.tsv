@@ -1,0 +1,219 @@
+epipremnum-aureum	FLAG	two big leaves stuck on a bare pole; no twining stem or tendril, does not read as a climber
+epipremnum-pinnatum	OK	stem twines clearly up the support, dark green blades, reads as a climbing aroid
+bougainvillea-spectabilis	FLAG	palette known but plain green with zero magenta bracts; leaves clumped, no twining stem
+thunbergia-grandiflora	FLAG	leaves clumped mid-pole, no twining stem or trailing habit
+syngonium-podophyllum	OK	stem twines up the pole, arrow-ish leaves, reads as a climber
+antigonon-leptopus	OK	clear helical stem with tendrils up the support
+mikania-micrantha	OK	twining stem plus scattered leaves, climbing habit reads
+bougainvillea-glabra	FLAG	palette known but no bracts at all; leaves in a flat clump, no twine
+paederia-foetida	OK	strong helix up the pole with paired leaves
+syngonium-angustatum	OK	twines up the pole, reads as a climbing aroid
+thunbergia-laurifolia	OK	visible twining stem with broad leaves
+coccinia-grandis	FLAG	all foliage fanned to one side, support hidden, no twining stem or tendril
+abrus-precatorius	OK	thin twining stem with small leaflets
+philodendron-erubescens	OK	twines up the pole with a loose trailing loop
+ipomoea-triloba	OK	clear helix with lobed leaves
+hedera-canariensis	FLAG	loose clump of leaves, no pole or twining stem visible; reads as an upright herb
+tristellateia-australasiae	FLAG	leaf clump on a stub, no twining or trailing habit
+allamanda-cathartica	OK	stem coils up the support with whorled leaves
+ipomoea-indica	OK	twining stem with heart leaves
+centrosema-virginianum	OK	tight helix up the pole, good climbing read
+basella-alba	FLAG	leaf clump only; support and twining stem invisible, does not climb
+flagellaria-indica	OK	stem on the pole with leaf tips; passable climbing read
+marsdenia-tinctoria	OK	twining stem with opposite leaves
+luffa-aegyptiaca	OK	helix plus tendril coils, good cucurbit vine
+momordica-charantia	OK	twining stem with tendrils
+ipomoea-batatas	OK	clear helix with trailing leaves
+dioscorea-bulbifera	FLAG	leaves bunched on a bare pole, no twining stem; a yam should spiral
+galactia-striata	OK	twining stem with broad leaflets
+vigna-radiata	OK	stem on the support with trifoliate leaves
+entada-gigas	OK	thin twining stem, sparse leaflets, good liana read
+centrosema-pubescens	OK	helical stem with leaves
+hoya-carnosa	FLAG	thick leaves clumped mid-pole, no twining stem; Hoya is a twiner
+dioscorea-alata	OK	strong spiral up the pole
+hedera-colchica	OK	twining stem with large leaves
+ipomoea-aquatica	OK	twining stem with lance leaves
+lygodium-japonicum	OK	slender twining rachis, correct for a climbing fern
+schisandra-glabra	FLAG	leaves bunched to one side, support and stem not visible, no climbing read
+syngonium-wendlandii	FLAG	leaves fanned nearly horizontal off the pole, no twine; reads splayed
+tinospora-crispa	OK	stem twines up the pole with leaves
+lygodium-flexuosum	OK	climbing rachis with pinnae, good
+calamus-rotang	OK	spiny leaflets clustered around the pole, plausible rattan
+calamus-formosanus	OK	spiny climbing palm read, leaflets around the support
+merremia-gemella	OK	clean helix with leaves
+parsonsia-alboflavescens	FLAG	shredded thin blades splayed flat and horizontally off the pole; reads broken, not a vine
+parthenocissus-dalzielii	OK	twining stem with leaves
+vitis-amurensis	OK	stem coil plus tendril loop, good grape vine
+muehlenbeckia-gracillima	OK	wiry twining stem with small leaves
+malaisia-scandens	OK	stem on the pole with leaves; climbing read holds
+piper-kawakamii	OK	twining stem with broad leaf
+sicyos-edulis	OK	dense helix up the pole, good cucurbit
+causonis-trifolia	OK	twining stem with trifoliate leaves
+distimake-dissectus	OK	helix with tendril; leaves entire rather than dissected but the habit reads
+tarlmounia-elliptica	FLAG	big leaves clumped, support hidden, no twining stem
+decalobanthus-peltatus	OK	twining stem with peltate leaves
+phanera-kockiana	FLAG	a leaf detached and floating in mid-air below the pole tip
+rhaphidophora-elmeri	OK	twines up the support with leaves, good aroid climber
+gynochthodes-umbellata	FLAG	detached green quad floating in mid-air beside the pole
+hypolimnas-bolina	FLAG	orange body on a dark blue butterfly (palette known); no white spots
+junonia-hedonia	OK	brown wings, dark body, fore and hindwing distinct
+ypthima-stellera	FLAG	green body on a drab brown satyrid (palette known)
+junonia-lemonias	FLAG	bright purple body on a brown pansy (palette known)
+leptosia-nina	FLAG	white wings correct but the body is bright blue (palette known)
+papilio-alphenor	FLAG	magenta body, and no hindwing tails on a tailed swallowtail
+pareronia-boebera	OK	pale blue wings and blue-grey body, reads right
+lasippa-illigera	FLAG	magenta body on an orange nymphalid (palette known)
+melanitis-leda	FLAG	teal body on an all-brown evening brown (palette known)
+mycalesis-mineus	OK	brown wings and brown body, consistent
+phaedyma-columella	FLAG	magenta body on a black-and-white sailer (palette known)
+cepora-aspasia	FLAG	green body on a yellow pierid (palette known)
+delias-henningia	FLAG	red body; Delias bodies are black (palette known)
+graphium-agamemnon	FLAG	green body and no tails on the Tailed Jay; green wing spots absent
+papilio-demoleus	FLAG	purple body; wings solid yellow with none of the black ground colour
+eurema-hecabe	FLAG	blue body on a yellow grass yellow (palette known)
+zizula-hylax	FLAG	magenta body on a tiny blue (palette known)
+delias-hyparete	OK	white wings with pink patches and a black body; reads as a Jezebel
+papilio-clytia	OK	dark wings with pale spots, black body, the tailless form is correct
+ypthima-sempera	FLAG	red body on a drab tan satyrid (palette known)
+papilio-deiphobus	FLAG	red body and no hindwing tails on a large tailed swallowtail
+hypolimnas-misippus	FLAG	green body on a black and grey eggfly (palette known)
+catopsilia-pomona	FLAG	red body on a pale yellow migrant (palette known)
+cyrestis-maenalis	FLAG	gold-yellow body; the white wings carry none of the map lines that name it
+prosotas-dubiosa	FLAG	gold body on a small lavender lycaenid (palette known)
+eriboea-lampedo	OK	derived palette, coherent red form, wings and body match
+junonia-orithya	OK	blue wings, black body, one of the best in the family
+ypthima-baldus	FLAG	red body on a tan five-ring (palette known)
+appias-libythea	FLAG	teal body on a white pierid (palette known)
+zizina-otis	FLAG	purple body on a pale blue lycaenid (palette known)
+phalanta-phalantha	OK	orange wings with dark spots on a dark body; reads as a Leopard
+euploea-mulciber	FLAG	teal-green body on a dark blue crow (palette known)
+graphium-sarpedon	OK	blue wings on a brown body; acceptable read
+eurema-blanda	FLAG	magenta body on a yellow grass yellow (palette known)
+catochrysops-strabo	FLAG	magenta body on a pale blue lycaenid (palette known)
+troides-aeacus	FLAG	green body and no golden hindwing; the birdwing diagnostic is missing
+doleschallia-bisaltide	FLAG	teal body on a brown leaf-mimic nymphalid (palette known)
+ideopsis-juventa	FLAG	orange body on a pale grey glassy tiger (palette known)
+catopyrops-ancyra	FLAG	teal body on a small blue (palette known)
+gandaca-harina	OK	yellow wings, dark body, consistent
+troides-magellanus	FLAG	red body and no golden hindwing; birdwing diagnostic missing
+athyma-kasa	OK	black wings and black body; wing bands absent but nothing reads wrong
+rapala-caerulescens	FLAG	teal body on a small lycaenid (palette known)
+troides-rhadamantus	FLAG	purple body and no golden hindwing; birdwing diagnostic missing
+hyophila-involuta	FLAG	smooth bare dome with a few leaf blades floating detached off the cushion
+lecanora-thysanophora	OK	flat pink crustose lichen, no seta; correct for a lichen
+hyperphyscia-adglutinata	OK	low brown crust, no sporophyte; correct
+phlyctis-argena	OK	pale blue-grey crust, no seta; correct
+rhynchostegium-confertum	FLAG	several leaf blades float clear of the cushion in mid-air
+myriocoleopsis-minutissima	FLAG	liverwort carrying a raised capsule ball; liverworts have no moss sporophyte
+grimmia-laevigata	OK	dense cushion of upright shoots with a seta and capsule; a good moss
+chrysothrix-xanthina	OK	orange crustose lichen, no seta; correct
+lepraria-finkii	OK	pink powdery crust, no sporophyte; correct
+plagiothecium-denticulatum	FLAG	small dome with leaf blades scattered detached in the air around it
+cryptothecia-striata	OK	white crustose lichen, no seta; correct
+dirinaria-applanata	OK	low lobed crust, no sporophyte; correct
+streblotrichum-convolutum	OK	dense green cushion with shoots and a capsule on a seta
+claopodium-rostratum	FLAG	blades trail off the cushion detached, the cushion itself nearly bare
+riccia-sorocarpa	FLAG	flat thallus is right but it carries a raised green capsule ball that Riccia never has
+ricciocarpos-natans	FLAG	thallose liverwort with a raised capsule ball; wrong sporophyte
+riccardia-palmata	FLAG	thallose liverwort with a raised capsule ball; wrong sporophyte
+dicranoweisia-cirrata	OK	green cushion with shoots and a seta; reads as a moss
+cladophora-columbiana	OK	tuft of green filaments; acceptable for a filamentous alga
+chrysothrix-candelaris	OK	yellow crustose lichen, no seta; correct
+graphis-scripta	OK	white-grey crust, no sporophyte; script lines absent but the form is right
+fissidens-bryoides	FLAG	leaf blades float clearly detached to left and right of the cushion
+neckera-pennata	OK	dense green cushion with a seta and capsule
+physcia-stellaris	OK	blue-grey foliose lobed rosette; correct for a lichen
+dumortiera-hirsuta	OK	flat lobed dark green thallus with no sporophyte; correct liverwort
+fissidens-dubius	FLAG	blades detached and floating clear of the cushion
+hedwigia-ciliata	FLAG	blades floating off the cushion in mid-air
+hygroamblystegium-varium	FLAG	worst of the mosses: bare smooth dome with a confetti of unattached leaf blades around it
+leskea-polycarpa	FLAG	leaf blades floating detached above and beside the cushion
+leucobryum-albidum	OK	reasonably dense cushion of shoots with a seta
+pogonatum-pensilvanicum	FLAG	elongated bare pad with detached blades scattered around it
+trichostomum-crispulum	FLAG	blades trail far off the cushion, clearly unattached
+collema-subflaccidum	OK	lumpy lobed crust with no seta; jelly lichen form is right
+lecanora-strobilina	OK	brown crustose lichen, no seta; correct
+physciella-chloantha	OK	tan lobed crust, no sporophyte; correct
+pyxine-sorediata	OK	brown crustose rosette, no seta; correct
+pseudoschismatomma-rufescens	OK	blue-grey crust, no sporophyte; correct
+cyathodium-smaragdinum	OK	flat green lobed thallus with no capsule; correct liverwort
+dracaena-fragrans	OK	woody cane with an upright whorl of blades; good
+xiphidium-caeruleum	OK	ranked fan of upright blades, fits the genus
+sansevieria-trifasciata	OK	tall upright sword blades; correct snake plant
+cordyline-fruticosa	OK	magenta blades on a segmented cane; reads as a red Ti
+dracaena-surculosa	OK	cane with a terminal tuft and a lower rosette
+dracaena-sanderiana	FLAG	very sparse; a thin stick with a handful of small blades, reads as a seedling
+dracaena-reflexa	OK	cane with an upright terminal tuft
+billbergia-pyramidalis	FLAG	only about six thin blades splayed near-horizontally; Billbergia is a dense tubular rosette
+sansevieria-cylindrica	OK	upright cylindrical spears; correct
+trimezia-steyermarkii	OK	upright fan of blades
+agave-desmetiana	FLAG	dark brown spine triangles detached and floating in the air around the rosette
+crinum-asiaticum	OK	broad upright dark green strap leaves
+curculigo-orchioides	OK	upright dark blades in a tight rosette
+hymenocallis-littoralis	OK	broad strap leaves arching from an upright core
+hymenocallis-speciosa	OK	arching strap leaves, upright core holds
+agave-angustifolia	OK	dense dark rosette of stiff pointed blades; good agave
+guzmania-lingulata	FLAG	bare green column with a few short blades; no rosette and no bract star
+chlorophytum-comosum	OK	arching narrow blades from an upright centre
+chlorophytum-laxum	FLAG	blades splayed almost horizontally to one side; lopsided, not upright
+sansevieria-bacularis	OK	tall upright blades; correct
+trimezia-coerulea	FLAG	only four blades splayed outward; reads as a seedling, not a rosette
+trimezia-northiana	FLAG	four splayed blades, same sparse splayed failure
+dysdercus-cingulatus	OK	red elongate body with a dark head; reads as a cotton stainer
+ectrychotes-haematogaster	FLAG	assassin bug with no narrow neck and no rostrum; generic stout bug body
+physomerus-grossipes	OK	stout brown coreid; acceptable
+eysarcoris-guttigerus	FLAG	shield bug rendered as an elongate torpedo; no shield outline or scutellum
+hemisphaerius-coccinelloides	OK	red domed body with black spots; good ladybird-mimic planthopper
+leptocorisa-oratoria	FLAG	rice bug should be very slender with long legs and antennae; this is a stout oval
+corythucha-juglandis	OK	pale translucent flat wing reads well as a lace bug
+peregrinus-maidis	OK	small pale planthopper with flat wings; fine
+ceroplastes-sinensis	OK	lumpy waxy dome is the right form for a wax scale
+brachyplatys-subaeneus	FLAG	plataspid should be an almost circular beetle-like dome; rendered as an elongate torpedo
+euagoras-plagiatus	FLAG	assassin bug with no neck, rostrum or long legs; also all dark, missing the orange
+plautia-stali	FLAG	stink bug with no shield outline; elongate body instead of the pentatomid triangle
+charagochilus-longicornis	OK	small dark mirid; the generic shape suits it
+delacampius-flavipes	OK	small dark mirid; acceptable
+ectomocoris-elegans	FLAG	assassin bug diagnostic absent (no rostrum or neck) and the pale markings are missing
+machaerota-ensifera	FLAG	no pronotal sword spine, which is the whole identity of the genus
+riptortus-linearis	FLAG	alydid should be slender and long-legged; this is a stout torpedo
+plexippus-petersi	OK	chunky two-part body with big forward eyes; salticid diagnostic present
+menemerus-bivittatus	OK	grey body with big anterior eyes; reads as a jumping spider
+phintella-piatensis	OK	compact body, large forward-facing eyes; good
+hasarius-adansoni	OK	dark body with prominent anterior median eyes
+plexippus-paykulli	OK	reads as a jumper; plain brown though the species is boldly black-and-white striped
+cosmophasis-lami	OK	slimmer dark body with big front eyes; fine
+carrhotus-viduus	OK	stout olive body with large anterior eyes
+harmochirus-brachiatus	OK	compact brown jumper with big eyes
+telamonia-festiva	OK	yellow jumper, eyes and body proportion read correctly
+telamonia-vlijmi	OK	brown jumper with prominent forward eyes
+cytaea-dispalans	OK	yellow-brown jumper, salticid read holds
+pseudoxya-diminuta	FLAG	head sphere is nearly half the body; hind femur is a small dorsal block, not an enlarged jumping leg
+melicodes-tenebrosus	FLAG	oversized spherical head, no enlarged hind femur; reads as a big-headed grub
+aiolopus-thalassinus	FLAG	huge head with mis-seated eyes, no drumstick hind femur; does not read as a grasshopper
+atractomorpha-similis	FLAG	no enlarged hind femur and no elongated pyrgomorph head cone
+ellipes-minuta	FLAG	hind femur absent; pygmy mole crickets are defined by huge jumping legs
+atractomorpha-sinensis	FLAG	no enlarged hind femur, head disproportionate
+xya-japonica	FLAG	stout head is plausible but the enlarged hind femur is missing entirely
+rhinella-marina	FLAG	solid black crescent slab floating on the flank where the folded hind limb should be
+polypedates-leucomystax	FLAG	same pure-black detached hind-limb slab; unpaired and un-mirrored
+eleutherodactylus-planirostris	FLAG	black hind-limb slab artefact on the flank
+kaloula-pulchra	FLAG	black limb slab artefact; also plain brown, missing the broad cream dorsolateral bands
+occidozyga-laevis	FLAG	black hind-limb slab artefact on the flank
+hylarana-erythraea	FLAG	pure black crescent floating in front of the green body; clearest instance of the frog limb bug
+eutropis-multifasciata	OK	elongate body, tapering tail, small eyes; reads as a skink
+hemidactylus-frenatus	OK	gecko body and tail; eyes are cartoonishly oversized but the read holds
+hemidactylus-brookii	OK	pale gecko with big eyes and a tapering tail
+varanus-marmoratus	OK	dark lizard with a forked tongue; missing the yellow spotting but reads as a monitor
+gehyra-mutilata	OK	pale gecko, body and tail proportion fine
+cyclocorus-lineatus	FLAG	only about four body diameters long and bead-segmented; reads as a grub, not a snake
+indotyphlops-braminus	OK	curved worm-like body suits a blindsnake; colour is beige rather than dark brown
+tropidonophis-spilogaster	FLAG	far too short and stubby for a keelback; segmented like a caterpillar
+tremella-fuciformis	OK	low ruffled lobed mass; acceptable jelly fungus, slightly flat
+auricularia-polytricha	FLAG	spiky red star; a wood ear should be a cupped ear-shaped lobe
+auricularia-nigricans	FLAG	worst model seen: a pointed witch-hat cone with a cartoon face and whiskers, nothing like an ear fungus
+epepeotes-ambigenus	FLAG	blobby rounded body unlike a longhorn; antennae only about body length; bright orange cone artefact on the head
+rhytiphora-bankii	FLAG	same chunky ovoid body and a purple cone artefact on the head; antennae barely body length
+euborellia-annulata	OK	elongate dark body with a clear pair of tail forceps and long antennae
+euborellia-philippinensis	OK	forceps and antennae both present; reads as an earwig
+scutigera-coleoptrata	OK	segmented body with many long legs and long antennae; good house centipede
+cycas-revoluta	FLAG	broad entire drooping leaves off a short stem; no pinnate leaflets and no upright arching crown

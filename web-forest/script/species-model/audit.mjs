@@ -180,7 +180,12 @@ export function worldPart(json, bin) {
         const w = xform(world, [pos[v], pos[v + 1], pos[v + 2]]);
         for (let k = 0; k < 3; k += 1) { if (w[k] < lo[k]) lo[k] = w[k]; if (w[k] > hi[k]) hi[k] = w[k]; }
       }
-      part.push({ node: idx, name: n.name ?? `node${idx}`, mesh: n.mesh, lo, hi, matrix: world });
+      /* Keep a subsample of the transformed vertices. Bounding boxes are not
+         enough to decide contact — see the note on connectivity below. */
+      const vert = [];
+      const stride = Math.max(3, Math.floor(pos.length / 3 / 220) * 3);
+      for (let v = 0; v < pos.length; v += stride) vert.push(xform(world, [pos[v], pos[v + 1], pos[v + 2]]));
+      part.push({ node: idx, name: n.name ?? `node${idx}`, mesh: n.mesh, lo, hi, matrix: world, vert });
     }
     for (const c of n.children ?? []) walk(c, world);
   };
@@ -210,12 +215,41 @@ export function connectivity(part, slack) {
   const radius = Math.max(1e-6, Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) / 2);
   const tol = radius * slack;
 
+  /*
+   * Contact is decided on VERTICES, not on bounding boxes.
+   *
+   * The first version of this gate used box overlap and reported 0
+   * disconnected across the whole pack while `katmon` — a curated walk-list
+   * species — visibly floated its entire crown above a stump. Two parts can
+   * have overlapping boxes with nothing but air between their surfaces: a
+   * wide flat leaf spanning the same x/z as a trunk overlaps its box while
+   * sitting well above it. The box test cannot tell those apart, so it
+   * certified a hole it could not see.
+   *
+   * Vertices are subsampled per part (~220 points) because exact surface
+   * distance over 1098 models is far too slow, and a sample that dense on a
+   * low-poly part is more than enough to tell contact from a visible gap.
+   */
   const parent = part.map((_, i) => i);
   const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
   const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; };
+
+  const tol2 = tol * tol;
   for (let i = 0; i < part.length; i += 1) {
     for (let j = i + 1; j < part.length; j += 1) {
-      if (boxGap(part[i], part[j]) <= tol) union(i, j);
+      if (find(i) === find(j)) continue;
+      /* Boxes still act as a cheap reject: if the boxes are far apart the
+         surfaces certainly are, so skip the vertex work. */
+      if (boxGap(part[i], part[j]) > tol) continue;
+      const a = part[i].vert, b = part[j].vert;
+      let touch = false;
+      for (let x = 0; x < a.length && !touch; x += 1) {
+        for (let y = 0; y < b.length; y += 1) {
+          const d = (a[x][0] - b[y][0]) ** 2 + (a[x][1] - b[y][1]) ** 2 + (a[x][2] - b[y][2]) ** 2;
+          if (d <= tol2) { touch = true; break; }
+        }
+      }
+      if (touch) union(i, j);
     }
   }
   const group = new Map();

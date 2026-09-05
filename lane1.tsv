@@ -1,0 +1,220 @@
+adiantum-philippense	FLAG	splayed near-horizontal narrow blades on a flat plane; no maidenhair fan pinnules, reads as a smear
+asplenium-nidus	OK	upright rosette of simple strap fronds, nest shape correct
+christella-dentata	FLAG	dense dark crown of broad undivided leaflets; no pinnate frond division
+christella-parasitica	FLAG	broad drooping simple leaflets, frond division absent
+davallia-divaricata	FLAG	broad splayed entire blades lying flat; none of the lacy Davallia dissection
+drynaria-quercifolia	OK	pinnate feathery fronds read as fern; oak-shaped basal nest fronds missing
+haplopteris-elongata	FLAG	near-empty tile, angular dark wedge plus 3 stray straps; no pendent tape fronds
+macrothelypteris-torresiana	OK	pinnate fronds, upright habit
+mickelopteris-cordata	FLAG	leaves lanceolate and splayed flat, not the simple cordate heart frond
+nephrolepis-biserrata	FLAG	single comb frond lying fully horizontal plus a detached leaf; no arching clump
+nephrolepis-brownii	FLAG	one frond only, tilted at an odd angle; not a rosette clump
+pteris-biaurita	OK	upright divided fronds
+pteris-ensiformis	FLAG	dark umbrella blob of broad lobes; no slender bracken pinnae
+pteris-tripartita	FLAG	fronds splayed entirely horizontal, reads as a flat lens
+pyrrosia-adnascens	FLAG	scattered angular shards around a stem, geometry reads broken
+pyrrosia-lanceolata	FLAG	thin bare stem with 3 tiny leaves; reads as a weed seedling, not a thick tongue fern
+selaginella-ciliaris	FLAG	solid pale bulb blob with wispy spikes; not a creeping spikemoss mat
+selaginella-kraussiana	FLAG	solid green drum/cylinder with a few leaves; reads as a pot, worst of the ferns
+selaginella-repanda	FLAG	solid green bulb blob with spikes, no spikemoss structure
+tectaria-dissecta	FLAG	broad undivided blades splayed flat and wide despite the name
+tectaria-membranacea	FLAG	small clump of simple broad leaves, no frond division
+acorus-gramineus	FLAG	broad ovate leaves on a cane; should be a fan of narrow grass-like leaves
+aglaonema-commutatum	OK	upright cane with broad leaves
+aglaonema-nitidum	FLAG	leaves collapse into a low jumble, blades pass through one another
+alocasia-macrorrhizos	OK	big leaves on a stout stem
+anthurium-andraeanum	OK	red spathe present, diagnostic held
+caladium-bicolor	FLAG	palette_source known but rendered uniform dark green; Caladium bicolor is pink/white with green margins
+colocasia-esculenta	FLAG	low fan of narrow strap leaves reads as a grass clump; no peltate heart leaves on long petioles
+dieffenbachia-seguine	OK	ascending cane with broad leaves; cream variegation absent but form correct
+homalomena-philippinensis	OK	large cordate blade on a stalk
+spathiphyllum-wallisii	OK	white spathe present; stem a little tall for a basal clumper
+thaumatophyllum-bipinnatifidum	FLAG	leaves simple and entire; the deeply pinnatifid Philodendron blade is the diagnostic and is missing
+thaumatophyllum-xanadu	FLAG	main leaves entire, not the cut/lobed xanadu blade
+typhonium-blumei	OK	bushy hastate leaves
+typhonium-roxburghii	OK	arrow-shaped leaf on a stalk
+xanthosoma-sagittifolium	FLAG	leaves too small and borne on a branching woody stem; no long basal petioles with big sagittate blades
+zamioculcas-zamiifolia	FLAG	one large entire blade plus spikes; missing the upright pinnate rank of thick oval leaflets
+periplaneta-americana	OK	reddish-brown flattened oval body, long antennae
+pycnoscelus-indicus	OK	dark flattened roach silhouette reads correctly
+pycnoscelus-surinamensis	OK	flattened oval body, correct roach proportion
+supella-longipalpa	FLAG	plain tan; the two pale brown bands across the wings that name the species are absent
+oryctes-rhinoceros	FLAG	palette_source known but the horns are bright magenta; rhino beetle horns are dark brown/black
+xylotrupes-philippinensis	FLAG	palette_source known but horns rendered magenta/pink; also two equal forward horns rather than a forked cephalic plus thoracic pair
+asianopleura-fulvigera	OK	stout body with tent-folded wings overhanging the abdomen; correct cicada form
+orientopsaltria-fuliginosa	OK	dark olive body, tent wings, wide-set eyes; correct
+leptodialepis-bipartitus	FLAG	no wasp waist/petiole, bumblebee silhouette; and the yellow head that names the species is absent (palette known)
+phimenes-curvatus	FLAG	fused fuzzy thorax-abdomen with no petiole; potter wasp should be slender with a long waist
+rhynchium-haemorrhoidale	FLAG	magenta bands on a known palette (species is black/red-orange); no wasp waist
+ropalidia-flavobrunnea	FLAG	hot-pink bands on a known palette; fat fused body, no petiole for a paper wasp
+ropalidia-stigma	FLAG	pink banding on a known palette; no narrow petiole, reads as a bee
+sceliphron-madraspatanum	FLAG	mud-dauber's diagnostic thread-like petiole entirely missing; fat fuzzy body with purple bands on a known palette
+scolia-clypeata	FLAG	magenta abdominal band on a known palette; scoliids are black with yellow marks
+scolia-superciliaris	FLAG	purple abdominal band on a known palette
+vespa-luctuosa	FLAG	no wasp waist, fuzzy bee-like thorax; hornet outline not achieved
+vespa-tropica	FLAG	reads as a bumblebee: no petiole, multi-banded fuzz instead of the single broad orange band
+hierodula-patellifera	FLAG	no elongated prothorax and no raptorial forelegs held in prayer; body is a stubby green sausage under an oversized head
+tropidomantis-tenera	FLAG	same as above; head balloon sits detached-looking on the thorax, forelegs reduced to stubs
+annulohypoxylon-thouarsianum	OK	lumpy dark crust cluster, correct stroma form
+daldinia-childiae	OK	smooth dark hemispherical ball, correct
+hypoxylon-rubiginosum	OK	dark dome stroma; effuse crust habit not attempted but reads as the fungus
+ramariopsis-kunzei	FLAG	only two thin branches; a coral fungus needs dense repeated branching, this reads as a bare twig
+xylaria-apiculata	OK	upright branched club, correct Xylaria form
+xylaria-filiformis	OK	dense bundle of thread-fine upright clubs, well matched to the name
+xylaria-flabelliformis	OK	upright branched clubs
+polionemobius-taprobanensis	FLAG	enlarged jumping hind legs absent, reduced to two blocky knobs sitting on the back; body reads as a brown grub
+tubifex-tubifex	FLAG	short stout 6-segment body reads as a grub; Tubifex is a thread-thin worm
+nagurus-nanus	OK	segmented armour plates over a domed oval body, short antennae, lateral legs; correct woodlouse
+adenium-obesum	OK	swollen caudex with a leaf crown, diagnostic held
+haworthiopsis-attenuata	OK	tight rosette of thick pointed leaves; white banding absent but palette is derived
+kalanchoe-pinnata	OK	rosette of thick leaves reads succulent
+talinum-paniculatum	OK	semi-succulent rosette; airy pink flower panicle not attempted
+abelmoschus-esculentus	FLAG	near-empty: bare crossed sticks with three pale blue blobs, no leaves at all, no okra pod or flower
+abelmoschus-ficulneus	FLAG	near-empty bare stem; yellow flower present but the big palmate mallow leaves are absent
+achyranthes-aspera	FLAG	dark leaves splayed into a flat pancake; the downward-bristled flower whip that names it is missing
+achyranthes-japonica	OK	upright leafy stem with yellow fruit
+adenostemma-lavenia	OK	upright leafy herb
+ageratum-conyzoides	FLAG	sparse, four leaves on a bare stem; no fluffy blue flower head
+ageratum-houstonianum	FLAG	no blue-lavender flower head, the diagnostic for this species
+agrimonia-asiatica	FLAG	wide flat splayed mass; no pinnate leaflets and no tall yellow flower spike
+alternanthera-bettzickiana	OK	compact splayed leafy clump
+alternanthera-brasiliana	FLAG	near-empty; a few straps on a horizontal bare stick
+alternanthera-caracasana	FLAG	near-empty: bare vertical stick with tiny purple dots, essentially no foliage
+alternanthera-denticulata	FLAG	sparse long straps splayed off a bare stem
+alternanthera-ficoidea	OK	leafy stem, plausible joyweed
+alternanthera-flavescens	OK	layered leafy stem
+alternanthera-halimifolia	OK	bushy leafy stem
+alternanthera-pungens	FLAG	pale mass smeared under a horizontal stick, individual leaves indistinct
+alternanthera-sessilis	OK	upright with whorled leaves
+amaranthus-blitum	OK	leafy upright amaranth
+amaranthus-deflexus	FLAG	leaves splayed into flat horizontal tiers, reads as a pancake
+amaranthus-viridis	FLAG	flat horizontal tiers of narrow leaves, too wide for the height
+andrographis-paniculata	FLAG	dark leaves splayed flat into a lens, no upright habit
+arachis-duranensis	FLAG	no four-leaflet peanut leaf; narrow straps splayed off a stem
+arachis-hypogaea	FLAG	tall spindly spike; peanut is low and bushy with tetrafoliolate leaves
+arachis-pintoi	FLAG	near-empty: one blob leaf on a bare horizontal stick, no leaflets and no yellow flower
+arachnothryx-leucophylla	OK	leafy stem; pink flower cluster not attempted
+asystasia-gangetica	FLAG	sparse, three or four broad leaves splayed flat off a thin stem
+asystasia-intrusa	FLAG	flat splayed dark pinwheel with no upright stem; reads as a pancake
+biophytum-sensitivum	FLAG	no umbrella rosette of pinnate leaflets on a single stem; just a dark splayed blob
+blumea-balsamifera	OK	tall stem with basal leaves and orange heads
+brachystelma-molaventi	FLAG	generic leafy stem; no tuberous succulent habit or star flower
+callisia-fragrans	OK	stem with drooping strap leaves
+calyptocarpus-vialis	OK	bushy leafy plant
+cardamine-hirsuta	OK	dark bushy leafy plant
+cardamine-occulta	FLAG	no basal pinnate rosette; oversized magenta flowers where bittercress has tiny white ones
+catharanthus-roseus	OK	upright stem with a pink flower; colour correct for the known palette
+celosia-argentea	FLAG	the silvery-pink plume inflorescence, the only thing that identifies Celosia, is absent
+ceratocephala-testiculata	FLAG	near-empty, a stem with a few pale leaves and a dot
+chamissoa-altissima	FLAG	near-empty: bare vertical pole with a couple of leaves at the top
+chrysanthemum-morifolium	FLAG	no chrysanthemum bloom; thin stem with a few narrow leaves
+cleome-rutidosperma	FLAG	dark straps splayed flat; no palmate trifoliate leaf and no purple four-petal flower
+clitoria-ternatea	OK	blue pea flowers present and correct for the known palette
+cnidoscolus-multilobus	FLAG	lobed leaves splayed into a flat pancake off a bare stick
+commelina-benghalensis	FLAG	sparse; the blue three-petal dayflower that identifies it is missing
+commelina-diffusa	OK	upright leafy stem
+corchorus-aestuans	OK	bushy leafy herb
+corchorus-olitorius	OK	stem with splayed leaves and a pink flower
+cosmos-sulphureus	FLAG	leaves broad instead of finely dissected, and the flowers are pink on a species named Yellow Cosmos
+crassocephalum-crepidioides	FLAG	bare stem topped by a single leaf umbrella, reads as a lollipop tree rather than a soft herb
+cuphea-carthagenensis	FLAG	narrow leaves splayed into a flat lens
+cuphea-hyssopifolia	FLAG	leaves far too large; false heather is a dense shrublet of tiny needle leaves
+cyanthillium-cinereum	OK	upright leafy stem
+cyathula-prostrata	FLAG	near-empty: two narrow leaves on a horizontal stick with one pink dot
+deeringia-amaranthoides	OK	splayed leafy stem
+dicliptera-chinensis	OK	leafy stem, mildly splayed
+dyschoriste-nagchana	FLAG	wide dark splayed pancake, no vertical structure
+eclipta-prostrata	OK	narrow leaves with small flowers
+elephantopus-scaber	FLAG	near-empty bare stalk; the flat basal rosette of large leaves is entirely missing
+eleutheranthera-ruderalis	OK	bushy upright leafy herb
+emilia-sonchifolia	FLAG	dark leaves splayed flat and too wide; no lilac tassel flower head
+episcia-cupreata	FLAG	flat splayed pale pancake; no coppery leaf and no red flower
+euphorbia-graminea	OK	sparse thin stem with narrow leaves, plausible spurge
+euphorbia-hypericifolia	OK	sparse narrow leaves on a stem
+euphorbia-pulcherrima	OK	red bracts at the crown, diagnostic held
+euphorbia-tithymaloides	FLAG	no zigzag stem, the one feature that identifies Devil's Backbone
+evolvulus-glomeratus	FLAG	flat splayed spiky mass and no blue flower
+evolvulus-nummularius	FLAG	bare brown stick carrying two pink balls; not a creeping mat of round leaves
+fatoua-villosa	FLAG	near-empty: a tall bare brown stick with a few tiny leaves
+goeppertia-picturata	FLAG	pale narrow leaves on a stem; not the broad patterned Calathea blade in a basal rosette
+gomphrena-serrata	FLAG	the globular papery flower head that identifies Gomphrena is absent
+grona-triflora	FLAG	near-empty bare spike with a basal tuft; no trifoliate leaves
+helianthus-annuus	FLAG	no sunflower head at all, and no big heart-shaped leaves; reads as a small pale weed
+heptapleurum-arboricola	FLAG	no palmate umbrella whorl of leaflets; jagged splayed narrow leaves instead
+heptapleurum-ellipticum	FLAG	same missing palmate leaflet whorl; dark splayed leaves only
+heterotis-rotundifolia	FLAG	bare brown stick with three leaves; no round leaves and no magenta flower
+impatiens-balsamina	FLAG	flat splayed dark lens on a stick, no flowers
+impatiens-walleriana	OK	leafy plant with small red flowers
+laportea-aestuans	FLAG	sparse leaves splayed horizontally into a flat plane
+laportea-interrupta	FLAG	flat splayed dark pancake
+lepidagathis-inaequalis	OK	upright leafy stem
+leucanthemum-maximum	FLAG	no white daisy flower head, the whole point of the species
+lindernia-rotundifolia	OK	small leafy plant; leaves not round but form reads
+malvastrum-coromandelianum	OK	sparse splayed leaves with an orange flower
+manihot-esculenta	FLAG	the large deeply palmate cassava leaf is absent; a bare twig with small simple leaves
+mauranthemum-paludosum	FLAG	no white daisy flower head
+melampodium-divaricatum	FLAG	flat splayed pale smear with no yellow daisy flowers
+melothria-pendula	FLAG	near-empty: bare crossed sticks with two detached-looking pink blobs, leaves essentially absent
+mimosa-pudica	FLAG	pink puffball flowers correct but the bipinnate feathery leaves are almost entirely missing; near-empty stem
+nelsonia-canescens	OK	sparse but reads as a leafy herb with purple flowers
+oldenlandia-corymbosa	FLAG	spindly bare stick with sparse whorls; not a tiny prostrate weed
+origanum-syriacum	OK	bushy small-leaved herb
+oxalis-corniculata	FLAG	long simple strap leaves instead of the trifoliate clover leaf; wrong leaf form entirely
+oxalis-triangularis	FLAG	green blobby spiked mass; no three triangular leaflets
+parietaria-hespera	OK	small leafy plant
+parietaria-judaica	OK	leafy plant with cream flowers
+pelargonium-glutinosum	FLAG	narrow splayed straps; pelargonium needs lobed roundish leaves and a flower umbel
+peperomia-pellucida	OK	basal leaves plus thread-like flower spike, correct
+peperomia-tetragona	OK	whorled narrow leaves on a stem
+persicaria-chinensis	FLAG	near-empty: tall bare green stick with two purple dots and almost no foliage
+petiveria-alliacea	OK	leafy upright herb
+phaseolus-vulgaris	FLAG	narrow straps instead of trifoliate bean leaves; no pods
+phyla-lanceolata	FLAG	dark leaves splayed flat and wide
+phyllanthus-acidus	FLAG	a tree routed into the small-herb builder; reads as a knee-high weed
+phyllanthus-amarus	OK	sparse splayed branchlets, plausible Phyllanthus
+phyllanthus-myrtifolius	FLAG	leaves far too large; species has tiny myrtle-like leaves ranked along the twig
+phyllanthus-niruri	OK	thin stem with fine splayed branchlets
+phyllanthus-urinaria	OK	feathery splayed branchlets read correctly
+pilea-cadierei	OK	upright leafy stem
+pilea-microphylla	FLAG	leaves enormous and sparse; artillery plant is a dense mound of minute leaves
+pilea-nummulariifolia	FLAG	leaves splayed into a flat horizontal plane on a bare stem; no trailing mat of round crinkled leaves
+pisonia-aculeata	FLAG	a large thorny liana rendered as a small splayed herb, no thorns or climbing habit
+pisonia-grandis	FLAG	a large coastal tree routed into the herb builder; pale flat splayed mass
+polycarpon-tetraphyllum	FLAG	near-empty: horizontal stick, a couple of leaves and a purple dot
+polygonum-arenastrum	FLAG	dark jagged mass splayed flat and wide; knotweed is a tiny wiry prostrate weed
+pseudostellaria-heterantha	OK	leafy stem
+richardia-brasiliensis	OK	upright with narrow leaves and white flowers
+rivina-humilis	OK	upright stem with red berries, diagnostic held
+ruellia-blechum	FLAG	dark leaves splayed nearly horizontal into a flat mass
+ruellia-nudiflora	OK	leafy stem with a purple flower
+ruellia-prostrata	FLAG	dark splayed flat mass, no flower
+ruellia-repens	OK	upright with opposite leaves and a purple flower
+ruellia-simplex	OK	stem with narrow leaves and a purple flower; leaves splay a little flat
+ruellia-tuberosa	FLAG	pale leaves splayed flat off a horizontal bare stem, no flower
+rungia-pectinata	OK	splayed but coherent leafy stem
+rungia-taiwanensis	OK	upright stem with comb leaves and pink flowers
+salvia-rosmarinus	FLAG	near-empty crossed sticks; rosemary needs a dense woody shrublet of needle leaves
+sisymbrium-irio	OK	leafy upright weed
+solanum-americanum	OK	leafy splayed nightshade
+solanum-diphyllum	FLAG	leaves splayed into a flat disc on a bare stem
+solanum-melongena	FLAG	near-empty; no aubergine fruit and no big lobed leaves
+spermacoce-remota	OK	whorled comb leaves with yellow flowers
+sphagneticola-trilobata	FLAG	palette known but no yellow daisy flower and no three-lobed leaf; dark leaves splayed flat
+spinacia-oleracea	FLAG	no basal rosette of broad crinkled leaves; a dark spray of narrow leaves instead
+stachytarpheta-jamaicensis	FLAG	the long whip-like blue flower spike that names Porterweed is absent
+synedrella-nodiflora	OK	upright leafy stem
+tacca-leontopetaloides	FLAG	sparse thin stem with small leaves; no huge deeply divided umbrella leaf
+thalictrum-dioicum	FLAG	near-empty, sparse narrow leaves; no delicate lobed leaflets
+tithonia-diversifolia	FLAG	flower reduced to a dot; Tithonia is a tall shrub with large orange sunflower heads
+torenia-crustacea	FLAG	near-empty: two blob leaves on a bent stem
+torenia-fournieri	FLAG	no two-lipped purple flower, the diagnostic for wishbone flower
+tradescantia-pallida	OK	deep purple leaves, correct for the known palette
+tradescantia-spathacea	FLAG	sparse: three straps on a bare stem, no stiff rosette
+tradescantia-zebrina	FLAG	flat splayed pinwheel of leaves, no trailing stem habit
+trichostigma-octandrum	OK	leafy upright plant
+tridax-procumbens	OK	upright leafy stem; procumbent habit and daisy head not attempted
+turnera-subulata	OK	leafy stem with a flower
+turnera-ulmifolia	FLAG	the yellow five-petal flower that names Yellow Alder is absent
+vicia-ramuliflora	FLAG	tangled clump of overlapping blades passing through each other; no pinnate leaflets or tendrils
+wollastonia-biflora	FLAG	no yellow daisy flower head; splayed leaves only
+youngia-japonica	OK	basal rosette with a thin flowering stalk, reads correctly

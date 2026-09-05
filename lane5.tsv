@@ -1,0 +1,219 @@
+collybiopsis-subpruinosa	OK	centrally-stalked agaric, cap and ring read correctly
+coprinellus-disseminatus	FLAG	two red cap discs float detached beside the mushroom, unattached geometry
+gymnopus-erythropus	OK	clean domed cap on a slender stem
+mycena-corticola	FLAG	pancake: cap disc about 4x wider than tall, stem reduced to a hidden stub
+termitomyces-microcarpus	OK	broad brown cap on a short stem, reads as an agaric
+mycena-tenerrima	OK	bell cap on a long thin stem, correct bonnet habit
+conocybe-tenera	FLAG	conical cap is right but dark elliptical discs float detached to one side
+mycetinis-scorodonius	FLAG	cap is a tall pointed bullet on a thin stalk, reads as a rocket not a mushroom
+marasmius-epiphyllus	OK	parachute cap on a stem
+marasmius-haematocephalus	OK	pinwheel cap present, stem thicker than the wiry real thing but it reads
+marasmius-sullivantii	OK	conical parachute cap on a stem
+heimiomyces-tenuipes	FLAG	no stem at all, a wide dome sitting on nubs despite tenuipes meaning slender foot
+dacrymyces-spathularia	FLAG	wrong organism: a gelatinous fan-shaped jelly fungus drawn as a stalked toadstool
+leucoagaricus-rubrotinctoides	OK	flat cap on a stem, one small stray disc but the agaric reads
+russula-amoenolens	FLAG	stacked cone plus ring plus flange plates; Russula has no ring and no stacked skirts
+macrolepiota-procera	OK	umbonate cap with a ring on a tall stem, correct parasol
+marasmiellus-candidus	OK	flat white-patched cap on a stem
+pholiota-terrestris	FLAG	cap is a tall torpedo 3x taller than wide; Pholiota is broadly convex and scaly
+gymnopus-dryophilus	OK	good agaric, minor stray discs at the sides
+marasmius-siccus	FLAG	pancake: flat wide disc, no stem, none of the deep pleated bell of a pinwheel
+pluteus-longistriatus	FLAG	splayed lens cap with the stem hidden entirely beneath it
+gerronema-strombodes	OK	cap on a barrel stem, reads as an agaric
+leucoagaricus-rubrotinctus	OK	wide cap on a stem, passable dapperling
+trypethelium-eluteriae	FLAG	wrong organism: a crustose bark lichen drawn as a large yellow toadstool
+agaricus-trisulphuratus	FLAG	sharply conical cap (Agaricus is convex) plus two discs floating detached at the sides
+hemimycena-lactea	FLAG	broken: a pile of misaligned white plates sitting on top of the cap
+bolbitius-aleuriatus	FLAG	pancake: wide flat lens, no stem visible, fragile campanulate cap absent
+gymnopus-brassicolens	FLAG	pancake: wide flat lens on a barrel, no stem
+coleosporium-plumeriae	FLAG	wrong organism: a leaf rust drawn as a ringed toadstool
+marasmius-albogriseus	OK	domed cap on a stem
+pluteus-umbrosus	FLAG	cap sits detached above a separate cream flange, parts misaligned
+trichoderma-viride	FLAG	wrong organism: a green powdery mould drawn as a cream toadstool
+hygrocybe-acutoconica	OK	domed-conic cap on a stout stem, acceptable waxcap
+pestalotiopsis-funerea	FLAG	wrong organism: a fungal tip-blight anamorph drawn as a purple toadstool
+hygrocybe-cuspidata	FLAG	pancake: very wide flat lens, none of the sharp cusp the epithet names
+delicatula-integrella	OK	domed cap on a stem
+phloeomana-speirea	FLAG	tall orange cone hovering above a separate white disc, wrong shape and misaligned
+leucocoprinus-cretaceus	OK	cap on a stem, reads as an agaric
+trichaleurina-javanica	FLAG	wrong organism: a rubbery ascomycete cup fungus drawn as a conical toadstool
+mycetinis-opacus	OK	domed cap on a stem
+marasmius-wynneae	FLAG	cap floats with no stem beneath it and a second disc is detached to the side
+cyclocybe-parasitica	OK	domed cap on a stem, good agaric
+panaeolus-foenisecii	FLAG	two dark red discs float detached below the cap, unattached geometry
+pseudosperma-rimosum	FLAG	pancake: wide flat lens, none of the conical split-fibrillose fibrecap form
+candolleomyces-candolleanus	FLAG	pancake: tilted flat lens with no stem, only nubs underneath
+chromelosporiopsis-carnea	FLAG	wrong organism: an anamorphic mould drawn as a spiked purple cone on a stalk
+collybia-kurara	OK	domed cap on a barrel stem
+lichenomphalia-ericetorum	OK	small funnel-cap agaric, correct for a basidiolichen
+schizophyllum-commune	FLAG	shelves are full 360deg collars skewering the log; a stalkless splitgill given tiered discs
+microporus-xanthopus	FLAG	pagoda of full discs with no log face, shelf passes through and exits every side
+trametes-cubensis	FLAG	full-disc shelves skewer the log and exit both sides
+hexagonia-tenuis	FLAG	lobes wrap the whole post, no single attachment face, log not visible
+ganoderma-applanatum	FLAG	each shelf is a full lens through the log, projecting left, right and front
+ganoderma-lucidum	FLAG	full-disc collars around the log rather than a one-face bracket
+earliella-scabrosa	FLAG	shelves spiral all the way round the post instead of attaching on one face
+hexagonia-hydnoides	FLAG	a single broad disc passes clean through the log and exits both sides
+fuscoporia-torulosa	FLAG	plates fan out on every side of the post
+trametes-elegans	FLAG	shelves encircle the log at several heights, exiting both sides
+trametes-villosa	FLAG	cream plates ring the post on all sides
+stereum-versicolor	FLAG	full-disc collars; a thin resupinate crust drawn as tiered shelves
+trametopsis-cervina	FLAG	shelves ring the post rather than attaching along one edge
+fuscoporia-gilva	FLAG	full discs skewered on the log
+coriolopsis-trogii	FLAG	full-disc collars around the log
+trametes-versicolor	FLAG	full discs through the log and no concentric zonation, the turkey-tail diagnostic
+stereum-ostrea	FLAG	stacked full discs; a stalkless crust drawn as tiered shelves through the log
+phaeolus-schweinitzii	FLAG	discs skewered on a vertical post
+daedaleopsis-confragosa	FLAG	full-disc shelves exiting both sides of the log
+crepidotus-variabilis	FLAG	full discs on a post; a tiny stalkless oysterling drawn as tiered brackets
+stereum-subtomentosum	FLAG	full-disc collar passing through the log
+merulius-tremellosus	FLAG	lobes spiral around the whole post; a resupinate crust given tiered shelves
+trametes-lactinea	FLAG	full discs skewering the log
+stereum-gausapatum	FLAG	full-disc collars, log not visible; a crust fungus drawn as brackets
+climacocystis-borealis	FLAG	full discs exiting both sides of the log
+flavodon-flavus	FLAG	discs ring the post on all sides
+ganoderma-sessile	FLAG	flat lenses skewer the post and project front, left and right
+hymenochaete-rubiginosa	FLAG	discs spiral round the post; a crust fungus given tiered shelves
+nigroporus-vinosus	FLAG	full-disc collars around the log
+clitopilus-hobsonii	FLAG	rosette collar encircling the post; a tiny stalkless oysterling drawn as brackets
+resupinatus-alboniger	FLAG	one wide disc through the post; should be a small black rubbery back-attached cup
+ganoderma-polychromum	FLAG	discs skewered on the log, exiting both sides
+fomitiporia-robusta	FLAG	thin sheets radiate on all sides of the post, sparse and unattached-looking
+lentinus-squarrosulus	FLAG	full discs through the log, and this is a centrally-stalked funnel mushroom not a bracket
+favolaschia-manipularis	FLAG	full-disc collars, and no visible pores, the porecap diagnostic
+xylobolus-spectabilis	FLAG	full discs skewering the post; a crust fungus given tiered shelves
+trametes-sanguinea	FLAG	full-disc collars around the log
+panus-tephroleucus	FLAG	discs encircle the post
+steccherinum-nitidum	FLAG	full discs through the log; a resupinate toothed crust drawn as brackets
+inocutis-tamaricis	FLAG	discs skewered on the post
+hymenochaete-microcycla	FLAG	full discs around the post; a crust fungus drawn as shelves
+lentinus-arcularius	FLAG	full discs through the log, and this is a centrally-stalked polypore not a bracket
+irpex-latemarginatus	FLAG	discs pass through the post rather than attaching on one face
+fomitopsis-spraguei	FLAG	full discs skewered on the log, exiting all sides
+meripilus-lineatus	FLAG	full-disc shelves through the log
+neocotylidia-diaphana	FLAG	full-disc collar around the post; a small fan fungus given tiered brackets
+amata-huebneri	OK	black with yellow and orange spots, correct wasp-moth pattern
+lyssa-zampa	OK	grey-brown with pale banding; hindwing tails absent but it reads
+asota-heliconia	OK	brown-grey wings with pale streaks, acceptable
+ophthalmis-lincea	OK	black with a pale patch, correct dark ground
+phauda-flammans	OK	bright red-orange, correct and distinctive
+lymantria-lunata	FLAG	whitish ground is right but antennae are 3 plain bristles; Lymantria males are strongly bipectinate
+asota-caricae	OK	tan-brown wings, acceptable tiger moth
+eudocima-phalonia	OK	brown forewing with a yellow hindwing patch, reads as a fruit-piercer
+eumeta-variegata	OK	brown male moth, acceptable
+rhesala-imparata	OK	small grey-tan noctuid, correct
+spoladea-recurvalis	OK	dark brown with a pale transverse band, correct
+hulodes-caranea	OK	grey-brown, acceptable
+orgyia-postica	FLAG	brown ground correct but antennae are plain bristles; Orgyia males have huge plumose antennae
+adoxophyes-privatana	OK	ochre tortricid, correct
+amata-polymita	OK	black with yellow and orange, correct wasp moth
+mocis-frugalis	OK	pale straw-brown looper, acceptable
+olene-mendosa	FLAG	brown tussock moth with plain bristle antennae; the male feathered antennae are the field mark
+thyas-coronata	FLAG	no yellow underwing at all, the diagnostic its common name is built on
+maruca-vitrata	OK	brown forewing with white spots, correct
+orvasca-subnotata	OK	pale yellowish-white, correct
+spodoptera-litura	OK	brown with cream streaks, correct
+creatonotos-transiens	OK	derived palette so colour not judged; body and wing form read as a moth
+eublemma-accedens	OK	tawny orange-brown, correct
+eudocima-cocalus	OK	green-brown leaf-mimic forewing, defensible
+lebeda-nobilis	FLAG	brown lasiocampid but antennae are plain bristles, not the broad bipectinate comb
+asota-plana	OK	olive-grey wings, acceptable
+chiasmia-emersaria	OK	derived palette; wing and body form read as a moth
+dasychira-chekiangensis	FLAG	brown tussock moth with plain bristle antennae instead of the diagnostic feathered pair
+aloa-lactinea	FLAG	white ground but no red costal stripe, the diagnostic its name is built on
+thosea-sinensis	OK	olive-brown, acceptable
+dudua-aprobola	OK	small tan tortricid, acceptable
+gesonia-obeditalis	OK	tan-brown noctuid, acceptable
+phereoeca-uterella	OK	derived palette; form reads as a small moth
+bocana-manifestalis	OK	brown-grey, correct
+rhesala-moestalis	OK	grey, correct
+xanthetis-luzonica	OK	pale cream, correct
+spilosoma-elmagna	OK	white ground, correct for Spilosoma
+attacus-lorquinii	FLAG	a giant saturniid rendered as a small generic brown lump: no falcate apex, no wing windows, no plumose antennae
+mimeusemia-semyron	OK	derived palette; dark moth form reads
+ptychosperma-propinquum	OK	slender ringed trunk with a crown of drooping pinnate fronds
+caryota-mitis	FLAG	leaflets are plain lanceolate blades; the wedge-shaped fishtail leaflet is absent
+rhapis-excelsa	FLAG	broken: dark folded umbrella blobs at odd angles, no fan segments, no clustering canes
+chrysalidocarpus-lutescens	FLAG	only two fronds, one vertical one sideways, far too sparse for a dense clumping areca palm
+livistona-chinensis	FLAG	fan palm drawn as opaque overlapping broadleaf blobs, no radiating segmented fan
+licuala-grandis	FLAG	two flat lobed leaves, no pleated circular fan and far too sparse for a crown
+cocos-nucifera	FLAG	trunk is a lumpy stack of brown blobs, too short and stubby, crown small and droopy
+adonidia-merrillii	OK	slender trunk with a feathery crown, reads as a palm
+areca-catechu	FLAG	crown is a wide flat splayed lens and the trunk is a stump; A. catechu is tall and slender
+chamaedorea-elegans	FLAG	fat trunk with large cream fruits and a wide crown; should be a slim reed-stemmed understory palm
+archontophoenix-cunninghamiana	OK	ringed trunk with a drooping feather crown
+hyophorbe-lagenicaulis	FLAG	an enormous smooth brown bulb with a tiny flopping leaf tuft, reads as a boulder not a palm
+wodyetia-bifurcata	OK	trunk plus drooping crown reads as a palm, though the plumose foxtail frond is not modelled
+chamaedorea-seifrizii	FLAG	wide flat splayed crown on a stub; the slender bamboo-like reed canes are absent
+arenga-engleri	FLAG	flat one-sided crown on a wedge-shaped trunk, wider than tall
+roystonea-regia	FLAG	trunk is a grey spiky spindle like a drill bit, not the smooth grey column; broken-looking
+phoenix-roebelenii	OK	small palm with a trunk and a feathery crown
+elaeis-guineensis	FLAG	every frond leans one way, the crown is entirely one-sided
+howea-forsteriana	FLAG	crown is a wide horizontal splayed lens with the trunk reduced to a barely visible stub
+caryota-urens	FLAG	no fishtail leaflets, plain triangular blades on a splayed crown
+roystonea-oleracea	OK	trunk with a drooping frond crown, reads as a royal palm
+caryota-maxima	FLAG	wide dark splayed mass on a thin stick, no fishtail leaflets
+roystonea-borinquena	FLAG	almost no trunk, just a root flare under a wide crown lens
+chrysomya-megacephala	OK	metallic green body with large orange-red eyes, correct
+mimegralla-albimana	OK	black-bodied fly, reads correctly as a fly
+musca-domestica	OK	dark grey thorax and red eyes, correct house fly
+chrysosoma-leucopogon	OK	derived palette; fly body plan reads
+hermetia-illucens	OK	black body with smoky wings, correct soldier fly
+lucilia-sericata	OK	metallic green with red eyes, correct greenbottle
+bactrocera-dorsalis	OK	orange-brown body with pale wings, correct
+homoneura-unguiculata	OK	yellowish lauxaniid, correct
+chrysosoma-globiferum	OK	derived palette; fly body plan reads
+homoneura-discoglauca	OK	yellowish body, correct
+drosophila-melanogaster	OK	tan body with red eyes, correct fruit fly
+drosophila-repleta	OK	grey-brown drosophilid, correct
+toxonevra-superba	OK	yellow-bodied fly, acceptable
+bactrocera-cucurbitae	OK	orange-brown tephritid, correct
+hydrotaea-chalcogaster	OK	derived palette; fly body plan reads
+lucilia-coeruleiviridis	OK	blue-green metallic body, correct
+hermetia-sexmaculata	FLAG	uniform black abdomen, none of the six pale spots the epithet names
+lucilia-porphyrina	OK	purple-metallic body, defensible for the epithet
+chrysosoma-vittatum	OK	derived palette; fly body plan reads
+pistia-stratiotes	FLAG	flat overlapping lily pads; the upright fluted rosette that makes it water lettuce is absent
+ludwigia-palustris	OK	floating pads with a leafy emergent shoot, acceptable
+lemna-aequinoctialis	FLAG	duckweed drawn as large angular leaf plates with a big spiky shoot, should be millimetre fronds
+callitriche-terrestris	FLAG	splayed pancake of long grass-like straps, none of the small spatulate starwort rosette
+neptunia-oleracea	FLAG	one stalk with two broad leaves, the bipinnate mimosa-like foliage is missing
+hydrilla-verticillata	FLAG	an opaque cabbage-like lump on a pad, no slender stem with whorls of toothed leaves
+ludwigia-decurrens	OK	upright stem with lanceolate leaves above pads, reads correctly
+echinodorus-cordifolius	OK	cordate leaves on a stalk above floating pads
+hydrocotyle-sibthorpioides	OK	round peltate pads, correct pennywort
+marsilea-macropoda	FLAG	stacked flat rectangular plates, no four-leaflet clover frond, the whole point of Marsilea
+marsilea-minuta	FLAG	two elongated ovoid pads and a bare tilted stem, no four-leaflet clover frond
+limnophila-rugosa	OK	leafy emergent shoot over pads, acceptable marshweed
+neurothemis-terminata	OK	red abdomen with amber-tinted wings, acceptable
+diplacodes-trivialis	OK	chalky pale blue body, correct for a mature male
+lathrecista-asiatica	OK	red abdomen with a yellow thorax, correct blood tail
+neurothemis-ramburii	FLAG	rendered magenta-pink throughout; N. ramburii is deep crimson with red-brown wings
+orthetrum-serapia	OK	pale blue pruinose body, correct for a mature male
+pantala-flavescens	OK	golden-yellow body, correct wandering glider
+diplacina-braueri	FLAG	bright magenta body and wings; Diplacina braueri is a small dark metallic libellulid
+tholymis-tillarga	OK	orange-brown body with amber wings, correct
+bambusa-vulgaris	OK	segmented culm with clear nodes and whorled lanceolate leaves
+bambusa-tuldoides	OK	tall culm with well-defined nodes and leaf sprays
+bambusa-stenostachya	OK	nodes visible at the top, dense leaf spray, reads as bamboo
+phyllostachys-nigra	OK	segmented culm with nodes; culm colour is derived so not judged
+bambusa-oldhamii	OK	stout segmented culm with nodes and leaf whorls
+bambusa-balcooa	OK	tall culm with crisp nodes, good bamboo
+dinochloa-acutiflora	OK	segmented culm with nodes and leaf whorls
+platydemus-manokwari	FLAG	dorsal stripe rendered violet; P. manokwari has a thin pale cream midline on near-black
+diversibipalium-tripartitum	OK	flat ribbon body with dark ground and pale longitudinal stripes
+dolichoplana-striata	FLAG	body reads as two pieces, a scalloped front lobe with a thin tail projecting at a different angle
+bipalium-kewense	FLAG	uniform cream with no dark longitudinal stripes, and the head is a plain wedge not a half-moon
+gasteracantha-kuhli	FLAG	rendered entirely white; G. kuhli is white with bold black markings and black spines
+gasteracantha-hecata	OK	broad flattened abdomen with lateral spines, plausible red ground
+thelacantha-brevispina	FLAG	smooth grey-brown dome with no spines and no black-on-white patterning
+gasteracantha-mediofusca	FLAG	uniform gold with no dark median band, the mark the epithet names
+propylea-japonica	OK	domed yellow elytra with dark markings, correct
+coccinella-transversalis	OK	red elytra with black spots, correct
+henosepilachna-vigintioctomaculata	OK	dull orange elytra with dark spots, correct
+holochlora-japonica	FLAG	long antennae are right but the body is a lumpy blob with no enlarged hind legs and no broad leaf-like wings
+conocephalus-vestitus	FLAG	long antennae present but no saltatorial hind legs, no wings and no coneheaded fastigium
+macrotermes-gilvus	OK	pale soft abdomen with a distinct darker head and legs, reads as a termite
+carica-papaya	OK	slender unbranched trunk, lobed leaf crown and a trunk fruit cluster
+geastrum-saccatum	OK	radiating pointed rays with a rounded spore sac in the centre, both diagnostics present
+clogmia-albipunctata	OK	broad fuzzy leaf-shaped wing over a grey furry body, reads as a moth fly

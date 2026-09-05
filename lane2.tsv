@@ -1,0 +1,220 @@
+narra	FLAG	conifer silhouette: stacked conical skirts, reads as a Christmas tree not a broad-crowned legume
+molave	OK	dense rounded crown centred on a visible trunk
+katmon	FLAG	broken: entire crown floats detached in mid-air above a short stump carrying only a leaf tuft
+dao	FLAG	conifer cone silhouette and crown biased left of the trunk
+mahogany	OK	tall dark crown on a clear trunk
+raintree	OK	broad blob crown, trunk visible, centred
+teak	FLAG	no trunk: wide low crown sits directly on a stub, mushroom-like
+terminalia-catappa	OK	pagoda tiers read correctly for Terminalia
+calophyllum-inophyllum	OK	broad crown, trunk visible
+araucaria-columnaris	OK	narrow columnar conifer, correct
+melanolepis-multiglandulosa	OK	crown centred on trunk
+tamarindus-indica	FLAG	very tall bare pole with a small tuft on top, no crown
+monoon-longifolium	OK	narrow columnar habit correct for false ashoka
+mangifera-indica	OK	dense rounded mango crown on a stout trunk
+spathodea-campanulata	OK	crown with red flowers, trunk visible
+macaranga-tanarius	OK	crown centred on trunk
+sandoricum-koetjape	FLAG	conifer cone silhouette for a broadleaf fruit tree
+bauhinia-purpurea	OK	rounded crown on trunk, no flowers but shape fine
+psidium-guajava	OK	plain ellipsoid crown on trunk, featureless but correct
+diospyros-blancoi	FLAG	tall bare pole with a tiny top tuft, base cut off by the frame
+muntingia-calabura	OK	crown centred on trunk
+triplaris-cumingiana	OK	blob crown on trunk
+magnolia-champaca	FLAG	conifer cone silhouette with bare sticks protruding
+artocarpus-heterophyllus	OK	columnar dense crown, acceptable for jackfruit
+plumeria-rubra	OK	thick bare branches with leaf tufts at tips, correct
+lagerstroemia-speciosa	OK	smooth crown on trunk
+hevea-brasiliensis	OK	blob crown on trunk
+araucaria-heterophylla	OK	conifer, correct
+morus-alba	FLAG	conifer cone silhouette for a broadleaf mulberry
+cynometra-ramiflora	OK	rounded crown on trunk
+barringtonia-asiatica	OK	upright crown with pink powderpuff flowers
+persea-americana	OK	rounded crown on trunk
+gmelina-arborea	OK	upright leafy sapling form, acceptable
+moringa-oleifera	OK	open airy branching with small leaflets, correct
+plumeria-obtusa	OK	bare branches with terminal leaf tufts, correct
+peltophorum-pterocarpum	FLAG	conifer cone silhouette for a broad-crowned flame tree
+streblus-asper	OK	shrubby crown on trunk
+cenostigma-eriostachys	OK	crown centred on trunk
+leucaena-leucocephala	OK	stacked crown, foliage coarse but tree-like
+ceiba-pentandra	OK	blob crown on stout trunk
+tabebuia-heterophylla	FLAG	tall green spire with bare sticks, no crown
+pongamia-pinnata	OK	pale crown on trunk
+acacia-auriculiformis	FLAG	conifer cone silhouette
+eucalyptus-deglupta	OK	open branching with rounded crown
+coccoloba-uvifera	FLAG	conifer cone silhouette for a broad-leaved sea grape
+antidesma-bunius	FLAG	foliage ball detached and floating clear of the crown
+bischofia-javanica	OK	layered crown on trunk
+syzygium-myrtifolium	OK	tiered dark crown on trunk
+ehretia-microphylla	FLAG	fat green pole with a few leaves on a cut-off trunk, reads as a cactus not a shrub
+adenanthera-pavonina	OK	pale crown, trunk and branches visible
+aglaia-odorata	OK	blob crown on trunk
+tabebuia-rosea	OK	crown with pink flower, trunk visible
+cascabela-thevetia	FLAG	tall bare-trunk spire, no crown
+pometia-pinnata	OK	blob crown on trunk
+schizolobium-parahyba	OK	broad flat crown on trunk
+delonix-regia	OK	rounded crown, umbrella habit not captured but reads as a tree
+eucalyptus-camaldulensis	OK	multi-branched trunk with blob crowns, good
+annona-squamosa	FLAG	tall green spire, no crown
+senna-alata	FLAG	conifer cone silhouette, candle flowers absent
+triplaris-americana	OK	crown on trunk
+azadirachta-indica	OK	rounded blob crown on trunk
+xanthostemon-chrysanthus	OK	dark egg crown on trunk
+wendlandia-uvariifolia	OK	crown on trunk
+lucuma-campechiana	FLAG	tall green spire, no crown
+acacia-confusa	OK	blob crown on trunk
+chrysophyllum-cainito	OK	crown centred on trunk
+styphnolobium-japonicum	OK	crown on trunk
+laurus-nobilis	OK	conical habit acceptable for bay laurel
+casuarina-equisetifolia	OK	needle-like conical form correct for sheoak
+theobroma-cacao	FLAG	conifer cone silhouette; cacao is a small broadleaf tree with trunk-borne pods
+cassia-fistula	FLAG	near-bare spindly pole, golden flower racemes absent
+morinda-citrifolia	OK	splayed large leaves on trunk, correct
+anthocleista-grandiflora	OK	sparse very large leaves, correct habit
+garcinia-subelliptica	OK	wide pale crown, trunk visible
+fraxinus-uhdei	OK	blob crown on trunk
+trema-orientale	OK	low mound crown, trunk short but present
+alstonia-macrophylla	OK	crown on tall trunk
+barringtonia-racemosa	OK	pendulous pink flower racemes, nice diagnostic
+acacia-mangium	OK	broad phyllode-like leaves splayed on trunk
+averrhoa-bilimbi	FLAG	tall green spire, no crown
+kleinhovia-hospita	OK	splayed leaf crown on trunk
+sterculia-foetida	OK	tiered crown on a tall trunk
+khaya-senegalensis	FLAG	crown sits on the ground as a low wide tent, no trunk visible
+litsea-glutinosa	OK	dark crown on trunk
+symplocos-cochinchinensis	OK	upright leaves on trunk
+mallotus-repandus	OK	crown on trunk
+nauclea-orientalis	OK	blob crown on trunk
+terminalia-mantaly	OK	horizontal tiers correct for Terminalia
+zanthoxylum-davyi	FLAG	crown is a very wide flat splayed disc on a thin trunk
+vitex-quinata	OK	radiating leaves on visible trunk
+morus-indica	OK	broad tiered crown on trunk
+bergera-koenigii	OK	flat-topped crown, sparse but tree-like
+albizia-julibrissin	OK	blob crown on trunk
+picea-abies	OK	conifer, correct
+bauhinia-variegata	OK	sparse branches with large leaves, acceptable
+calophyllum-brasiliense	FLAG	tall green spire, no crown
+syzygium-malaccense	OK	dense rounded crown, correct
+sterculia-striata	FLAG	long bare branches project far beyond the foliage, reads broken
+broussonetia-papyrifera	OK	smooth pale crown on trunk
+albizia-adianthifolia	OK	wide flat crown matches the flat-crown habit
+gnetum-gnemon	OK	narrow layered crown on a tall trunk
+bauhinia-acuminata	FLAG	tall conifer spire with flowers on bare horizontal sticks; species is a dwarf shrub
+ardisia-elliptica	OK	dark crown on short trunk
+manilkara-zapota	OK	columnar lumpy crown on trunk, acceptable
+senna-occidentalis	OK	sparse weedy shrub form, correct
+dimocarpus-longan	FLAG	tall green spire, no crown
+sonneratia-alba	OK	blob crown on trunk
+annona-purpurea	OK	spindly sapling, sparse but tree-like
+handroanthus-chrysanthus	OK	crown with yellow flower on trunk
+syzygium-samarangense	OK	dark leafy crown on trunk
+millingtonia-hortensis	OK	crown centred on trunk
+neolamarckia-cadamba	OK	dark blob crown, trunk short but present
+cerbera-manghas	OK	crown on trunk
+antidesma-montanum	OK	splayed leaf crown on trunk
+castanopsis-indica	OK	dark crown, trunk low but present
+diospyros-ferrea	OK	narrow bottle-shaped crown on trunk, acceptable
+abroma-augustum	FLAG	tall green spire, no crown
+barringtonia-acutangula	OK	splayed crown on trunk
+dillenia-suffruticosa	OK	dark leafy crown on trunk
+pachira-glabra	OK	crown centred on trunk
+artocarpus-elasticus	OK	blob crown on trunk
+trema-tomentosum	OK	sparse leaves on thin trunk, acceptable
+premna-serratifolia	FLAG	tall green spire on a thick cut-off trunk, no crown
+elaeocarpus-grandis	OK	upright leaves on thin stem, sparse but tree-like
+aleurites-moluccanus	OK	blob crown on trunk
+hoheria-angustifolia	OK	crown on trunk
+meryta-sinclairii	OK	rounded crown with large leaves on trunk
+artocarpus-lacucha	OK	blob crown on trunk
+sterculia-stipulata	OK	sparse round blobs on bare branches, still reads as a tree
+terminalia-calamansanai	OK	crown on trunk
+ulmus-laevis	FLAG	conifer cone silhouette for a broadleaf elm
+handroanthus-chrysotrichus	FLAG	conifer cone silhouette with bare sticks protruding
+cespedesia-spathulata	OK	large leaves on visible trunk
+citharexylum-subflavescens	FLAG	crown is a wide flat splayed lens, trunk hidden underneath
+ardisia-cornudentata	OK	blob crown, trunk behind foliage
+machilus-japonicus	FLAG	foliage blob detached and floating clear of the crown
+drypetes-littoralis	OK	upright leaves on trunk
+pterocymbium-tinctorium	OK	splayed leaves on trunk
+adinandra-formosana	OK	low dark mound with short trunk, shrubby but acceptable
+pipturus-arborescens	OK	angular leaves on visible trunk
+tabebuia-pallida	OK	dark crown on a tall trunk, lollipop-ish but sound
+magnolia-alba	OK	sparse leaves on a branched frame, acceptable
+balete	OK	branched trunk with a centred rounded crown, best of the ficus group
+ficus-elastica	OK	dark blobby crown centred on trunk
+ficus-septica	OK	wide splayed crown but trunk visible and centred
+ficus-pseudopalma	FLAG	main crown floats detached upper-left; separate sapling below; not the palm-like rosette habit
+ficus-variegata	OK	crown above a visible trunk
+ficus-benjamina	OK	tall crown on trunk, sparse for a weeping fig but sound
+ficus-microcarpa	FLAG	crown doubled and offset sideways from the trunk
+ficus-ampelos	OK	crown centred on trunk
+ficus-religiosa	OK	crown centred on trunk
+ficus-fistulosa	OK	crown centred, aerial-root base visible
+ficus-nervosa	OK	crown centred on trunk
+ficus-benghalensis	FLAG	large crown floats with no trunk beneath it; separate small tree below
+ficus-carica	OK	crown slightly left of trunk but connected, aerial roots present
+ficus-exasperata	OK	crown centred on trunk
+ficus-racemosa	FLAG	tall bare trunk with a narrow spiky spire, reads as a conifer not a fig
+ficus-villosa	FLAG	crown mass offset well left of the trunk
+ficus-rumphii	OK	crown centred on trunk
+ficus-cumingii	OK	crown centred on trunk
+ficus-simplicissima	FLAG	tall bare trunk with a narrow spire, no fig crown
+ficus-maclellandii	OK	rounded crown on trunk
+ficus-nota	OK	radiating leaf crown on a visible trunk
+oecophylla-smaragdina	OK	three-part body, antennae, orange-gold colour correct for weaver ant
+odontomachus-simillimus	FLAG	no elongated trap-jaw mandibles, the diagnostic feature of Odontomachus
+odontoponera-denticulata	OK	black ant, body segments and antennae read correctly
+odontomachus-infandus	FLAG	no elongated trap-jaw mandibles
+paratrechina-longicornis	OK	dark ant body; antennae shorter than the longhorn name implies
+carebara-diversa	OK	brown ant, segments and antennae correct
+solenopsis-geminata	OK	orange-brown fire ant, reads correctly
+technomyrmex-albipes	OK	black ant; pale feet not rendered but body correct
+anoplolepis-gracilipes	OK	pale yellow, correct for yellow crazy ant
+trichomyrmex-destructor	OK	brown ant, reads correctly
+tapinoma-melanocephalum	OK	dark head with pale gaster, correct ghost-ant pattern
+monomorium-floricola	OK	small dark ant, reads correctly
+odontomachus-haematodus	FLAG	no elongated trap-jaw mandibles
+monomorium-carbonarium	OK	generic ant body, derived orange colour
+polyrhachis-mucronata	FLAG	no mesosomal spines, the diagnostic feature of a spiny ant
+polyrhachis-armata	FLAG	no mesosomal spines, the diagnostic feature of a spiny ant
+poecilia-reticulata	OK	large fan tail on a small body, correct for a guppy
+carassius-auratus	FLAG	known palette: orange body but blue dorsal and caudal fins, goldfish is uniformly orange
+poecilia-sphenops	OK	black body correct for a black molly
+gymnocorymbus-ternetzi	FLAG	known palette: orange fins on a grey body, black tetra should have dark fins
+pterophyllum-scalare	OK	tall compressed body with extended dorsal and anal fins, correct angelfish
+labidochromis-caeruleus	OK	yellow body correct, dark fin margins present
+oreochromis-niloticus	OK	grey deep-bodied cichlid, correct
+xiphophorus-hellerii	OK	olive body with a red caudal sword, diagnostic present
+pseudanthias-hypselosoma	OK	pink anthias, correct
+trachinotus-anak	OK	silver deep body, correct
+theretra-oldenlandiae	OK	torpedo body with narrow swept wings, correct hawkmoth
+psilogramma-discistriga	OK	grey swept-wing hawkmoth, correct
+hippotion-celerio	OK	brown swept-wing hawkmoth, correct
+daphnis-nerii	OK	green swept-wing hawkmoth, correct for oleander hawkmoth
+agrius-convolvuli	OK	grey-brown swept-wing hawkmoth, correct
+daphnis-hypothous	OK	green and purple swept-wing hawkmoth, correct
+theretra-alecto	OK	hawkmoth silhouette correct, derived blue colour
+pergesa-acteus	OK	green hawkmoth, correct
+opuntia-cochenillifera	FLAG	pads stacked flat as horizontal discs rather than upright pads, reads as a pancake stack
+euphorbia-lactea	FLAG	plain smooth column and spine tufts float detached in space beside it
+opuntia-ficus-indica	FLAG	pads stacked flat as horizontal discs; spine tufts detached from the pads
+euphorbia-milii	FLAG	bare radiating rods with tufts at the tips, no leaves or dense thorns
+mammillaria-geminispina	FLAG	dome much wider than tall, spines sparse and only on one side
+frailea-castanea	OK	globular body with spines all round, correct cactus
+taractrocera-luzonensis	OK	stout body, hooked antennae, short broad wings, correct skipper
+borbo-cinnara	OK	stout skipper with hooked antennae, correct
+suastus-gremius	OK	stout skipper with hooked antennae, correct
+notocrypta-curvifascia	FLAG	known palette: body rendered orange, this species is blackish-brown with a white band
+felis-catus	OK	pointed ears and curled tail read as a cat
+canis-familiaris	FLAG	blob body with one oversized upright ear, no tail, no snout; reads as a rodent not a dog
+ptenochirus-jagorii	FLAG	strongly asymmetric: one long blade-like wing to the right, no matching wing on the left
+aedes-albopictus	OK	dark body, red eyes, long wings, thin legs; proboscis not distinct
+culex-pipiens	OK	dark body with long wings and thin legs, reads as a mosquito
+aedes-aegypti	OK	dark body with long wings and thin legs, reads as a mosquito
+agriocnemis-femina	OK	long slender abdomen, two wing pairs, big eyes; wings opaque rather than clear
+pseudagrion-pilidorsum	OK	red abdomen and blue-orange head, damselfly form correct
+dendrobium-anosmum	FLAG	upright leafy cane with negligible flowers, none of the orchid flower form
+goodyera-foliosa	OK	leaf rosette with an upright spike of small flowers, correct for Goodyera
+rhysida-longipes	OK	segmented body, blue legs matching the blueleg name, antennae present
+sundathelphusa-celer	FLAG	no pincers, no walking legs, no flat carapace; reads as a brown seal or slug
+phallus-merulinus	FLAG	stinkhorn stipe and cap are right but white lollipop spheres protrude on sticks all round it
