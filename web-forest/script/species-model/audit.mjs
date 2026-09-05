@@ -80,7 +80,27 @@ export const GATE = {
      widest thing in the top half. A trunk is narrower than its own crown. */
   max_trunk_over_canopy: 0.85,
   max_topheavy_model: 0,
+  /*
+   * The face. Reported by eye: eyes floating off the trunk, and eyes drawn so
+   * thin they vanish edge-on.
+   *
+   * Neither is visible to any gate above, because the face is BAKED INTO its
+   * host part's mesh rather than being a part of its own — so the connectivity
+   * check, which works on parts, cannot see it at all. It is found instead by
+   * colour: the kit draws eye whites, ink pupils and blush in three exact
+   * values, so those vertices can be separated from the body and measured.
+   *
+   * gap: distance from the face to the nearest NON-face vertex, over model
+   * size. A face sitting on a surface reads ~0; the pack's median is 0.008.
+   */
+  max_face_gap: 0.03,
+  /* thickness: smallest face extent over largest. A razor plane reads ~0. */
+  min_face_thickness: 0.08,
+  max_floating_face_model: 0,
 };
+
+/** Eye white, ink pupil, blush — the three exact colours the kit paints a face with. */
+export const FACE_RGB = new Set(["249,249,249", "31,32,34", "240,160,168"]);
 
 /** Archetypes that are supposed to stand up on a trunk or stem. */
 export const UPRIGHT = new Set([
@@ -160,7 +180,7 @@ export function worldPart(json, bin) {
         const w = xform(world, [pos[v], pos[v + 1], pos[v + 2]]);
         for (let k = 0; k < 3; k += 1) { if (w[k] < lo[k]) lo[k] = w[k]; if (w[k] > hi[k]) hi[k] = w[k]; }
       }
-      part.push({ node: idx, name: n.name ?? `node${idx}`, mesh: n.mesh, lo, hi });
+      part.push({ node: idx, name: n.name ?? `node${idx}`, mesh: n.mesh, lo, hi, matrix: world });
     }
     for (const c of n.children ?? []) walk(c, world);
   };
@@ -307,6 +327,66 @@ export function silhouette(part) {
   };
 }
 
+/* ── face attachment ──────────────────────────────────────────────────────
+ *
+ * Separates face vertices from body vertices by colour, then answers two
+ * questions the part-level gates cannot: is the face touching anything, and
+ * does it have any depth?
+ */
+export function faceAttachment(json, bin, nodeList) {
+  const face = [], body = [];
+  for (const { mesh, matrix } of nodeList) {
+    const prim = json.meshes[mesh].primitives[0];
+    const pos = accessor(json, bin, prim.attributes.POSITION);
+    const hasCol = prim.attributes.COLOR_0 !== undefined;
+    const col = hasCol ? accessor(json, bin, prim.attributes.COLOR_0) : null;
+    const ca = hasCol ? json.accessors[prim.attributes.COLOR_0] : null;
+    const scale = hasCol
+      ? (ca.componentType === 5126 ? 1 : ca.componentType === 5121 ? 255 : 65535)
+      : 1;
+    for (let v = 0; v < pos.length; v += 3) {
+      const w = [
+        matrix[0] * pos[v] + matrix[4] * pos[v + 1] + matrix[8] * pos[v + 2] + matrix[12],
+        matrix[1] * pos[v] + matrix[5] * pos[v + 1] + matrix[9] * pos[v + 2] + matrix[13],
+        matrix[2] * pos[v] + matrix[6] * pos[v + 1] + matrix[10] * pos[v + 2] + matrix[14],
+      ];
+      const isFace = hasCol &&
+        FACE_RGB.has([0, 1, 2].map((j) => Math.round((col[v + j] / scale) * 255)).join(","));
+      (isFace ? face : body).push(w);
+    }
+  }
+  if (!face.length || !body.length) return null;
+
+  const bound = (a) => {
+    const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+    for (const p of a) for (let k = 0; k < 3; k += 1) {
+      if (p[k] < lo[k]) lo[k] = p[k];
+      if (p[k] > hi[k]) hi[k] = p[k];
+    }
+    return { lo, hi };
+  };
+  const fb = bound(face), all = bound([...face, ...body]);
+  const fd = [fb.hi[0] - fb.lo[0], fb.hi[1] - fb.lo[1], fb.hi[2] - fb.lo[2]];
+  const model = Math.max(1e-6, Math.hypot(all.hi[0] - all.lo[0], all.hi[1] - all.lo[1], all.hi[2] - all.lo[2]));
+
+  /* Subsampled: exact nearest-neighbour over every pair is far too slow across
+     1098 models, and a 4000-point sample of the body is plenty to tell a face
+     resting on bark from one hanging in mid-air. */
+  const step = Math.max(1, Math.floor(body.length / 4000));
+  let near = Infinity;
+  for (const f of face) {
+    for (let i = 0; i < body.length; i += step) {
+      const b = body[i];
+      const d = (f[0] - b[0]) ** 2 + (f[1] - b[1]) ** 2 + (f[2] - b[2]) ** 2;
+      if (d < near) near = d;
+    }
+  }
+  return {
+    face_gap: Math.sqrt(near) / model,
+    face_thickness: Math.max(...fd) > 0 ? Math.min(...fd) / Math.max(...fd) : 0,
+  };
+}
+
 /* ── 3. distinctness ─────────────────────────────────────────────────────── */
 
 /**
@@ -383,6 +463,7 @@ function main() {
       floating: conn.floating,
       ...q,
       ...silhouette(part),
+      ...(faceAttachment(json, bin, part) ?? { face_gap: 0, face_thickness: 1 }),
       sig: signature(json, bin, part),
     });
   }
@@ -412,6 +493,9 @@ function main() {
   const duplicate = result.filter((r) => Number.isFinite(r.nn) && r.nn < GATE.min_neighbour_distance);
   const faceted = result.filter((r) => r.hard_edge_ratio > GATE.max_hard_edge_ratio);
   const lowPoly = result.filter((r) => r.tri < GATE.min_triangle);
+  const floatingFace = result.filter(
+    (r) => r.face_gap > GATE.max_face_gap || r.face_thickness < GATE.min_face_thickness,
+  );
   const topheavy = result.filter(
     (r) => UPRIGHT.has(r.archetype) &&
       (r.spread > GATE.max_upright_spread || r.trunk_over_canopy > GATE.max_trunk_over_canopy),
@@ -432,6 +516,7 @@ function main() {
   check("faceted models", faceted.length, GATE.max_faceted_model);
   check("under-detailed models", lowPoly.length, GATE.max_low_poly_model);
   check("wrong-silhouette models", topheavy.length, GATE.max_topheavy_model);
+  check("floating/thin face models", floatingFace.length, GATE.max_floating_face_model);
 
   const med = (a) => { const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)] ?? 0; };
   console.log(`\nmedian triangles ${med(result.map((r) => r.tri))} · median parts ${med(result.map((r) => r.part))}` +

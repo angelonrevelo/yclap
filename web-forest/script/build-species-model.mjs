@@ -541,7 +541,8 @@ const KNOWN = {
   "caryota mitis": { archetype: "palm", opt: { fishtail: true, clump: true }, scale: 4 },
   "ptychosperma propinquum": { archetype: "palm", opt: { clump: true }, scale: 4 },
   "rhapis excelsa": { archetype: "palm", opt: { clump: true, trunkH: 0.3 }, scale: 1.8 },
-  "roystonea regia": { archetype: "palm", opt: { trunkH: 0.62 }, scale: 12 },
+  /* Royal palm: the trunk is pale grey-white, not the default warm brown. */
+  "roystonea regia": { archetype: "palm", opt: { trunkH: 0.62 }, colors: { trunk: "#b9bcb4" }, scale: 12 },
   "musa acuminata": { archetype: "bananaKind", opt: { bloom: true }, scale: 3 },
   "musa paradisiaca": { archetype: "bananaKind", opt: { bloom: true }, scale: 3.5 },
   "musa textilis": { archetype: "bananaKind", scale: 3 },
@@ -550,12 +551,15 @@ const KNOWN = {
   "moringa oleifera": { archetype: "tree", scale: 6 },
   "epipremnum aureum": { archetype: "vine", opt: {}, colors: { variegated: true }, scale: 1 },
   "epipremnum pinnatum": { archetype: "vine", scale: 1.2 },
-  "dieffenbachia seguine": { archetype: "aroid", scale: 1.2 },
-  "caladium bicolor": { archetype: "aroid", scale: 0.4 },
+  /* Dumb cane: cream-mottled blade. Was shipping plain green. */
+  "dieffenbachia seguine": { archetype: "aroid", colors: { base: "#2f7d3a", accent: "#eff3dc", variegated: true }, scale: 1.2 },
+  /* Heart of Jesus: pink/white over green. Was shipping solid dark green. */
+  "caladium bicolor": { archetype: "aroid", colors: { base: "#2e7d32", accent: "#e8698f", variegated: true }, scale: 0.4 },
   "aglaonema?": null,
   "dracaena fragrans": { archetype: "rosetteBlades", opt: { cane: true, tall: 0.22 }, scale: 1.5 },
   "cordyline fruticosa": { archetype: "rosetteBlades", opt: { tall: 0.25 }, colors: { base: "#a0305a" }, scale: 1.2 },
-  "sansevieria trifasciata": { archetype: "rosetteBlades", opt: { tall: 0.28, edge: true }, scale: 0.6 },
+  /* Snake plant: pale cross-banding on stiff upright blades. */
+  "sansevieria trifasciata": { archetype: "rosetteBlades", opt: { tall: 0.28, edge: true }, colors: { base: "#2e6b3c", accent: "#cdd68a", variegated: true }, scale: 0.6 },
   "agave attenuata": { archetype: "rosetteBlades", opt: { tall: 0.2, n: 12 }, scale: 1 },
   "aloe vera": { archetype: "rosetteBlades", opt: { tall: 0.18 }, scale: 0.5 },
   "codiaeum variegatum": { archetype: "shrub", opt: { colorful: true }, scale: 1.5 },
@@ -651,6 +655,15 @@ function route(row, ctx) {
   const genus = ctx.genus;
   const fams = ctx.fams;
   const hasFam = (set) => fams.some((f) => set.has(f));
+  /*
+   * genusOf() lowercases. Every literal below is written the way a botanist or
+   * entomologist writes it, capitalised — and `isGenus("Oryctes")` is
+   * therefore always false. That trap has now been found three separate times
+   * in this file (the genus sets, the reptile list, and the beetle switch),
+   * each time silently disabling a whole branch. Compare through this and it
+   * cannot happen again.
+   */
+  const isGenus = (...name) => name.some((n) => n.toLowerCase() === genus);
 
   // explicit known override wins for archetype
   if (known?.archetype) return known.archetype;
@@ -667,8 +680,24 @@ function route(row, ctx) {
     return ["eutropis", "hemidactylus", "gehyra", "varanus"].includes(genus) ? "lizard" : "snake";
   }
   if (iconic === "Actinopterygii") return "fish";
-  if (iconic === "Arachnida") return "spider";
-  if (iconic === "Mollusca") return fams.includes("Veronicellidae") ? "snail" : "snail";
+  if (iconic === "Arachnida") {
+    /* spider-jumping and spider-spiny existed in the archetype table but
+       nothing ever returned them, so all 42 spiders got a hash-random body
+       unrelated to their family. */
+    if (fams.includes("Salticidae")) return "spider-jumping";
+    if (isGenus("Gasteracantha", "Thelacantha", "Macracantha")) return "spider-spiny";
+    if (fams.some((f) => ["Buthidae", "Chaerilidae", "Scorpionidae"].includes(f))) return "scorpion";
+    return "spider";
+  }
+  if (iconic === "Mollusca") {
+    /*
+     * This was `fams.includes("Veronicellidae") ? "snail" : "snail"` — a
+     * literal no-op. The slug branch was written and then returned the snail
+     * either way, so three shell-less leatherleaf slugs shipped WITH shells.
+     */
+    if (fams.some((f) => ["Veronicellidae", "Ariophantidae"].includes(f))) return "slug";
+    return "snail";
+  }
   if (iconic === "Fungi") {
     const order = ctx.order ?? "";
     // lichen-forming orders read better as mossy crusts than as mushrooms
@@ -689,14 +718,17 @@ function route(row, ctx) {
     if (STALKLESS_GENUS.has(genus)) return "mushroom-bracket";
     if (["Polyporales", "Hymenochaetales", "Gloeophyllales", "Corticiales", "Thelephorales", "Trechisporales"].includes(order)) return "mushroom-bracket";
     if (order === "Geastrales") return "mushroom-earthstar";
-    if (order === "Nidulariales" || order === "Agaricales" && genus === "Cyathus") return "mushroom-birdsnest";
+    if (order === "Nidulariales" || order === "Agaricales" && isGenus("Cyathus")) return "mushroom-birdsnest";
     if (order === "Auriculariales" || order === "Tremellales" || order === "Sebacinales") return "mushroom-jelly";
     if (["Clavariaceae"].some((f) => fams.includes(f)) || order === "Gomphales" || order === "Xylariales") return "mushroom-coral";
-    if (genus === "Lycoperdon" || order === "Hysterangiales" || order === "Phallales") return "mushroom-puffball";
+    if (isGenus("Lycoperdon") || order === "Hysterangiales" || order === "Phallales") return "mushroom-puffball";
     return "mushroom";
   }
   if (iconic === "Animalia") {
-    if (fams.some((f) => ["Trigoniulidae", "Paradoxosomatidae", "Rhinocricidae", "Harpagophoridae"].includes(f))) return "myriapod";
+    /* Pachybolidae and the Spirobolida order were missing, so two millipedes
+       fell through to insectGeneric — one of them shipped with wings. */
+    if (fams.some((f) => ["Trigoniulidae", "Paradoxosomatidae", "Rhinocricidae", "Harpagophoridae", "Pachybolidae", "Spirostreptidae", "Julidae"].includes(f))) return "myriapod";
+    if (["Spirobolida", "Spirostreptida", "Polydesmida", "Julida"].includes(ctx.order)) return "myriapod";
     if (fams.includes("Scutigeridae")) return "myriapod-house";
     if (fams.some((f) => ["Scolopendridae", "Cryptopidae", "Mecistocephalidae"].includes(f))) return "myriapod-centipede";
     if (fams.includes("Geoplanidae")) return "flatworm";
@@ -718,11 +750,14 @@ function route(row, ctx) {
         return ["Coenagrionidae", "Platycnemididae", "Isostictidae", "Lestidae"].includes(fam) ? "odonata-damsel" : "odonata";
       case "Hymenoptera":
         if (fam === "Formicidae") return "hymenoptera-ant";
-        if (fam === "Vespidae") return "hymenoptera-wasp";
+        /* Only Vespidae counted as a wasp, so Scoliidae, Sphecidae,
+           Pompilidae and Crabronidae all fell through to "bee" — including a
+           species whose common name is literally "spider-hunting wasp". */
+        if (["Vespidae", "Scoliidae", "Sphecidae", "Pompilidae", "Crabronidae", "Ichneumonidae", "Braconidae"].includes(fam)) return "hymenoptera-wasp";
         return "hymenoptera-bee";
       case "Coleoptera":
         if (fam === "Coccinellidae") return "coleoptera-ladybird";
-        if (genus === "Oryctes" || genus === "Xylotrupes") return "coleoptera-rhino";
+        if (isGenus("Oryctes", "Xylotrupes")) return "coleoptera-rhino";
         if (fam === "Cerambycidae") return "coleoptera-longhorn";
         if (fam === "Curculionidae") return "coleoptera-weevil";
         return "coleoptera";
@@ -771,9 +806,9 @@ function route(row, ctx) {
     if (bySpecies) return bySpecies;
 
     if (ORCHID_FAM.has(fams[0]) || hasFam(ORCHID_FAM)) return "orchid";
-    if (genus === "Cycas") return "cycad";
-    if (genus === "Pandanus" || genus === "Freycinetia") return "pandanus";
-    if (hasFam(PALM_FAM) || genus === "Roystonea" || genus === "Cocos") return "palm";
+    if (isGenus("Cycas")) return "cycad";
+    if (isGenus("Pandanus", "Freycinetia")) return "pandanus";
+    if (hasFam(PALM_FAM) || isGenus("Roystonea", "Cocos")) return "palm";
 
     /*
      * Cladophora columbiana is a marine green ALGA, not a plant — it was
@@ -792,16 +827,16 @@ function route(row, ctx) {
     if (SUCCULENT_GENUS.has(genus)) return "succulent";
     if (BAMBOO_GENUS.has(genus)) return "grass-bamboo";
     if (hasFam(BANANA_FAM)) return "bananaKind";
-    if (genus === "Carica") return "papaya";
-    if (genus === "Ficus") return "tree-balete";
+    if (isGenus("Carica")) return "papaya";
+    if (isGenus("Ficus")) return "tree-balete";
     if (TREE_GENUS.has(genus)) return "tree";
     if (AROID_GENUS.has(genus)) return "aroid";
     if (CANE_GENUS.has(genus)) return "rosetteBlades";
     if (VINE_GENUS.has(genus)) return "vine";
     if (hasFam(CACTUS_FAM)) return "cactus";
     if (hasFam(SUCCULENT_FAM)) return "succulent";
-    if (genus === "Euphorbia" && /(tirucalli|trigona|milii|antiquorum|neriifolia|lactea|ingens)/.test(sci)) return "cactus";
-    if (hasFam(WATER_FAM) || genus === "Ludwigia" || genus === "Marsilea") return "waterPlant";
+    if (isGenus("Euphorbia") && /(tirucalli|trigona|milii|antiquorum|neriifolia|lactea|ingens)/.test(sci)) return "cactus";
+    if (hasFam(WATER_FAM) || isGenus("Ludwigia", "Marsilea")) return "waterPlant";
     if (hasFam(FERN_FAM)) return "fern";
     if (hasFam(MOSS_FAM)) return "moss";
     if (hasFam(GRASS_FAM)) return "grass";
@@ -854,6 +889,11 @@ const ARCH = {
   "spider-spiny": { fn: fauna.spider, opt: { kind: "spiny" }, scale: 0.015 },
   scorpion: { fn: fauna.scorpion, scale: 0.06 },
   snail: { fn: fauna.snail, opt: { kind: "round" }, scale: 0.05 },
+  /* Shell-less. The builder does not yet draw a slug — it ignores the unknown
+     kind and renders a snail, which is exactly what shipped before — so this
+     is wired and inert rather than wrong, and turns on the moment fauna.snail
+     learns `kind: "slug"`. */
+  slug: { fn: fauna.snail, opt: { kind: "slug" }, scale: 0.05 },
   myriapod: { fn: fauna.myriapod, opt: { kind: "millipede" }, scale: 0.045 },
   "myriapod-centipede": { fn: fauna.myriapod, opt: { kind: "centipede" }, scale: 0.09 },
   "myriapod-house": { fn: fauna.myriapod, opt: { kind: "house-centipede" }, scale: 0.05 },
