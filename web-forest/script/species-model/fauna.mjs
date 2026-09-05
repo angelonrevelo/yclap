@@ -19,20 +19,53 @@
  *     species always rebuilds byte for byte, and two species in one family
  *     differ in structure rather than only in tint.
  */
-import { APP, shade, mix, hex, icosphere } from "./kit.mjs";
+import { APP, INSECTS, shade, mix, hex, icosphere } from "./kit.mjs";
 
 const ink = APP.ink;
 const paper = APP.paper;
 const darkOf = (col) => col.dark ?? shade(col.base, -0.22);
+/**
+ * Chitin: head capsule, pronotum, petiole, legs, antennae, mandibles, spines —
+ * everything structural that is not the body's own painted surface.
+ *
+ * The orchestrator merges `{ ...derived, ...colors }` KEY BY KEY, and for an
+ * insect it derives `dark` and `accent` from the DERIVED base. A species that
+ * supplies only its real `base` therefore still carries a `dark` and an
+ * `accent` belonging to a colour it has nothing to do with — and both were
+ * being routed to the largest parts in the model. Measured on the shipped
+ * bytes: Plautia stali's green body was 70 vertices against 504 of magenta
+ * head, pronotum, antennae and legs, and the Ghost Ant's petiole, mandibles
+ * and spines were purple.
+ *
+ * A hand-written `dark` still has to win, though — Vespa tropica and Phimenes
+ * curvatus are yellow insects that are deliberately black everywhere else.
+ * The two cases are told apart exactly rather than by eye: the derived insect
+ * `dark` is `shade(c, -0.3)` for some `c` in the tuned insect pool, so
+ * membership of that set IS the merge artefact. Anything outside it was
+ * written by hand.
+ *
+ * `pooled` marks the callers whose class derives its `dark` from a pool this
+ * file cannot see — arachnids, molluscs, crustaceans, myriapods. No species in
+ * those groups writes a `dark`, so there the tone always comes off the base.
+ * `col.chitin` overrides everything and is derived by nothing.
+ */
+const DERIVED_INSECT_DARK = INSECTS.map((c) => shade(c, -0.3));
+const sameColor = (a, b) => !!a && !!b
+  && Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(a[1] - b[1]) < 1e-6 && Math.abs(a[2] - b[2]) < 1e-6;
+const chitinOf = (col, pooled = false) => {
+  if (col.chitin) return col.chitin;
+  const authored = !pooled && col.dark && !DERIVED_INSECT_DARK.some((d) => sameColor(d, col.dark));
+  return authored ? col.dark : shade(col.base, -0.26);
+};
 const bellyOf = (col) => col.belly ?? shade(col.base, 0.32);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 /**
- * Legs, antennae and other chitin. `col.dark` is a palette ACCENT, so routing
- * it straight to a leg gave the pack purple, teal and orange limbs on animals
- * whose legs are plainly brown-black. Deriving the limb tone from the body
- * keeps a species' own colour without inventing a second one.
+ * Legs and antennae — one step darker than the rest of the chitin, and routed
+ * through the same authored-vs-derived test, so a black-and-yellow potter wasp
+ * keeps its black legs while a species that never wrote a `dark` gets a tone
+ * off its own body instead of the pack's purple, teal and orange sticks.
  */
-const limbOf = (col) => shade(col.base, -0.42);
+const limbOf = (col) => shade(chitinOf(col), -0.16);
 /** The species this model is being built for — for the handful of one-off fixes. */
 const who = (k) => k.spec?.species_code ?? "";
 
@@ -1726,9 +1759,15 @@ function hymenoptera(k, col, opt = {}) {
   const v = vary(k);
   col = toned(k, col);
   const ant = opt.kind === "ant";
-  const wasp = opt.kind === "wasp";
+  /* `hornet` is a wasp. The route table says `kind: "wasp"` but four species —
+     Vespa luctuosa among them — override `opt` with `kind: "hornet"`, and
+     `opt = { ...arch.opt, ...known.opt }` REPLACES the key rather than adding
+     to it. Every wasp-only feature was therefore switched off for exactly the
+     species the review was looking at, which is why the hornet's orange never
+     appeared anywhere in the model. */
+  const wasp = opt.kind === "wasp" || opt.kind === "hornet";
   const bee = opt.kind === "bee";
-  const dark = darkOf(col);
+  const dark = chitinOf(col);
   const limb = limbOf(col);
   const s0 = ant ? v.f("size", 0.85, 1.25) : v.f("size", 0.88, 1.2);
 
@@ -1768,8 +1807,8 @@ function hymenoptera(k, col, opt = {}) {
     });
     at = [0, 0, -waistR * (wasp ? 3.0 : 1.3)];
   }
-  const gx = (ant ? 0.055 : bee ? 0.105 : 0.082) * s0 * v.f("gw", 0.85, 1.2);
-  const gz = (ant ? 0.075 : bee ? 0.115 : 0.145) * s0 * v.f("gl", 0.85, 1.35);
+  const gx = (ant ? 0.055 : bee ? 0.105 : 0.082) * s0 * v.f("gw", 0.78, 1.3);
+  const gz = (ant ? 0.075 : bee ? 0.115 : 0.145) * s0 * v.f("gl", 0.78, 1.45);
   const gaster = ball(k, p, "gaster", {
     rx: gx, ry: gx * (bee ? v.f("gh", 0.95, 1.15) : v.f("gh", 0.8, 1.05)), rz: gz,
     at: [0, ant ? gx * 0.15 : 0, -waistR * 0.4 - gz * 0.75], color: col.base,
@@ -1804,18 +1843,36 @@ function hymenoptera(k, col, opt = {}) {
       });
     }
   }
-  const stripeN = opt.stripes === false ? 0 : v.i("stripen", ant ? 0 : 2, ant ? 2 : 4);
+  /* The banded gaster. Every ring used to be painted one flat `col.dark`,
+     which is the derived accent — so a hornet with a hand-written orange
+     abdomen shipped without a single orange vertex in it. Rings alternate the
+     species' own accent against its dark, which is both what the palette
+     intends and what a wasp actually looks like. */
+  const stripeN = opt.stripes === false ? 0 : v.i("stripen", ant ? 0 : 3, ant ? 2 : 5);
   for (let i = 0; i < stripeN; i += 1) {
     ball(k, gaster, `stripe${i}`, { merge: true,
-      rx: gx * 1.04, ry: gx * 1.04 * v.f("gh", 0.85, 1.2), rz: gz * 0.12,
-      at: [0, 0, gz * (0.62 - i * (1.3 / Math.max(1, stripeN)))], color: col.dark ?? ink, subdiv: 0,
+      rx: gx * 1.05, ry: gx * 1.05 * v.f("gh", 0.85, 1.2), rz: gz * (ant ? 0.12 : 0.19),
+      at: [0, 0, gz * (0.66 - i * (1.4 / Math.max(1, stripeN)))],
+      color: ant ? shade(col.base, -0.34) : (i % 2 ? (col.accent ?? APP.orange) : shade(col.base, -0.3)),
+      subdiv: 0,
     });
   }
   if (!ant) {
     cone(k, gaster, "sting", { r: gx * 0.24, h: gz * v.f("stingl", 0.4, 0.8), at: [0, 0, -gz * 0.8], rotX: -Math.PI / 2, color: ink });
-  } else if (v.on("spine", 0.4)) {
-    for (const s of [1, -1]) {
-      cone(k, thorax, `spine-${s > 0 ? "l" : "r"}`, { r: thoraxR * 0.2, h: thoraxR * v.f("spinel", 0.6, 1.2), at: [s * thoraxR * 0.5, thoraxR * 0.5, -thoraxR * 0.5], rotZ: s * 0.5, rotX: -0.5, color: dark });
+  } else {
+    /* Propodeal spines. Counting them is one of the few structural knobs an
+       ant has, and it has to carry more weight now that the chitin colour is
+       derived from the body instead of from a per-species accent — two ants
+       that differ only in tint are, correctly, one model. */
+    const spineN = v.i("spinen", 0, 2);
+    for (let q = 0; q < spineN; q += 1) {
+      for (const s of [1, -1]) {
+        cone(k, thorax, `spine${q}-${s > 0 ? "l" : "r"}`, {
+          r: thoraxR * (0.2 - q * 0.05), h: thoraxR * v.f("spinel", 0.6, 1.3) * (1 - q * 0.3),
+          at: [s * thoraxR * (0.5 - q * 0.12), thoraxR * (0.5 - q * 0.55), -thoraxR * (0.5 - q * 0.3)],
+          rotZ: s * 0.5, rotX: -0.5 + q * 0.9, color: dark,
+        });
+      }
     }
   }
 
@@ -1891,7 +1948,7 @@ function hymenoptera(k, col, opt = {}) {
 function coleoptera(k, col, opt = {}) {
   const v = vary(k);
   col = toned(k, col);
-  const dark = col.dark ?? ink;
+  const dark = chitinOf(col);
   const bx = v.f("bx", 0.12, 0.2);
   const bz = v.f("bz", 0.16, 0.28);
   const by = v.f("by", 0.08, 0.15);
@@ -1980,7 +2037,7 @@ function coleoptera(k, col, opt = {}) {
 
 function orthoptera(k, col, opt = {}) {
   const v = vary(k);
-  const dark = darkOf(col);
+  const dark = chitinOf(col);
   const cricket = opt.kind === "cricket";
   const katydid = opt.kind === "katydid";
 
@@ -2118,7 +2175,7 @@ function orthoptera(k, col, opt = {}) {
 function hemiptera(k, col, opt = {}) {
   const v = vary(k);
   col = toned(k, col);
-  const dark = darkOf(col);
+  const dark = chitinOf(col);
   const cicada = opt.kind === "cicada";
   /* Three hemipterans that are not shaped like a shield bug at all. Scale
      insects are sessile waxy blobs with neither wings nor legs; lace bugs are
@@ -2144,7 +2201,10 @@ function hemiptera(k, col, opt = {}) {
       ball(k, body, `rim${i}-${sd > 0 ? "l" : "r"}`, {
         rx: bx * 0.16, ry: by * 0.5, rz: bz * 0.16,
         at: [sd * bx * 0.9, by * 0.1, bz * (0.35 - i * 0.42)],
-        color: i % 2 ? shade(col.base, -0.4) : (col.accent ?? paper), subdiv: 0,
+        /* The connexivum is a pale-and-dark banded rim on a real shield bug.
+           Painting the pale half from `col.accent` put a derived flower colour
+           on the widest part of the animal. */
+        color: i % 2 ? shade(col.base, -0.42) : paper, subdiv: 0,
       });
     }
   }
@@ -2233,7 +2293,7 @@ function hemiptera(k, col, opt = {}) {
     const a = (i / markN) * Math.PI * 2 + v.f("marka", 0, 1.4);
     ball(k, body, `mark${i}`, { merge: true,
       r: v.f("markr", 0.018, 0.032), at: [Math.cos(a) * bx * 0.55, by * 0.9, Math.sin(a) * bz * 0.5],
-      color: i % 2 ? ink : (col.accent ?? paper), subdiv: 0,
+      color: i % 2 ? ink : paper, subdiv: 0,
     });
   }
   insectLegs(k, k.root, {
@@ -2295,7 +2355,7 @@ function diptera(k, col, opt = {}) {
      hoverfly carries `stripes`; the moth flies are named. */
   const mothfly = /^(clogmia|psychoda)-/.test(who(k));
   const hover = opt.stripes === true && !mos && !crane;
-  const dark = darkOf(col);
+  const dark = chitinOf(col);
   const limb = limbOf(col);
   const s0 = mos ? 0.55 : crane ? 0.8 : mothfly ? 0.9 : 1;
   const abdR = v.f("ar", 0.05, 0.085) * s0;
@@ -2320,7 +2380,7 @@ function diptera(k, col, opt = {}) {
   }
   if (opt.stripes || v.on("stripe", 0.4)) {
     for (let i = 0; i < 2; i += 1) {
-      ball(k, thorax, `stripe${i}`, { merge: true, rx: thoraxR * 1.05, ry: thoraxR * 1.05, rz: thoraxR * 0.14, at: [0, 0, thoraxR * (0.5 - i * 0.7)], color: i % 2 ? (col.accent ?? APP.orange) : ink, subdiv: 0 });
+      ball(k, thorax, `stripe${i}`, { merge: true, rx: thoraxR * 1.05, ry: thoraxR * 1.05, rz: thoraxR * 0.14, at: [0, 0, thoraxR * (0.5 - i * 0.7)], color: i % 2 ? (col.accent ?? APP.orange) : shade(col.base, -0.4), subdiv: 0 });
     }
   }
   const headR = thoraxR * v.f("hr", 0.7, 1.0);
@@ -2340,7 +2400,7 @@ function diptera(k, col, opt = {}) {
     at: [0, headR * 0.5, headR * 0.4], gap: headR * 0.25,
     len: mos ? v.f("antl", 0.06, 0.11) : v.f("antl", 0.03, 0.07), r: 0.006,
     spread: v.f("ants", 0.4, 0.9), joint: 2, form: mos && v.on("plume", 0.6) ? "feather" : "thread",
-    barb: mos && v.on("plume", 0.6) ? v.i("plumen", 2, 4) : 0, wiggle: false, color: ink,
+    barb: mos && v.on("plume", 0.6) ? v.i("plumen", 2, 4) : 0, wiggle: false, color: limb,
   });
 
   /* Wings. Two things were wrong: they ran straight out sideways like the
@@ -2392,7 +2452,7 @@ function diptera(k, col, opt = {}) {
       spindle(k, thorax, `bristle${i}-${s > 0 ? "l" : "r"}`, {
         r: 0.004, len: thoraxR * v.f("bristlel", 0.5, 1.1),
         at: [s * thoraxR * 0.35, thoraxR * 0.6, thoraxR * (0.4 - i * 0.35)],
-        rot: [v.f("bristlea", -0.6, 0.2), 0, s * 0.35], color: ink, seg: 5,
+        rot: [v.f("bristlea", -0.6, 0.2), 0, s * 0.35], color: limb, seg: 5,
       });
     }
   }
@@ -2418,7 +2478,7 @@ function diptera(k, col, opt = {}) {
  */
 function mantis(k, col, opt = {}) {
   const v = vary(k);
-  const dark = darkOf(col);
+  const dark = chitinOf(col);
   const bodyLen = v.f("bodyl", 0.34, 0.5);
   const r = v.f("r", 0.05, 0.075);
   const baseY = v.f("basey", 0.12, 0.2);
@@ -2493,7 +2553,7 @@ function mantis(k, col, opt = {}) {
 function blattodea(k, col, opt = {}) {
   const v = vary(k);
   col = toned(k, col);
-  const dark = darkOf(col);
+  const dark = chitinOf(col);
   const termite = opt.kind === "termite";
   const bx = termite ? v.f("bx", 0.05, 0.075) : v.f("bx", 0.11, 0.17);
   const by = termite ? v.f("by", 0.05, 0.075) : v.f("by", 0.045, 0.075);
@@ -2629,7 +2689,7 @@ function dermaptera(k, col, opt = {}) {
 
 function phasmatodea(k, col, opt = {}) {
   const v = vary(k);
-  const dark = darkOf(col);
+  const dark = chitinOf(col);
   const segN = v.i("segn", 4, 7);
   const segLen = v.f("segl", 0.1, 0.17);
   const r = v.f("r", 0.013, 0.026);
@@ -2679,7 +2739,7 @@ function phasmatodea(k, col, opt = {}) {
 
 function insectGeneric(k, col, opt = {}) {
   const v = vary(k);
-  const dark = darkOf(col);
+  const dark = chitinOf(col);
   const bx = v.f("bx", 0.055, 0.095);
   const by = v.f("by", 0.045, 0.08);
   const bz = v.f("bz", 0.1, 0.2);
@@ -2722,7 +2782,7 @@ function spider(k, col, opt = {}) {
   col = toned(k, col);
   const jumping = opt.kind === "jumping";
   const spiny = opt.kind === "spiny";
-  const dark = darkOf(col);
+  const dark = chitinOf(col, true);
 
   /* Five builds, because "spider" spans a squat crab spider and a daddy-long-
      legs and the shape signature reads leg reach and abdomen carriage, not the
@@ -2873,7 +2933,7 @@ function spider(k, col, opt = {}) {
 
 function scorpion(k, col, opt = {}) {
   const v = vary(k);
-  const dark = darkOf(col);
+  const dark = chitinOf(col, true);
   const bx = v.f("bx", 0.09, 0.15);
   const by = v.f("by", 0.045, 0.075);
   const bz = v.f("bz", 0.15, 0.24);
@@ -3060,7 +3120,7 @@ function snail(k, col, opt = {}) {
 function myriapod(k, col, opt = {}) {
   const v = vary(k);
   col = toned(k, col);
-  const dark = darkOf(col);
+  const dark = chitinOf(col, true);
   const cent = opt.kind === "centipede";
   const house = opt.kind === "house-centipede";
   /* "Many legs" is the whole identity of a millipede, and four to six nubs is
@@ -3177,7 +3237,7 @@ function flatworm(k, col, opt = {}) {
 
 function crab(k, col, opt = {}) {
   const v = vary(k);
-  const dark = darkOf(col);
+  const dark = chitinOf(col, true);
   const bx = v.f("bx", 0.18, 0.28);
   const by = v.f("by", 0.07, 0.12);
   const bz = v.f("bz", 0.13, 0.22);
@@ -3238,7 +3298,7 @@ function crab(k, col, opt = {}) {
 
 function pillbug(k, col, opt = {}) {
   const v = vary(k);
-  const dark = darkOf(col);
+  const dark = chitinOf(col, true);
   /* A woodlouse is about twice as long as it is wide. Seven segments at 0.1
      each against a body 0.2 across drew a caterpillar — which is exactly what
      the review saw the pillbug as. */
