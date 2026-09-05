@@ -460,6 +460,9 @@ class Plant {
     this.budget = Math.max(38, Math.round(1500 / (this.plan.P - 1)));
     this.tri = 0;
     this.triCap = 2400;
+    /* Where the faces are, so finish() can undo the silhouette scaling on them
+       — see the note there. */
+    this.faceMark = [];
     this.allowance = Infinity;
   }
 
@@ -621,6 +624,30 @@ class Plant {
         f = fit();
       }
     }
+    /*
+     * The face, and only the face, is exempt from the silhouette scaling.
+     * body.scale is deliberately anisotropic — that is how a plan's aspect is
+     * met — and a plant stretched nineteen to one in x crushed its face into a
+     * letterbox one half of one per cent as deep as it was wide. Scaling the
+     * face back to isotropic about its own seat point costs the silhouette
+     * nothing (a face is a few per cent of the model) and is the difference
+     * between eyes with depth and eyes that vanish edge-on.
+     */
+    const iso = Math.min(f.sx, H, f.sz);
+    const kx = iso / f.sx, ky = iso / H, kz = iso / f.sz;
+    if (Math.abs(kx - 1) > 0.01 || Math.abs(ky - 1) > 0.01 || Math.abs(kz - 1) > 0.01) {
+      for (const m of this.faceMark) {
+        for (let i = m.from; i < m.to; i += 1) {
+          const part = m.node.parts[i];
+          if (!part) continue;
+          part.positions = part.positions.map((q) => [
+            m.at[0] + (q[0] - m.at[0]) * kx,
+            m.at[1] + (q[1] - m.at[1]) * ky,
+            m.at[2] + (q[2] - m.at[2]) * kz,
+          ]);
+        }
+      }
+    }
     this.body.scale = [f.sx, H, f.sz];
     this.body.at = [-((f.lo[0] + f.hi[0]) / 2) * f.sx, 0, -((f.lo[2] + f.hi[2]) / 2) * f.sz];
   }
@@ -633,25 +660,82 @@ class Plant {
  * Discs, not spheres: an eye is read head-on, and a disc is 32 triangles where
  * a smooth ball is 80. The whole face lands around 230.
  */
-function addFace(p, node, { at = [0, 0, 0], r, yaw = 0, tri = 400 }) {
-  const rich = tri >= 300;
+/** Colour of whichever geometry already in this node sits closest to `at`. */
+function hostColorAt(node, at) {
+  let best = Infinity;
+  let col = null;
+  for (const part of node.parts) {
+    if (part.color === undefined || part.color === null) continue;
+    for (const q of part.positions) {
+      const d = (q[0] - at[0]) ** 2 + (q[1] - at[1]) ** 2 + (q[2] - at[2]) ** 2;
+      if (d < best) { best = d; col = part.color; }
+    }
+  }
+  return col;
+}
+
+/**
+ * The kawaii face, merged into whichever part carries it — costs no part slot.
+ * Discs, not spheres: an eye is read head-on, and a disc is 32 triangles where
+ * a smooth ball is 80.
+ *
+ * Two things the first pass got wrong, both reported by eye on a papaya and
+ * both now gated:
+ *
+ *  - the face HOVERED. Callers pass `at` as a point on the host's surface and
+ *    the face then pushed itself a further 0.92·r straight out along its own
+ *    facing direction, so the eyes floated in front of the trunk. On a tree
+ *    that measured a tenth of the whole model.
+ *  - the face was a PLANE. Every disc sat on one flat sheet, so edge-on it
+ *    disappeared entirely.
+ *
+ * The fix for both is the same object: a shallow patch of the host's own
+ * colour, seated at `at` and mostly buried in it, that the features are then
+ * laid onto. The patch gives the face something to rest against (so it is
+ * never measurably off the body, whatever the host's vertex spacing) and its
+ * curvature gives the face real depth. It reads as a cheek.
+ */
+function addFace(p, node, { at = [0, 0, 0], r, yaw = 0, tri = 400, skin = null }) {
+  const rich = tri >= 260;
   const eyeR = r * 0.44;
   const cy = Math.cos(yaw), sy = Math.sin(yaw);
-  const rot = (x, z) => [x * cy + z * sy, -x * sy + z * cy];
-  const put = (geo, o) => p.add(node, xf(geo, { rx: Math.PI / 2, ry: yaw, ...o, at: [at[0] + o.at[0], at[1] + o.at[1], at[2] + o.at[2]] }), { color: o.color });
+  const dir = [sy, 0, cy];       // outward, the way the face looks
+  const right = [cy, 0, -sy];
+
+  const A = r * 1.3, B = r * 0.98, C = r * 0.5;   // patch semi-axes
+  const sink = C * 0.55;                          // how far it is buried
+  /* Never paper, ink or blush: those three exact values are how the audit
+     tells a face from a body, and a body-sized patch in one of them would
+     read as a face the size of the plant. A shade of the host is also just a
+     nicer cheek. */
+  const skinCol = shade(skin ?? hostColorAt(node, at) ?? APP.greenDeep, -0.07);
+  const from = node.parts.length;
+  p.add(node, xf(sphereGeo(rich ? 10 : 9, 5), {
+    sx: A, sy: B, sz: C, ry: yaw,
+    at: [at[0] - dir[0] * sink, at[1], at[2] - dir[2] * sink],
+  }), { color: skinCol });
+
+  /** Where a tangential offset (u right, w up, both in units of r) lands ON the patch. */
+  const onPatch = (u, w, lift = 0) => {
+    const su = (u * r) / A, sw = (w * r) / B;
+    const d = Math.sqrt(Math.max(0.05, 1 - su * su - sw * sw));
+    const depth = C * d - sink + lift;
+    return [at[0] + right[0] * u * r + dir[0] * depth, at[1] + w * r, at[2] + right[2] * u * r + dir[2] * depth];
+  };
+  const put = (geo, { u, w, lift = 0, color, sz = 1 }) =>
+    p.add(node, xf(geo, { sz, rx: Math.PI / 2, ry: yaw, at: onPatch(u, w, lift) }), { color });
+
   for (const side of [1, -1]) {
-    const [ex, ez] = rot(side * r * 0.52, r * 0.92);
-    put(discGeo(eyeR, r * 0.05, 8), { sz: 1.35, at: [ex, r * 0.12, ez], color: paper });
-    put(discGeo(eyeR * 0.52, r * 0.04, 7), { sz: 1.3, at: [ex, r * 0.08, ez + r * 0.05], color: ink });
+    put(discGeo(eyeR, r * 0.17, 8), { u: side * 0.5, w: 0.12, sz: 1.3, color: paper });
+    put(discGeo(eyeR * 0.52, r * 0.11, 7), { u: side * 0.5, w: 0.08, lift: r * 0.14, sz: 1.25, color: ink });
     if (!rich) continue;
-    const [kx, kz] = rot(side * r * 0.52 + r * 0.1, r * 1.02);
-    put(discGeo(eyeR * 0.24, r * 0.03, 5), { at: [kx, r * 0.25, kz], color: paper });
-    const [bx, bz] = rot(side * r * 1.0, r * 0.6);
-    put(discGeo(r * 0.2, r * 0.03, 6), { sz: 0.6, at: [bx, -r * 0.24, bz], color: BLUSH });
+    put(discGeo(eyeR * 0.24, r * 0.07, 5), { u: side * 0.62, w: 0.26, lift: r * 0.2, color: paper });
+    put(discGeo(r * 0.2, r * 0.07, 6), { u: side * 1.02, w: -0.24, sz: 0.6, color: BLUSH });
   }
-  const [mx, mz] = rot(0, r * 0.96);
-  p.add(node, xf(arcTubeGeo({ R: r * 0.3, r: r * 0.055, a0: Math.PI * 0.74, a1: Math.PI * 1.26, segs: 5, ring: 4 }),
-    { rx: Math.PI / 2, ry: yaw, at: [at[0] + mx, at[1] - r * 0.16, at[2] + mz] }), { color: ink });
+  const m = onPatch(0, -0.16, r * 0.05);
+  p.add(node, xf(arcTubeGeo({ R: r * 0.3, r: r * 0.06, a0: Math.PI * 0.74, a1: Math.PI * 1.26, segs: 5, ring: 5 }),
+    { rx: Math.PI / 2, ry: yaw, at: m }), { color: ink });
+  p.faceMark.push({ node, from, to: node.parts.length, at });
 }
 
 /**
@@ -705,14 +789,14 @@ function addLeaf(p, node, o) {
       const ll = body * (form === "frond" ? 0.52 : 0.44) * (1 - 0.5 * Math.abs(t - 0.42));
       for (const s of [1, -1]) blade(ll, wid * 0.46, form === "frond" ? "linear" : shape, [0, 0, petLen + t * body], s * (1.05 + 0.25 * t), each, -0.15 * ll);
     }
-  } else if (form === "ladder" && left >= 90) {
+  } else if (form === "ladder" && left >= 44) {
     /* A sword fern: one long rachis carrying MANY small paired pinnae. The
        generic pinnate form tops out at nine leaflets and spends its whole
        budget on them, which draws Nephrolepis as a broad undivided slab — and
        the pinnate ladder is the entire identity of the genus. */
     geos.push(xf(tubeGeo(th * 0.55, th * 0.25, body, 5), { rx: Math.PI / 2, at: [0, 0, petLen] }));
     left -= 20;
-    const nlf = Math.max(5, Math.min(13, Math.floor(left / 34)));
+    const nlf = Math.max(3, Math.min(13, Math.floor(left / 28)));
     const each = left / (nlf * 2);
     for (let i = 0; i < nlf; i += 1) {
       const t = (i + 0.55) / (nlf + 0.25);
@@ -1173,41 +1257,92 @@ function papaya(k, col) {
   });
 }
 
+/**
+ * Palms. The complaints, in order of how much of the family they spoil:
+ *
+ *   - the trunk was a short fat barrel one to two crown-widths tall. Cocos,
+ *     Roystonea, Elaeis, Archontophoenix and Areca are tall COLUMNS; that
+ *     proportion is most of what makes a palm a palm.
+ *   - the crown shaft was a fat opaque green tube capping the stump, so about
+ *     nine of them had a dome where the fronds should be. It is now slim and
+ *     short, and the axis is carried to full height by the unopened SPEAR
+ *     leaf, which is what actually sticks up out of a palm crown.
+ *   - Livistona and Licuala are FAN palms and were drawn pinnate; Licuala is
+ *     one circular pleated disc. Caryota is a fishtail and had no fishtail.
+ *     Rhapis is a clump of thin reed canes.
+ */
+const PALM_TALL = new Set((
+  "cocos roystonea elaeis archontophoenix areca adonidia wodyetia veitchia " +
+  "syagrus washingtonia sabal borassus corypha livistona"
+).split(" "));
+const PALM_FAN = new Set("livistona licuala rhapis washingtonia sabal corypha borassus trachycarpus".split(" "));
+const PALM_CLUMP = new Set("rhapis chrysalidocarpus dypsis chamaedorea arenga ptychosperma caryota".split(" "));
+
 function palm(k, col, opt = {}) {
+  const g = genusOf(k);
+  const fan = PALM_FAN.has(g) || !!opt.fan;
+  const disc = g === "licuala";
+  const fishtail = g === "caryota" || !!opt.fishtail;
+  const clump = PALM_CLUMP.has(g) || !!opt.clump;
+  const reed = g === "rhapis";
+  const bottle = g === "hyophorbe";
+  const tall = PALM_TALL.has(g) ? 1 : reed || g === "chamaedorea" ? 0 : 0.45;
+
   grow(k, col, {
-    salt: "palm:" + (opt.fishtail ? "f" : "") + (opt.clump ? "c" : ""),
+    salt: `palm:${fan ? "f" : ""}${disc ? "d" : ""}${fishtail ? "t" : ""}${clump ? "c" : ""}${tall}`,
     upright: true,
     axSet: ASPECT_CROWN,
     azSet: ASPECT_CROWN,
-    // a crown-tufted plant carries its leaves at the top, so band 3 is left
-    // to the axis alone and the foliage units can only land in 4 and 5
-    height: (pl) => 0.8 + pl.u("size") * 0.5,
+    height: (pl) => (0.8 + pl.u("size") * 0.5) * (1 + tall * 0.28),
+    /* A palm carries eight to twenty fronds, not thirty-two, and the
+       difference is what pays for each of them to be a divided FROND rather
+       than the broad undivided blade a 48-triangle budget can afford. */
+    pLevel: [8, 12, 16, 20],
     breathe: 0.012,
     sway: 0.04,
     bands: [0, 1, 2, 4, 5],
     spine(p, pl) {
+      pl.fan = fan; pl.disc = disc; pl.fishtail = fishtail; pl.clump = clump; pl.reed = reed;
       pl.anchorColor = pl.pal.deep;
+      /* A columnar palm carries three quarters of its height as bare trunk.
+         The first pass topped out at 0.8 of ONE unit and then let the crown
+         shaft eat half of that. */
+      pl.trunkH = reed ? 0.52 + pl.u("th") * 0.1 : 0.5 + tall * 0.26 + pl.u("th") * 0.12;
+      pl.r0 = (reed ? 0.014 : 0.019 + pl.u("tr") * 0.016) * (1 - tall * 0.22);
       p.spine("trunk", (node) => {
         const tr = trunkOf(col);
-        const trunkH = 0.46 + pl.u("th") * 0.34;
-        const r0 = 0.024 + pl.u("tr") * 0.026;
-        p.add(node, xf(tubeGeo(r0 * 1.35, r0 * (0.7 + pl.u("tp") * 0.35), trunkH, 12)),
+        const { trunkH, r0 } = pl;
+        p.add(node, xf(tubeGeo(r0 * (bottle ? 2.1 : 1.3), r0 * (bottle ? 0.55 : 0.82 + pl.u("tp") * 0.16), trunkH, 12, bottle ? r0 * 1.5 : 0)),
           { color: tr, colorFn: grad(shade(tr, 0.14), shade(tr, -0.22), 0, trunkH) });
-        const rings = 3 + (pl.H("rg") % 5);
+        const rings = 4 + (pl.H("rg") % 6);
         for (let i = 1; i <= rings; i += 1) {
-          p.add(node, xf(discGeo(r0 * 1.15, r0 * 0.16, 9), { at: [0, (i / (rings + 1)) * trunkH, 0] }), { color: shade(tr, -0.22) });
+          p.add(node, xf(discGeo(r0 * 1.12, r0 * 0.14, 9), { at: [0, (i / (rings + 1)) * trunkH, 0] }), { color: shade(tr, -0.22) });
         }
-        // the crown shaft carries the axis part to the model's full height
-        p.add(node, xf(tubeGeo(r0 * 1.5, r0 * 0.8, 1 - trunkH, 11), { at: [0, trunkH, 0] }), { color: pl.pal.deep });
-        addFace(p, node, { at: [0, trunkH * 0.8, r0 * 1.2], r: Math.max(0.032, r0 * 1.5), tri: p.budget * 8 });
+        // a SLIM crown shaft — not the opaque green barrel that was capping
+        // the stump and standing in for the whole crown
+        const cs = Math.min(0.13, (1 - trunkH) * 0.32);
+        p.add(node, xf(tubeGeo(r0 * 1.12, r0 * 0.7, cs, 11), { at: [0, trunkH, 0] }), { color: mix(pl.pal.deep, pl.pal.leaf, 0.35) });
+        // the unopened spear leaf carries the axis to full height, the way it
+        // actually sticks out of a palm crown
+        p.add(node, xf(bladeGeo({ len: 1 - trunkH - cs, wid: r0 * 1.5, thick: r0 * 0.7, shape: "needle", rows: 4, ring: 6, bend: 0.04 }),
+          { rx: -Math.PI / 2 + 0.1, at: [0, trunkH + cs, 0] }), { color: pl.pal.deep });
+        addFace(p, node, { at: [0, trunkH * 0.62, r0 * 1.25], r: Math.max(0.03, r0 * 1.5), tri: p.budget * 8 });
       });
     },
     slot(p, pl, s) {
       const { node, band, a } = s;
       if (band <= 1) {
         const br = baseReach(pl, 0.36);
-        if (opt.clump) {
-          p.add(node, xf(tubeGeo(br * 0.34, br * 0.22, br * 2.6, 9), { rz: -Math.cos(a) * 0.2, rx: Math.sin(a) * 0.2 }), { color: trunkOf(col) });
+        if (pl.clump) {
+          // sucker canes at the foot of the clump. Rhapis is nothing but these.
+          p.add(node, xf(tubeGeo(br * (pl.reed ? 0.16 : 0.3), br * (pl.reed ? 0.12 : 0.2), br * (pl.reed ? 4.2 : 2.6), 9), { rz: -Math.cos(a) * 0.16, rx: Math.sin(a) * 0.16 }), { color: trunkOf(col) });
+          if (pl.reed && p.budget >= 50) {
+            addLeaf(p, node, {
+              tri: p.budget * 0.6, yaw: a, pitch: -0.8, at: [Math.cos(a) * br * 0.7, br * 4, Math.sin(a) * br * 0.7],
+              len: br * 2.2, wid: br * 1.8, shape: "linear", form: "palmate", leaflet: 5,
+              color: pl.pal.deep, colorFn: pl.pal.grad, stalk: 0.3, stalkColor: trunkOf(col),
+            });
+          }
         } else {
           p.add(node, xf(coneGeo(br * 0.34, br * 1.1, 9), { rz: -Math.cos(a) * 1.0, rx: Math.sin(a) * 1.0 }), { color: trunkOf(col) });
         }
@@ -1221,14 +1356,27 @@ function palm(k, col, opt = {}) {
         });
         return;
       }
+
       const r = reachOf(pl, a, 0.95);
+      if (pl.disc) {
+        // Licuala: one circular pleated disc on a long petiole, and nothing else
+        const L = r * 0.55;
+        p.add(node, xf(tubeGeo(0.011, 0.008, L, 9), { rz: -Math.cos(a) * 0.85, rx: Math.sin(a) * 0.85 }), { color: pl.pal.deep });
+        p.add(node, xf(crustGeo({ r: r * 0.62, thick: r * 0.09, lobe: 11, wob: 0.09, seg: p.budget >= 70 ? 22 : 14, rise: 1 }),
+          { rx: 0.45, ry: a, at: [Math.cos(a) * (L * 0.75 + r * 0.5), L * 0.66, Math.sin(a) * (L * 0.75 + r * 0.5)] }),
+        { color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });
+        return;
+      }
       addLeaf(p, node, {
-        tri: p.budget, yaw: a, pitch: 0.45 + pl.u("fp" + s.g) * 0.7,
-        len: r, wid: r * (opt.fishtail ? 0.5 : 0.28 + pl.u("fw" + s.g) * 0.16),
-        shape: opt.fishtail ? "obovate" : "linear",
-        form: opt.fishtail ? "pinnate" : "frond", leaflet: 4 + (s.g % 5),
-        bend: -r * (0.25 + pl.u("fb" + s.g) * 0.35),
-        color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad, stalkColor: pl.pal.deep, stalk: 0.2,
+        tri: p.budget, yaw: a, pitch: (pl.fan ? -0.35 : -0.15) + pl.u(`fp${s.g}`) * 0.85,
+        len: r * (pl.fan ? 0.85 : 1.15),
+        wid: r * (pl.fan ? 1.05 : pl.fishtail ? 0.42 : 0.24 + pl.u(`fw${s.g}`) * 0.12),
+        shape: pl.fishtail ? "spatulate" : "linear",
+        form: pl.fan ? "palmate" : "ladder",
+        leaflet: pl.fan ? 7 : 9,
+        bend: -r * (pl.fan ? 0.2 : 0.45 + pl.u(`fb${s.g}`) * 0.4),
+        color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad, stalkColor: pl.pal.deep,
+        stalk: pl.fan ? 0.42 : 0.18,
       });
     },
   });
