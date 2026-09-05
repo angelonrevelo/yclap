@@ -260,6 +260,31 @@ const P_LEVEL = [8, 16, 24, 32]; // part counts → signature dim 0 at 0.2 steps
 // sizeX/sizeY levels: 0.132 apart once divided by 3, so two plants that differ
 // only in silhouette still clear the 0.12 distinctness floor.
 const ASPECT = [0.15, 0.546, 0.942, 1.338, 1.734, 2.13, 2.526, 2.922];
+/**
+ * Uprights get a narrower set. The first pass let the distinctness lattice buy
+ * variety by flattening a tree into a wide pancake — cheap to score, wrong to
+ * look at — so trees, palms and shrubs may now vary between a columnar 0.15
+ * and a spreading 1.35, and never past the audit's 1.6 ceiling. The variety
+ * they lose here is paid back in crown shape, branching and canopy tiering,
+ * which cost silhouette nothing.
+ */
+const ASPECT_UP = [0.15, 0.55, 0.95, 1.35];
+/**
+ * Broad-leaved uprights drop the columnar 0.15: a pencil-thin coconut palm or
+ * ixora is not a plant, it is a stick. Trees keep it, because Araucaria and
+ * Casuarina really do grow that way.
+ */
+const ASPECT_UP_WIDE = [0.35, 0.75, 1.15, 1.55];
+/**
+ * Crown-tufted plants — palms, bananas, papaya, cycads, pandans — carry every
+ * leaf in one rosette at the top, so a narrow footprint leaves nothing to see
+ * but a pole. They never go below 0.6.
+ */
+const ASPECT_CROWN = [0.6, 1.0, 1.4];
+/** Bands whose part centres land under the audit's bottom-30% trunk window. */
+const BASE_BAND = 2;
+/** First band whose part centres are guaranteed above the mid-height line. */
+const CROWN_BAND = 3;
 /** Bumped when the lattice needs re-seeding to shake out a hash collision. */
 const SALT_VERSION = "v1";
 
@@ -318,10 +343,15 @@ function plan(k, style) {
   const az = (style.azSet ?? ASPECT)[H("aspz") % (style.azSet ?? ASPECT).length];
 
   const bands = style.bands ?? [0, 1, 2, 3, 4, 5];
-  const free = unrankComp(H("comp"), UNIT - 1, bands.length);
+  /* An upright also reserves a unit high in the canopy. Without it a plan can
+     legally put every part at or below mid-height, which leaves the audit with
+     no crown to measure the trunk against — infinitely bottom-heavy. */
+  const reserve = style.upright ? 2 : 1;
+  const free = unrankComp(H("comp"), UNIT - reserve, bands.length);
   const comp = [0, 0, 0, 0, 0, 0];
   bands.forEach((b, i) => { comp[b] += free[i]; });
   comp[SPINE_BAND] += 1;
+  if (style.upright) comp[4 + (H("crown") % 2)] += 1;
 
   const mult = P / UNIT;
   const slot = [];
@@ -329,7 +359,7 @@ function plan(k, style) {
     const n = comp[b] * mult;
     for (let i = 0; i < n; i += 1) slot.push({ band: b, i, n });
   }
-  return { P, ax, az, comp, slot, H, u, of, name };
+  return { P, ax, az, comp, slot, H, u, of, name, upright: !!style.upright };
 }
 
 /* ══ the plant builder ═════════════════════════════════════════════════════ */
@@ -345,9 +375,10 @@ class Plant {
     this.spineNode = null;
     // triangle budget per decorative part, so even a 32-part model stays under
     // ~110 kB: the axis and its face cost about 420, the rest is shared out.
-    this.budget = Math.max(30, Math.round(1000 / (this.plan.P - 1)));
+    this.budget = Math.max(38, Math.round(1500 / (this.plan.P - 1)));
     this.tri = 0;
-    this.triCap = 980;
+    this.triCap = 2400;
+    this.allowance = Infinity;
   }
 
   /** A fresh part node sitting on the axis. */
@@ -364,7 +395,11 @@ class Plant {
    */
   add(node, geo, opts = {}, force = false) {
     if (geo.indices.length === 0) return node;
-    if (!force && this.tri + geo.indices.length > this.triCap) return node;
+    /* Two ceilings. `triCap` keeps the file loadable; `allowance` keeps the
+       spend FAIR, because slots are built bottom-up and a greedy understory
+       would otherwise eat the canopy's share and leave a palm as a bare pole.
+       Allowance grows by one part's budget every time a slot opens. */
+    if (!force && this.tri + geo.indices.length > Math.min(this.triCap, this.allowance)) return node;
     this.tri += geo.indices.length;
     this.k.cute.add(node, geo, opts);
     return node;
@@ -428,9 +463,9 @@ class Plant {
     return n;
   }
 
-  /** Normalise the silhouette to the planned aspect and the archetype height. */
-  finish() {
-    let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  /** Whole-model box in body-local space (y already carries each part's at). */
+  bodyBox() {
+    const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
     for (const n of this.node) {
       if (!n.parts.length) continue;
       const b = this.localBox(n);
@@ -439,13 +474,62 @@ class Plant {
         hi[i] = Math.max(hi[i], b.hi[i] + (i === 1 ? n.at[1] : 0));
       }
     }
-    const H = this.style.height ?? 0.5;
-    const wx = Math.max(0.02, hi[0] - lo[0]);
-    const wz = Math.max(0.02, hi[2] - lo[2]);
-    const sx = (this.plan.ax * H) / wx;
-    const sz = (this.plan.az * H) / wz;
-    this.body.scale = [sx, H, sz];
-    this.body.at = [-((lo[0] + hi[0]) / 2) * sx, 0, -((lo[2] + hi[2]) / 2) * sz];
+    return { lo, hi };
+  }
+
+  /**
+   * The audit's top-heaviness measure, replayed here on the parts we are about
+   * to ship, under a candidate x/z scale. `width` is the audit's: the larger of
+   * a part's two horizontal extents, so a crown spray that only reaches along z
+   * still counts as wide.
+   */
+  heaviness(sx, sz) {
+    const { lo, hi } = this.bodyBox();
+    const height = Math.max(1e-6, hi[1] - lo[1]);
+    const baseY = lo[1] + height * 0.3, crownY = lo[1] + height * 0.5;
+    let baseWide = 0, crownWide = 0, baseNode = [];
+    for (const n of this.node) {
+      if (!n.parts.length || n === this.spineNode) continue;
+      const b = this.localBox(n);
+      const cy = (b.lo[1] + b.hi[1]) / 2 + n.at[1];
+      const w = Math.max((b.hi[0] - b.lo[0]) * sx, (b.hi[2] - b.lo[2]) * sz);
+      if (cy < baseY) { baseWide = Math.max(baseWide, w); baseNode.push(n); }
+      if (cy > crownY) crownWide = Math.max(crownWide, w);
+    }
+    return { baseWide, crownWide, baseNode };
+  }
+
+  /** Normalise the silhouette to the planned aspect and the archetype height. */
+  finish() {
+    const H = typeof this.style.height === "function" ? this.style.height(this.plan) : (this.style.height ?? 0.5);
+    const fit = () => {
+      const { lo, hi } = this.bodyBox();
+      const wx = Math.max(0.02, hi[0] - lo[0]);
+      const wz = Math.max(0.02, hi[2] - lo[2]);
+      return { lo, hi, sx: (this.plan.ax * H) / wx, sz: (this.plan.az * H) / wz };
+    };
+    let f = fit();
+    if (this.plan.upright) {
+      /*
+       * A trunk has to be narrower than its own crown. Design gets it most of
+       * the way there, but the two aspect scales are independent, so a base
+       * part lying along the stretched axis can still out-measure a crown part
+       * lying along the squashed one. Rather than hope, measure and pull the
+       * base in — three passes, because shrinking the base can move the box
+       * that the scales were derived from.
+       */
+      for (let pass = 0; pass < 3; pass += 1) {
+        const { baseWide, crownWide, baseNode } = this.heaviness(f.sx, f.sz);
+        if (crownWide < 1e-6 || baseWide <= crownWide * 0.7) break;
+        const k = Math.max(0.12, (crownWide * 0.7) / baseWide);
+        for (const n of baseNode) {
+          for (const p of n.parts) p.positions = p.positions.map((q) => [q[0] * k, q[1], q[2] * k]);
+        }
+        f = fit();
+      }
+    }
+    this.body.scale = [f.sx, H, f.sz];
+    this.body.at = [-((f.lo[0] + f.hi[0]) / 2) * f.sx, 0, -((f.lo[2] + f.hi[2]) / 2) * f.sz];
   }
 }
 
@@ -456,7 +540,8 @@ class Plant {
  * Discs, not spheres: an eye is read head-on, and a disc is 32 triangles where
  * a smooth ball is 80. The whole face lands around 230.
  */
-function addFace(p, node, { at = [0, 0, 0], r, yaw = 0 }) {
+function addFace(p, node, { at = [0, 0, 0], r, yaw = 0, tri = 400 }) {
+  const rich = tri >= 300;
   const eyeR = r * 0.44;
   const cy = Math.cos(yaw), sy = Math.sin(yaw);
   const rot = (x, z) => [x * cy + z * sy, -x * sy + z * cy];
@@ -465,6 +550,7 @@ function addFace(p, node, { at = [0, 0, 0], r, yaw = 0 }) {
     const [ex, ez] = rot(side * r * 0.52, r * 0.92);
     put(discGeo(eyeR, r * 0.05, 8), { sz: 1.35, at: [ex, r * 0.12, ez], color: paper });
     put(discGeo(eyeR * 0.52, r * 0.04, 7), { sz: 1.3, at: [ex, r * 0.08, ez + r * 0.05], color: ink });
+    if (!rich) continue;
     const [kx, kz] = rot(side * r * 0.52 + r * 0.1, r * 1.02);
     put(discGeo(eyeR * 0.24, r * 0.03, 5), { at: [kx, r * 0.25, kz], color: paper });
     const [bx, bz] = rot(side * r * 1.0, r * 0.6);
@@ -696,6 +782,16 @@ function azimuth(pl, g, band, i, n) {
   }
 }
 
+/**
+ * How far a bottom-of-the-plant part may stick out. Circular, and keyed to the
+ * SMALLER of the two aspects: the audit compares a base part's width against a
+ * crown part's width, and those two can lie along different axes, so an
+ * elliptical base reach lets a wide-axis root out-measure a narrow-axis crown.
+ */
+function baseReach(pl, scale = 1) {
+  return (Math.min(pl.ax, pl.az) / 2) * scale;
+}
+
 /** Elliptical reach so the natural silhouette already sits near the target. */
 function reachOf(pl, a, scale = 1) {
   const rx = (pl.ax / 2) * scale;
@@ -737,6 +833,7 @@ function grow(k, col, style) {
       continue;
     }
     const node = p.part(`p${g}`);
+    p.allowance = Math.min(p.tri, p.allowance) + p.budget * 1.4;
     const a = azimuth(pl, g, s.band, s.i, s.n);
     style.slot(p, pl, { node, band: s.band, i: s.i, n: s.n, g, a, top, t: (s.band + 0.5) / 6 });
     if (!node.parts.length) {
@@ -745,7 +842,7 @@ function grow(k, col, style) {
       p.add(node, xf(bladeGeo({ len: 0.09, wid: 0.045, thick: 0.008, shape: "elliptic", rows: 3, ring: 4 }),
         { rx: 0.3, ry: a }), { color: pl.pal.deep }, true);
     }
-    p.anchor(node, pl.pal.deep);
+    p.anchor(node, pl.anchorColor ?? pl.pal.deep);
     p.place(node, s.band, s.i, s.n);
     g += 1;
   }
@@ -765,74 +862,162 @@ function grow(k, col, style) {
 
 // ---------- trees ----------
 
+const CROWN_FORM = ["round", "broad", "conical", "vase", "layered", "columnar", "weeping", "open"];
+
+/**
+ * The crown core, drawn into the trunk part so that part carries the model to
+ * y=1. Deliberately narrower than the sprays the slots hang off it: the axis
+ * part is excluded from the audit's trunk/canopy comparison, the sprays are
+ * what the canopy is measured by.
+ */
+function crownCore(p, pl, node, form, th, cw, leaf, deep) {
+  const g = grad(shade(leaf, 0.22), deep, th, 1);
+  const depth = 1 - th;
+  let coreR = cw * 0.55, coreY = th + depth * 0.5;
+  if (form === "conical") {
+    const n = 3 + (pl.H("ly") % 3);
+    for (let i = 0; i < n; i += 1) {
+      const t = i / n;
+      p.add(node, xf(capGeo(cw * 0.62 * (1 - t * 0.78), depth / n + depth * 0.16, 11, 4, "cone"),
+        { at: [0, th + t * depth * 0.96, 0] }), { color: mix(deep, leaf, 0.2 + t * 0.5) });
+    }
+    coreR = cw * 0.62; coreY = th + depth * 0.16;
+  } else if (form === "broad" || form === "layered") {
+    const n = form === "broad" ? 2 : 3;
+    for (let i = 0; i < n; i += 1) {
+      const t = i / (n - 1);
+      p.add(node, xf(capGeo(cw * (0.64 - t * 0.2), depth * (0.4 - t * 0.1), 12, 4, "flat"),
+        { at: [0, th + t * depth * 0.66, 0] }), { color: i % 2 ? deep : leaf, colorFn: g });
+    }
+    coreR = cw * 0.64; coreY = th + depth * 0.2;
+  } else if (form === "vase") {
+    p.add(node, xf(capGeo(cw * 0.58, depth, 12, 5, "funnel"), { at: [0, th, 0] }), { color: leaf, colorFn: g });
+    coreR = cw * 0.58; coreY = th + depth * 0.72;
+  } else if (form === "columnar") {
+    p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.34, sy: depth * 0.52, sz: cw * 0.34, at: [0, th + depth * 0.5, 0] }), { color: leaf, colorFn: g });
+    coreR = cw * 0.34; coreY = th + depth * 0.5;
+  } else if (form === "open") {
+    p.add(node, xf(sphereGeo(10, 5), { sx: cw * 0.3, sy: depth * 0.3, sz: cw * 0.3, at: [0, 1 - depth * 0.3, 0] }), { color: leaf, colorFn: g });
+    coreR = cw * 0.3; coreY = 1 - depth * 0.3;
+  } else {
+    const d = 0.44 + pl.u("cy") * 0.16;
+    p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.55, sy: depth * d, sz: cw * 0.55, at: [0, 1 - depth * d, 0] }), { color: leaf, colorFn: g });
+    coreR = cw * 0.55; coreY = 1 - depth * d;
+  }
+  return { coreR, coreY };
+}
+
 function tree(k, col, opt = {}) {
-  const canopy = opt.canopy ?? "blob";
-  const thick = opt.thick ? 1.5 : 1;
+  const forced = opt.canopy === "conifer" ? "conical"
+    : opt.canopy === "umbrella" ? "broad"
+      : opt.canopy === "balete" ? "round"
+        : null;
   grow(k, col, {
-    salt: `tree:${canopy}`,
-    height: 0.95,
+    salt: "tree:" + (opt.canopy ?? "auto"),
+    upright: true,
+    axSet: ASPECT_UP,
+    azSet: ASPECT_UP,
+    height: (pl) => 0.7 + pl.u("size") * 0.55,
     breathe: 0.012,
     sway: 0.03,
-    bands: [1, 2, 3, 4, 5],
+    bands: [0, 1, 2, 3, 4, 5],
     spine(p, pl) {
+      pl.crownForm = forced ?? CROWN_FORM[pl.H("crownform") % CROWN_FORM.length];
+      // a pencil footprint has to carry a pencil crown, or it reads as a ball
+      // skewered on a stick
+      if (Math.max(pl.ax, pl.az) <= 0.2) pl.crownForm = pl.H("col") % 2 ? "columnar" : "conical";
+      // how much bare trunk shows under the foliage: the other half of "reads
+      // as a tree", and it costs the silhouette nothing
+      pl.trunkH = 0.2 + pl.u("th") * 0.34;
+      pl.crownW = ((pl.ax + pl.az) / 2) * 0.92;
+      pl.anchorColor = shade(trunkOf(col), 0.05);
+      const tr = trunkOf(col);
+      const thick = opt.thick ? 1.45 : 1;
+      const r0 = (0.026 + pl.u("tr") * 0.03) * thick;
+      const lean = (pl.u("lean") - 0.5) * 0.14;
       p.spine("trunk", (node) => {
-        const tr = trunkOf(col);
-        const trunkH = 0.34 + pl.u("th") * 0.26;
-        const r0 = (0.035 + pl.u("tr") * 0.03) * thick;
-        const lean = (pl.u("lean") - 0.5) * 0.1;
-        p.add(node, xf(tubeGeo(r0 * 1.5, r0 * 0.72, trunkH, 12, r0 * 0.12), { rz: lean }), { color: tr, colorFn: grad(shade(tr, 0.12), shade(tr, -0.2), 0, trunkH) });
-        if (canopy === "conifer") {
-          const layers = opt.layers ?? 4 + (pl.H("ly") % 3);
-          p.add(node, xf(tubeGeo(r0 * 0.7, r0 * 0.3, 1 - trunkH, 10), { at: [lean * trunkH, trunkH, 0] }), { color: tr });
-          for (let i = 0; i < layers; i += 1) {
-            const t = i / layers;
-            p.add(node, xf(capGeo(0.3 * (1 - t * 0.72), 0.18, 12, 4, "cone"),
-              { at: [0, trunkH * 0.7 + t * (1 - trunkH * 0.75), 0] }), { color: mix(pl.pal.deep, pl.pal.leaf, t * 0.5) });
-          }
-        } else if (canopy === "umbrella") {
-          for (let i = 0; i < 3; i += 1) {
-            p.add(node, xf(capGeo(0.4 - i * 0.07, 0.16 - i * 0.03, 14, 5, "flat"), { at: [0, trunkH + i * 0.14, (i - 1) * 0.05] }),
-              { color: i % 2 ? pl.pal.deep : pl.pal.leaf, colorFn: grad(shade(pl.pal.leaf, 0.2), pl.pal.deep, trunkH, 1) });
-          }
-        } else {
-          const cr = 0.24 + pl.u("cr") * 0.1;
-          p.add(node, xf(sphereGeo(12, 6), { sx: cr, sy: cr * (0.8 + pl.u("cy") * 0.5), sz: cr, at: [0, 1 - cr * 0.85, 0] }),
-            { color: pl.pal.leaf, colorFn: grad(shade(pl.pal.leaf, 0.2), pl.pal.deep, 0.5, 1) });
-        }
-        addFace(p, node, { at: [0, trunkH * 0.5, r0 * 1.1], r: r0 * 1.5 });
+        p.add(node, xf(tubeGeo(r0 * (1.2 + pl.u("flare") * 0.7), r0 * (0.4 + pl.u("taper") * 0.45), pl.trunkH + 0.05, 12, r0 * 0.1), { rz: lean }),
+          { color: tr, colorFn: grad(shade(tr, 0.14), shade(tr, -0.22), 0, pl.trunkH) });
+        const core = crownCore(p, pl, node, pl.crownForm, pl.trunkH, pl.crownW, pl.pal.leaf, pl.pal.deep);
+        // The face belongs in the crown — a tree that smiles from its ankles
+        // reads as a post with eyes — and it has to sit ON the crown, not
+        // inside it, so it is pinned to the core's own widest radius.
+        const fr = Math.max(0.03, Math.min(core.coreR * 0.42, pl.crownW * 0.16));
+        addFace(p, node, { at: [0, core.coreY, core.coreR * 0.88], r: fr, tri: p.budget * 8 });
       });
     },
     slot(p, pl, s) {
-      const { node, band, a, t } = s;
-      const kind = band <= 1 ? "root" : band <= 2 ? "branch" : "canopy";
-      if (kind === "root") {
-        const tr = trunkOf(col);
-        for (const sgn of [1]) {
-          p.add(node, xf(tubeGeo(0.02, 0.008, 0.18 + pl.u(`rt${s.g}`) * 0.1, 7), { rz: sgn * 1.05, ry: a, rx: 0.2 }), { color: tr });
+      const { node, band, a } = s;
+      const tr = trunkOf(col);
+      if (band === 0) {
+        // buttress flare, held inside the base reach so a root can never
+        // out-measure the crown it is supposed to be holding up
+        const br = baseReach(pl, 0.34);
+        const n = 2 + (s.g % 2);
+        for (let j = 0; j < n; j += 1) {
+          const aa = a + (j - (n - 1) / 2) * 0.8;
+          p.add(node, xf(coneGeo(br * 0.34, br * (0.85 + pl.u("bt" + s.g + j) * 0.6), 9),
+            { rz: -Math.cos(aa) * 1.15, rx: Math.sin(aa) * 1.15 }), { color: shade(tr, -0.12) });
         }
-      } else if (kind === "branch") {
-        const tr = trunkOf(col);
-        for (const sgn of [1]) {
-          p.add(node, xf(tubeGeo(0.016, 0.007, 0.14 + pl.u(`br${s.g}`) * 0.12, 7), { rz: sgn * 0.9, ry: a }), { color: tr });
-        }
-        addTuft(p, node, { tri: p.budget, at: [0, 0.03, 0], r: 0.07, n: 3, color: pl.pal.leaf, color2: pl.pal.deep });
-      } else if (opt.fruit && band >= 4 && s.i % 3 === 0) {
-        const r = reachOf(pl, a, 0.5);
-        for (const sgn of [1]) {
-          addFlower(p, node, { tri: p.budget, at: [Math.cos(a) * r * sgn * 0.5, 0, Math.sin(a) * r * sgn * 0.5], kind: "fruit", r: 0.06, color: flowerOf(col), stalkLen: 0.03 });
-        }
-      } else {
-        const r = reachOf(pl, a, 0.62 + pl.u(`cb${s.g}`) * 0.35);
-        const rr = 0.07 + pl.u(`cs${s.g}`) * 0.07;
+        return;
+      }
+      if (band === 1) {
+        const br = baseReach(pl, 0.4);
         addLump(p, node, {
-          rx: rr, ry: rr * 0.78, rz: rr, yaw: a, tri: p.budget,
-          at: [Math.cos(a) * r, 0, Math.sin(a) * r],
+          rx: br * 0.7, ry: br * 0.55, rz: br * 0.7, yaw: a, tri: p.budget,
+          at: [Math.cos(a) * br * 0.4, 0, Math.sin(a) * br * 0.4],
+          color: s.g % 2 ? pl.pal.deep : mix(pl.pal.leaf, pl.pal.deep, 0.6), colorFn: pl.pal.grad,
+        });
+        return;
+      }
+      if (band === 2) {
+        // a bare branch off the trunk; its angle is the crown form's signature
+        const rise = pl.crownForm === "columnar" ? 1.15
+          : pl.crownForm === "vase" ? 1.0
+            : pl.crownForm === "weeping" ? 0.3 : 0.7;
+        const len = reachOf(pl, a, 0.5 + pl.u("bl" + s.g) * 0.35);
+        p.add(node, xf(tubeGeo(0.015, 0.007, len, 9), { rz: -Math.cos(a) * (1.57 - rise), rx: Math.sin(a) * (1.57 - rise) }), { color: tr });
+        addLump(p, node, {
+          rx: len * 0.3, ry: len * 0.22, rz: len * 0.3, yaw: a, tri: p.budget,
+          at: [Math.cos(a) * len * 0.72, len * 0.3, Math.sin(a) * len * 0.72],
           color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad,
         });
-        if (canopy === "balete" && band === 3) {
-          p.add(node, xf(tubeGeo(0.012, 0.006, 0.3, 6), { at: [Math.cos(a) * 0.12, -0.3, Math.sin(a) * 0.12] }), { color: trunkOf(col) });
-        }
-        if (t > 0) { /* keeps t referenced for clarity */ }
+        return;
+      }
+      if (opt.fruit && band >= 4 && s.i % 3 === 0) {
+        const r = reachOf(pl, a, 0.45);
+        addFlower(p, node, {
+          tri: p.budget, at: [Math.cos(a) * r, 0, Math.sin(a) * r],
+          kind: "fruit", r: 0.05, color: flowerOf(col), stalkLen: 0.03,
+        });
+        return;
+      }
+      // canopy spray. It fans around its azimuth, so it measures wide along
+      // BOTH horizontal axes and the trunk/canopy test cannot be gamed by an
+      // anisotropic aspect.
+      const t = (band - 3) / 2;
+      const shapeR = pl.crownForm === "conical" ? 1 - t * 0.62
+        : pl.crownForm === "vase" ? 0.55 + t * 0.45
+          : pl.crownForm === "broad" ? 1 - t * 0.3
+            : pl.crownForm === "columnar" ? 0.62
+              : 1 - t * 0.18;
+      const r = reachOf(pl, a, (0.55 + pl.u("cb" + s.g) * 0.4) * shapeR);
+      const rr = Math.max(0.032, r * (0.34 + pl.u("cs" + s.g) * 0.3));
+      const fan = p.budget >= 52 ? 2 : 1;
+      for (let j = 0; j < fan; j += 1) {
+        const aa = a + (j - (fan - 1) / 2) * 0.62;
+        addLump(p, node, {
+          rx: rr, ry: rr * (0.62 + pl.u("cf" + s.g) * 0.4), rz: rr, yaw: aa, tri: p.budget / fan,
+          at: [Math.cos(aa) * r, (j % 2) * rr * 0.35, Math.sin(aa) * r],
+          color: (s.g + j) % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad,
+        });
+      }
+      if (pl.crownForm === "weeping" && p.budget >= 40) {
+        p.add(node, xf(bladeGeo({ len: r * 0.8, wid: r * 0.14, thick: 0.008, shape: "linear", rows: 4, ring: 4, bend: -r * 0.3 }),
+          { rx: 1.25, ry: a, at: [Math.cos(a) * r * 0.85, -rr * 0.4, Math.sin(a) * r * 0.85] }), { color: pl.pal.deep });
+      }
+      if (opt.canopy === "balete" && band === 3 && s.i % 2 === 0) {
+        p.add(node, xf(tubeGeo(0.01, 0.005, 0.26, 9), { at: [Math.cos(a) * r * 0.7, -0.26, Math.sin(a) * r * 0.7] }), { color: tr });
       }
     },
   });
@@ -841,83 +1026,100 @@ function tree(k, col, opt = {}) {
 function papaya(k, col) {
   grow(k, col, {
     salt: "papaya",
-    height: 0.8,
+    upright: true,
+    axSet: ASPECT_CROWN,
+    azSet: ASPECT_CROWN,
+    // a crown-tufted plant carries its leaves at the top, so band 3 is left
+    // to the axis alone and the foliage units can only land in 4 and 5
+    height: (pl) => 0.72 + pl.u("size") * 0.3,
     breathe: 0.014,
-    bands: [1, 2, 3, 4, 5],
+    bands: [0, 1, 2, 4, 5],
     spine(p, pl) {
+      pl.anchorColor = trunkOf(col);
       p.spine("trunk", (node) => {
         const tr = trunkOf(col);
-        p.add(node, xf(tubeGeo(0.05, 0.032, 0.82, 12)), { color: tr, colorFn: grad(shade(tr, 0.15), shade(tr, -0.2), 0, 0.82) });
-        p.add(node, xf(sphereGeo(12, 5), { sx: 0.06, sy: 0.05, sz: 0.06, at: [0, 0.85, 0] }), { color: pl.pal.deep });
-        addFace(p, node, { at: [0, 0.32, 0.045], r: 0.05 });
+        p.add(node, xf(tubeGeo(0.05, 0.03, 0.84, 12)), { color: tr, colorFn: grad(shade(tr, 0.15), shade(tr, -0.2), 0, 0.84) });
+        p.add(node, xf(sphereGeo(11, 5), { sx: 0.055, sy: 0.07, sz: 0.055, at: [0, 0.9, 0] }), { color: pl.pal.deep });
+        addFace(p, node, { at: [0, 0.72, 0.037], r: 0.042, tri: p.budget * 8 });
       });
     },
     slot(p, pl, s) {
       const { node, band, a } = s;
       if (band <= 2) {
-        for (const sgn of [1]) {
-          addFlower(p, node, { tri: p.budget, at: [Math.cos(a) * 0.05 * sgn, 0, Math.sin(a) * 0.05 * sgn], kind: "fruit", r: 0.075, color: flowerOf(col), stalkLen: 0.02 });
-        }
-      } else {
-        const r = reachOf(pl, a, 0.9);
-        addLeaf(p, node, { tri: p.budget,
-          yaw: a, pitch: 0.35 + pl.u(`lp${s.g}`) * 0.4,
-          len: r, wid: r * 0.85, shape: "orbicular", form: "palmate", leaflet: 5 + (s.g % 3),
-          rows: 4, ring: 4, color: pl.pal.leaf, colorFn: pl.pal.grad, stalkColor: pl.pal.deep, stalk: 0.42,
+        const br = baseReach(pl, 0.34);
+        addFlower(p, node, {
+          tri: p.budget, at: [Math.cos(a) * br * 0.5, 0, Math.sin(a) * br * 0.5],
+          kind: "fruit", r: Math.min(0.06, br * 0.9), color: flowerOf(col), stalkLen: 0.02,
         });
+        return;
       }
+      const r = reachOf(pl, a, 0.9);
+      addLeaf(p, node, {
+        tri: p.budget, yaw: a, pitch: 0.35 + pl.u("lp" + s.g) * 0.4,
+        len: r, wid: r * 0.85, shape: "orbicular", form: "palmate", leaflet: 5 + (s.g % 3),
+        color: pl.pal.leaf, colorFn: pl.pal.grad, stalkColor: pl.pal.deep, stalk: 0.42,
+      });
     },
   });
 }
 
 function palm(k, col, opt = {}) {
   grow(k, col, {
-    salt: `palm:${opt.fishtail ? "f" : ""}${opt.clump ? "c" : ""}`,
-    height: 0.9,
+    salt: "palm:" + (opt.fishtail ? "f" : "") + (opt.clump ? "c" : ""),
+    upright: true,
+    axSet: ASPECT_CROWN,
+    azSet: ASPECT_CROWN,
+    // a crown-tufted plant carries its leaves at the top, so band 3 is left
+    // to the axis alone and the foliage units can only land in 4 and 5
+    height: (pl) => 0.8 + pl.u("size") * 0.5,
     breathe: 0.012,
     sway: 0.04,
-    bands: [1, 2, 3, 4, 5],
+    bands: [0, 1, 2, 4, 5],
     spine(p, pl) {
+      pl.anchorColor = pl.pal.deep;
       p.spine("trunk", (node) => {
         const tr = trunkOf(col);
-        const trunkH = 0.5 + pl.u("th") * 0.3;
-        const r0 = 0.028 + pl.u("tr") * 0.026;
-        p.add(node, xf(tubeGeo(r0 * 1.3, r0 * 0.85, trunkH, 12)), { color: tr, colorFn: grad(shade(tr, 0.14), shade(tr, -0.22), 0, trunkH) });
+        const trunkH = 0.46 + pl.u("th") * 0.34;
+        const r0 = 0.024 + pl.u("tr") * 0.026;
+        p.add(node, xf(tubeGeo(r0 * 1.35, r0 * (0.7 + pl.u("tp") * 0.35), trunkH, 12)),
+          { color: tr, colorFn: grad(shade(tr, 0.14), shade(tr, -0.22), 0, trunkH) });
         const rings = 3 + (pl.H("rg") % 5);
         for (let i = 1; i <= rings; i += 1) {
           p.add(node, xf(discGeo(r0 * 1.15, r0 * 0.16, 9), { at: [0, (i / (rings + 1)) * trunkH, 0] }), { color: shade(tr, -0.22) });
         }
-        // crown reaches the very top, so the trunk part spans the model height
-        p.add(node, xf(sphereGeo(12, 5), { sx: r0 * 1.7, sy: (1 - trunkH) * 0.6, sz: r0 * 1.7, at: [0, trunkH + (1 - trunkH) * 0.4, 0] }), { color: pl.pal.deep });
-        addFace(p, node, { at: [0, trunkH * 0.55, r0 * 1.1], r: r0 * 1.4 });
+        // the crown shaft carries the axis part to the model's full height
+        p.add(node, xf(tubeGeo(r0 * 1.5, r0 * 0.8, 1 - trunkH, 11), { at: [0, trunkH, 0] }), { color: pl.pal.deep });
+        addFace(p, node, { at: [0, trunkH * 0.8, r0 * 1.2], r: Math.max(0.032, r0 * 1.5), tri: p.budget * 8 });
       });
     },
     slot(p, pl, s) {
       const { node, band, a } = s;
-      if (band <= 2) {
+      if (band <= 1) {
+        const br = baseReach(pl, 0.36);
         if (opt.clump) {
-          for (const sgn of [1]) {
-            p.add(node, xf(tubeGeo(0.022, 0.014, 0.3 + pl.u(`sk${s.g}`) * 0.2, 9), { rz: sgn * 0.2, ry: a, at: [Math.cos(a) * 0.05 * sgn, -0.12, Math.sin(a) * 0.05 * sgn] }), { color: trunkOf(col) });
-          }
+          p.add(node, xf(tubeGeo(br * 0.34, br * 0.22, br * 2.6, 9), { rz: -Math.cos(a) * 0.2, rx: Math.sin(a) * 0.2 }), { color: trunkOf(col) });
         } else {
-          for (const sgn of [1]) {
-            p.add(node, xf(tubeGeo(0.014, 0.006, 0.16, 7), { rz: sgn * 0.9, ry: a }), { color: trunkOf(col) });
-          }
+          p.add(node, xf(coneGeo(br * 0.34, br * 1.1, 9), { rz: -Math.cos(a) * 1.0, rx: Math.sin(a) * 1.0 }), { color: trunkOf(col) });
         }
-      } else if (opt.coconut && band === 3) {
-        for (const sgn of [1]) {
-          addFlower(p, node, { tri: p.budget, at: [Math.cos(a) * 0.06 * sgn, 0, Math.sin(a) * 0.06 * sgn], kind: "fruit", r: 0.07, color: hex("#7a4e2a"), stalkLen: 0.02 });
-        }
-      } else {
-        const r = reachOf(pl, a, 0.95);
-        addLeaf(p, node, { tri: p.budget,
-          yaw: a, pitch: 0.5 + pl.u(`fp${s.g}`) * 0.6,
-          len: r, wid: r * (opt.fishtail ? 0.5 : 0.3), shape: opt.fishtail ? "obovate" : "linear",
-          form: opt.fishtail ? "pinnate" : "frond", leaflet: 4 + (s.g % 5),
-          rows: 4, ring: 4, bend: -r * 0.35,
-          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad, stalkColor: pl.pal.deep, stalk: 0.2,
-        });
+        return;
       }
+      if (band === 2 || (opt.coconut && band === 3 && s.i % 3 === 0)) {
+        const br = baseReach(pl, 0.34);
+        addFlower(p, node, {
+          tri: p.budget, at: [Math.cos(a) * br * 0.6, 0, Math.sin(a) * br * 0.6],
+          kind: "fruit", r: Math.min(0.055, br), color: opt.coconut ? hex("#7a4e2a") : flowerOf(col), stalkLen: 0.02,
+        });
+        return;
+      }
+      const r = reachOf(pl, a, 0.95);
+      addLeaf(p, node, {
+        tri: p.budget, yaw: a, pitch: 0.45 + pl.u("fp" + s.g) * 0.7,
+        len: r, wid: r * (opt.fishtail ? 0.5 : 0.28 + pl.u("fw" + s.g) * 0.16),
+        shape: opt.fishtail ? "obovate" : "linear",
+        form: opt.fishtail ? "pinnate" : "frond", leaflet: 4 + (s.g % 5),
+        bend: -r * (0.25 + pl.u("fb" + s.g) * 0.35),
+        color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad, stalkColor: pl.pal.deep, stalk: 0.2,
+      });
     },
   });
 }
@@ -925,32 +1127,44 @@ function palm(k, col, opt = {}) {
 function bananaKind(k, col, opt = {}) {
   grow(k, col, {
     salt: "banana",
-    height: 0.75,
+    upright: true,
+    axSet: ASPECT_CROWN,
+    azSet: ASPECT_CROWN,
+    // a crown-tufted plant carries its leaves at the top, so band 3 is left
+    // to the axis alone and the foliage units can only land in 4 and 5
+    height: (pl) => 0.66 + pl.u("size") * 0.34,
     breathe: 0.014,
-    bands: [1, 2, 3, 4, 5],
+    bands: [0, 1, 2, 4, 5],
     spine(p, pl) {
+      pl.anchorColor = pl.pal.deep;
       p.spine("pseudostem", (node) => {
         const tr = mix(trunkOf(col), pl.pal.leaf, 0.55);
-        const stemH = 0.55 + pl.u("sh") * 0.3;
-        const r0 = 0.04 + pl.u("sr") * 0.03;
+        const stemH = 0.5 + pl.u("sh") * 0.32;
+        const r0 = 0.038 + pl.u("sr") * 0.03;
         p.add(node, xf(tubeGeo(r0 * 1.25, r0 * 0.7, stemH, 12)), { color: tr, colorFn: grad(shade(tr, 0.18), shade(tr, -0.2), 0, stemH) });
-        p.add(node, xf(sphereGeo(12, 5), { sx: r0 * 0.9, sy: (1 - stemH) * 0.55, sz: r0 * 0.9, at: [0, stemH + (1 - stemH) * 0.45, 0] }), { color: pl.pal.deep });
-        addFace(p, node, { at: [0, stemH * 0.42, r0 * 1.05], r: r0 * 1.3 });
+        p.add(node, xf(tubeGeo(r0 * 0.75, r0 * 0.4, 1 - stemH, 10), { at: [0, stemH, 0] }), { color: pl.pal.deep });
+        addFace(p, node, { at: [0, stemH * 0.62, r0 * 1.1], r: Math.max(0.034, r0 * 1.3), tri: p.budget * 8 });
       });
     },
     slot(p, pl, s) {
       const { node, band, a } = s;
+      if (band <= 1) {
+        // suckers at the foot of the clump, inside the base reach
+        const br = baseReach(pl, 0.38);
+        p.add(node, xf(tubeGeo(br * 0.36, br * 0.18, br * 2.6, 10), { rz: -Math.cos(a) * 0.2, rx: Math.sin(a) * 0.2 }), { color: mix(trunkOf(col), pl.pal.leaf, 0.5) });
+        p.add(node, xf(bladeGeo({ len: br * 1.4, wid: br * 0.5, thick: 0.008, shape: "elliptic", rows: 3, ring: 4 }), { rx: -1.1, ry: a }), { color: pl.pal.deep });
+        return;
+      }
       if (opt.bloom && band === 2 && s.i === 0) {
-        for (const sgn of [1]) {
-          p.add(node, xf(coneGeo(0.055, 0.18, 10), { rx: 2.5, ry: a, at: [Math.cos(a) * 0.05 * sgn, 0.05, Math.sin(a) * 0.05 * sgn] }), { color: flowerOf(col) });
-        }
+        const br = baseReach(pl, 0.7);
+        p.add(node, xf(coneGeo(Math.min(0.05, br), 0.17, 10), { rx: 2.5, ry: a, at: [Math.cos(a) * br * 0.5, 0.05, Math.sin(a) * br * 0.5] }), { color: flowerOf(col) });
         return;
       }
       const r = reachOf(pl, a, 0.95);
-      addLeaf(p, node, { tri: p.budget,
-        yaw: a, pitch: 0.45 + pl.u(`bl${s.g}`) * 0.5,
-        len: r, wid: r * (0.4 + pl.u(`bw${s.g}`) * 0.2), shape: "elliptic", form: "simple",
-        rows: 6, ring: 4, bend: -r * 0.3, fold: 0.18,
+      addLeaf(p, node, {
+        tri: p.budget, yaw: a, pitch: 0.4 + pl.u("bl" + s.g) * 0.55,
+        len: r, wid: r * (0.36 + pl.u("bw" + s.g) * 0.24), shape: "elliptic",
+        bend: -r * 0.3, fold: 0.18,
         color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad, stalkColor: pl.pal.deep, stalk: 0.18,
       });
     },
@@ -960,32 +1174,37 @@ function bananaKind(k, col, opt = {}) {
 function pandanus(k, col) {
   grow(k, col, {
     salt: "pandanus",
-    height: 0.7,
+    upright: true,
+    axSet: ASPECT_CROWN,
+    azSet: ASPECT_CROWN,
+    // a crown-tufted plant carries its leaves at the top, so band 3 is left
+    // to the axis alone and the foliage units can only land in 4 and 5
+    height: (pl) => 0.6 + pl.u("size") * 0.3,
     breathe: 0.014,
-    bands: [0, 1, 2, 3, 4, 5],
+    bands: [0, 1, 2, 4, 5],
     spine(p, pl) {
+      pl.anchorColor = pl.pal.deep;
       p.spine("trunk", (node) => {
         const tr = trunkOf(col);
-        const h = 0.3 + pl.u("h") * 0.2;
-        p.add(node, xf(tubeGeo(0.04, 0.05, h, 12)), { color: tr });
+        const h = 0.28 + pl.u("h") * 0.2;
+        p.add(node, xf(tubeGeo(0.038, 0.046, h, 12)), { color: tr });
         p.add(node, xf(bladeGeo({ len: 1 - h, wid: 0.07, thick: 0.014, shape: "linear", rows: 6, ring: 4, bend: -0.1 }), { rx: -Math.PI / 2, at: [0, h, 0] }), { color: pl.pal.deep });
-        addFace(p, node, { at: [0, h * 0.5, 0.045], r: 0.042 });
+        addFace(p, node, { at: [0, h * 0.55, 0.045], r: 0.04, tri: p.budget * 8 });
       });
     },
     slot(p, pl, s) {
       const { node, band, a } = s;
       if (band <= 1) {
-        for (const sgn of [1]) {
-          p.add(node, xf(tubeGeo(0.014, 0.008, 0.24, 8), { rz: sgn * 0.55, ry: a }), { color: trunkOf(col) });
-        }
-      } else {
-        const r = reachOf(pl, a, 0.95);
-        addLeaf(p, node, { tri: p.budget,
-          yaw: a, pitch: 0.5 + pl.u(`sw${s.g}`) * 0.6, len: r, wid: r * 0.16,
-          shape: "linear", rows: 6, ring: 4, bend: -r * 0.4, stalk: 0.05,
-          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad,
-        });
+        const br = baseReach(pl, 0.42);
+        p.add(node, xf(tubeGeo(br * 0.24, br * 0.14, br * 2, 9), { rz: -Math.cos(a) * 0.55, rx: Math.sin(a) * 0.55 }), { color: trunkOf(col) });
+        return;
       }
+      const r = reachOf(pl, a, 0.95);
+      addLeaf(p, node, {
+        tri: p.budget, yaw: a, pitch: 0.45 + pl.u("sw" + s.g) * 0.7, len: r, wid: r * 0.16,
+        shape: "linear", bend: -r * 0.4, stalk: 0.05,
+        color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad,
+      });
     },
   });
 }
@@ -993,24 +1212,35 @@ function pandanus(k, col) {
 function cycad(k, col) {
   grow(k, col, {
     salt: "cycad",
-    height: 0.55,
+    upright: true,
+    axSet: ASPECT_CROWN,
+    azSet: ASPECT_CROWN,
+    // a crown-tufted plant carries its leaves at the top, so band 3 is left
+    // to the axis alone and the foliage units can only land in 4 and 5
+    height: (pl) => 0.45 + pl.u("size") * 0.3,
     breathe: 0.014,
-    bands: [0, 1, 2, 3, 4, 5],
+    bands: [0, 1, 2, 4, 5],
     spine(p, pl) {
+      pl.anchorColor = pl.pal.deep;
       p.spine("caudex", (node) => {
         const tr = trunkOf(col);
-        const h = 0.28 + pl.u("h") * 0.18;
-        p.add(node, xf(tubeGeo(0.075, 0.06, h, 12, 0.012)), { color: tr, colorFn: grad(shade(tr, 0.1), shade(tr, -0.25), 0, h) });
-        p.add(node, xf(capGeo(0.06, 1 - h, 12, 5, "cone"), { at: [0, h, 0] }), { color: pl.pal.deep });
-        addFace(p, node, { at: [0, h * 0.5, 0.07], r: 0.052 });
+        const h = 0.3 + pl.u("h") * 0.2;
+        p.add(node, xf(tubeGeo(0.07, 0.058, h, 12, 0.012)), { color: tr, colorFn: grad(shade(tr, 0.1), shade(tr, -0.25), 0, h) });
+        p.add(node, xf(capGeo(0.055, 1 - h, 12, 5, "cone"), { at: [0, h, 0] }), { color: pl.pal.deep });
+        addFace(p, node, { at: [0, h * 0.55, 0.07], r: 0.05, tri: p.budget * 8 });
       });
     },
     slot(p, pl, s) {
-      const { node, a } = s;
+      const { node, band, a } = s;
+      if (band <= 1) {
+        const br = baseReach(pl, 0.36);
+        p.add(node, xf(coneGeo(br * 0.34, br * 1.1, 9), { rz: -Math.cos(a) * 1.1, rx: Math.sin(a) * 1.1 }), { color: shade(trunkOf(col), -0.1) });
+        return;
+      }
       const r = reachOf(pl, a, 0.95);
-      addLeaf(p, node, { tri: p.budget,
-        yaw: a, pitch: 0.3 + pl.u(`fr${s.g}`) * 0.6, len: r, wid: r * 0.24,
-        shape: "linear", form: "frond", leaflet: 4 + (s.g % 4), rows: 4, ring: 4, bend: -r * 0.22,
+      addLeaf(p, node, {
+        tri: p.budget, yaw: a, pitch: 0.3 + pl.u("fr" + s.g) * 0.6, len: r, wid: r * 0.24,
+        shape: "linear", form: "frond", leaflet: 4 + (s.g % 4), bend: -r * 0.22,
         color: pl.pal.deep, colorFn: pl.pal.grad, stalkColor: trunkOf(col), stalk: 0.16,
       });
     },
@@ -1021,45 +1251,87 @@ function cycad(k, col) {
 
 const CROTON = ["#c85a20", "#c8a020", "#8a5aa0", "#d8c83a", "#a03a3a"].map(hex);
 
+const BUSH_FORM = ["mounded", "upright", "arching", "tiered", "airy"];
+
 function shrub(k, col, opt = {}) {
   const bloom = opt.bloom ?? "none";
   grow(k, col, {
-    salt: `shrub:${bloom}${opt.colorful ? "c" : ""}`,
-    height: 0.55,
+    salt: "shrub:" + bloom + (opt.colorful ? "c" : ""),
+    upright: true,
+    axSet: ASPECT_UP_WIDE,
+    azSet: ASPECT_UP_WIDE,
+    height: (pl) => 0.42 + pl.u("size") * 0.32,
     breathe: 0.018,
     bands: [0, 1, 2, 3, 4, 5],
     spine(p, pl) {
+      pl.bush = BUSH_FORM[pl.H("bush") % BUSH_FORM.length];
+      pl.stemH = 0.16 + pl.u("sh") * 0.3;
+      pl.crownW = ((pl.ax + pl.az) / 2) * 0.92;
+      pl.anchorColor = trunkOf(col);
       p.spine("stem", (node) => {
         const tr = trunkOf(col);
-        p.add(node, xf(tubeGeo(0.026, 0.012, 0.62, 11)), { color: tr });
-        const cr = 0.18 + pl.u("cr") * 0.09;
-        p.add(node, xf(sphereGeo(12, 5), { sx: cr, sy: cr * (0.7 + pl.u("cy") * 0.6), sz: cr, at: [0, 1 - cr * 0.8, 0] }),
-          { color: opt.colorful ? CROTON[pl.H("cc") % CROTON.length] : pl.pal.leaf, colorFn: opt.colorful ? undefined : pl.pal.grad });
-        addFace(p, node, { at: [0, 0.24, 0.026], r: 0.036 });
+        const r0 = 0.016 + pl.u("sr") * 0.016;
+        p.add(node, xf(tubeGeo(r0 * 1.4, r0 * 0.6, pl.stemH + 0.05, 11), { rz: (pl.u("ln") - 0.5) * 0.12 }), { color: tr });
+        const depth = 1 - pl.stemH;
+        const cw = pl.crownW;
+        const leaf = opt.colorful ? CROTON[pl.H("cc") % CROTON.length] : pl.pal.leaf;
+        const g = opt.colorful ? undefined : grad(shade(pl.pal.leaf, 0.2), pl.pal.deep, pl.stemH, 1);
+        let coreR = cw * 0.5, coreY = pl.stemH + depth * 0.5;
+        if (pl.bush === "tiered") {
+          for (let i = 0; i < 2; i += 1) {
+            p.add(node, xf(capGeo(cw * (0.6 - i * 0.16), depth * 0.42, 12, 4, "flat"),
+              { at: [0, pl.stemH + i * depth * 0.55, 0] }), { color: i ? leaf : pl.pal.deep, colorFn: g });
+          }
+          coreR = cw * 0.6; coreY = pl.stemH + depth * 0.2;
+        } else if (pl.bush === "upright") {
+          p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.38, sy: depth * 0.52, sz: cw * 0.38, at: [0, pl.stemH + depth * 0.5, 0] }), { color: leaf, colorFn: g });
+          coreR = cw * 0.38;
+        } else if (pl.bush === "airy") {
+          p.add(node, xf(sphereGeo(10, 5), { sx: cw * 0.3, sy: depth * 0.34, sz: cw * 0.3, at: [0, 1 - depth * 0.34, 0] }), { color: leaf, colorFn: g });
+          coreR = cw * 0.3; coreY = 1 - depth * 0.34;
+        } else {
+          const d = pl.bush === "arching" ? 0.42 : 0.5;
+          p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.5, sy: depth * d, sz: cw * 0.5, at: [0, 1 - depth * d, 0] }), { color: leaf, colorFn: g });
+          coreR = cw * 0.5; coreY = 1 - depth * d;
+        }
+        const fr = Math.max(0.028, Math.min(coreR * 0.42, cw * 0.15));
+        addFace(p, node, { at: [0, coreY, coreR * 0.88], r: fr, tri: p.budget * 8 });
       });
     },
     slot(p, pl, s) {
       const { node, band, a, top } = s;
+      if (band <= 1) {
+        // woody basal shoots: short, and inside the base reach so a shrub is
+        // never measured as wider at the ankles than at the crown
+        const br = baseReach(pl, 0.36);
+        p.add(node, xf(tubeGeo(br * 0.26, br * 0.14, br * 2.4, 9), { rz: -Math.cos(a) * 0.4, rx: Math.sin(a) * 0.4 }), { color: trunkOf(col) });
+        addLump(p, node, {
+          rx: br * 0.5, ry: br * 0.4, rz: br * 0.5, yaw: a, tri: p.budget * 0.6,
+          at: [Math.cos(a) * br * 0.5, br * 0.7, Math.sin(a) * br * 0.5],
+          color: pl.pal.deep, colorFn: opt.colorful ? undefined : pl.pal.grad,
+        });
+        return;
+      }
       const isBloom = bloom !== "none" && band >= top - 1 && s.i % 2 === 0;
       if (isBloom) {
         const kind = bloom === "balls" ? "ball" : bloom === "hibiscus" ? "star" : bloom === "spikes" ? "spike" : "trumpet";
-        const colr = opt.multicolor ? FLOWERS[pl.H(`mc${s.g}`) % FLOWERS.length] : flowerOf(col);
-        const r = reachOf(pl, a, 0.55);
-        for (const sgn of [1]) {
-          addFlower(p, node, { tri: p.budget, at: [Math.cos(a) * r * sgn, 0, Math.sin(a) * r * sgn], kind, r: 0.055 + pl.u(`fr${s.g}`) * 0.03, color: colr, stalkLen: 0.03 });
-        }
+        const colr = opt.multicolor ? FLOWERS[pl.H("mc" + s.g) % FLOWERS.length] : flowerOf(col);
+        const r = reachOf(pl, a, 0.6);
+        addFlower(p, node, {
+          tri: p.budget, at: [Math.cos(a) * r, 0, Math.sin(a) * r], kind,
+          r: 0.045 + pl.u("fr" + s.g) * 0.03, color: colr, stalkLen: 0.03,
+        });
         return;
       }
-      const r = reachOf(pl, a, 0.5 + pl.u(`lr${s.g}`) * 0.45);
-      const lc = opt.colorful ? CROTON[pl.H(`lc${s.g}`) % CROTON.length] : (s.g % 2 ? pl.pal.leaf : pl.pal.deep);
-      for (const sgn of [1]) {
-        addLeaf(p, node, { tri: p.budget,
-          yaw: a + (sgn > 0 ? 0 : Math.PI), pitch: 0.1 + pl.u(`lp${s.g}`) * 0.6,
-          len: r, wid: r * (0.3 + pl.u(`lw${s.g}`) * 0.35), shape: pl.shape, form: pl.form,
-          leaflet: 3 + (s.g % 4), rows: 4, ring: 4,
-          color: lc, colorFn: opt.colorful ? undefined : pl.pal.grad, stalkColor: pl.pal.deep, stalk: 0.2,
-        });
-      }
+      const droop = pl.bush === "arching" ? 0.75 : pl.bush === "upright" ? -0.35 : 0.2;
+      const r = reachOf(pl, a, (0.55 + pl.u("lr" + s.g) * 0.4) * (pl.bush === "airy" ? 1.05 : 1));
+      const lc = opt.colorful ? CROTON[pl.H("lc" + s.g) % CROTON.length] : (s.g % 2 ? pl.pal.leaf : pl.pal.deep);
+      addLeaf(p, node, {
+        tri: p.budget, yaw: a, pitch: droop + pl.u("lp" + s.g) * 0.5,
+        len: r, wid: r * (0.3 + pl.u("lw" + s.g) * 0.35), shape: pl.shape, form: pl.form,
+        leaflet: 3 + (s.g % 4),
+        color: lc, colorFn: opt.colorful ? undefined : pl.pal.grad, stalkColor: pl.pal.deep, stalk: 0.2,
+      });
     },
   });
 }
