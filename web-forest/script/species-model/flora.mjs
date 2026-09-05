@@ -34,6 +34,17 @@ const ink = APP.ink;
 const paper = APP.paper;
 const BLUSH = hex("#f0a0a8");
 
+/**
+ * Genus / species-code lookups. build-species-model.mjs owns the routing to an
+ * archetype; a handful of diagnostics are finer than an archetype (a fishtail
+ * palm, a fan palm, a lichen crust, a Norfolk Island Pine) and those are
+ * selected HERE, off the name, so the routing table stays a routing table.
+ * Deterministic by construction — it is a string lookup, not a hash.
+ */
+const sciOf = (k) => String(k.spec.scientific_name ?? k.spec.species_code ?? "").trim().toLowerCase();
+const genusOf = (k) => sciOf(k).split(/[\s_-]+/)[0];
+const epithetOf = (k) => sciOf(k).split(/[\s_-]+/)[1] ?? "";
+
 const leafOf = (col) => col.base ?? APP.green;
 const leafDeep = (col) => col.dark ?? APP.greenDeep;
 const trunkOf = (col) => col.trunk ?? shade(APP.greenDeep, -0.5);
@@ -230,6 +241,75 @@ function arcTubeGeo({ R, r, a0, a1, segs = 8, ring = 6 }) {
   return clean(loft(rings));
 }
 
+/**
+ * A flat, irregularly lobed plate lying in the XZ plane, base at y=0. This is
+ * the crust: a lichen thallus, a liverwort rosette, a resupinate fungus. Its
+ * rim wobbles on a cosine so it reads as lobed rather than as a coin, and the
+ * top is domed a little so it is a patch of something living rather than a
+ * washer.
+ */
+function crustGeo({ r, thick = 0.05, lobe = 7, wob = 0.24, seg = 16, rise = 1 }) {
+  seg = Math.max(10, Math.round(seg / lobe) * lobe || seg);
+  const ring = (rad, y, shrink) => {
+    const pts = [];
+    for (let i = 0; i < seg; i += 1) {
+      const a = (i / seg) * TAU;
+      const rr = rad * (1 + wob * Math.cos(lobe * a)) * shrink;
+      pts.push([Math.cos(a) * rr, y, Math.sin(a) * rr]);
+    }
+    return { pts };
+  };
+  const rings = [{ pole: [0, 0, 0] }, ring(r, thick * 0.12, 0.99), ring(r, thick * 0.55 * rise, 0.9), ring(r * 0.62, thick * rise, 0.9), { pole: [0, thick * 1.05 * rise, 0] }];
+  return clean(loft(rings));
+}
+
+/**
+ * A coil around +Y — a vine tendril, a twining stem. `turn` full turns over
+ * `h`, radius `R`, tube radius `r`. Starts on the axis so the part it belongs
+ * to always straddles it.
+ */
+function coilGeo({ R, r, h, turn = 2.2, segs = 22, ring = 5 }) {
+  ring = Math.max(5, ring);
+  const rings = [];
+  const N = Math.max(6, segs);
+  for (let i = 0; i <= N; i += 1) {
+    const t = i / N;
+    const a = t * turn * TAU;
+    const rad = R * Math.min(1, t * 4);
+    const cx = Math.cos(a) * rad, cz = Math.sin(a) * rad, cy = t * h;
+    // frame: tangent is mostly around the circle, so sweep the tube in the
+    // plane spanned by the radial direction and +Y — close enough at this size
+    const ux = Math.cos(a), uz = Math.sin(a);
+    const pts = [];
+    for (let m = 0; m < ring; m += 1) {
+      const b = (m / ring) * TAU;
+      pts.push([cx + ux * Math.cos(b) * r, cy + Math.sin(b) * r, cz + uz * Math.cos(b) * r]);
+    }
+    rings.push({ pts });
+  }
+  rings.unshift({ pole: [0, -r * 0.4, 0] });
+  rings.push({ pole: [Math.cos(turn * TAU) * R, h + r * 0.4, Math.sin(turn * TAU) * R] });
+  return clean(loft(rings));
+}
+
+/**
+ * Concatenate geometries into ONE mesh. A cushion of moss or a fan of grass
+ * leaflets is dozens of tiny pieces; shipped as dozens of primitives they cost
+ * more in glTF accessor bookkeeping than in triangles, and the per-model 120 kB
+ * ceiling is a hard test assertion. Merged, they cost one primitive. Colour is
+ * then per-merge, so callers group by colour before merging.
+ */
+function mergeGeo(list) {
+  const positions = [];
+  const indices = [];
+  for (const g of list) {
+    const off = positions.length;
+    for (const q of g.positions) positions.push(q);
+    for (const [a, b, c] of g.indices) indices.push([a + off, b + off, c + off]);
+  }
+  return { positions, indices };
+}
+
 /** Transform a geometry: scale, then rotate X→Y→Z, then translate. */
 function xf(geo, { s, sx = 1, sy = 1, sz = 1, rx = 0, ry = 0, rz = 0, at = [0, 0, 0] } = {}) {
   const ax = s ?? sx, ay = s ?? sy, az = s ?? sz;
@@ -281,6 +361,8 @@ const ASPECT_UP_WIDE = [0.35, 0.75, 1.15, 1.55];
  * but a pole. They never go below 0.6.
  */
 const ASPECT_CROWN = [0.6, 1.0, 1.4];
+/** Climbers: narrow enough that the twining stem is the thing you see. */
+const ASPECT_VINE = [0.45, 0.8, 1.15, 1.5];
 /** Bands whose part centres land under the audit's bottom-30% trunk window. */
 const BASE_BAND = 2;
 /** First band whose part centres are guaranteed above the mid-height line. */
@@ -440,7 +522,18 @@ class Plant {
     const { lo, hi } = this.localBox(node);
     const cy = (lo[1] + hi[1]) / 2;
     const half = (hi[1] - lo[1]) / 2;
-    const maxHalf = Math.min(target, 1 - target) * 0.995;
+    /*
+     * How tall a part may be, given where its centre has to land. The first
+     * pass required the part to fit strictly inside [0,1], which means a part
+     * whose band centre is at 0.95 may be at most 0.1 tall — so EVERY part in
+     * the top band, and every part in the bottom one, was crushed into a
+     * horizontal plate. That is where "splayed flat, seen from above" came
+     * from across moss, aroid, rosette, fern and coral alike: not the design
+     * of any one archetype, this clamp. Letting a part overhang the axis a
+     * little at each end costs the height grid almost nothing (the model is
+     * renormalised afterwards) and lets a leaf stand up.
+     */
+    const maxHalf = Math.min(target + 0.07, 1.3 - target) * 0.995;
     if (half > maxHalf && half > 1e-6) {
       const s = maxHalf / half;
       for (const p of node.parts) p.positions = p.positions.map((q) => [q[0], cy + (q[1] - cy) * s, q[2]]);
@@ -612,13 +705,30 @@ function addLeaf(p, node, o) {
       const ll = body * (form === "frond" ? 0.52 : 0.44) * (1 - 0.5 * Math.abs(t - 0.42));
       for (const s of [1, -1]) blade(ll, wid * 0.46, form === "frond" ? "linear" : shape, [0, 0, petLen + t * body], s * (1.05 + 0.25 * t), each, -0.15 * ll);
     }
+  } else if (form === "ladder" && left >= 90) {
+    /* A sword fern: one long rachis carrying MANY small paired pinnae. The
+       generic pinnate form tops out at nine leaflets and spends its whole
+       budget on them, which draws Nephrolepis as a broad undivided slab — and
+       the pinnate ladder is the entire identity of the genus. */
+    geos.push(xf(tubeGeo(th * 0.55, th * 0.25, body, 5), { rx: Math.PI / 2, at: [0, 0, petLen] }));
+    left -= 20;
+    const nlf = Math.max(5, Math.min(13, Math.floor(left / 34)));
+    const each = left / (nlf * 2);
+    for (let i = 0; i < nlf; i += 1) {
+      const t = (i + 0.55) / (nlf + 0.25);
+      const ll = body * 0.26 * (1 - 0.5 * Math.abs(t - 0.34));
+      for (const s of [1, -1]) blade(ll, wid * 0.6, "elliptic", [0, 0, petLen + t * body], s * 1.36, each, -0.1 * ll);
+    }
   } else if (form === "lobed" && left >= 60) {
     blade(body, wid, shape, [0, 0, petLen], 0, left * 0.5);
     for (const s of [1, -1]) blade(body * 0.42, wid * 0.42, "ovate", [0, 0, petLen + body * 0.2], s * 1.15, left * 0.25);
   } else {
     blade(body, wid, shape, [0, 0, petLen], 0, left);
   }
-  for (const g of geos) p.add(node, xf(g, { rx: pitch, ry: yaw, rz: roll, at }), { color, colorFn });
+  /* One primitive, not one per leaflet. A compound leaf is up to 27 pieces;
+     shipped separately they cost more in glTF accessor bookkeeping than in
+     triangles, and the pack has a hard 120 kB per model. */
+  if (geos.length) p.add(node, xf(mergeGeo(geos), { rx: pitch, ry: yaw, rz: roll, at }), { color, colorFn });
   return node;
 }
 
@@ -1509,130 +1619,489 @@ function bamboo(k, col) {
   });
 }
 
+/**
+ * Ferns. The divided frond of Christella, Pteris, Tectaria and Macrothelypteris
+ * already worked and is left alone; four groups did not, and each of them is
+ * recognised by exactly the thing that was missing.
+ *
+ *   sword      Nephrolepis — a long pinnate LADDER, drawn as an undivided slab
+ *   nest       Asplenium nidus — entire straps in an upright vase, drawn jagged
+ *   fan        Adiantum — delicate fan pinnules on wiry black stalks
+ *   spikemoss  Selaginella — not a fern at all: a low mat of scale-leaf shoots
+ *   strap      Pyrrosia, Haplopteris, Mickelopteris — simple undivided fronds
+ */
+const FERN_FORM = {
+  nephrolepis: "sword",
+  asplenium: "nest",
+  adiantum: "fan",
+  selaginella: "spikemoss",
+  pyrrosia: "strap",
+  haplopteris: "strap",
+  mickelopteris: "strap",
+  elaphoglossum: "strap",
+};
+
 function fern(k, col) {
+  const form = FERN_FORM[genusOf(k)] ?? "divided";
   grow(k, col, {
-    salt: "fern",
-    height: 0.5,
+    salt: `fern:${form}`,
+    /* A vase of arching fronds is never a pencil: the columnar low end of the
+       general pool drew Nephrolepis as one frond on a stick. */
+    axSet: form === "spikemoss" ? [1.3, 1.8, 2.3] : form === "nest" ? [0.6, 0.9, 1.2] : form === "sword" ? [0.8, 1.1, 1.4] : ASPECT,
+    azSet: form === "spikemoss" ? [1.3, 1.8, 2.3] : form === "nest" ? [0.6, 0.9, 1.2] : form === "sword" ? [0.8, 1.1, 1.4] : ASPECT,
+    height: form === "spikemoss" ? 0.3 : form === "nest" ? 0.66 : 0.55,
     breathe: 0.02,
     sway: 0.05,
     bands: [0, 1, 2, 3, 4, 5],
     spine(p, pl) {
+      pl.form = form;
+      pl.anchorColor = shade(pl.pal.deep, -0.2);
+      const wiry = form === "fan" ? mix(ink, trunkOf(col), 0.35) : shade(pl.pal.deep, -0.2);
+      pl.wiry = wiry;
       p.spine("frond0", (node) => {
-        p.add(node, xf(tubeGeo(0.012, 0.008, 0.16, 8)), { color: shade(pl.pal.deep, -0.2) });
-        const geos = bladeGeo({ len: 0.9, wid: 0.16, thick: 0.02, shape: "lanceolate", rows: 7, ring: 4, bend: -0.16 });
-        p.add(node, xf(geos, { rx: -1.35, at: [0, 0.14, 0] }), { color: pl.pal.leaf, colorFn: pl.pal.grad });
-        addFace(p, node, { at: [0, 0.08, 0.03], r: 0.032 });
+        if (form === "spikemoss") {
+          p.add(node, xf(capGeo(0.34, 0.4, 13, 5, "flat")), { color: pl.pal.deep, colorFn: grad(shade(pl.pal.leaf, 0.2), pl.pal.deep, 0, 0.4) });
+          const bunch = [[], []];
+          for (let i = 0; i < 12; i += 1) {
+            const a = i * 2.399 + pl.u("s0") * TAU;
+            const rr = 0.28 * Math.sqrt((i + 0.3) / 12);
+            bunch[i % 2].push(xf(bladeGeo({ len: 0.5 - rr * 0.7, wid: 0.09, thick: 0.012, shape: "spatulate", rows: 4, ring: 4, bend: 0.12 }),
+              { rx: -1.15 + rr * 1.5, ry: a, at: [Math.cos(a) * rr, 0.3 - rr * 0.5, Math.sin(a) * rr] }));
+          }
+          p.add(node, mergeGeo(bunch[0]), { color: pl.pal.leaf, colorFn: pl.pal.grad });
+          p.add(node, mergeGeo(bunch[1]), { color: pl.pal.deep });
+          addFace(p, node, { at: [0, 0.22, 0.24], r: 0.062, tri: p.budget * 8 });
+          return;
+        }
+        p.add(node, xf(tubeGeo(0.012, 0.008, 0.18, 8)), { color: wiry });
+        if (form === "sword") {
+          /* The axis frond has to be the ladder too. Left as one undivided
+             blade it is the tallest thing in the model and Nephrolepis reads
+             as the broad slab the review complained about, however many
+             divided fronds hang off it. */
+          addLeaf(p, node, {
+            at: [0, 0.16, 0], yaw: 0, pitch: -1.28, len: 0.9, wid: 0.22, thick: 0.016,
+            shape: "elliptic", form: "ladder", tri: 620, bend: -0.3, stalk: 0.06, roll: 0.12,
+            color: pl.pal.leaf, colorFn: pl.pal.grad, stalkColor: wiry,
+          });
+        } else {
+          const bl = { rows: 7, ring: 4 };
+          const g = form === "nest"
+            ? bladeGeo({ len: 0.88, wid: 0.2, thick: 0.02, shape: "obovate", ...bl, bend: -0.06, fold: 0.3 })
+            : bladeGeo({ len: 0.9, wid: 0.16, thick: 0.02, shape: "lanceolate", ...bl, bend: -0.16 });
+          p.add(node, xf(g, { rx: form === "nest" ? -1.5 : -1.35, at: [0, 0.16, 0] }), { color: pl.pal.leaf, colorFn: pl.pal.grad });
+        }
+        addFace(p, node, { at: [0, 0.09, 0.03], r: 0.034, tri: p.budget * 8 });
       });
     },
     slot(p, pl, s) {
       const { node, band, a } = s;
-      if (band <= 1 && s.i % 3 === 2) {
-        for (const sgn of [1]) {
-          p.add(node, xf(arcTubeGeo({ R: 0.035, r: 0.009, a0: 0, a1: Math.PI * 1.6, segs: 5, ring: 4 }), { ry: a, at: [Math.cos(a) * 0.05 * sgn, 0.03, Math.sin(a) * 0.05 * sgn] }), { color: shade(pl.pal.deep, 0.1) });
+
+      if (pl.form === "spikemoss") {
+        const t = (band + 0.5) / 6;
+        const r = reachOf(pl, a, 0.95 * (1 - 0.6 * t));
+        const n = Math.max(1, Math.min(3, Math.floor(p.budget / 30)));
+        const bunch = [[], []];
+        for (const sgn of [1, -1]) {
+          for (let j = 0; j < n; j += 1) {
+            const aa = a + (sgn > 0 ? 0 : Math.PI) + (j - (n - 1) / 2) * 0.6;
+            const rr = r * (0.4 + 0.6 * ((j + 0.5) / n));
+            bunch[j % 2].push(xf(bladeGeo({ len: 0.16 + r * 0.5, wid: 0.075, thick: 0.011, shape: "spatulate", rows: 3, ring: 4, bend: 0.1 }),
+              { rx: -0.85 + pl.u(`sp${s.g}${j}`) * 0.7, ry: aa, at: [Math.cos(aa) * rr, 0, Math.sin(aa) * rr] }));
+          }
         }
+        if (bunch[0].length) p.add(node, mergeGeo(bunch[0]), { color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });
+        if (bunch[1].length) p.add(node, mergeGeo(bunch[1]), { color: s.g % 2 ? pl.pal.deep : pl.pal.leaf });
         return;
       }
-      const r = reachOf(pl, a, 0.95);
-      const form = p.budget >= 34 ? "frond" : "simple";
-      for (const sgn of [1]) {
-        addLeaf(p, node, { tri: p.budget,
-          yaw: a + (sgn > 0 ? 0 : Math.PI), pitch: 0.35 + pl.u(`fp${s.g}`) * 0.7,
-          len: r, wid: r * (0.2 + pl.u(`fw${s.g}`) * 0.2), shape: pl.shape, form,
-          leaflet: 3 + (s.g % 5), rows: 4, ring: 4, bend: -r * 0.35, stalk: 0.18,
-          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad, stalkColor: shade(pl.pal.deep, -0.2),
-        });
+
+      // a fiddlehead crozier at the foot — the fern's other diagnostic
+      if (band <= 1 && s.i % 3 === 2) {
+        p.add(node, xf(arcTubeGeo({ R: 0.035, r: 0.009, a0: 0, a1: Math.PI * 1.6, segs: 5, ring: 6 }), { ry: a, at: [Math.cos(a) * 0.05, 0.03, Math.sin(a) * 0.05] }), { color: shade(pl.pal.deep, 0.1) });
+        return;
       }
+
+      const r = reachOf(pl, a, 0.95);
+      if (pl.form === "nest") {
+        // an entire strap, standing up in a vase: no jagged splitting at all
+        addLeaf(p, node, {
+          tri: p.budget, yaw: a, pitch: -1.18 + pl.u(`np${s.g}`) * 0.55,
+          len: r * 1.3, wid: r * (0.24 + pl.u(`nw${s.g}`) * 0.12),
+          shape: "obovate", form: "simple", rows: 6, ring: 4,
+          bend: -r * 0.42, fold: 0.34, stalk: 0.05,
+          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad, stalkColor: pl.wiry,
+        });
+        return;
+      }
+      if (pl.form === "fan") {
+        // maidenhair: a wiry stalk carrying a spray of little fan pinnules
+        const L = r * 0.55;
+        p.add(node, xf(tubeGeo(0.006, 0.004, L, 7), { rz: -Math.cos(a) * 0.75, rx: Math.sin(a) * 0.75 }), { color: pl.wiry });
+        const tip = [Math.cos(a) * L * Math.sin(0.75), L * Math.cos(0.75), Math.sin(a) * L * Math.sin(0.75)];
+        const n = Math.max(3, Math.min(7, Math.floor(p.budget / 16)));
+        const fan = [];
+        for (let j = 0; j < n; j += 1) {
+          const aa = a + (j / (n - 1) - 0.5) * 1.7;
+          fan.push(xf(bladeGeo({ len: r * 0.3, wid: r * 0.26, thick: 0.006, shape: "spatulate", rows: 3, ring: 4 }),
+            { rx: 0.5 + (j % 2) * 0.25, ry: aa, at: tip }));
+        }
+        p.add(node, mergeGeo(fan), { color: s.g % 2 ? pl.pal.leaf : shade(pl.pal.leaf, 0.16), colorFn: pl.pal.grad });
+        return;
+      }
+      if (pl.form === "strap") {
+        addLeaf(p, node, {
+          tri: p.budget, yaw: a, pitch: -0.85 + pl.u(`tp${s.g}`) * 0.8,
+          len: r * 1.25, wid: r * (0.26 + pl.u(`tw${s.g}`) * 0.16),
+          shape: "lanceolate", form: "simple", rows: 6, ring: 4,
+          bend: -r * 0.5, stalk: 0.12, fold: 0.2,
+          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad, stalkColor: pl.wiry,
+        });
+        return;
+      }
+      const form = pl.form === "sword" ? "ladder" : p.budget >= 34 ? "frond" : "simple";
+      addLeaf(p, node, {
+        tri: p.budget, yaw: a,
+        pitch: pl.form === "sword" ? -0.9 + pl.u(`fp${s.g}`) * 0.75 : -0.35 + pl.u(`fp${s.g}`) * 0.9,
+        len: r * (pl.form === "sword" ? 1.6 : 1), wid: r * (pl.form === "sword" ? 0.3 : 0.2 + pl.u(`fw${s.g}`) * 0.2),
+        shape: pl.shape, form, leaflet: 3 + (s.g % 5), rows: 4, ring: 4,
+        bend: -r * (pl.form === "sword" ? 0.55 : 0.35), stalk: 0.18,
+        color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad, stalkColor: pl.wiry,
+      });
     },
   });
 }
 
+/*
+ * Moss, lichen, liverwort and one alga all land in this archetype, and the
+ * three of them are not the same plant. A moss is a dense CUSHION of many
+ * tiny shoots; a crustose lichen is a flat lobed patch with no stem and no
+ * sporophyte at all; a thalloid liverwort is a flat forked ribbon rosette;
+ * Cladophora is a filament tuft. Selecting on genus here rather than in the
+ * routing table keeps the router a router: every one of these is correctly
+ * "the mossy-crust archetype", they just are not all mosses.
+ */
+const LICHEN_GENUS = new Set((
+  "lecanora hyperphyscia phlyctis chrysothrix lepraria cryptothecia dirinaria graphis physcia " +
+  "physciella pyxine collema pseudoschismatomma parmotrema usnea ramalina cladonia coenogonium " +
+  "arthonia lecidea caloplaca dirina heterodermia leptogium pertusaria porina pyrenula " +
+  "trypethelium bacidia lecania buellia rinodina opegrapha diorygma malmidea"
+).split(" "));
+const LIVERWORT_GENUS = new Set((
+  "riccia ricciocarpos riccardia dumortiera cyathodium myriocoleopsis marchantia lunularia " +
+  "pallavicinia asterella plagiochasma monoclea aneura metzgeria"
+).split(" "));
+const ALGA_GENUS = new Set("cladophora trentepohlia chlorella ulva".split(" "));
+
+/** Which of the four bodies this species actually has. */
+function mossForm(k) {
+  const g = genusOf(k);
+  if (ALGA_GENUS.has(g)) return "filament";
+  if (LICHEN_GENUS.has(g)) return "crust";
+  if (LIVERWORT_GENUS.has(g)) return "thallus";
+  return "cushion";
+}
+
+/** Aspect pools per body: a crust is a patch, a filament tuft stands up. */
+const MOSS_ASPECT = {
+  crust: [1.95, 2.4, 2.85],
+  thallus: [1.75, 2.2, 2.65],
+  cushion: [1.1, 1.55, 2.0, 2.45],
+  filament: [0.5, 0.85, 1.2],
+};
+
+/**
+ * One tiny leafy shoot: a narrow spike of a blade, standing up. Six-sided in
+ * cross-section rather than four: a four-sided lens puts half of its edges past
+ * the audit's 40-degree crease line, and a cushion made of a hundred of them
+ * is then a hundred per cent facets. Six sides is one extra triangle per row
+ * and drops the sharp share to a third.
+ */
+function shootGeo({ at, len, wid, tilt, yaw, rows = 3 }) {
+  return xf(bladeGeo({ len, wid, thick: wid * 0.34, shape: "needle", rows, ring: 6, bend: len * 0.12 }),
+    { rx: -Math.PI / 2 + tilt, ry: yaw, at });
+}
+
+/** A pair of flat forked ribbon lobes lying almost flat — a thalloid liverwort. */
+function ribbon(p, node, { at, len, wid, yaw, tilt, color, colorFn }) {
+  for (const s of [1, -1]) {
+    p.add(node, xf(bladeGeo({ len, wid, thick: wid * 0.16, shape: "spatulate", rows: 4, ring: 4, bend: -len * 0.12 }),
+      { rx: tilt, ry: yaw + s * 0.34, at }), { color, colorFn });
+  }
+}
+
 function moss(k, col) {
+  const form = mossForm(k);
+  const crust = form === "crust";
   grow(k, col, {
-    salt: "moss",
-    height: 0.2,
+    salt: `moss:${form}`,
+    axSet: MOSS_ASPECT[form],
+    azSet: MOSS_ASPECT[form],
+    height: form === "filament" ? 0.5 : form === "cushion" ? 0.34 : 0.2,
     breathe: 0.028,
-    sway: 0.09,
+    sway: crust ? 0.02 : 0.07,
     bands: [0, 1, 2, 3, 4, 5],
     spine(p, pl) {
-      p.spine("seta", (node) => {
-        const stalkCol = mix(pl.pal.deep, flowerOf(col), 0.3);
-        p.add(node, xf(tubeGeo(0.011, 0.006, 0.86, 9), { rz: (pl.u("ln") - 0.5) * 0.2 }), { color: stalkCol });
-        p.add(node, xf(sphereGeo(10, 5), { sx: 0.035, sy: 0.055, sz: 0.035, at: [0, 0.93, 0], rx: 0.4 }), { color: flowerOf(col) });
-        addTuft(p, node, { tri: p.budget, at: [0, 0.03, 0], r: 0.05, n: 3, color: pl.pal.leaf, color2: pl.pal.deep, squash: 0.75 });
-        addFace(p, node, { at: [0, 0.03, 0.045], r: 0.032 });
+      /* A lichen is not a plant and should not be leaf-green; pulling the pool
+         colour a third of the way to paper gives the chalky grey-green,
+         sulphur and rust a crust actually has, without collapsing the colour
+         axis of the distinctness signature. */
+      if (crust) {
+        pl.pal = { leaf: mix(pl.pal.leaf, paper, 0.38), deep: mix(pl.pal.deep, paper, 0.22), grad: pl.pal.grad };
+        pl.pal.grad = grad(shade(pl.pal.leaf, 0.16), pl.pal.deep, 0, 0.6);
+      }
+      pl.form = form;
+      pl.anchorColor = pl.pal.deep;
+      const { leaf, deep } = pl.pal;
+
+      if (crust) {
+        p.spine("crust", (node) => {
+          const lobe = 5 + (pl.H("lb") % 4);
+          p.add(node, xf(crustGeo({ r: 0.5, thick: 0.44, lobe, wob: 0.2, seg: 18 })),
+            { color: deep, colorFn: grad(shade(leaf, 0.12), deep, 0, 0.44) });
+          p.add(node, xf(crustGeo({ r: 0.33, thick: 0.4, lobe: lobe + 2, wob: 0.28, seg: 15 }), { at: [0.03, 0.32, -0.02] }), { color: leaf });
+          p.add(node, xf(crustGeo({ r: 0.19, thick: 0.34, lobe: lobe + 1, wob: 0.3, seg: 12 }), { at: [-0.02, 0.63, 0.03] }), { color: mix(leaf, deep, 0.5) });
+          addFace(p, node, { at: [0, 0.5, 0.26], r: 0.088, tri: p.budget * 8 });
+        });
+        return;
+      }
+
+      if (form === "thallus") {
+        p.spine("thallus", (node) => {
+          for (let i = 0; i < 3; i += 1) {
+            const y = i * 0.34;
+            const rr = 0.46 - i * 0.11;
+            const n = 4 - (i > 1 ? 1 : 0);
+            for (let j = 0; j < n; j += 1) {
+              ribbon(p, node, {
+                at: [0, y, 0], len: rr, wid: rr * 0.5, yaw: pl.u("t0") * TAU + j * (TAU / n) + i * 0.5,
+                tilt: 0.02 + i * 0.06, color: i % 2 ? leaf : deep, colorFn: pl.pal.grad,
+              });
+            }
+          }
+          p.add(node, xf(sphereGeo(10, 5), { sx: 0.09, sy: 0.14, sz: 0.09, at: [0, 0.86, 0] }), { color: mix(leaf, deep, 0.4) });
+          addFace(p, node, { at: [0, 0.5, 0.1], r: 0.075, tri: p.budget * 8 });
+        });
+        return;
+      }
+
+      if (form === "filament") {
+        p.spine("tuft", (node) => {
+          p.add(node, xf(capGeo(0.16, 0.12, 12, 4, "dome")), { color: deep });
+          for (let i = 0; i < 9; i += 1) {
+            const a = i * 2.399 + pl.u("f0") * TAU;
+            const rr = 0.05 + 0.09 * ((i % 3) / 3);
+            p.add(node, xf(bladeGeo({ len: 0.75 + (i % 4) * 0.08, wid: 0.032, thick: 0.02, shape: "linear", rows: 4, ring: 4, bend: 0.16 }),
+              { rx: -Math.PI / 2 + 0.14 + (i % 3) * 0.08, ry: a, at: [Math.cos(a) * rr, 0.08, Math.sin(a) * rr] }),
+            { color: i % 2 ? leaf : deep, colorFn: pl.pal.grad });
+          }
+          addFace(p, node, { at: [0, 0.12, 0.14], r: 0.062, tri: p.budget * 8 });
+        });
+        return;
+      }
+
+      // cushion: a low mound crowded with tiny upright shoots, and the seta +
+      // capsule that only a real moss gets to have
+      p.spine("cushion", (node) => {
+        p.add(node, xf(capGeo(0.44, 0.34, 14, 5, "flat")), { color: deep, colorFn: grad(shade(leaf, 0.2), deep, 0, 0.34) });
+        const bunch = [[], []];
+        for (let i = 0; i < 14; i += 1) {
+          const a = i * 2.399 + pl.u("c0") * TAU;
+          const rr = 0.34 * Math.sqrt((i + 0.35) / 14);
+          bunch[i % 2].push(shootGeo({
+            at: [Math.cos(a) * rr, 0.27 - rr * 0.4, Math.sin(a) * rr],
+            len: 0.34 - rr * 0.5, wid: 0.05, tilt: rr * 1.4, yaw: a,
+          }));
+        }
+        p.add(node, mergeGeo(bunch[0]), { color: leaf });
+        p.add(node, mergeGeo(bunch[1]), { color: deep });
+        const setaCol = mix(deep, flowerOf(col), 0.35);
+        p.add(node, xf(tubeGeo(0.011, 0.007, 0.78, 9), { rz: (pl.u("ln") - 0.5) * 0.3, at: [0, 0.16, 0] }), { color: setaCol });
+        p.add(node, xf(sphereGeo(10, 5), { sx: 0.045, sy: 0.07, sz: 0.045, at: [0, 0.97, 0], rx: 0.45 }), { color: flowerOf(col) });
+        addFace(p, node, { at: [0, 0.22, 0.3], r: 0.075, tri: p.budget * 8 });
       });
     },
     slot(p, pl, s) {
       const { node, band, a } = s;
-      const r = reachOf(pl, a, 0.6 + pl.u(`mr${s.g}`) * 0.5);
-      if (band >= 3 && s.i % 2 === 0) {
-        // a shorter sporophyte: stalk from the axis, capsule on top
-        for (const sgn of [1]) {
-          p.add(node, xf(tubeGeo(0.008, 0.005, 0.12, 8), { rz: sgn * 0.25, at: [0, -0.1, 0] }), { color: mix(pl.pal.deep, flowerOf(col), 0.25) });
-          addLump(p, node, { rx: 0.024, ry: 0.036, rz: 0.024, yaw: a, tri: p.budget * 0.55, at: [Math.cos(a) * 0.03 * sgn, 0.02, Math.sin(a) * 0.03 * sgn], color: flowerOf(col) });
+      const t = (band + 0.5) / 6;
+      const { leaf, deep } = pl.pal;
+
+      if (pl.form === "crust") {
+        // an overlapping lobed plate, offset but still straddling the axis, so
+        // the patch outline stays irregular and stays one piece
+        const r = reachOf(pl, a, 0.95 * (1 - 0.62 * t));
+        const seg = p.budget >= 90 ? 16 : p.budget >= 55 ? 13 : 11;
+        p.add(node, xf(crustGeo({ r, thick: r * (0.3 + pl.u(`ct${s.g}`) * 0.3), lobe: 4 + (s.g % 5), wob: 0.18 + pl.u(`cw${s.g}`) * 0.18, seg }),
+          { at: [Math.cos(a) * r * 0.42, 0, Math.sin(a) * r * 0.42] }),
+        { color: s.g % 2 ? leaf : mix(leaf, deep, 0.55), colorFn: pl.pal.grad });
+        if (p.budget >= 96 && s.g % 2 === 0) {
+          for (let j = 0; j < 2; j += 1) {
+            const aa = a + (j - 0.5) * 1.3;
+            p.add(node, xf(capGeo(r * 0.2, r * 0.13, 9, 3, "funnel"), { at: [Math.cos(aa) * r * 0.45, r * 0.2, Math.sin(aa) * r * 0.45] }),
+              { color: shade(flowerOf(col), -0.1) });
+          }
         }
         return;
       }
-      for (const sgn of [1]) {
-        addLeaf(p, node, { tri: p.budget,
-          yaw: a + (sgn > 0 ? 0 : Math.PI), pitch: 0.5 + pl.u(`mp${s.g}`) * 0.7,
-          len: r * 0.9, wid: r * 0.5, shape: pl.shape, rows: 4, ring: 4, bend: -r * 0.2, stalk: 0.05,
-          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad,
-        });
+
+      if (pl.form === "thallus") {
+        const r = reachOf(pl, a, 0.95 * (1 - 0.55 * t));
+        for (const sgn of [1, -1]) {
+          ribbon(p, node, {
+            at: [0, 0, 0], len: r, wid: r * (0.42 + pl.u(`tw${s.g}`) * 0.3),
+            yaw: a + (sgn > 0 ? 0 : Math.PI), tilt: 0.03 + pl.u(`tt${s.g}`) * 0.22,
+            color: s.g % 2 ? leaf : deep, colorFn: pl.pal.grad,
+          });
+        }
+        return;
       }
-      if (band <= 1) addTuft(p, node, { tri: p.budget, at: [0, 0, 0], r: r * 0.3, n: 3, color: pl.pal.deep, color2: pl.pal.leaf, squash: 0.7 });
+
+      if (pl.form === "filament") {
+        const r = reachOf(pl, a, 0.42 * (1 - 0.5 * t));
+        const n = Math.max(1, Math.min(3, Math.floor(p.budget / 30)));
+        for (const sgn of [1, -1]) {
+          for (let j = 0; j < n; j += 1) {
+            const aa = a + (sgn > 0 ? 0 : Math.PI) + (j - (n - 1) / 2) * 0.5;
+            p.add(node, xf(bladeGeo({ len: 0.28 + pl.u(`fl${s.g}${j}`) * 0.3, wid: 0.03, thick: 0.019, shape: "linear", rows: 4, ring: 4, bend: 0.1 }),
+              { rx: -Math.PI / 2 + 0.1 + pl.u(`fa${s.g}${j}`) * 0.35, ry: aa, at: [Math.cos(aa) * r, 0, Math.sin(aa) * r] }),
+            { color: (s.g + j) % 2 ? leaf : deep, colorFn: pl.pal.grad });
+          }
+        }
+        return;
+      }
+
+      // cushion: a knot of tiny shoots, tighter and shorter the higher it sits,
+      // so the family reads as a dome of turf rather than a splayed lens
+      const r = reachOf(pl, a, 0.92 * (1 - 0.7 * t));
+      const n = Math.max(1, Math.min(4, Math.floor(p.budget / 22)));
+      const bunch = [[], []];
+      for (const sgn of [1, -1]) {
+        for (let j = 0; j < n; j += 1) {
+          const aa = a + (sgn > 0 ? 0 : Math.PI) + (j - (n - 1) / 2) * 0.55;
+          const rr = r * (0.45 + 0.55 * ((j + 0.5) / n));
+          bunch[(j + (sgn > 0 ? 0 : 1)) % 2].push(shootGeo({
+            at: [Math.cos(aa) * rr, 0, Math.sin(aa) * rr],
+            len: 0.1 + pl.u(`ml${s.g}${j}`) * 0.13 + r * 0.3,
+            wid: 0.034 + pl.u(`mw${s.g}`) * 0.02,
+            tilt: 0.18 + pl.u(`mt${s.g}${j}`) * 0.5, yaw: aa, rows: 3,
+          }));
+        }
+      }
+      if (bunch[0].length) p.add(node, mergeGeo(bunch[0]), { color: s.g % 2 ? leaf : deep });
+      if (bunch[1].length) p.add(node, mergeGeo(bunch[1]), { color: s.g % 2 ? deep : leaf });
+      if (band >= 4 && s.i % 2 === 1 && p.budget >= 70) {
+        const setaCol = mix(deep, flowerOf(col), 0.3);
+        p.add(node, xf(tubeGeo(0.008, 0.005, 0.16, 8), { rz: Math.cos(a) * 0.2, rx: -Math.sin(a) * 0.2, at: [0, -0.08, 0] }), { color: setaCol });
+        p.add(node, xf(sphereGeo(9, 5), { sx: 0.028, sy: 0.042, sz: 0.028, at: [Math.cos(a) * 0.03, 0.1, Math.sin(a) * 0.03], rx: 0.4 }), { color: flowerOf(col) });
+      }
     },
   });
 }
 
 // ---------- succulents & arids ----------
 
+/**
+ * Four cacti that were four identical green barrels differing only in tint,
+ * whose "spines" were long green blades the same colour as the body stabbing
+ * out sideways. Opuntia is a chain of flat oval PADS; Mammillaria is a globe
+ * under dense WHITE spination. Both are selected by genus, and the spines are
+ * now short, white and clustered at areoles the way a cactus wears them.
+ */
+const PAD_GENUS = new Set("opuntia nopalea".split(" "));
+const GLOBE_GENUS = new Set("mammillaria frailea gymnocalycium echinopsis parodia rebutia astrophytum".split(" "));
+
+/** A ring of short white spines radiating from one areole. */
+function areole(p, node, { at, r, n = 6, len, color, wool }) {
+  const g = [];
+  for (let i = 0; i < n; i += 1) {
+    const b = (i / n) * TAU;
+    g.push(xf(coneGeo(r, len * (0.7 + 0.3 * ((i * 5) % 3)), 6), { rz: -Math.cos(b) * 1.35, rx: Math.sin(b) * 1.35, at }));
+  }
+  p.add(node, mergeGeo(g), { color });
+  if (wool) p.add(node, xf(sphereGeo(9, 4), { s: r * 1.8, at }), { color: wool });
+}
+
 function cactus(k, col, opt = {}) {
-  const pads = opt.kind === "pads";
+  const g = genusOf(k);
+  const kind = PAD_GENUS.has(g) || opt.kind === "pads" ? "pads"
+    : GLOBE_GENUS.has(g) || opt.kind === "globe" ? "globe" : "column";
+  const spineCol = mix(paper, hex("#e8dcc0"), 0.35);
   grow(k, col, {
-    salt: `cactus:${opt.kind ?? "column"}`,
-    height: 0.6,
+    salt: `cactus:${kind}`,
+    /* A pad is FLAT, and the silhouette normalisation actively fights that:
+       it rescales x and z independently to the planned aspect, so the thin
+       axis of a pad gets inflated back into a barrel. Giving the pad body a
+       narrow az against a wide ax is the only way to keep it a pad. */
+    axSet: kind === "pads" ? [0.85, 1.15, 1.45] : kind === "globe" ? [0.85, 1.2, 1.55] : [0.3, 0.55, 0.8],
+    azSet: kind === "pads" ? [0.3, 0.44, 0.58] : kind === "globe" ? [0.85, 1.2, 1.55] : [0.3, 0.55, 0.8],
+    height: kind === "globe" ? 0.34 : 0.62,
     breathe: 0.014,
-    sway: 0.02,
+    sway: 0.015,
     bands: [0, 1, 2, 3, 4, 5],
     spine(p, pl) {
+      pl.kind = kind;
+      pl.anchorColor = pl.pal.deep;
       p.spine("body", (node) => {
-        const g = pl.pal;
-        if (pads) {
+        const gp = pl.pal;
+        const cg = grad(shade(gp.leaf, 0.14), gp.deep, 0, 0.9);
+        if (kind === "pads") {
+          // a chain of flat oval pads, each joined to the last at its foot
           let y = 0;
-          for (let i = 0; i < 3; i += 1) {
-            const rr = 0.13 - i * 0.022;
-            p.add(node, xf(sphereGeo(12, 6), { sx: rr, sy: rr * 1.25, sz: rr * 0.32, at: [0, y + rr * 1.1, 0], rz: (i % 2 ? 1 : -1) * 0.12 }), { color: g.deep, colorFn: grad(shade(g.leaf, 0.1), g.deep, 0, 0.6) });
-            y += rr * 1.9;
+          let lean = 0;
+          for (let i = 0; i < 4; i += 1) {
+            const rr = 0.185 - i * 0.026;
+            lean += (i % 2 ? 1 : -1) * 0.2;
+            p.add(node, xf(sphereGeo(13, 7), { sx: rr, sy: rr * 1.45, sz: rr * 0.3, at: [Math.sin(lean) * rr * 0.5, y + rr * 1.3, 0], rz: lean }),
+              { color: gp.deep, colorFn: cg });
+            y += rr * 2.3;
           }
+          addFace(p, node, { at: [0, 0.32, 0.06], r: 0.055, tri: p.budget * 8 });
+        } else if (kind === "globe") {
+          // a squat ribbed globe under a fur of spines
+          p.add(node, xf(sphereGeo(15, 8), { sx: 0.4, sy: 0.5, sz: 0.4, at: [0, 0.5, 0] }), { color: gp.deep, colorFn: grad(shade(gp.leaf, 0.16), gp.deep, 0.1, 0.9) });
+          /* Mammillaria is named for its tubercles and worn under a dense
+             white fur; a bare green egg with five spines is not it. */
+          const dense = genusOf(k) === "mammillaria";
+          const na = dense ? 22 : 12;
+          for (let i = 0; i < na; i += 1) {
+            const a = i * 2.399;
+            const b = Math.acos(1 - (2 * (i + 0.5)) / na) * 0.7;
+            const d = [Math.cos(a) * Math.sin(b), Math.cos(b), Math.sin(a) * Math.sin(b)];
+            const at = [d[0] * 0.4, 0.5 + d[1] * 0.5, d[2] * 0.4];
+            if (dense) p.add(node, xf(sphereGeo(9, 4), { s: 0.048, at: [d[0] * 0.37, 0.5 + d[1] * 0.46, d[2] * 0.37] }), { color: shade(pl.pal.leaf, 0.12) });
+            areole(p, node, { at, r: dense ? 0.009 : 0.011, n: dense ? 7 : 5, len: dense ? 0.16 : 0.12, color: spineCol, wool: paper });
+          }
+          addFace(p, node, { at: [0, 0.55, 0.42], r: 0.09, tri: p.budget * 8 });
         } else {
-          p.add(node, xf(tubeGeo(0.075, 0.055, 0.92, 14, 0.012)), { color: g.deep, colorFn: grad(shade(g.leaf, 0.12), g.deep, 0, 0.9) });
-          p.add(node, xf(capGeo(0.055, 0.09, 14, 5, "dome"), { at: [0, 0.92, 0] }), { color: g.deep });
+          p.add(node, xf(tubeGeo(0.075, 0.055, 0.92, 14, 0.012)), { color: gp.deep, colorFn: cg });
+          p.add(node, xf(capGeo(0.055, 0.09, 14, 5, "dome"), { at: [0, 0.92, 0] }), { color: gp.deep });
+          addFace(p, node, { at: [0, 0.3, 0.072], r: 0.05, tri: p.budget * 8 });
         }
-        addFace(p, node, { at: [0, 0.3, pads ? 0.045 : 0.072], r: 0.05 });
       });
     },
     slot(p, pl, s) {
       const { node, band, a, top } = s;
       if (band >= top && s.i === 0) {
-        for (const sgn of [1]) {
-          addFlower(p, node, { tri: p.budget, at: [Math.cos(a) * 0.05 * sgn, 0, Math.sin(a) * 0.05 * sgn], kind: "daisy", r: 0.055, color: flowerOf(col), stalkLen: 0.02 });
-        }
+        addFlower(p, node, { tri: p.budget, at: [Math.cos(a) * 0.05, 0, Math.sin(a) * 0.05], kind: "daisy", r: 0.055, color: flowerOf(col), stalkLen: 0.02 });
         return;
       }
-      if (band >= 2 && s.i % 3 === 1) {
-        for (const sgn of [1]) {
-          p.add(node, xf(tubeGeo(0.026, 0.02, 0.2, 11), { rz: sgn * 0.9, ry: a }), { color: pl.pal.deep });
-        }
+      if (pl.kind === "pads" && band >= 2 && s.i % 3 === 0) {
+        // a side pad budding off the chain
+        const rr = 0.075 + pl.u(`pr${s.g}`) * 0.05;
+        p.add(node, xf(sphereGeo(12, 6), { sx: rr, sy: rr * 1.4, sz: rr * 0.3, at: [Math.cos(a) * rr * 1.1, rr * 0.9, Math.sin(a) * rr * 1.1], ry: a, rz: -Math.cos(a) * 0.5 }),
+          { color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });
+        if (p.budget >= 56) areole(p, node, { at: [Math.cos(a) * rr * 1.1, rr * 1.7, Math.sin(a) * rr * 1.1], r: 0.007, n: 4, len: 0.05, color: spineCol });
         return;
       }
-      // areole spine clusters, mirrored so the part straddles the axis
-      const r = reachOf(pl, a, 0.55);
-      for (const sgn of [1]) {
-        for (let j = 0; j < 3; j += 1) {
-          const aa = a + (j - 1) * 0.35;
-          p.add(node, xf(coneGeo(0.006, 0.045, 6), { rz: -Math.cos(aa) * sgn * 1.3, rx: Math.sin(aa) * sgn * 1.3, at: [Math.cos(a) * r * 0.35 * sgn, 0, Math.sin(a) * r * 0.35 * sgn] }), { color: shade(paper, -0.1) });
-        }
+      // areole spine clusters: short, white, and paired across the axis so the
+      // part is connected without a pedicel
+      const r = reachOf(pl, a, pl.kind === "globe" ? 0.42 : 0.5);
+      const len = pl.kind === "globe" ? 0.075 : 0.055;
+      for (const sgn of [1, -1]) {
+        areole(p, node, {
+          at: [Math.cos(a) * r * sgn, 0, Math.sin(a) * r * sgn],
+          r: 0.006, n: p.budget >= 60 ? 6 : 4, len, color: spineCol,
+          wool: pl.kind === "globe" && p.budget >= 70 ? paper : null,
+        });
       }
     },
   });
@@ -1667,38 +2136,120 @@ function succulent(k, col) {
   });
 }
 
+/**
+ * The archetype's name promises an upright rosette and the first pass drew a
+ * horizontal splay: eight of ten had their blades lying out flat. The cause is
+ * one sign — `pitch` in addLeaf rotates the blade DOWNWARD, so every positive
+ * pitch in the file is a droop. A snake plant does not droop.
+ *
+ * Four bodies live here: stiff swords (Sansevieria), canes (Dracaena),
+ * thick rigid succulent blades (Agave) and arching straps (everything else).
+ */
+const CANE_GENUS = new Set("dracaena cordyline".split(" "));
+const SWORD_GENUS = new Set("sansevieria".split(" "));
+const RIGID_GENUS = new Set("agave furcraea yucca".split(" "));
+
 function rosetteBlades(k, col, opt = {}) {
+  const g = genusOf(k);
+  const form = SWORD_GENUS.has(g) ? "sword"
+    : CANE_GENUS.has(g) || opt.cane ? "cane"
+      : RIGID_GENUS.has(g) ? "rigid" : "strap";
+  const cane = form === "cane";
   grow(k, col, {
-    salt: `rosette:${opt.cane ? "cane" : ""}`,
-    height: 0.55,
+    salt: `rosette:${form}`,
+    // an upright rosette is TALLER than it is wide, by definition
+    axSet: form === "sword" ? [0.35, 0.6, 0.85] : ASPECT_CROWN,
+    azSet: form === "sword" ? [0.35, 0.6, 0.85] : ASPECT_CROWN,
+    height: form === "sword" ? 0.72 : cane ? 0.8 : 0.58,
     breathe: 0.016,
-    sway: 0.04,
+    sway: form === "sword" ? 0.015 : 0.04,
     bands: [0, 1, 2, 3, 4, 5],
     spine(p, pl) {
+      pl.form = form;
+      pl.anchorColor = cane ? trunkOf(col) : pl.pal.deep;
       p.spine("blade0", (node) => {
-        if (opt.cane) {
-          const h = 0.42 + pl.u("ch") * 0.2;
-          p.add(node, xf(tubeGeo(0.032, 0.024, h, 12)), { color: trunkOf(col) });
-          p.add(node, xf(bladeGeo({ len: 1 - h, wid: 0.11, thick: 0.018, shape: "lanceolate", rows: 5, ring: 4, bend: -0.08 }), { rx: -1.35, at: [0, h, 0] }), { color: pl.pal.leaf, colorFn: pl.pal.grad });
-          addFace(p, node, { at: [0, h * 0.5, 0.032], r: 0.036 });
+        if (cane) {
+          const h = 0.6 + pl.u("ch") * 0.22;
+          const tr = trunkOf(col);
+          const nodes = 4 + (pl.H("nd") % 4);
+          for (let i = 0; i < nodes; i += 1) {
+            const y0 = (i / nodes) * h;
+            p.add(node, xf(tubeGeo(0.03 - i * 0.0016, 0.029 - i * 0.0016, h / nodes - 0.006, 11), { at: [0, y0, 0] }), { color: tr });
+            p.add(node, xf(discGeo(0.034 - i * 0.0016, 0.008, 9), { at: [0, y0 + h / nodes - 0.005, 0] }), { color: shade(tr, -0.22) });
+          }
+          // the terminal tuft: canes carry their leaves in a crown at the top
+          const tuftGeo = [[], []];
+          for (let i = 0; i < 7; i += 1) {
+            const a = i * 2.399 + pl.u("t0") * TAU;
+            tuftGeo[i % 2].push(xf(bladeGeo({ len: (1 - h) * (1.05 + (i % 3) * 0.14), wid: 0.075, thick: 0.014, shape: "lanceolate", rows: 4, ring: 4, bend: -0.1 }),
+              { rx: -1.5 + 0.42 + (i % 3) * 0.12, ry: a, at: [0, h, 0] }));
+          }
+          p.add(node, mergeGeo(tuftGeo[0]), { color: pl.pal.leaf, colorFn: pl.pal.grad });
+          p.add(node, mergeGeo(tuftGeo[1]), { color: pl.pal.deep });
+          addFace(p, node, { at: [0, h * 0.45, 0.03], r: 0.036, tri: p.budget * 8 });
         } else {
-          p.add(node, xf(bladeGeo({ len: 1.0, wid: 0.11, thick: 0.026, shape: "lanceolate", rows: 6, ring: 4, bend: -0.06 }), { rx: -1.45 }), { color: pl.pal.leaf, colorFn: opt.edge ? grad(shade(pl.pal.leaf, 0.32), pl.pal.deep, 0, 0.8) : pl.pal.grad });
-          p.add(node, xf(sphereGeo(12, 5), { sx: 0.05, sy: 0.03, sz: 0.05, at: [0, 0.02, 0] }), { color: pl.pal.deep });
-          addFace(p, node, { at: [0, 0.05, 0.045], r: 0.036 });
+          const stiff = form === "sword" || form === "rigid";
+          p.add(node, xf(bladeGeo({
+            len: 1.02, wid: form === "sword" ? 0.1 : form === "rigid" ? 0.18 : 0.13,
+            thick: form === "rigid" ? 0.06 : form === "sword" ? 0.035 : 0.022,
+            shape: form === "rigid" ? "lanceolate" : "linear", rows: 6, ring: form === "rigid" ? 5 : 4,
+            bend: stiff ? -0.03 : -0.16, fold: form === "sword" ? 0.12 : 0.2,
+          }), { rx: -Math.PI / 2 - 0.02 }),
+          { color: pl.pal.leaf, colorFn: opt.edge ? grad(shade(pl.pal.leaf, 0.32), pl.pal.deep, 0, 0.8) : pl.pal.grad });
+          p.add(node, xf(sphereGeo(12, 5), { sx: 0.055, sy: 0.035, sz: 0.055, at: [0, 0.02, 0] }), { color: pl.pal.deep });
+          addFace(p, node, { at: [0, 0.09, 0.05], r: 0.04, tri: p.budget * 8 });
         }
       });
     },
     slot(p, pl, s) {
-      const { node, a } = s;
-      const r = reachOf(pl, a, 0.9);
-      for (const sgn of [1]) {
-        addLeaf(p, node, { tri: p.budget,
-          yaw: a + (sgn > 0 ? 0 : Math.PI), pitch: 0.15 + pl.u(`rp${s.g}`) * 0.6,
-          len: r * (0.7 + (opt.tall ?? 0.2) * 1.4), wid: r * 0.22, thick: r * 0.07,
-          shape: "lanceolate", rows: 5, ring: 4, bend: -r * 0.18, stalk: 0.03,
-          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep,
-          colorFn: opt.edge ? grad(shade(pl.pal.leaf, 0.3), pl.pal.deep, 0, 0.4) : pl.pal.grad,
+      const { node, band, a } = s;
+      const t = (band + 0.5) / 6;
+
+      if (pl.form === "cane") {
+        if (band <= 2) {
+          // a side shoot low on the cane
+          const br = baseReach(pl, 0.5);
+          p.add(node, xf(tubeGeo(br * 0.2, br * 0.14, br * 1.5, 9), { rz: -Math.cos(a) * 0.5, rx: Math.sin(a) * 0.5 }), { color: trunkOf(col) });
+          addLeaf(p, node, {
+            tri: p.budget * 0.8, yaw: a, pitch: -0.95 + pl.u(`cp${s.g}`) * 0.4,
+            len: br * 2.1, wid: br * 0.5, shape: "lanceolate", rows: 4, ring: 4, bend: -br * 0.5, stalk: 0.05,
+            at: [Math.cos(a) * br * 0.7, br * 1.2, Math.sin(a) * br * 0.7],
+            color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad,
+          });
+          return;
+        }
+        const r = reachOf(pl, a, 0.95);
+        addLeaf(p, node, {
+          tri: p.budget, yaw: a, pitch: -1.15 + pl.u(`rp${s.g}`) * 0.6,
+          len: r * 1.35, wid: r * 0.22, thick: r * 0.05,
+          shape: "lanceolate", rows: 5, ring: 4, bend: -r * 0.35, stalk: 0.04,
+          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad,
         });
+        return;
+      }
+
+      const r = reachOf(pl, a, 0.9);
+      const stiff = pl.form === "sword" || pl.form === "rigid";
+      /* Negative pitch: UP. This one sign is the whole of the complaint. */
+      const pitch = pl.form === "sword" ? -1.42 + pl.u(`rp${s.g}`) * 0.22
+        : pl.form === "rigid" ? -1.1 + pl.u(`rp${s.g}`) * 0.42
+          : -1.2 + pl.u(`rp${s.g}`) * 0.5;
+      const len = r * (pl.form === "sword" ? 1.5 : 1.05) * (0.72 + (opt.tall ?? 0.2) * 1.3);
+      addLeaf(p, node, {
+        tri: p.budget, yaw: a, pitch,
+        len, wid: r * (pl.form === "sword" ? 0.18 : pl.form === "rigid" ? 0.3 : 0.22),
+        thick: r * (pl.form === "rigid" ? 0.13 : pl.form === "sword" ? 0.06 : 0.05),
+        shape: pl.form === "rigid" ? "lanceolate" : "linear",
+        rows: 5, ring: pl.form === "rigid" ? 5 : 4,
+        bend: stiff ? -r * 0.06 : -r * (0.3 + t * 0.35), fold: 0.22, stalk: 0.02,
+        color: s.g % 2 ? pl.pal.leaf : pl.pal.deep,
+        colorFn: opt.edge ? grad(shade(pl.pal.leaf, 0.3), pl.pal.deep, 0, 0.4) : pl.pal.grad,
+      });
+      // Agave finishes every blade with a hard terminal spine
+      if (pl.form === "rigid" && p.budget >= 52) {
+        const y = Math.sin(-pitch) * len, rr = Math.cos(-pitch) * len;
+        p.add(node, xf(coneGeo(r * 0.035, r * 0.16, 7), { rz: -Math.cos(a) * (1.5708 + pitch), rx: Math.sin(a) * (1.5708 + pitch), at: [Math.cos(a) * rr, y, Math.sin(a) * rr] }),
+          { color: shade(trunkOf(col), -0.2) });
       }
     },
   });
@@ -1706,80 +2257,198 @@ function rosetteBlades(k, col, opt = {}) {
 
 // ---------- aroids, vines, water ----------
 
+/**
+ * Aroids stand UP. Every one of them carries its blade on a long erect
+ * petiole out of a basal rhizome, and the two the campus actually knows by
+ * name — Peace Lily and Anthurium — are recognised by the spathe-and-spadix
+ * and by nothing else. The first pass drew a flat splayed mass of shards with
+ * neither, so all sixteen read as the same broken thing.
+ */
+const SPATHE_GENUS = new Set("spathiphyllum anthurium zantedeschia".split(" "));
+const EAR_GENUS = new Set("alocasia colocasia xanthosoma remusatia amorphophallus typhonium".split(" "));
+
+/** Spathe-and-spadix: a folded bract standing behind an upright club. */
+function addSpathe(p, node, { at = [0, 0, 0], yaw = 0, r, color, spadix, tri = 200 }) {
+  p.add(node, xf(bladeGeo({ len: r * 2.3, wid: r * 1.45, thick: r * 0.1, shape: "ovate", rows: tri >= 140 ? 5 : 4, ring: 4, fold: 0.7, bend: -r * 0.5 }),
+    { rx: -1.32, ry: yaw, at }), { color });
+  p.add(node, xf(tubeGeo(r * 0.17, r * 0.1, r * 1.35, 9), { rx: -0.3, ry: yaw, at: [at[0], at[1] + r * 0.28, at[2] + Math.cos(yaw) * 0 + r * 0.06] }), { color: spadix });
+}
+
 function aroid(k, col) {
+  const g = genusOf(k);
+  const spathe = SPATHE_GENUS.has(g);
+  const ear = EAR_GENUS.has(g);
+  const spatheCol = g === "spathiphyllum" ? paper : g === "anthurium" ? APP.red : flowerOf(col);
   grow(k, col, {
-    salt: "aroid",
-    height: 0.45,
+    salt: `aroid:${spathe ? "spathe" : ear ? "ear" : "leaf"}`,
+    /* Crown proportions, not the general pool: an aroid is a bundle of erect
+       petioles, and the wide end of the pool laid the whole plant on its side. */
+    axSet: ASPECT_CROWN,
+    azSet: ASPECT_CROWN,
+    height: ear ? 0.75 : 0.6,
     breathe: 0.02,
+    sway: 0.035,
     bands: [0, 1, 2, 3, 4, 5],
     spine(p, pl) {
+      pl.ear = ear;
+      pl.spathe = spathe;
+      pl.anchorColor = pl.pal.deep;
+      const pet = mix(pl.pal.deep, trunkOf(col), 0.28);
       p.spine("petiole0", (node) => {
-        p.add(node, xf(tubeGeo(0.013, 0.009, 0.6, 10), { rz: (pl.u("ln") - 0.5) * 0.2 }), { color: pl.pal.deep });
-        p.add(node, xf(bladeGeo({ len: 0.44, wid: 0.3, thick: 0.028, shape: "cordate", rows: 5, ring: 4, bend: -0.06 }), { rx: -1.15, at: [0, 0.58, 0] }), { color: pl.pal.leaf, colorFn: col.leafGrad ?? pl.pal.grad });
-        addFace(p, node, { at: [0, 0.16, 0.014], r: 0.03 });
+        const h = ear ? 0.66 : 0.58;
+        // one stout erect petiole carrying the biggest blade of the plant
+        p.add(node, xf(tubeGeo(0.022, 0.014, h, 10), { rz: (pl.u("ln") - 0.5) * 0.14 }),
+          { color: pet, colorFn: grad(shade(pet, 0.14), shade(pet, -0.2), 0, h) });
+        const bl = ear ? 0.5 : 0.42;
+        p.add(node, xf(bladeGeo({ len: bl, wid: bl * (ear ? 0.85 : 0.72), thick: 0.03, shape: ear ? "hastate" : "cordate", rows: 5, ring: 4, bend: -bl * 0.35, fold: 0.16 }),
+          { rx: -1.05, at: [0, h, 0] }), { color: pl.pal.leaf, colorFn: col.leafGrad ?? pl.pal.grad });
+        // the rhizome the petioles all rise out of
+        p.add(node, xf(sphereGeo(11, 5), { sx: 0.07, sy: 0.045, sz: 0.07, at: [0, 0.02, 0] }), { color: pl.pal.deep });
+        addFace(p, node, { at: [0, 0.2, 0.022], r: 0.04, tri: p.budget * 8 });
       });
     },
     slot(p, pl, s) {
       const { node, band, a, top } = s;
-      if (band >= top && s.i === 0 && pl.u("sp") > 0.55) {
-        for (const sgn of [1]) {
-          addFlower(p, node, { tri: p.budget, at: [Math.cos(a) * 0.05 * sgn, 0, Math.sin(a) * 0.05 * sgn], kind: "bell", r: 0.06, color: paper, color2: flowerOf(col), stalkLen: 0.04 });
-        }
+      const pet = mix(pl.pal.deep, trunkOf(col), 0.28);
+
+      if (pl.spathe && band >= 3 && s.g % 3 === 0) {
+        const r = reachOf(pl, a, 0.5);
+        const tilt = 0.28;
+        const L = r * 1.15;
+        p.add(node, xf(tubeGeo(0.011, 0.008, L, 9), { rz: -Math.cos(a) * tilt, rx: Math.sin(a) * tilt }), { color: pl.pal.deep });
+        addSpathe(p, node, {
+          at: [Math.cos(a) * L * Math.sin(tilt), L * Math.cos(tilt), Math.sin(a) * L * Math.sin(tilt)],
+          yaw: a, r: Math.min(0.15, r * 0.72), color: spatheCol, spadix: mix(paper, APP.orange, 0.55), tri: p.budget,
+        });
         return;
       }
+
+      // an ordinary leaf: erect petiole out of the rhizome, blade HELD at its
+      // tip. The petiole is drawn, not implied, which is why the archetype
+      // now reads as a plant standing up rather than a pile of leaves.
       const r = reachOf(pl, a, 0.95);
-      addLeaf(p, node, { tri: p.budget,
-        yaw: a, pitch: 0.25 + pl.u(`ap${s.g}`) * 0.55,
-        len: r, wid: r * (0.55 + pl.u(`aw${s.g}`) * 0.35),
-        shape: ["cordate", "hastate", "ovate", "orbicular"][pl.H(`as${s.g}`) % 4],
-        form: pl.u(`af${s.g}`) > 0.75 ? "lobed" : "simple",
-        rows: 5, ring: 4, stalk: 0.4,
-        color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: col.leafGrad ?? pl.pal.grad, stalkColor: pl.pal.deep,
+      const tilt = 0.34 + pl.u(`at${s.g}`) * 0.4;   // from vertical
+      const L = r * (0.5 + pl.u(`al${s.g}`) * 0.28);
+      p.add(node, xf(tubeGeo(0.013, 0.009, L, 9), { rz: -Math.cos(a) * tilt, rx: Math.sin(a) * tilt }),
+        { color: pet, colorFn: grad(shade(pet, 0.12), shade(pet, -0.18), 0, L) });
+      const tip = [Math.cos(a) * L * Math.sin(tilt), L * Math.cos(tilt), Math.sin(a) * L * Math.sin(tilt)];
+      const bl = r * (pl.ear ? 0.72 : 0.6);
+      addLeaf(p, node, {
+        tri: p.budget, at: tip, yaw: a,
+        pitch: -0.75 + pl.u(`ap${s.g}`) * 0.5,
+        len: bl, wid: bl * (pl.ear ? 0.8 : 0.55 + pl.u(`aw${s.g}`) * 0.3),
+        shape: pl.ear ? ["hastate", "cordate"][s.g % 2] : ["cordate", "hastate", "ovate", "orbicular"][pl.H(`as${s.g}`) % 4],
+        form: !pl.ear && pl.u(`af${s.g}`) > 0.78 ? "lobed" : "simple",
+        rows: 5, ring: 4, stalk: 0, fold: 0.12,
+        bend: -bl * (0.5 + pl.u(`ab${s.g}`) * 0.35),
+        color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: col.leafGrad ?? pl.pal.grad,
       });
     },
   });
 }
 
+/**
+ * Climbers that actually climb. The first pass drew a vine as a slightly wavy
+ * stem with leaves on it, which is a seedling herb: nothing twined, nothing
+ * coiled, nothing was being climbed. A vine reads as a vine because of three
+ * things and none of them are the leaf — a SUPPORT, a stem TWINING round it,
+ * and TENDRILS. All three live in the builder, so all 57 get them.
+ */
+const TENDRIL_GENUS = new Set((
+  "momordica luffa coccinia cucumis trichosanthes benincasa lagenaria citrullus cucurbita " +
+  "sechium passiflora cayratia cissus ampelocissus vitis parthenocissus smilax bryonia " +
+  "diplocyclos zehneria gynostemma"
+).split(" "));
+
 function vine(k, col) {
   const varie = !!col.variegated;
+  const cucurbit = TENDRIL_GENUS.has(genusOf(k));
   grow(k, col, {
     salt: "vine",
-    height: 0.7,
-    breathe: 0.02,
+    /* A climber is TALL and narrow: it is going somewhere. The wide end of the
+       general aspect pool turned every vine into a pancake of leaves seen from
+       above, which is where "nothing climbs" came from as much as the missing
+       tendrils did. */
+    axSet: ASPECT_VINE,
+    azSet: ASPECT_VINE,
+    height: 0.9,
+    breathe: 0.018,
     sway: 0.05,
     bands: [0, 1, 2, 3, 4, 5],
     spine(p, pl) {
-      p.spine("runner", (node) => {
-        const seg = 6;
-        const twist = 0.4 + pl.u("tw") * 1.6;
-        for (let i = 0; i < seg; i += 1) {
-          const t = i / seg;
-          const a = t * twist * TAU;
-          p.add(node, xf(tubeGeo(0.009, 0.008, 1 / seg + 0.01, 8), { rz: Math.cos(a) * 0.14, rx: Math.sin(a) * 0.14, at: [Math.cos(a) * 0.02, t, Math.sin(a) * 0.02] }), { color: pl.pal.deep });
-        }
-        addFace(p, node, { at: [0, 0.2, 0.012], r: 0.028 });
+      pl.turn = 1.9 + pl.u("tw") * 1.9;
+      pl.coilR = 0.055 + pl.u("cr") * 0.035;
+      pl.cucurbit = cucurbit;
+      pl.anchorColor = pl.pal.deep;
+      p.spine("climber", (node) => {
+        const prop = mix(trunkOf(col), hex("#7a7264"), 0.5);
+        // the thing it is climbing. A bare prop reads as "support" at gallery
+        // size and costs one tube; without it a twining stem is just a squiggle.
+        p.add(node, xf(tubeGeo(0.024, 0.016, 1, 10)), { color: prop, colorFn: grad(shade(prop, 0.12), shade(prop, -0.26), 0, 1) });
+        // the stem, wound round it
+        p.add(node, xf(coilGeo({ R: pl.coilR, r: 0.014, h: 0.97, turn: pl.turn, segs: 26, ring: 7 })),
+          { color: pl.pal.deep, colorFn: grad(shade(pl.pal.leaf, 0.1), pl.pal.deep, 0, 1) });
+        addFace(p, node, { at: [0, 0.36, pl.coilR + 0.02], r: 0.04, tri: p.budget * 8 });
       });
     },
     slot(p, pl, s) {
-      const { node, band, a } = s;
-      if (band >= 2 && s.i % 4 === 3) {
-        for (const sgn of [1]) {
-          p.add(node, xf(arcTubeGeo({ R: 0.03, r: 0.006, a0: 0, a1: Math.PI * 2.2, segs: 6, ring: 4 }), { ry: a, at: [Math.cos(a) * 0.03 * sgn, 0, Math.sin(a) * 0.03 * sgn] }), { color: pl.pal.deep });
+      const { node, band, i, n } = s;
+      /* Leaves come off the STEM, not off the axis: replay where the helix is
+         at the height this slot is about to be placed at, and hang the petiole
+         there. That is the difference between a vine and a stack of leaves. */
+      const y = (band + 0.35 + (0.55 * (i + 0.5)) / Math.max(1, n)) / 6;
+      const a = y * pl.turn * TAU + pl.u("az0") * TAU;
+      const hub = [Math.cos(a) * pl.coilR, 0, Math.sin(a) * pl.coilR];
+
+      // a coiled tendril reaching off the stem — the cucurbits always get one
+      const wantTendril = pl.cucurbit ? (s.g % 4 === 1) : (band >= 2 && s.g % 5 === 3);
+      /* Forced only for the first couple on a cucurbit, where the tendril is
+         the genus diagnostic. A forced add bypasses the triangle ceiling, and
+         eleven of them on a 32-part plan walked straight through the 120 kB
+         per-model test assertion. */
+      const force = pl.cucurbit && s.g < 7;
+      if (wantTendril && (p.budget >= 62 || force)) {
+        const R = 0.032 + pl.u(`td${s.g}`) * 0.022;
+        p.add(node, xf(tubeGeo(0.007, 0.005, 0.1, 7), { rz: -Math.cos(a) * 1.1, rx: Math.sin(a) * 1.1, at: hub }), { color: pl.pal.deep }, force);
+        p.add(node, xf(coilGeo({ R, r: 0.0065, h: 0.075, turn: 2.3, segs: 12, ring: 6 }),
+          { rx: 0.9, ry: a, at: [Math.cos(a) * (pl.coilR + 0.1), 0.02, Math.sin(a) * (pl.coilR + 0.1)] }),
+        { color: shade(pl.pal.deep, 0.12) }, force);
+        if (node.parts.length) return;
+      }
+
+      // a trailing shoot at the foot of the plant: the habit of a vine that has
+      // run out of support and is spilling sideways
+      if (band === 0 && s.i % 2 === 0) {
+        const r = reachOf(pl, a, 0.95);
+        p.add(node, xf(coilGeo({ R: r * 0.42, r: 0.009, h: 0.06, turn: 0.75, segs: 12, ring: 6 }), { at: hub }), { color: pl.pal.deep });
+        for (const sgn of [1, -1]) {
+          p.add(node, xf(bladeGeo({ len: r * 0.4, wid: r * 0.3, thick: 0.008, shape: "cordate", rows: 4, ring: 4 }),
+            { rx: 1.35, ry: a + sgn * 1.6, at: [Math.cos(a + sgn * 1.6) * r * 0.42, 0, Math.sin(a + sgn * 1.6) * r * 0.42] }),
+          { color: sgn > 0 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });
         }
         return;
       }
-      const r = reachOf(pl, a, 0.85);
+
+      const r = reachOf(pl, a, 0.8);
       const cf = varie
         ? (q) => (q[0] + q[2] > 0.02 ? mix(pl.pal.leaf, hex("#e8d44a"), 0.55) : pl.pal.deep)
         : pl.pal.grad;
-      addLeaf(p, node, { tri: p.budget,
-        yaw: a, pitch: 0.2 + pl.u(`vp${s.g}`) * 0.6,
-        len: r, wid: r * (0.5 + pl.u(`vw${s.g}`) * 0.4),
+      addLeaf(p, node, {
+        tri: p.budget, at: hub,
+        yaw: a, pitch: 0.5 + pl.u(`vp${s.g}`) * 0.55,
+        len: r, wid: r * (0.4 + pl.u(`vw${s.g}`) * 0.26),
         shape: ["cordate", "ovate", "orbicular", "hastate"][pl.H(`vs${s.g}`) % 4],
         form: pl.u(`vf${s.g}`) > 0.7 ? "lobed" : "simple",
-        rows: 5, ring: 4, stalk: 0.3,
+        rows: 5, ring: 4, stalk: 0.34,
         color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: cf, stalkColor: pl.pal.deep,
       });
+      // bract / flower clusters where the species is grown for them
+      if (col.accent && band >= 3 && s.g % 4 === 2 && p.budget >= 58) {
+        addFlower(p, node, {
+          tri: p.budget * 0.7, at: [Math.cos(a) * r * 0.45, 0.02, Math.sin(a) * r * 0.45],
+          kind: "star", r: 0.05, color: flowerOf(col), stalkLen: 0.02, pitch: 0.5, yaw: a,
+        });
+      }
     },
   });
 }
