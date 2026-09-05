@@ -168,6 +168,15 @@ function spindleGeo(r, len, { seg = 10, bulge = 0.45, tip = 0, zScale = 1, root 
   const profile = root > 1e-7
     ? [[-root, 0], [-root * 0.5, r * 0.72], [0, r * 0.9], [len * bulge, r]]
     : [[0, 0], [len * bulge, r]];
+  /* One extra ring up the taper. A spindle used to carry rings at the joint
+     and at `bulge` only, so the whole outer half of every limb — the half a
+     joint actually lands in — had no vertices at all between `bulge` and the
+     tip apex. Contact is measured on vertices, so a tarsus seated properly on
+     the end of a tibia still reported a hole. The ring sits exactly on the
+     line the surface already followed, so no silhouette changes. */
+  const rEnd = tip > 1e-7 ? r * tip : 0;
+  const midT = bulge + (1 - bulge) * 0.62;
+  profile.push([len * midT, r + (rEnd - r) * ((midT - bulge) / (1 - bulge))]);
   if (tip > 1e-7) profile.push([len, r * tip], [len, 0]);
   else profile.push([len, 0]);
   return latheGeo(profile, seg, zScale);
@@ -513,12 +522,18 @@ const matApply = (m, p) => [
  * bookkeeping before its first triangle — on a spider that is sixteen meshes of
  * pure overhead. Pass merge only when nothing needs to hang off a later joint.
  */
-function legChain(k, parent, name, { at, r, seg, color, subdiv = 1, merge = false }) {
+function legChain(k, parent, name, { at, r, seg, color, subdiv = 1, merge = false, coxa = true }) {
   let parentNode = parent;
-  /* Sink the hip. A leg placed exactly on the silhouette hangs off the skin;
-     pulled a tenth of the way back toward the parent's own centre it is inside
-     it, and nothing about the pose reads differently at that distance. */
-  let base = [at[0] * 0.9, at[1] * 0.9, at[2] * 0.9];
+  /* The coxa. Contact is decided vertex-to-vertex, and a low-poly body carries
+     its vertices half a body-radius apart, so a limb can sit plainly ON the
+     skin and still have no vertex of the body within tolerance of any vertex
+     of its own. A small blob MERGED INTO THE PARENT at the hip puts a handful
+     of the parent's own vertices exactly where the limb meets it — which is
+     what a coxa is anyway. It cannot float, because it is not a part. */
+  if (coxa && parent !== k.root) {
+    ball(k, parent, `${name}-coxa`, { merge: true, r: r * 1.7, at, color, subdiv: 0 });
+  }
+  let base = at;
   const node = [];
   let R = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
   let T = [0, 0, 0];
@@ -532,7 +547,17 @@ function legChain(k, parent, name, { at, r, seg, color, subdiv = 1, merge = fals
        actually measured on. */
     const geo = spindleGeo(rr, s.len, {
       seg: s.round ?? 10, bulge: s.bulge ?? 0.45, tip: s.tip ?? 0,
-      root: s.root ?? rr * (i === 0 ? 1.5 : 1.1),
+      /* The first segment's socket is sized off the LIMB, not just its radius.
+         A leg hangs off a hip whose exact position the chain cannot see — it
+         is given a point in the parent's frame and nothing else — so the only
+         thing it can do about a hip placed on or just off the skin is to run
+         the limb a little way back up its own axis, which always heads into
+         the body it came from. */
+      /* Contact is vertex-to-vertex, so a socket must STRADDLE the parent's
+         skin, not bury itself in the parent's hollow interior — a point deep
+         inside a ball is far from every vertex the ball has. Sockets are sized
+         off the limb's own radius for that reason, not off its length. */
+      root: s.root ?? rr * (i === 0 ? 2.2 : 1.4),
     });
     if (merge && i > 0) {
       T = [0, 1, 2].map((a) => T[a] + matApply(R, base)[a]);
@@ -565,20 +590,30 @@ function insectLegs(k, parent, o) {
   const {
     at, gap = 0.02, len = 0.16, r = 0.012, pair = 3, spanZ = 0.09,
     splay = 1.2, bend = 0.9, joint = 2, color, name = "leg", taper = 0.8, subdiv = 1,
+    arch = 0,
   } = o;
   const merge = o.merge ?? true;
   const out = [];
   for (let i = 0; i < pair; i += 1) {
     const t = pair === 1 ? 0 : i / (pair - 1) - 0.5;
-    const dz = -t * spanZ * 2;
+    /* All six legs of an insect come off the THORAX, which is short. Spreading
+       them over twice `spanZ` walked the hind pair back under the abdomen —
+       past the end of a beetle's elytra, in fact, which is why the hind pair
+       was the one that kept coming up as a floating island. */
+    const dz = -t * spanZ * 1.35;
     const lenI = len * (o.lenMix ? 1 + o.lenMix * -t : 1);
     for (const s of [1, -1]) {
       const seg = [];
       seg.push({ len: lenI * (joint > 1 ? 0.55 : 1), rz: s * -splay, rx: t * 1.1, taper: 1 });
       if (joint > 1) seg.push({ len: lenI * 0.55, rz: s * -bend, taper });
       if (joint > 2) seg.push({ len: lenI * 0.3, rz: s * -bend * 0.5, taper: taper * 0.7 });
+      /* `arch` follows the body's own curve. A row of hips set at one flat
+         height is correct only under the middle of an ellipsoid; at the ends
+         the surface has risen away from it and the outer pairs are hanging in
+         the air below the animal. Raising them by their distance from the
+         middle puts every hip back on the body. */
       out.push(legChain(k, parent, `${name}${i}-${s > 0 ? "l" : "r"}`, {
-        at: [at[0] + s * gap, at[1], at[2] + dz], r, seg, color, subdiv, merge,
+        at: [at[0] + s * gap, at[1] + Math.abs(t) * 2 * arch, at[2] + dz], r, seg, color, subdiv, merge,
       }));
     }
   }
@@ -740,7 +775,7 @@ function bird(k, col, opt = {}) {
       blade(k, body, `tail${i}`, {
         outline: bladeOutline(0.04, len, { n: 10, taper: 0.3 }), thick: 0.03,
         at: tailBase, rot: [v.f("tpitch", -0.05, 0.35), (i - (n - 1) / 2) * 0.3, 0],
-        off: [0, 0, -len * 0.85], color: shade(tailCol, i * 0.12),
+        off: [0, 0, -len * 0.8], color: shade(tailCol, i * 0.12),
       });
     }
   } else if (tailKind === "wedge") {
@@ -758,7 +793,7 @@ function bird(k, col, opt = {}) {
         outline: bladeOutline(0.038, len * (1 - Math.abs(t) * 0.28), { n: 9, taper: 0.3 }),
         thick: 0.026, at: tailBase,
         rot: [v.f("tpitch", 0.05, 0.5), t * v.f("tspread", 0.5, 1.0), 0],
-        off: [0, 0, -len * 0.8], color: i % 2 ? tailCol : shade(tailCol, 0.14),
+        off: [0, 0, -len * 0.76], color: i % 2 ? tailCol : shade(tailCol, 0.14),
       });
     }
   }
@@ -799,8 +834,18 @@ function bird(k, col, opt = {}) {
   const bl = headR * (beak === "needle" ? v.f("bl", 1.5, 2.3) : beak === "chisel" ? v.f("bl", 0.55, 0.85) : v.f("bl", 0.7, 1.1));
   const br = headR * (beak === "needle" ? 0.11 : v.f("br", 0.17, 0.26));
   cone(k, head, "beak", {
-    r: br, h: bl, at: [0, -headR * 0.06, headR * 0.7], rotX: Math.PI / 2 - v.f("bdip", -0.05, 0.2),
+    r: br, h: bl, at: [0, -headR * 0.06, headR * 0.68], root: Math.max(br * 1.2, headR * 0.1),
+    rotX: Math.PI / 2 - v.f("bdip", -0.05, 0.2),
     zScale: v.f("bflat", 0.7, 1.25), color: beakCol,
+  });
+  /* The cere: a merged collar at the bill's root. Contact is vertex-to-vertex
+     and a low-poly head carries its vertices a long way apart, so a bill can
+     sit plainly on the face with no vertex of the head anywhere near it — an
+     egret's needle bill was reported as a floating island for exactly that.
+     Merged, so it is the head's own geometry and cannot itself float. */
+  ball(k, head, "cere", {
+    merge: true, rx: br * 1.7, ry: br * 1.7, rz: br * 1.3,
+    at: [0, -headR * 0.06, headR * 0.6], color: shade(beakCol, -0.1), subdiv: 0,
   });
   if (beak === "hook") {
     cone(k, head, "beak-hook", {
@@ -860,10 +905,12 @@ function bird(k, col, opt = {}) {
       ball(k, head, `tuft${i}`, { r: headR * (0.3 - i * 0.05), at: [0, headR * (0.76 + i * 0.18), -headR * (0.1 + i * 0.16)], color: shade(col.head ?? col.base, -0.14) });
     }
   } else if (crest === "plume") {
+    // merged collar: head vertices where the plumes leave the crown
+    ball(k, head, "plume-base", { merge: true, rx: 0.05, ry: headR * 0.22, rz: 0.05, at: [0, headR * 0.66, -headR * 0.16], color: shade(col.base, -0.2), subdiv: 0 });
     for (const s of [1, -1]) {
       blade(k, head, `plume${s > 0 ? "l" : "r"}`, {
         outline: bladeOutline(0.03, 0.13, { n: 8, taper: 0.4 }), thick: 0.02,
-        at: [s * 0.03, headR * 0.72, -headR * 0.2], rot: [-0.9, s * 0.25, 0], off: [0, 0, -0.11],
+        at: [s * 0.03, headR * 0.7, -headR * 0.18], rot: [-0.9, s * 0.25, 0], off: [0, 0, -0.095],
         color: col.accent ?? shade(col.base, -0.3),
       });
     }
@@ -1502,8 +1549,8 @@ function fish(k, col, opt = {}) {
        only reason the species has its name. */
     spindle(k, tail, "sword", {
       r: 0.009, len: v.f("swordl", 0.16, 0.24),
-      at: [-0.11 * tailSize, 0, -0.1 * tailSize], rot: [0, 0, -Math.PI / 2],
-      color: col.accent ?? APP.orange, seg: 6, tip: 0.3,
+      at: [-0.1 * tailSize, 0, -0.09 * tailSize], rot: [0, 0, -Math.PI / 2],
+      root: 0.03, color: col.accent ?? APP.orange, seg: 6, tip: 0.3,
     });
   }
 
@@ -1728,11 +1775,13 @@ function lepidoptera(k, col, opt = {}) {
     for (const [si, w] of hindWing.entries()) {
       const s = si === 0 ? 1 : -1;
       const tailL = swallowtail ? hindX * v.f("streaml", 0.55, 0.95) : v.f("streaml", 0.06, 0.13);
+      /* Anchored well inside the hindwing outline, not out at 0.62 of the
+         span where a tapering blade has nothing left to hang off. */
       spindle(k, w, `streamer${si}`, {
         r: swallowtail ? 0.013 : 0.011, len: tailL,
-        at: [s * hindX * 0.62, 0, -hindZ * 0.42],
+        at: [s * hindX * 0.4, 0, -hindZ * 0.34],
         rot: [-1.75, 0, s * 0.45], tip: swallowtail ? 0.9 : 0,
-        color: shade(col.base, -0.2), seg: 8,
+        root: 0.02, color: shade(col.base, -0.2), seg: 8,
       });
     }
   }
@@ -1740,7 +1789,7 @@ function lepidoptera(k, col, opt = {}) {
   if (legN) {
     insectLegs(k, k.root, {
       at: [0, thoraxY - thoraxR * 0.6, thoraxR * 0.2], gap: thoraxR * 0.4, pair: legN,
-      len: v.f("legl", 0.07, 0.13), r: 0.008, spanZ: thoraxR * 0.8, splay: 1.35, bend: 1.0, color: bodyCol,
+      len: v.f("legl", 0.07, 0.13), r: 0.008, spanZ: thoraxR * 0.8, splay: 1.35, bend: 1.0, color: bodyCol, arch: thoraxR * 0.45,
     });
   }
   /* Ocelli: the raised eyespots on a satyrine's wing, as real parts. Merged
@@ -1749,9 +1798,17 @@ function lepidoptera(k, col, opt = {}) {
   for (let i = 0; i < ocelN; i += 1) {
     for (const [si, w] of hindWing.entries()) {
       const s = si === 0 ? 1 : -1;
+      /* Every ocellus used to read the SAME `v.f("ocelx")` — one key, one
+         value — so a species with four of them stacked all four in one spot,
+         and if that spot fell off the tapering blade all four floated
+         together. They step out along the wing now, they narrow with it, and
+         they sit ON the blade's mid-plane rather than hovering 12 mm above a
+         surface that may be only 12 mm thick. */
+      const ox = Math.min(0.66, 0.26 + i * 0.11);
       ball(k, w, `ocellus${i}${si}`, {
-        rx: hindX * v.f("ocelr", 0.1, 0.19), ry: 0.011, rz: hindZ * v.f("ocelz", 0.18, 0.32),
-        at: [s * hindX * v.f("ocelx", 0.35, 0.68), 0.012, hindZ * v.f("ocelo", -0.28, 0.24)],
+        rx: hindX * v.f("ocelr", 0.1, 0.17) * (1 - ox * 0.5), ry: 0.011,
+        rz: hindZ * v.f("ocelz", 0.16, 0.28) * (1 - ox * 0.5),
+        at: [s * hindX * ox, 0, hindZ * v.f(`ocelo${i}`, -0.22, 0.2) * (1 - ox * 0.7)],
         color: i % 2 ? spotCol : shade(col.base, -0.5),
       });
     }
@@ -1854,7 +1911,7 @@ function odonata(k, col, opt = {}) {
   }
   insectLegs(k, thorax, {
     at: [0, -abdR * 1.4, abdR * 0.8], gap: abdR * 0.6, pair: 3,
-    len: v.f("legl", 0.08, 0.14), r: 0.008, spanZ: abdR * 1.6, splay: 1.0, bend: 1.3, color: ink,
+    len: v.f("legl", 0.08, 0.14), r: 0.008, spanZ: abdR * 1.6, splay: 1.0, bend: 1.3, color: ink, arch: abdR * 0.7,
   });
   k.idle({ breatheK: v.f("br", 0.02, 0.04), bobAmp: v.f("bob", 0.006, 0.02) });
 }
@@ -2001,7 +2058,7 @@ function hymenoptera(k, col, opt = {}) {
   insectLegs(k, thorax, {
     at: [0, -thoraxR * 0.5, thoraxR * 0.2], gap: thoraxR * 0.5, pair: 3,
     len: (ant ? v.f("legl", 0.09, 0.16) : v.f("legl", 0.12, 0.19)), r: ant ? 0.008 : 0.011,
-    spanZ: thoraxR * v.f("legspan", 0.7, 1.3), splay: v.f("splay", 1.0, 1.45),
+    spanZ: thoraxR * v.f("legspan", 0.7, 1.3), arch: thoraxR * 0.4, splay: v.f("splay", 1.0, 1.45),
     bend: v.f("bend", 0.7, 1.25), color: limb, lenMix: v.f("lenmix", -0.2, 0.2),
   });
   if (bee) {
@@ -2112,10 +2169,12 @@ function coleoptera(k, col, opt = {}) {
     joint: opt.longhorn ? 4 : 2, form: opt.longhorn ? "thread" : v.pick("antf", ["club", "thread", "elbow"]),
     wiggle: !opt.longhorn, color: limbOf(col),
   });
-  insectLegs(k, k.root, {
-    at: [0, bodyY - by * 0.5, bz * 0.1], gap: bx * 0.55, pair: 3,
+  /* On the BODY, not on the root: a leg parented to the world origin cannot
+     be given a coxa, because there is nothing there to merge one into. */
+  insectLegs(k, body, {
+    at: [0, -by * 0.5, bz * 0.26], gap: bx * 0.55, pair: 3,
     len: v.f("legl", 0.1, 0.18), r: 0.013, spanZ: bz * v.f("legspan", 0.4, 0.7),
-    splay: v.f("splay", 1.05, 1.45), bend: v.f("bend", 0.8, 1.3), color: limbOf(col), lenMix: v.f("lenmix", -0.25, 0.25),
+    splay: v.f("splay", 1.05, 1.45), bend: v.f("bend", 0.8, 1.3), color: limbOf(col), lenMix: v.f("lenmix", -0.25, 0.25), arch: by * 0.4,
   });
   /* Tubercles: raised knobs on the wing cases, as real parts rather than
      paint, so the part count and the mass profile move with the species. */
@@ -2237,7 +2296,7 @@ function orthoptera(k, col, opt = {}) {
       seg: [
         { len: femurL, rz: s * -0.34, rx: ST.fold, taper: 1.2, bulge: 0.44 },
         { len: femurL * v.f("tibia", 0.95, 1.3), rz: s * 0.12, rx: ST.ext, taper: 0.28 },
-        { len: femurL * 0.32, rz: s * 0.08, rx: -1.05 - ST.kick, taper: 0.4 },
+        { len: femurL * 0.32, rz: s * 0.08, rx: -1.05 - ST.kick, taper: 0.4, root: femurL * 0.2 },
       ],
       color: dark,
     });
@@ -2254,7 +2313,7 @@ function orthoptera(k, col, opt = {}) {
   }
   insectLegs(k, body, {
     at: [0, -bx * 0.5, bz * 0.3], gap: bx * 0.5, pair: 3,
-    len: v.f("legl", 0.09, 0.15), r: 0.011, spanZ: bz * 0.28, splay: 1.2, bend: 1.1, color: dark,
+    len: v.f("legl", 0.09, 0.15), r: 0.011, spanZ: bz * 0.28, splay: 1.2, bend: 1.1, color: dark, arch: bx * 0.4,
   });
 
   /* Tegmina folded along the back. They used to be stood on end by a quarter
@@ -2344,7 +2403,7 @@ function hemiptera(k, col, opt = {}) {
   const headR = bx * v.f("hr", 0.32, 0.5);
   const head = ball(k, pronotum, "head", { rx: headR * v.f("hw", 0.9, 1.4), ry: headR * 0.75, rz: headR, at: [0, -by * 0.05, bz * 0.22 + headR * 0.5], color: dark });
   const rostrum = v.f("rostrum", 0.05, 0.14);
-  spindle(k, head, "rostrum", { r: 0.008, len: rostrum, at: [0, -headR * 0.4, headR * 0.3], rot: [v.f("rosta", 1.4, 2.4), 0, 0], color: shade(dark, -0.1), seg: 8 });
+  spindle(k, head, "rostrum", { r: 0.008, len: rostrum, at: [0, -headR * 0.38, headR * 0.28], rot: [v.f("rosta", 1.4, 2.4), 0, 0], root: 0.02, color: shade(dark, -0.1), seg: 8 });
   antennaPair(k, head, {
     at: [0, headR * 0.2, headR * 0.5], gap: headR * 0.5,
     len: v.f("antl", 0.06, 0.16), r: 0.007, spread: v.f("ants", 0.5, 1.0), joint: 2, form: v.pick("antf", ["thread", "club"]), color: dark,
@@ -2408,7 +2467,7 @@ function hemiptera(k, col, opt = {}) {
   insectLegs(k, k.root, {
     at: [0, bodyY - by * 0.4, bz * 0.15], gap: bx * 0.5, pair: 3,
     len: v.f("legl", 0.09, 0.17), r: 0.011, spanZ: bz * v.f("legspan", 0.35, 0.65),
-    splay: v.f("splay", 1.05, 1.4), bend: v.f("bend", 0.8, 1.25), color: dark, lenMix: v.f("lenmix", -0.3, 0.3),
+    splay: v.f("splay", 1.05, 1.4), bend: v.f("bend", 0.8, 1.25), color: dark, lenMix: v.f("lenmix", -0.3, 0.3), arch: by * 0.35,
   });
   beadEyes(k, head, {
     r: headR * v.f("eyer", 0.4, 0.56), at: [0, 0, headR * 0.15], gap: headR * v.f("eyeg", 0.8, 1.05),
@@ -2440,9 +2499,10 @@ function hemipteraScale(k, col, v) {
       color: shade(wax, i % 2 ? -0.14 : 0.1),
     });
   }
+  ball(k, body, "nucleus-base", { merge: true, rx: r * 0.4, ry: h * 0.2, rz: r * 0.4, at: [0, h * 0.44, 0], color: shade(wax, 0.06), subdiv: 0 });
   ball(k, body, "nucleus", {
     rx: r * v.f("nw", 0.3, 0.46), ry: h * v.f("nh", 0.45, 0.7), rz: r * v.f("nw", 0.3, 0.46),
-    at: [0, h * 0.6, 0], color: accentOf(k, col, shade(col.base, -0.2)),
+    at: [0, h * 0.55, 0], color: accentOf(k, col, shade(col.base, -0.2)),
   });
   // the sunken base where it sits on the bark
   ball(k, k.root, "foot", {
@@ -2476,7 +2536,7 @@ function diptera(k, col, opt = {}) {
     rx: thoraxR * v.f("tw", 0.9, 1.15), ry: thoraxR * v.f("th", 0.85, 1.2), rz: thoraxR * v.f("tz", 0.95, 1.35),
     at: [0, bodyY, thoraxR * 0.6], rot: [v.f("pitch", -0.34, 0.28), 0, 0], color: dark,
   });
-  const abdN = v.i("abdn", 1, 5);
+  const abdN = v.i("abdn", 1, 7);
   let p = thorax;
   let at = [0, -thoraxR * 0.1, -thoraxR * 1.0];
   for (let i = 0; i < abdN; i += 1) {
@@ -2574,7 +2634,7 @@ function diptera(k, col, opt = {}) {
   insectLegs(k, thorax, {
     at: [0, -thoraxR * 0.6, thoraxR * 0.2], gap: thoraxR * 0.5, pair: 3,
     len: crane ? v.f("legl", 0.22, 0.34) : mos ? v.f("legl", 0.16, 0.24) : v.f("legl", 0.1, 0.17),
-    r: crane ? 0.006 : 0.008, spanZ: thoraxR * v.f("legspan", 0.6, 1.1),
+    r: crane ? 0.006 : 0.008, spanZ: thoraxR * v.f("legspan", 0.6, 1.1), arch: thoraxR * 0.4,
     splay: v.f("splay", 1.0, 1.4), bend: v.f("bend", 0.9, 1.4), color: ink, lenMix: v.f("lenmix", -0.3, 0.3),
   });
   k.idle({ breatheK: v.f("br", 0.03, 0.05), bobAmp: v.f("bob", 0.03, 0.06) });
@@ -2722,10 +2782,10 @@ function blattodea(k, col, opt = {}) {
       rot: [-1.6, 0, s * 0.4], color: ink, seg: 8,
     });
   }
-  insectLegs(k, k.root, {
-    at: [0, bodyY - by * 0.4, bz * 0.2], gap: bx * 0.5, pair: 3,
+  insectLegs(k, body, {
+    at: [0, -by * 0.4, bz * 0.3], gap: bx * 0.5, pair: 3,
     len: v.f("legl", 0.1, 0.18), r: 0.009, spanZ: bz * v.f("legspan", 0.4, 0.7),
-    splay: v.f("splay", 1.1, 1.45), bend: v.f("bend", 0.9, 1.4), color: ink, lenMix: v.f("lenmix", -0.3, 0.3),
+    splay: v.f("splay", 1.1, 1.45), bend: v.f("bend", 0.9, 1.4), color: ink, lenMix: v.f("lenmix", -0.3, 0.3), arch: by * 0.35,
   });
   beadEyes(k, head, { r: headR * v.f("eyer", 0.4, 0.6), at: [0, headR * 0.1, headR * 0.4], gap: headR * 0.62, color: ink, pupil: paper, spark: false });
   k.idle({ breatheK: v.f("br", 0.03, 0.05), bobAmp: v.f("bob", 0.006, 0.02) });
@@ -2788,7 +2848,7 @@ function dermaptera(k, col, opt = {}) {
   }
   insectLegs(k, k.root, {
     at: [0, bodyY - by * 0.4, bz * 0.25], gap: bx * 0.5, pair: 3,
-    len: v.f("legl", 0.08, 0.14), r: 0.009, spanZ: bz * 0.4, splay: v.f("splay", 1.1, 1.45), bend: v.f("bend", 0.9, 1.3), color: dark,
+    len: v.f("legl", 0.08, 0.14), r: 0.009, spanZ: bz * 0.4, splay: v.f("splay", 1.1, 1.45), bend: v.f("bend", 0.9, 1.3), color: dark, arch: by * 0.35,
   });
   beadEyes(k, head, { r: bx * v.f("eyer", 0.18, 0.28), at: [0, by * 0.1, bx * 0.4], gap: bx * 0.34, color: ink, pupil: paper, spark: false });
   k.idle({ breatheK: v.f("br", 0.03, 0.05), bobAmp: v.f("bob", 0.006, 0.018) });
@@ -2864,7 +2924,7 @@ function insectGeneric(k, col, opt = {}) {
   antennaPair(k, head, { at: [0, headR * 0.4, headR * 0.5], gap: headR * 0.35, len: v.f("antl", 0.06, 0.16), r: 0.006, spread: v.f("ants", 0.3, 0.8), joint: 2, form: v.pick("antf", ["thread", "club"]), color: dark });
   insectLegs(k, k.root, {
     at: [0, bodyY - by * 0.4, bz * 0.2], gap: bx * 0.5, pair: 3,
-    len: v.f("legl", 0.08, 0.15), r: 0.008, spanZ: bz * 0.4, splay: v.f("splay", 1.05, 1.45), bend: v.f("bend", 0.85, 1.3), color: dark, lenMix: v.f("lenmix", -0.3, 0.3),
+    len: v.f("legl", 0.08, 0.15), r: 0.008, spanZ: bz * 0.4, splay: v.f("splay", 1.05, 1.45), bend: v.f("bend", 0.85, 1.3), color: dark, lenMix: v.f("lenmix", -0.3, 0.3), arch: by * 0.35,
   });
   if (v.on("wing", 0.5)) {
     const wl = v.f("wl", 0.08, 0.16);
@@ -2931,7 +2991,8 @@ function spider(k, col, opt = {}) {
        a ball — wider than it is long, which is the whole look. */
     spiny: [1.85, 0.5, 0.85],
   }[abdForm];
-  const pedicel = ball(k, ceph, "pedicel", { r: cx * 0.36, at: [0, cx * 0.06, -cz * 0.75], color: shade(dark, -0.1), subdiv: 0 });
+  ball(k, ceph, "pedicel-base", { merge: true, r: cx * 0.3, at: [0, cx * 0.06, -cz * 0.62], color: shade(dark, -0.1), subdiv: 0 });
+  const pedicel = ball(k, ceph, "pedicel", { r: cx * 0.36, at: [0, cx * 0.06, -cz * 0.72], color: shade(dark, -0.1), subdiv: 0 });
   /* The abdomen hangs off a pedicel a third the width of the cephalothorax.
      `lift` up to half the abdomen's own radius could carry it clear of that
      joint with a visible gap — and the part-level connectivity check still
@@ -2971,11 +3032,18 @@ function spider(k, col, opt = {}) {
     });
   }
   const spinneret = v.i("spin", 0, 2);
+  if (spinneret) {
+    // merged collar so the abdomen has vertices where the spinnerets leave it
+    ball(k, abd, "spin-base", { merge: true,
+      rx: ar * 0.34, ry: ar * shape[1] * 0.26, rz: ar * shape[2] * 0.2,
+      at: [0, -ar * shape[1] * 0.2, -ar * shape[2] * 0.7], color: shade(col.base, -0.2), subdiv: 0,
+    });
+  }
   for (let i = 0; i < spinneret; i += 1) {
     spindle(k, abd, `spinneret${i}`, {
       r: ar * 0.1, len: ar * v.f("spinl", 0.2, 0.4),
-      at: [(i - (spinneret - 1) / 2) * ar * 0.24, -ar * shape[1] * 0.2, -ar * shape[2] * 0.75],
-      rot: [-1.4, 0, 0], color: shade(col.base, -0.2), seg: 8,
+      at: [(i - (spinneret - 1) / 2) * ar * 0.24, -ar * shape[1] * 0.2, -ar * shape[2] * 0.72],
+      rot: [-1.4, 0, 0], root: ar * 0.2, color: shade(col.base, -0.2), seg: 8,
     });
   }
 
@@ -3060,14 +3128,15 @@ function scorpion(k, col, opt = {}) {
   const tailLen = v.f("taill", 0.07, 0.12);
   const arch = v.f("arch", 0.42, 0.72);
   let p = body;
-  let at = [0, by * 0.6, -bz * 0.75];
+  let at = [0, by * 0.55, -bz * 0.66];
+  ball(k, body, "tail-base", { merge: true, r: by * 0.85, at, color: shade(col.base, -0.06), subdiv: 0 });
   for (let i = 0; i < tailN; i += 1) {
     const r = by * (1.05 - i * (0.5 / tailN));
     /* The metasoma arches UP and forward over the back. Every joint was
        turning the same way as the first, which curled it flat along the
        ground behind the animal and left the sting pointing at nothing. */
     const n = k.cute.node(`tail${i}`, { parent: p, at, rot: [i === 0 ? -1.15 - arch * 0.15 : arch, 0, 0] });
-    k.cute.add(n, ballGeo(r, tailLen * 0.62, r, 1), { at: [0, tailLen * 0.5, 0], color: shade(col.base, -i * 0.05) });
+    k.cute.add(n, ballGeo(r, tailLen * 0.62, r, 1), { at: [0, tailLen * 0.34, 0], color: shade(col.base, -i * 0.05) });
     p = n;
     at = [0, tailLen * 0.86, 0];
   }
@@ -3106,7 +3175,7 @@ function scorpion(k, col, opt = {}) {
   insectLegs(k, body, {
     at: [0, -by * 0.4, bz * 0.2], gap: bx * 0.55, pair: 4,
     len: v.f("legl", 0.1, 0.18), r: 0.011, spanZ: bz * v.f("legspan", 0.35, 0.6),
-    splay: v.f("splay", 1.05, 1.45), bend: v.f("bend", 0.85, 1.35), color: dark, lenMix: v.f("lenmix", -0.25, 0.25),
+    splay: v.f("splay", 1.05, 1.45), bend: v.f("bend", 0.85, 1.35), color: dark, lenMix: v.f("lenmix", -0.25, 0.25), arch: by * 0.35,
   });
   const headR = bx * 0.3;
   beadEyes(k, body, { r: headR * v.f("eyer", 0.5, 0.8), at: [0, by * 0.7, bz * 0.5], gap: bx * v.f("eyeg", 0.18, 0.32), color: ink, pupil: paper, spark: true });
@@ -3151,7 +3220,7 @@ function snail(k, col, opt = {}) {
       rot: [0, 0, s * -v.f("stalkspread", 0.3, 0.52)],
       axis: "x", amp: 0.12, dur: v.f("stalkd", 1.6, 2.3), phase: s > 0 ? 0 : 0.5,
     });
-    k.cute.add(stalk, spindleGeo(0.013, stalkL, { seg: 10, bulge: 0.5, tip: 0.85 }), { color: skin });
+    k.cute.add(stalk, spindleGeo(0.013, stalkL, { seg: 10, bulge: 0.5, tip: 0.85, root: 0.026 }), { color: skin });
     const tip = ball(k, stalk, `stalkball-${s > 0 ? "l" : "r"}`, { r: eyeR, at: [0, stalkL * 0.9, 0], color: paper });
     ball(k, tip, `stalkpupil-${s > 0 ? "l" : "r"}`, { merge: true, r: eyeR * 0.52, at: [s * eyeR * 0.18, 0, eyeR * 0.6], color: ink, subdiv: 0 });
     spindle(k, head, `tentacle-${s > 0 ? "l" : "r"}`, {
@@ -3400,8 +3469,9 @@ function crab(k, col, opt = {}) {
         color: dark,
       });
     }
+    ball(k, body, `stalk-base-${s > 0 ? "l" : "r"}`, { merge: true, r: by * 0.4, at: [s * bx * 0.22, by * 0.34, bz * 0.44], color: dark, subdiv: 0 });
     const stalk = k.cute.node(`stalk-${s > 0 ? "l" : "r"}`, { parent: body, at: [s * bx * 0.22, by * 0.4, bz * 0.5], rot: null });
-    k.cute.add(stalk, spindleGeo(0.013, v.f("stalkl", 0.05, 0.1), { seg: 10, bulge: 0.5, tip: 0.8 }), { rotZ: s * -0.12, color: dark });
+    k.cute.add(stalk, spindleGeo(0.013, v.f("stalkl", 0.05, 0.1), { seg: 10, bulge: 0.5, tip: 0.8, root: 0.024 }), { rotZ: s * -0.12, color: dark });
     const eye = ball(k, stalk, `eye-${s > 0 ? "l" : "r"}`, { r: 0.03, at: [0, v.f("stalkl", 0.05, 0.1) * 0.95, 0], color: paper });
     ball(k, eye, `pupil-${s > 0 ? "l" : "r"}`, { r: 0.016, at: [0, 0, 0.022], color: ink, subdiv: 0 });
   }
