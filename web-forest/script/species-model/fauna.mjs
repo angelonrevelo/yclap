@@ -530,11 +530,18 @@ function bird(k, col, opt = {}) {
   /* Four birds the review called out for being shipped as the generic compact
      songbird. Routing and palettes live elsewhere; the ANATOMY lives here. */
   const junglefowl = id === "gallus-gallus";
+  /* Herons and egrets are neck, legs and a dagger. Four of them were shipping
+     as the compact songbird body with a short bill, which is why an egret and
+     a cattle-egret were indistinguishable from each other and from a munia. */
+  const heron = /^(ardea|egretta|butorides|nycticorax|ixobrychus|bubulcus)-/.test(id);
+  const whiteEye = /^zosterops-/.test(id);
+  const redEye = /^(aplonis|pycnonotus-atriceps)/.test(id);
+  const swallow = /^(hirundo|cecropis|apus|cypsiurus|collocalia|aerodramus)-/.test(id);
   const parakeet = /^psittacula-/.test(id);
   const owl = /^(otus|ninox|tyto|bubo)-/.test(id);
   const longTail = parakeet || /^(lanius|rhipidura|copsychus|dicrurus|urocissa)-/.test(id);
 
-  const legH = opt.legH ?? (junglefowl ? 0.24 : v.f("legh", 0.06, 0.18));
+  const legH = opt.legH ?? (junglefowl ? 0.24 : heron ? v.f("legh", 0.3, 0.42) : v.f("legh", 0.05, 0.26));
   const fat = opt.plump ? v.f("fat", 1.04, 1.2) : v.f("fat", 0.82, 1.04);
   const bx = 0.24 * fat;
   const by = 0.23 * fat * v.f("by", 0.9, 1.12);
@@ -547,7 +554,7 @@ function bird(k, col, opt = {}) {
   ball(k, body, "belly", { rx: bx * 0.76, ry: by * 0.72, rz: bz * 0.74, at: [0, -by * 0.32, bz * 0.24], color: belly });
 
   // mantle plates over the back — 0 to 2, so part count moves with species
-  const mantle = v.i("mantle", 0, 2);
+  const mantle = v.i("mantle", 0, 3);
   for (let i = 0; i < mantle; i += 1) {
     ball(k, body, `mantle${i}`, {
       rx: bx * (0.8 - i * 0.18), ry: by * 0.34, rz: bz * (0.58 - i * 0.14),
@@ -555,7 +562,7 @@ function bird(k, col, opt = {}) {
     });
   }
 
-  const neckLen = opt.neck ?? (v.on("hasneck", 0.3) ? v.f("neck", 0.08, 0.3) : 0);
+  const neckLen = opt.neck ?? (heron ? v.f("neck", 0.3, 0.5) : v.on("hasneck", 0.42) ? v.f("neck", 0.06, 0.4) : 0);
   const headR = opt.headR ?? v.f("headr", 0.18, 0.29);
   let headY = by * 0.66 + headR * 0.52;
   let headZ = bz * 0.18;
@@ -576,8 +583,9 @@ function bird(k, col, opt = {}) {
   const head = ball(k, body, "head", { r: headR, ry: headR * v.f("headsq", 0.88, 1.08), at: [0, headY, headZ], color: col.head ?? col.base });
 
   // wings — silhouette is per-species data, not one shared ellipsoid
-  const wingLen = v.f("wingl", 0.19, 0.32) * (opt.wingShape === "sickle" ? 1.3 : 1);
-  const wingChord = v.f("wingc", 0.11, 0.2) * (opt.wingShape === "sickle" ? 0.7 : 1);
+  const swept = opt.wingShape === "sickle" || swallow;
+  const wingLen = v.f("wingl", 0.17, 0.36) * (swept ? 1.4 : 1);
+  const wingChord = v.f("wingc", 0.11, 0.2) * (swept ? 0.6 : 1);
   const wingOut = bladeOutline(wingLen, wingChord, {
     n: 14,
     taper: v.f("wt", -0.3, 0.28),
@@ -601,7 +609,7 @@ function bird(k, col, opt = {}) {
   }
 
   // tail
-  const tailKind = opt.tail ?? (junglefowl ? "sickle" : longTail ? "long" : v.pick("tailk", ["fan", "wedge", "fan", "long", "fork"]));
+  const tailKind = opt.tail ?? (junglefowl ? "sickle" : swallow ? "fork" : heron ? "wedge" : longTail ? "long" : v.pick("tailk", ["fan", "wedge", "fan", "long", "fork"]));
   const tailBase = [0, by * 0.2, -bz * 0.72];
   const tailCol = col.accentTail ?? shade(col.base, -0.2);
   if (tailKind === "sickle") {
@@ -663,9 +671,9 @@ function bird(k, col, opt = {}) {
      joint and nothing turned it over. Not one of the 41 showed a foot. The
      shank now hangs from the hip and the toes fan forward off the tarsus. */
   {
-    const tibia = legH * 0.58;
-    const tarsus = legH * 0.55;
-    const toe = v.i("toe", 3, 4);
+    const tibia = legH * v.f("tibia", 0.42, 0.72);
+    const tarsus = legH * v.f("tarsus", 0.4, 0.7);
+    const toe = v.i("toe", 2, 4);
     for (const s of [1, -1]) {
       const chain = legChain(k, body, `leg-${s > 0 ? "l" : "r"}`, {
         at: [s * bx * 0.34, -by * 0.58, bz * 0.06], r: legH > 0.16 ? 0.02 : 0.026,
@@ -688,7 +696,7 @@ function bird(k, col, opt = {}) {
   }
 
   // bill
-  const beak = opt.beak ?? v.pick("beak", ["cone", "cone", "chisel", "needle", "hook"]);
+  const beak = opt.beak ?? (heron ? "needle" : v.pick("beak", ["cone", "cone", "chisel", "needle", "hook"]));
   const beakCol = col.beak ?? col.accent ?? APP.orange;
   const bl = headR * (beak === "needle" ? v.f("bl", 1.5, 2.3) : beak === "chisel" ? v.f("bl", 0.55, 0.85) : v.f("bl", 0.7, 1.1));
   const br = headR * (beak === "needle" ? 0.11 : v.f("br", 0.17, 0.26));
@@ -707,7 +715,7 @@ function bird(k, col, opt = {}) {
   }
 
   // crest / comb / cheek
-  const crest = opt.crest ?? (junglefowl ? "comb" : owl ? "ear" : v.on("crest", 0.28) ? v.pick("crestk", ["tuft", "spike", "plume"]) : null);
+  const crest = opt.crest ?? (junglefowl ? "comb" : owl ? "ear" : v.on("crest", 0.45) ? v.pick("crestk", ["tuft", "spike", "plume"]) : null);
   if (owl) {
     /* The facial disc: the flat dish of stiff feathers that funnels sound, and
        the one feature that makes an owl an owl at any size. */
@@ -771,12 +779,25 @@ function bird(k, col, opt = {}) {
     }
   }
 
-  k.face(head, {
+  const eyeR0 = owl ? 0.44 : v.f("eyer", 0.3, 0.4);
+  const eye = k.face(head, {
     r: headR * (owl ? 1.06 : 0.98),
-    eyeR: owl ? 0.44 : v.f("eyer", 0.3, 0.4),
+    eyeR: eyeR0,
     gap: owl ? 0.4 : v.f("eyeg", 0.46, 0.6),
     blink: opt.blink ?? true,
   });
+  /* The white-eye is NAMED for the ring of white feathers round its eye, and
+     the glossy starling for its red iris. Both are one merged annulus on the
+     eye node the face already built. */
+  if (whiteEye || redEye) {
+    const Re = eyeR0 * headR * (owl ? 1.06 : 0.98);
+    for (const [tag, node] of [["l", eye.eyeL], ["r", eye.eyeR]]) {
+      ball(k, node, `ring-${tag}`, {
+        rx: Re * 1.6, ry: Re * 1.6, rz: Re * 0.26,
+        at: [0, 0, -Re * 0.18], color: whiteEye ? paper : APP.red, subdiv: 1,
+      });
+    }
+  }
   k.idle({ breatheK: v.f("br", 0.024, 0.042), bobAmp: v.f("bob", 0.015, 0.035) });
 }
 
@@ -873,14 +894,22 @@ function frog(k, col, opt = {}) {
   const v = vary(k);
   col = toned(k, col);
   const dark = darkOf(col);
-  const bx = 0.3 * v.f("bx", 0.84, 1.14);
-  const by = 0.19 * v.f("by", 0.8, 1.3);
-  const bz = 0.3 * v.f("bz", 0.84, 1.16);
-  const body = ball(k, k.root, "body", { rx: bx, ry: by, rz: bz, at: [0, by * 1.02, 0], color: col.base });
+  /* Toads are squat and warty with parotoid glands behind the eye; tree frogs
+     are slim and long-limbed. Shipping all six as one body in four tints was
+     the review's complaint, and the split is a fact about the family. */
+  const toad = opt.warty || /^(rhinella|duttaphrynus|bufo|ingerophrynus)-/.test(who(k));
+  const treefrog = /^(polypedates|rhacophorus|kurixalus|litoria|hyla)-/.test(who(k));
+  const bx = 0.3 * v.f("bx", 0.84, 1.14) * (toad ? 1.12 : treefrog ? 0.88 : 1);
+  const by = 0.19 * v.f("by", 0.8, 1.3) * (toad ? 1.18 : 1);
+  const bz = 0.3 * v.f("bz", 0.84, 1.16) * (treefrog ? 1.08 : 1);
+  const body = ball(k, k.root, "body", {
+    rx: bx, ry: by, rz: bz, at: [0, by * v.f("sit", 0.85, 1.5), 0],
+    rot: [v.f("pitch", -0.16, 0.2), 0, 0], color: col.base,
+  });
   ball(k, body, "belly", { rx: bx * 0.72, ry: by * 0.66, rz: bz * 0.72, at: [0, -by * 0.42, bz * 0.28], color: bellyOf(col) });
   if (v.on("throat", 0.45)) ball(k, body, "throat", { rx: bx * 0.4, ry: by * 0.42, rz: bz * 0.3, at: [0, -by * 0.4, bz * 0.68], color: shade(bellyOf(col), 0.12) });
 
-  const wart = opt.warty ? v.i("wartn", 5, 8) : v.i("wartn", 0, 3);
+  const wart = toad ? v.i("wartn", 6, 10) : v.i("wartn", 0, 4);
   for (let i = 0; i < wart; i += 1) {
     const a = (i / Math.max(1, wart)) * Math.PI * 2 + v.f("warta", 0, 2);
     ball(k, body, `wart${i}`, { merge: true,
@@ -892,36 +921,105 @@ function frog(k, col, opt = {}) {
   const stripe = v.i("stripe", 0, 2);
   for (let i = 0; i < stripe; i += 1) {
     ball(k, body, `stripe${i}`, { merge: true,
-      rx: bx * 0.1, ry: by * 0.3, rz: bz * 0.86,
-      at: [(i - (stripe - 1) / 2) * bx * 0.9, by * 0.6, 0], color: col.accent ?? shade(col.base, -0.34), subdiv: 0,
+      rx: bx * 0.09, ry: by * 0.26, rz: bz * 0.62,
+      at: [(i - (stripe - 1) / 2) * bx * 0.78, by * 0.58, -bz * 0.06], color: col.accent ?? shade(col.base, -0.34), subdiv: 0,
     });
   }
 
-  const eyeR = v.f("eyer", 0.085, 0.125);
+  /* The eye. The pupil used to be parented to the BUMP rather than to the
+     eyeball and offset to exactly the eyeball's own radius, so it sat flush
+     inside the sphere and every frog in the pack shipped blind. It rides the
+     eyeball now, standing proud of it, inside a gold iris — the only
+     archetype that had no pupils at all. */
+  const eyeR = v.f("eyer", 0.075, 0.105) * (toad ? 1.1 : 1);
+  const iris = col.eye ?? mix(col.accent ?? APP.orange, hex("#d8a020"), 0.5);
   for (const s of [1, -1]) {
-    const bump = ball(k, body, `eyebump${s > 0 ? "l" : "r"}`, { r: eyeR * 1.25, at: [s * bx * 0.5, by * 0.78, bz * 0.44], color: col.base });
-    ball(k, bump, `eyeball${s > 0 ? "l" : "r"}`, { r: eyeR, at: [0, eyeR * 0.42, eyeR * 0.4], color: paper });
-    ball(k, bump, `pupil${s > 0 ? "l" : "r"}`, { r: eyeR * 0.45, at: [0, eyeR * 0.44, eyeR * 0.95], color: ink, subdiv: 0 });
+    const bump = ball(k, body, `eyebump${s > 0 ? "l" : "r"}`, {
+      r: eyeR * 1.2, at: [s * bx * 0.46, by * 0.8, bz * 0.42], color: col.base,
+    });
+    const eye = ball(k, bump, `eyeball${s > 0 ? "l" : "r"}`, {
+      r: eyeR, at: [0, eyeR * 0.5, eyeR * 0.32], color: iris,
+    });
+    /* A horizontal slit pupil, which is what a frog actually has, and a
+       catch-light so it reads as wet. */
+    ball(k, eye, `pupil${s > 0 ? "l" : "r"}`, { merge: true,
+      rx: eyeR * 0.62, ry: eyeR * 0.3, rz: eyeR * 0.55,
+      at: [0, 0, eyeR * 0.66], color: ink, subdiv: 1,
+    });
+    ball(k, eye, `spark${s > 0 ? "l" : "r"}`, { merge: true,
+      r: eyeR * 0.2, at: [s * eyeR * 0.3, eyeR * 0.38, eyeR * 0.62], color: paper, subdiv: 0,
+    });
+  }
+  if (toad) {
+    // parotoid glands: the two poison lumps behind a toad's eyes
+    for (const s of [1, -1]) {
+      ball(k, body, `parotoid${s > 0 ? "l" : "r"}`, {
+        rx: bx * 0.2, ry: by * 0.3, rz: bz * 0.24,
+        at: [s * bx * 0.55, by * 0.6, bz * 0.16], color: shade(col.base, -0.2),
+      });
+    }
   }
   k.arc(body, { name: "smile", R: bx * 0.5, r: 0.04, a0: Math.PI * 1.2, a1: Math.PI * 1.8, at: [0, -by * 0.1, bz * 0.86], color: ink, segs: 6 });
 
-  const toe = v.i("toe", 0, 3);
+  /* The folded jumping leg IS the frog. It used to be two thin sticks in the
+     dark accent tucked under the body where nothing could see them; it is now
+     a fat femur swung out and back, a shank folded forward under it, and a
+     long webbed foot on the ground — the Z that reads as "about to jump". */
+  /* Stance. A puddle frog squats flat, a tree frog perches high on folded
+     legs, a toad hunkers. Where the body sits over the feet is most of what
+     separates one frog silhouette from another. */
+  const stance = treefrog ? "perch" : toad ? "hunker" : v.pick("stance", ["squat", "perch", "sit"]);
+  const ST = {
+    squat: { femur: 0.8, fold: 2.7, rise: 0.85, out: 1.62 },
+    sit: { femur: 1.0, fold: 2.42, rise: 1.0, out: 1.5 },
+    perch: { femur: 1.24, fold: 2.16, rise: 1.2, out: 1.34 },
+    hunker: { femur: 0.86, fold: 2.62, rise: 0.82, out: 1.7 },
+  }[stance];
+  const toe = v.i("toe", 3, 5);
+  const femurL = v.f("femurl", 0.13, 0.22) * ST.femur;
+  const shankL = femurL * v.f("shank", 0.8, 1.25);
   for (const s of [1, -1]) {
-    ball(k, body, `thigh${s > 0 ? "l" : "r"}`, { rx: 0.09, ry: 0.08, rz: 0.16, at: [s * bx * 0.66, -by * 0.2, -bz * 0.4], color: dark });
     const arm = legChain(k, body, `arm-${s > 0 ? "l" : "r"}`, {
-      at: [s * bx * 0.7, 0, bz * 0.5], r: 0.03,
-      seg: [{ len: v.f("arml", 0.09, 0.15), rz: s * -0.55, rx: 0.5, taper: 0.9 }, { len: 0.07, rz: s * -0.5, taper: 0.8 }],
+      at: [s * bx * 0.62, -by * 0.34, bz * 0.56], r: 0.026,
+      seg: [
+        { len: v.f("arml", 0.1, 0.16), rz: s * -0.26, rx: Math.PI - 0.5, taper: 0.9 },
+        { len: v.f("arml", 0.1, 0.16) * 0.7, rz: s * 0.16, rx: 0.7, taper: 0.85 },
+      ],
       color: col.base,
     });
-    const shin = legChain(k, body, `shin-${s > 0 ? "l" : "r"}`, {
-      at: [s * bx * 0.72, -by * 0.4, -bz * 0.42], r: 0.032,
-      seg: [{ len: v.f("shinl", 0.1, 0.17), rz: s * -1.1, rx: -0.4, taper: 0.9 }, { len: 0.09, rz: s * -0.9, rx: 0.9, taper: 0.85 }],
-      color: dark,
+    const hind = legChain(k, body, `hind-${s > 0 ? "l" : "r"}`, {
+      at: [s * bx * 0.6, -by * 0.05, -bz * 0.42], r: v.f("hindr", 0.05, 0.07),
+      seg: [
+        // femur: out, back, and a little up — the knee rides above the flank
+        { len: femurL, rz: s * -ST.out, rx: -0.62, taper: 1.05, bulge: 0.42 },
+        // shank: folded sharply forward and down
+        { len: shankL, rz: s * 0.18, rx: ST.fold, taper: 0.6 },
+        // tarsus: flat on the ground, pointing forward
+        { len: shankL * 0.62, rz: s * 0.1, rx: -1.02, taper: 0.62 },
+      ],
+      color: col.base,
     });
-    for (const [tag, chain] of [["f", arm], ["h", shin]]) {
+    for (const [tag, chain, span] of [["f", arm, 0.034], ["h", hind, 0.05]]) {
+      const tip = chain[chain.length - 1];
       for (let i = 0; i < toe; i += 1) {
-        ball(k, chain[chain.length - 1], `toe${tag}${i}${s > 0 ? "l" : "r"}`, {
-          r: 0.024, at: [(i - (toe - 1) / 2) * 0.04, 0.08, 0.02], color: shade(col.base, 0.24), subdiv: 0,
+        const digit = spindle(k, tip, `toe${tag}${i}${s > 0 ? "l" : "r"}`, {
+          r: 0.014, len: span * (tag === "h" ? 2.0 : 1.4) * (1 - Math.abs(i - (toe - 1) / 2) * 0.16),
+          at: [0, (tag === "h" ? shankL * 0.52 : 0.07), 0],
+          rot: [-1.35, (i - (toe - 1) / 2) * 0.42, 0],
+          color: shade(col.base, 0.24), seg: 6, tip: 0.5,
+        });
+        if (treefrog) {
+          ball(k, digit, `pad${tag}${i}${s > 0 ? "l" : "r"}`, { merge: true,
+            r: 0.019, at: [0, span * (tag === "h" ? 1.9 : 1.3), 0],
+            color: shade(col.base, 0.4), subdiv: 0,
+          });
+        }
+      }
+      // the web between the toes
+      if (tag === "h") {
+        ball(k, tip, `web${s > 0 ? "l" : "r"}`, { merge: true,
+          rx: span * 1.5, ry: 0.012, rz: span * 1.5,
+          at: [0, shankL * 0.62, span * 0.9], color: shade(col.base, 0.12), subdiv: 0,
         });
       }
     }
@@ -1207,43 +1305,80 @@ function snake(k, col, opt = {}) {
 function fish(k, col, opt = {}) {
   const v = vary(k);
   col = toned(k, col);
-  const angel = opt.kind === "angel";
+  /* The angelfish's whole identity is a tall, laterally compressed disc with
+     trailing fins — it is not a fat oval in a different tint, and it was
+     shipping as one because nothing ever set `kind`. */
+  const angel = opt.kind === "angel" || /^(pterophyllum|symphysodon)-/.test(who(k));
+  const sword = /^xiphophorus-/.test(who(k));
   const dark = darkOf(col);
-  const bx = angel ? 0.06 : v.f("bx", 0.075, 0.13);
-  const by = angel ? 0.3 : v.f("by", 0.13, 0.24);
-  const bz = v.f("bz", 0.22, 0.34);
+  const bx = angel ? 0.05 : v.f("bx", 0.075, 0.13);
+  const by = angel ? v.f("aby", 0.26, 0.32) : v.f("by", 0.13, 0.24);
+  const bz = angel ? v.f("abz", 0.16, 0.2) : v.f("bz", 0.22, 0.34);
   const body = ball(k, k.root, "body", { rx: bx, ry: by, rz: bz, at: [0, by + 0.06, 0], color: col.base });
   ball(k, body, "belly", { rx: bx * 0.78, ry: by * 0.6, rz: bz * 0.7, at: [0, -by * 0.32, bz * 0.24], color: bellyOf(col) });
 
   const tailKind = v.pick("tailk", ["fan", "fork", "veil", "round"]);
-  const tailSize = (opt.kind === "fancy" ? 1.5 : 1) * v.f("tails", 0.85, 1.25);
-  const tailOut = bladeOutline(0.13 * tailSize, 0.11 * tailSize, {
+  const tailSize = (opt.kind === "fancy" ? 1.5 : angel ? 1.35 : 1) * v.f("tails", 1.05, 1.5);
+  const tailOut = bladeOutline(0.15 * tailSize, 0.13 * tailSize, {
     n: 12,
     taper: tailKind === "fork" ? -0.55 : tailKind === "veil" ? -0.2 : 0.1,
     notch: tailKind === "fork" ? 0.4 : tailKind === "round" ? -0.1 : 0.15,
   });
-  const tail = hinge(k, body, "tail", { at: [0, 0, -bz * 0.8], rot: [0, 0, Math.PI / 2], axis: "y", base: 0, amp: v.f("swish", 0.3, 0.5), dur: v.f("swishd", 0.8, 1.4) });
-  k.cute.add(tail, bladeGeo(tailOut, 0.024), { at: [0, 0, -0.11 * tailSize], color: dark });
+  /* The caudal peduncle: the narrow waist between body and tail. Without it
+     the tail fin is a slab bolted to the back of an oval at the same angle as
+     the dorsal, and the fish reads as front-to-back symmetric — which is
+     exactly what the review saw on nine of the ten. */
+  ball(k, body, "peduncle", {
+    rx: bx * 0.42, ry: by * (angel ? 0.24 : 0.38), rz: bz * 0.2,
+    at: [0, angel ? -by * 0.1 : 0, -bz * 0.78], color: shade(col.base, -0.1),
+  });
+  const tail = hinge(k, body, "tail", {
+    at: [0, angel ? -by * 0.1 : 0, -bz * 0.9], rot: [0, 0, Math.PI / 2],
+    axis: "y", base: 0, amp: v.f("swish", 0.3, 0.5), dur: v.f("swishd", 0.8, 1.4),
+  });
+  k.cute.add(tail, bladeGeo(tailOut, 0.024), { at: [0, 0, -0.13 * tailSize], color: dark });
+  if (sword) {
+    /* The swordtail's sword: a long spine off the LOWER caudal lobe, and the
+       only reason the species has its name. */
+    spindle(k, tail, "sword", {
+      r: 0.009, len: v.f("swordl", 0.16, 0.24),
+      at: [-0.11 * tailSize, 0, -0.1 * tailSize], rot: [0, 0, -Math.PI / 2],
+      color: col.accent ?? APP.orange, seg: 6, tip: 0.3,
+    });
+  }
 
   const dorsalN = v.i("dorsn", 1, 3);
   for (let i = 0; i < dorsalN; i += 1) {
+    /* A dorsal fin has LENGTH along the back as well as height. Built in the
+       XZ plane and stood up by a quarter turn about Z, the blade's own x
+       becomes its height and its z stays fore-aft — so the fin is a sail
+       rather than the thin paddle it used to be. */
+    const dorsH = v.f("dorsr", 0.08, 0.14) * (angel ? 2.3 : 1) * (1 - i * 0.2);
+    const dorsL = bz * (angel ? 0.46 : v.f("dorsl", 0.24, 0.4)) * (1 - i * 0.24);
     blade(k, body, `dorsal${i}`, {
-      outline: bladeOutline(0.02, v.f("dorsr", 0.07, 0.13) * (1 - i * 0.2), { n: 8, taper: -0.3 }), thick: 0.02,
-      at: [0, by * 0.78, bz * (0.3 - i * 0.42)], rot: [Math.PI / 2, 0, 0], off: [0, 0, -0.07], color: dark,
+      outline: bladeOutline(dorsH, dorsL, { n: 9, taper: -0.25 }), thick: 0.02,
+      at: [0, by * 0.8, bz * (0.16 - i * 0.44)], rot: [0, 0, Math.PI / 2],
+      off: [dorsH * 0.72, 0, 0], color: dark,
     });
   }
-  if (v.on("anal", 0.6)) {
+  if (angel || v.on("anal", 0.6)) {
+    const analH = angel ? v.f("analr", 0.22, 0.3) : v.f("analr", 0.06, 0.1);
+    const analL = bz * (angel ? 0.44 : 0.26);
     blade(k, body, "anal", {
-      outline: bladeOutline(0.02, 0.07, { n: 8, taper: -0.3 }), thick: 0.02,
-      at: [0, -by * 0.75, -bz * 0.28], rot: [-Math.PI / 2, 0, 0], off: [0, 0, -0.06], color: dark,
+      outline: bladeOutline(analH, analL, { n: 9, taper: -0.25 }), thick: 0.02,
+      at: [0, -by * 0.78, -bz * 0.18], rot: [0, 0, -Math.PI / 2],
+      off: [analH * 0.72, 0, 0], color: dark,
     });
   }
   for (const s of [1, -1]) {
     const fin = hinge(k, body, `pect-${s > 0 ? "l" : "r"}`, {
-      at: [s * bx * 0.7, -by * 0.15, bz * 0.34], rot: [0, 0, s * 0.6], axis: "x", base: 0,
+      at: [s * bx * 0.72, -by * 0.14, bz * 0.3], rot: [0.2, s * 0.55, s * 0.55], axis: "x", base: 0,
       amp: v.f("finf", 0.16, 0.3), dur: v.f("find", 0.7, 1.1), phase: s > 0 ? 0 : 0.4,
     });
-    k.cute.add(fin, bladeGeo(bladeOutline(0.08, 0.05, { n: 9, taper: 0.3 }).map(([x, z]) => [x * s, z]), 0.018), { at: [s * 0.07, 0, 0], color: shade(col.base, 0.18) });
+    /* Pectorals read as whiskers when they are 0.08 long and edge-on. Broad,
+       fanned and raked back, they read as fins. */
+    const pw = v.f("pectw", 0.1, 0.15);
+    k.cute.add(fin, bladeGeo(bladeOutline(pw, pw * v.f("pectc", 0.55, 0.85), { n: 9, taper: 0.34 }).map(([x, z]) => [x * s, z]), 0.016), { at: [s * pw * 0.85, 0, -pw * 0.25], color: shade(col.base, 0.18) });
   }
   const stripeN = v.i("stripen", 0, 4);
   for (let i = 0; i < stripeN; i += 1) {
@@ -1461,9 +1596,12 @@ function odonata(k, col, opt = {}) {
   col = toned(k, col);
   const slim = opt.kind === "damselfly";
   const dark = darkOf(col);
-  const segs = v.i("segn", slim ? 6 : 4, slim ? 9 : 7);
-  const segLen = v.f("segl", 0.09, 0.14);
-  const abdR = slim ? v.f("ar", 0.014, 0.022) : v.f("ar", 0.024, 0.04);
+  /* A dragonfly's abdomen is several times the length of its thorax; four
+     short beads made it barely longer than the head, which is why none of the
+     ten read as a dragonfly. */
+  const segs = v.i("segn", slim ? 8 : 6, slim ? 14 : 12);
+  const segLen = v.f("segl", 0.1, 0.15);
+  const abdR = slim ? v.f("ar", 0.013, 0.024) : v.f("ar", 0.021, 0.044);
   const bodyY = v.f("by", 0.3, 0.42);
 
   const thorax = ball(k, k.root, "thorax", {
@@ -1486,7 +1624,7 @@ function odonata(k, col, opt = {}) {
     }
   }
 
-  const headR = abdR * v.f("hr", 2.0, 3.0);
+  const headR = abdR * v.f("hr", 1.8, 2.6);
   const head = ball(k, thorax, "head", { rx: headR * 1.15, ry: headR * 0.85, rz: headR * 0.8, at: [0, abdR * 0.5, abdR * 2.6], color: dark });
   const eyeR = headR * v.f("eyer", 0.6, 0.92);
   beadEyes(k, head, {
@@ -1495,7 +1633,7 @@ function odonata(k, col, opt = {}) {
   });
   antennaPair(k, head, { at: [0, headR * 0.5, headR * 0.3], gap: headR * 0.2, len: 0.03, r: 0.005, spread: 0.7, joint: 1, form: "thread", color: dark });
 
-  const wingLen = v.f("wl", 0.22, 0.36);
+  const wingLen = v.f("wl", 0.2, 0.4);
   const wingW = v.f("ww", 0.035, 0.065);
   const wingCol = shade(col.accent ?? col.base, v.f("wsh", 0.3, 0.5));
   for (const [i, dz] of [abdR * 1.2, -abdR * 1.4].entries()) {
@@ -1505,11 +1643,15 @@ function odonata(k, col, opt = {}) {
         n: 14, taper: v.f("wt", -0.3, 0.25), notch: v.f("wn", -0.1, 0.25),
       }),
       thick: 0.01, reach: wingLen * 0.85,
-      tilt: v.f("wtl", -0.1, 0.12), roll: slim ? v.f("wrl", 0.5, 1.1) : v.f("wrl", -0.05, 0.12),
+      /* A damselfly holds its wings CLOSED over its back — near vertical,
+         swept back along the abdomen. Half a radian is a dragonfly with a
+         droop, which is what both of ours were shipping as. */
+      tilt: v.f("wtl", -0.1, 0.12), roll: slim ? v.f("wrl", 1.34, 1.54) : v.f("wrl", -0.05, 0.12),
+      yaw: slim ? v.f("wyaw", 0.85, 1.05) : v.f("wyaw", 0.0, 0.18),
       color: wingCol, flap: v.f("wf", 0.06, 0.16), dur: v.f("wd", 0.45, 0.8), phase: i * 0.2, name: `wing${i}`,
     });
   }
-  const stripeN = v.i("stripen", 0, 3);
+  const stripeN = v.i("stripen", 0, 4);
   for (let i = 0; i < stripeN; i += 1) {
     ball(k, thorax, `stripe${i}`, { merge: true,
       rx: abdR * 2.6, ry: abdR * 0.5, rz: abdR * 0.6,
@@ -2261,12 +2403,25 @@ function blattodea(k, col, opt = {}) {
       });
     }
   }
+  /* The pronotal shield: the broad disc a cockroach pulls over its head, and
+     the reason the head is hard to see on a real one. It has to be WIDER than
+     the body, not narrower. */
   const thorax = ball(k, body, "pronotum", {
-    rx: bx * v.f("pw", 0.75, 1.0), ry: by * v.f("ph", 0.75, 1.0), rz: bz * v.f("pz", 0.22, 0.4),
-    at: [0, by * 0.12, bz * 0.72], color: shade(col.base, termite ? 0.08 : -0.16),
+    rx: bx * (termite ? v.f("pw", 0.8, 1.0) : v.f("pw", 1.04, 1.2)),
+    ry: by * v.f("ph", 0.55, 0.8),
+    rz: bz * (termite ? v.f("pz", 0.22, 0.34) : v.f("pz", 0.34, 0.5)),
+    at: [0, by * 0.2, bz * 0.66], color: shade(col.base, termite ? 0.08 : -0.16),
   });
+  if (!termite) {
+    ball(k, thorax, "pronotum-rim", { merge: true,
+      rx: bx * 1.22, ry: by * 0.28, rz: bz * v.f("pz", 0.34, 0.5) * 1.05,
+      at: [0, -by * 0.16, 0], color: shade(col.base, -0.42), subdiv: 0,
+    });
+  }
   const headR = bx * v.f("hr", 0.42, 0.65);
-  const head = ball(k, thorax, "head", { rx: headR, ry: headR * 0.85, rz: headR * v.f("hz", 0.85, 1.2), at: [0, -by * 0.06, bz * 0.24 + headR * 0.5], color: darkOf(col) });
+  /* The head takes a shade of the roach, not the palette accent — three of
+     the four were shipping a saturated blue or yellow head. */
+  const head = ball(k, thorax, "head", { rx: headR, ry: headR * 0.85, rz: headR * v.f("hz", 0.85, 1.2), at: [0, -by * 0.06, bz * 0.24 + headR * 0.5], color: col.head ?? shade(col.base, -0.28) });
   if (termite && v.on("soldier", 0.4)) {
     for (const s of [1, -1]) {
       cone(k, head, `mandible-${s > 0 ? "l" : "r"}`, { r: headR * 0.2, h: headR * v.f("mandl", 1.2, 2.2), at: [s * headR * 0.4, 0, headR * 0.5], rotX: Math.PI / 2, rotZ: s * 0.3, color: shade(dark, -0.15) });
@@ -2315,15 +2470,19 @@ function dermaptera(k, col, opt = {}) {
   const head = ball(k, body, "head", { rx: bx * 0.6, ry: by * 0.9, rz: bx * 0.55, at: [0, by * 0.15, bz * 0.9], color: dark });
   antennaPair(k, head, { at: [0, bx * 0.3, bx * 0.4], gap: bx * 0.3, len: v.f("antl", 0.12, 0.24), r: 0.006, spread: v.f("ants", 0.3, 0.7), joint: 2, form: "thread", color: dark });
   // forceps
-  const forcep = v.f("forcep", 0.09, 0.18);
+  /* The cerci — the tail forceps — ARE the order. They were a pair of thin
+     stubs the length of a leg; they now run half the body and curve in to
+     meet, which is the shape everyone recognises. */
+  const forcep = bz * v.f("forcep", 0.85, 1.2);
   for (const s of [1, -1]) {
     legChain(k, body, `forcep-${s > 0 ? "l" : "r"}`, {
-      at: [s * bx * 0.4, by * 0.2, -bz * 0.82], r: v.f("forcepr", 0.009, 0.015),
+      at: [s * bx * 0.45, by * 0.25, -bz * 0.86], r: v.f("forcepr", 0.014, 0.02),
       seg: [
-        { len: forcep * 0.6, rz: s * -0.2, rx: -1.45, taper: 0.8 },
-        { len: forcep * 0.5, rz: s * 0.55, rx: 0, taper: 0.4 },
+        { len: forcep * 0.55, rz: s * -0.34, rx: -1.5, taper: 0.95, bulge: 0.4 },
+        { len: forcep * 0.4, rz: s * 0.7, rx: 0.1, taper: 0.55 },
+        { len: forcep * 0.22, rz: s * 0.7, rx: 0.1, taper: 0.3 },
       ],
-      color: shade(dark, -0.12),
+      color: shade(col.base, -0.44),
     });
   }
   insectLegs(k, k.root, {
@@ -2438,7 +2597,7 @@ function spider(k, col, opt = {}) {
      species name. Each build moves leg length, how far the legs drop, and how
      high the abdomen rides — all relative to the body, since the audit
      normalises away any absolute placement. */
-  const build = jumping ? "jumper" : spiny ? "squat" : v.pick("build", ["orb", "hunter", "stilt", "squat", "orb"]);
+  const build = jumping ? "jumper" : spiny ? "squat" : v.pick("build", ["orb", "hunter", "stilt", "squat", "orb", "hunter", "stilt"]);
   const B = {
     orb: { leg: 1.0, drop: 1.0, lift: 0.35, rake: 1.0 },
     hunter: { leg: 0.78, drop: 1.25, lift: 0.12, rake: 1.5 },
@@ -2495,7 +2654,7 @@ function spider(k, col, opt = {}) {
       at: [0, ar * shape[1] * 0.3, 0], color: shade(col.base, 0.22), subdiv: 1,
     });
   }
-  const markN = v.i("markn", 0, 5);
+  const markN = v.i("markn", 0, 6);
   for (let i = 0; i < markN; i += 1) {
     const t = (i + 1) / (markN + 1);
     ball(k, abd, `mark${i}`, { merge: true,
@@ -2755,8 +2914,13 @@ function myriapod(k, col, opt = {}) {
   const dark = darkOf(col);
   const cent = opt.kind === "centipede";
   const house = opt.kind === "house-centipede";
-  const n = v.i("segn", cent || house ? 6 : 5, cent || house ? 9 : 8);
-  const segLen = v.f("segl", 0.11, 0.16);
+  /* "Many legs" is the whole identity of a millipede, and four to six nubs is
+     not many. A diplosegment carries TWO pairs, and there are a lot of them —
+     so the segment count goes up, the segment gets shorter, and every one of
+     them is double-legged. */
+  const mille = !cent && !house;
+  const n = mille ? v.i("segn", 11, 16) : v.i("segn", 6, 9);
+  const segLen = mille ? v.f("segl", 0.07, 0.1) : v.f("segl", 0.11, 0.16);
   const r0 = v.f("r", 0.05, 0.075);
   const flat = cent || house ? v.f("flat", 0.5, 0.75) : v.f("flat", 0.85, 1.05);
   const curve = v.f("curve", -0.16, 0.16);
@@ -2794,15 +2958,15 @@ function myriapod(k, col, opt = {}) {
   });
   beadEyes(k, head, { r: headR * v.f("eyer", 0.24, 0.4), at: [0, headR * 0.15, headR * 0.45], gap: headR * 0.5, color: ink, pupil: paper, spark: true });
 
-  const legLen = house ? v.f("legl", 0.16, 0.26) : cent ? v.f("legl", 0.08, 0.14) : v.f("legl", 0.05, 0.09);
+  const legLen = house ? v.f("legl", 0.16, 0.26) : cent ? v.f("legl", 0.08, 0.14) : v.f("legl", 0.07, 0.11);
   const splay = house ? v.f("splay", 1.5, 1.9) : v.f("splay", 1.25, 1.6);
-  const pairPerSeg = opt.kind === "millipede" || (!cent && !house) ? v.i("pps", 1, 2) : 1;
+  const pairPerSeg = mille ? 2 : 1;
   for (const [i, node] of seg.entries()) {
     for (let q = 0; q < pairPerSeg; q += 1) {
       for (const s of [1, -1]) {
         spindle(k, node, `leg${i}${q}-${s > 0 ? "l" : "r"}`, {
           merge: pairPerSeg > 1, r: house ? 0.007 : 0.009, len: legLen * (house ? 1 - i * 0.05 : 1),
-          at: [s * r0 * 0.5, -r0 * flat * 0.2, segLen * (0.2 - q * 0.4)],
+          at: [s * r0 * 0.5, -r0 * flat * 0.2, segLen * (0.25 - q * 0.5)],
           rot: [v.f("legrake", -0.3, 0.3), 0, s * -splay], color: dark, seg: 7,
         });
       }
