@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T07:45:23.741Z",
+ "generated_at": "2026-09-05T07:53:59.811Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -180,7 +180,7 @@
    "archetype": "hymenoptera-ant",
    "palette_source": "known",
    "file": "species/oecophylla-smaragdina.glb",
-   "bytes": 58396,
+   "bytes": 58392,
    "display_scale_m": 0.012
   },
   {
@@ -540,7 +540,7 @@
    "archetype": "orthoptera",
    "palette_source": "known",
    "file": "species/pseudoxya-diminuta.glb",
-   "bytes": 70628,
+   "bytes": 70756,
    "display_scale_m": 0.03
   },
   {
@@ -1230,7 +1230,7 @@
    "archetype": "orthoptera",
    "palette_source": "known",
    "file": "species/melicodes-tenebrosus.glb",
-   "bytes": 76500,
+   "bytes": 76612,
    "display_scale_m": 0.07
   },
   {
@@ -1350,7 +1350,7 @@
    "archetype": "hymenoptera-ant",
    "palette_source": "known",
    "file": "species/odontomachus-simillimus.glb",
-   "bytes": 62136,
+   "bytes": 64528,
    "display_scale_m": 0.012
   },
   {
@@ -1470,7 +1470,7 @@
    "archetype": "hymenoptera-ant",
    "palette_source": "known",
    "file": "species/odontoponera-denticulata.glb",
-   "bytes": 52776,
+   "bytes": 52780,
    "display_scale_m": 0.01
   },
   {
@@ -2235,7 +2235,7 @@
    "archetype": "hymenoptera-ant",
    "palette_source": "derived",
    "file": "species/odontomachus-infandus.glb",
-   "bytes": 52864,
+   "bytes": 59672,
    "display_scale_m": 0.01
   },
   {
@@ -4020,7 +4020,7 @@
    "archetype": "orthoptera",
    "palette_source": "known",
    "file": "species/aiolopus-thalassinus.glb",
-   "bytes": 66688,
+   "bytes": 66816,
    "display_scale_m": 0.04
   },
   {
@@ -4830,7 +4830,7 @@
    "archetype": "hymenoptera-ant",
    "palette_source": "known",
    "file": "species/carebara-diversa.glb",
-   "bytes": 66004,
+   "bytes": 66008,
    "display_scale_m": 0.006
   },
   {
@@ -4875,7 +4875,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/phimenes-curvatus.glb",
-   "bytes": 78540,
+   "bytes": 78572,
    "display_scale_m": 0.025
   },
   {
@@ -4995,7 +4995,7 @@
    "archetype": "orthoptera-cricket",
    "palette_source": "known",
    "file": "species/polionemobius-taprobanensis.glb",
-   "bytes": 65880,
+   "bytes": 65868,
    "display_scale_m": 0.015
   },
   {
@@ -5190,7 +5190,7 @@
    "archetype": "hymenoptera-ant",
    "palette_source": "known",
    "file": "species/solenopsis-geminata.glb",
-   "bytes": 53248,
+   "bytes": 53252,
    "display_scale_m": 0.006
   },
   {
@@ -6720,7 +6720,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/scolia-superciliaris.glb",
-   "bytes": 70452,
+   "bytes": 70592,
    "display_scale_m": 0.03
   },
   {
@@ -7815,7 +7815,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/vespa-tropica.glb",
-   "bytes": 73656,
+   "bytes": 73664,
    "display_scale_m": 0.03
   },
   {
@@ -7920,7 +7920,7 @@
    "archetype": "hymenoptera-ant",
    "palette_source": "known",
    "file": "species/trichomyrmex-destructor.glb",
-   "bytes": 58204,
+   "bytes": 58200,
    "display_scale_m": 0.006
   },
   {
@@ -7965,7 +7965,7 @@
    "archetype": "orthoptera",
    "palette_source": "derived",
    "file": "species/atractomorpha-similis.glb",
-   "bytes": 69928,
+   "bytes": 70012,
    "display_scale_m": 0.045
   },
   {
@@ -8145,7 +8145,7 @@
    "archetype": "coleoptera-longhorn",
    "palette_source": "known",
    "file": "species/epepeotes-ambigenus.glb",
-   "bytes": 62328,
+   "bytes": 60156,
    "display_scale_m": 0.03
   },
   {
@@ -8280,7 +8280,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/ropalidia-flavobrunnea.glb",
-   "bytes": 75084,
+   "bytes": 75088,
    "display_scale_m": 0.018
   },
   {
@@ -8325,7 +8325,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/scolia-clypeata.glb",
-   "bytes": 75236,
+   "bytes": 75268,
    "display_scale_m": 0.028
   },
   {
@@ -8700,7 +8700,7 @@
    "archetype": "orthoptera-katydid",
    "palette_source": "known",
    "file": "species/holochlora-japonica.glb",
-   "bytes": 68904,
+   "bytes": 68832,
    "display_scale_m": 0.06
   },
   {
@@ -12075,7 +12075,7 @@
    "archetype": "orthoptera",
    "palette_source": "known",
    "file": "species/ellipes-minuta.glb",
-   "bytes": 72856,
+   "bytes": 72816,
    "display_scale_m": 0.015
   },
   {
@@ -12135,7 +12135,7 @@
    "archetype": "hymenoptera-ant",
    "palette_source": "known",
    "file": "species/odontomachus-haematodus.glb",
-   "bytes": 58336,
+   "bytes": 60740,
    "display_scale_m": 0.012
   },
   {
@@ -12780,7 +12780,7 @@
    "archetype": "orthoptera",
    "palette_source": "derived",
    "file": "species/atractomorpha-sinensis.glb",
-   "bytes": 73736,
+   "bytes": 73956,
    "display_scale_m": 0.045
   },
   {
@@ -13635,7 +13635,7 @@
    "archetype": "hymenoptera-bee",
    "palette_source": "known",
    "file": "species/xylocopa-latipes.glb",
-   "bytes": 73436,
+   "bytes": 73440,
    "display_scale_m": 0.025
   },
   {
@@ -13890,7 +13890,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/sceliphron-madraspatanum.glb",
-   "bytes": 72992,
+   "bytes": 73140,
    "display_scale_m": 0.025
   },
   {
@@ -14595,7 +14595,7 @@
    "archetype": "orthoptera",
    "palette_source": "known",
    "file": "species/xya-japonica.glb",
-   "bytes": 65936,
+   "bytes": 66076,
    "display_scale_m": 0.012
   },
   {
@@ -14655,7 +14655,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/ropalidia-stigma.glb",
-   "bytes": 76668,
+   "bytes": 76676,
    "display_scale_m": 0.018
   },
   {
@@ -14985,7 +14985,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/rhynchium-haemorrhoidale.glb",
-   "bytes": 80212,
+   "bytes": 80356,
    "display_scale_m": 0.02
   },
   {
@@ -15810,7 +15810,7 @@
    "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/vespa-luctuosa.glb",
-   "bytes": 73068,
+   "bytes": 73216,
    "display_scale_m": 0.025
   },
   {
@@ -16095,7 +16095,7 @@
    "archetype": "coleoptera-longhorn",
    "palette_source": "known",
    "file": "species/rhytiphora-bankii.glb",
-   "bytes": 71212,
+   "bytes": 66884,
    "display_scale_m": 0.025
   },
   {
@@ -16365,7 +16365,7 @@
    "archetype": "orthoptera-katydid",
    "palette_source": "known",
    "file": "species/conocephalus-vestitus.glb",
-   "bytes": 72020,
+   "bytes": 72080,
    "display_scale_m": 0.04
   },
   {
@@ -16380,7 +16380,7 @@
    "archetype": "hymenoptera-ant",
    "palette_source": "derived",
    "file": "species/polyrhachis-mucronata.glb",
-   "bytes": 52860,
+   "bytes": 61652,
    "display_scale_m": 0.01
   },
   {
@@ -16395,7 +16395,7 @@
    "archetype": "hymenoptera-ant",
    "palette_source": "derived",
    "file": "species/polyrhachis-armata.glb",
-   "bytes": 62848,
+   "bytes": 67232,
    "display_scale_m": 0.01
   },
   {

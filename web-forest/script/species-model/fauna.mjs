@@ -546,7 +546,7 @@ function legChain(k, parent, name, { at, r, seg, color, subdiv = 1, merge = fals
        vertices on the far side of the joint plane, which is what contact is
        actually measured on. */
     const geo = spindleGeo(rr, s.len, {
-      seg: s.round ?? 10, bulge: s.bulge ?? 0.45, tip: s.tip ?? 0,
+      seg: s.round ?? 10, bulge: s.bulge ?? 0.45, tip: s.tip ?? 0, zScale: s.zScale ?? 1,
       /* The first segment's socket is sized off the LIMB, not just its radius.
          A leg hangs off a hip whose exact position the chain cannot see — it
          is given a point in the parent's frame and nothing else — so the only
@@ -1517,7 +1517,12 @@ function fish(k, col, opt = {}) {
      shipping as one because nothing ever set `kind`. */
   const angel = opt.kind === "angel" || /^(pterophyllum|symphysodon)-/.test(who(k));
   const sword = /^xiphophorus-/.test(who(k));
-  const dark = darkOf(col);
+  /* Fin colour. `darkOf` fell through to `col.dark`, and for a fish that
+     wrote only its real `base` that dark belongs to the POOL colour the class
+     derived before the species overrode it — which is why all ten fish,
+     goldfish and black widow tetra included, wore the same blue fins. A fin
+     takes a shade of the fish unless the palette says otherwise. */
+  const dark = col.fin ?? shade(col.base, -0.24);
   const bx = angel ? 0.05 : v.f("bx", 0.075, 0.13);
   const by = angel ? v.f("aby", 0.26, 0.32) : v.f("by", 0.13, 0.24);
   const bz = angel ? v.f("abz", 0.16, 0.2) : v.f("bz", 0.22, 0.34);
@@ -1731,7 +1736,12 @@ function lepidoptera(k, col, opt = {}) {
        third of a unit below the body with nothing in between. */
     at: [0, wingY - thoraxR * v.f("hdrop", 0.35, 1.05), -thoraxR * 0.85], gap: thoraxR * 0.45, outline: hindOut, thick: v.f("hth", 0.012, 0.026),
     reach: hindX * 0.05, tilt: v.f("htl", -0.15, 0.2), yaw: (moth ? v.f("hyaw", 0.3, 0.7) : v.f("hyaw", 0, 0.2)) - sweepK * 0.6,
-    roll: v.f("hrl", carriage[0] * 0.85, carriage[1] * 0.9), color: shade(col.base, v.f("hshade", 0.02, 0.28)),
+    /* A birdwing's hindwing is gold and its forewing is black — that single
+       contrast is the whole diagnostic, and painting the hindwing a shade of
+       the forewing threw it away on all three Troides. */
+    roll: v.f("hrl", carriage[0] * 0.85, carriage[1] * 0.9),
+    color: /^(troides|trogonoptera|ornithoptera)-/.test(who(k)) && col.accent
+      ? col.accent : shade(col.base, v.f("hshade", 0.02, 0.28)),
     flap: v.f("hflap", 0.08, 0.26), dur: v.f("fdur", 1.0, 1.8), phase: 0.25, name: "wing-lo",
   });
 
@@ -1952,32 +1962,43 @@ function hymenoptera(k, col, opt = {}) {
     rot: ant ? null : [v.f("pitch", -0.34, 0.42), 0, 0],
     color: col.head ?? col.base,
   });
+  const thoraxZ = thoraxR * (bee ? v.f("tl", 1.0, 1.25) : wasp ? v.f("tl", 1.25, 1.7) : v.f("tl", 1.0, 1.5));
   const thorax = ball(k, head, "thorax", {
     rx: thoraxR * (bee ? v.f("tw", 1.1, 1.32) : wasp ? v.f("tw", 0.8, 0.95) : v.f("tw", 0.85, 1.1)),
     ry: thoraxR * (bee ? v.f("th", 1.05, 1.25) : v.f("th", 0.85, 1.2)),
-    rz: thoraxR * (bee ? v.f("tl", 1.0, 1.25) : wasp ? v.f("tl", 1.25, 1.7) : v.f("tl", 1.0, 1.5)),
+    rz: thoraxZ,
     at: [0, ant ? headR * 0.15 : 0, -headR * 0.5 - thoraxR * 0.6], color: col.thorax ?? col.base,
   });
-  // petiole: 1 or 2 waist nodes, the ant's giveaway and a real part-count knob
+  /* The petiole. A waist stalk is only a waist if you can SEE PAST it, and the
+     chain started at -thoraxR * 0.9 — a fixed fraction of the thorax's WIDTH,
+     which on a wasp whose thorax is 1.25-1.7 of that long put the whole stalk
+     inside the thorax and the gaster hard against its back wall. All ten of
+     them read as bumblebees for that reason. It starts at the thorax's actual
+     rear now, and the gaster is hung off the far end of the stalk instead of
+     off the stalk's middle.
+     The mud-daubers go further: Sceliphron is DEFINED by a thread-thin
+     petiole as long as the rest of the abdomen. */
+  const dauber = /^(sceliphron|chalybion|ammophila|eumenes|delta|isodontia|prionyx)-/.test(who(k));
   const waistN = ant ? v.i("waist", 1, 2) : wasp ? 2 : 1;
-  const waistR = thoraxR * (wasp ? 0.2 : ant ? 0.3 : 0.5);
+  const waistR = thoraxR * (dauber ? 0.1 : wasp ? 0.16 : ant ? 0.3 : 0.5);
+  /* Sized against the THORAX, not against its own radius. A stalk four times
+     a 0.19-thorax-radius bead is still only a third the length of the segment
+     in front of it, and at gallery size that is not a waist, it is a seam. */
+  const waistZ = wasp ? thoraxZ * (dauber ? v.f("wz", 1.5, 2.0) : v.f("wz", 0.62, 0.88)) : waistR * 1.1;
   let p = thorax;
-  let at = [0, ant ? -thoraxR * 0.1 : 0, -thoraxR * 0.9];
+  let at = [0, ant ? -thoraxR * 0.1 : 0, -(ant ? thoraxR * 0.9 : thoraxZ * 0.98)];
   for (let i = 0; i < waistN; i += 1) {
-    /* The wasp waist. Two thin nodes on a stalk long enough to SEE, because
-       "wasp-waisted" is the only thing separating a wasp from a bee at a
-       glance and the previous single bead was buried between two ellipsoids. */
     p = ball(k, p, `petiole${i}`, {
-      rx: waistR, ry: waistR * (wasp ? v.f("wh", 1.0, 1.3) : v.f("wh", 1.0, 1.8)),
-      rz: waistR * (wasp ? v.f("wz", 1.8, 2.6) : 1.1), at, color: dark,
+      rx: waistR, ry: waistR * (wasp ? v.f("wh", 1.0, 1.25) : v.f("wh", 1.0, 1.8)),
+      rz: waistZ / (wasp ? waistN : 1), at, color: dark, subdiv: 1,
     });
-    at = [0, 0, -waistR * (wasp ? 3.0 : 1.3)];
+    at = [0, 0, -(waistZ / (wasp ? waistN : 1)) * 1.9];
   }
   const gx = (ant ? 0.055 : bee ? 0.105 : 0.082) * s0 * v.f("gw", 0.78, 1.3);
   const gz = (ant ? 0.075 : bee ? 0.115 : 0.145) * s0 * v.f("gl", 0.78, 1.45);
   const gaster = ball(k, p, "gaster", {
     rx: gx, ry: gx * (bee ? v.f("gh", 0.95, 1.15) : v.f("gh", 0.8, 1.05)), rz: gz,
-    at: [0, ant ? gx * 0.15 : 0, -waistR * 0.4 - gz * 0.75], color: col.base,
+    at: [0, ant ? gx * 0.15 : 0, -(wasp ? (waistZ / waistN) * 0.9 : waistR * 0.4) - gz * 0.9], color: col.base,
   });
   /* A wasp gaster comes to a point; a bee carries a blunt furry barrel. The
      count of tail segments is a real species knob — without it the ten wasps
@@ -2030,11 +2051,15 @@ function hymenoptera(k, col, opt = {}) {
        ant has, and it has to carry more weight now that the chitin colour is
        derived from the body instead of from a per-species accent — two ants
        that differ only in tint are, correctly, one model. */
-    const spineN = v.i("spinen", 0, 2);
+    /* Polyrhachis is the SPINY ant: a pair of long propodeal spines is not a
+       die roll on that genus, it is the reason for the name. */
+    const spiny = /^(polyrhachis|pheidole|myrmicaria|cataulacus|meranoplus)-/.test(who(k));
+    const spineN = spiny ? 2 : v.i("spinen", 0, 2);
     for (let q = 0; q < spineN; q += 1) {
       for (const s of [1, -1]) {
         cone(k, thorax, `spine${q}-${s > 0 ? "l" : "r"}`, {
-          r: thoraxR * (0.2 - q * 0.05), h: thoraxR * v.f("spinel", 0.6, 1.3) * (1 - q * 0.3),
+          r: thoraxR * (0.2 - q * 0.05),
+          h: thoraxR * (spiny ? v.f("spinel", 1.6, 2.4) : v.f("spinel", 0.6, 1.3)) * (1 - q * 0.3),
           at: [s * thoraxR * (0.5 - q * 0.12), thoraxR * (0.5 - q * 0.55), -thoraxR * (0.5 - q * 0.3)],
           rotZ: s * 0.5, rotX: -0.5 + q * 0.9, color: dark,
         });
@@ -2042,12 +2067,26 @@ function hymenoptera(k, col, opt = {}) {
     }
   }
 
-  if (opt.mandibles || v.on("mand", ant ? 0.5 : 0.25)) {
+  /* Trap-jaw. An Odontomachus carries two straight mandibles as long as its
+     own head, held wide open at 180 degrees — it is the most recognisable ant
+     head in the world and all three of ours had the same short curved jaws as
+     everything else. */
+  const trapjaw = /^(odontomachus|anochetus|myrmoteras|strumigenys|harpegnathos)-/.test(who(k));
+  if (trapjaw || opt.mandibles || v.on("mand", ant ? 0.5 : 0.25)) {
     for (const s of [1, -1]) {
       cone(k, head, `mandible-${s > 0 ? "l" : "r"}`, {
-        r: headR * 0.16, h: headR * v.f("mandl", 0.9, 1.9), at: [s * headR * 0.34, -headR * 0.2, headR * 0.45],
-        rotX: Math.PI / 2 - 0.2, rotZ: s * v.f("mands", 0.15, 0.5), color: dark,
+        r: headR * (trapjaw ? 0.1 : 0.16),
+        h: headR * (trapjaw ? v.f("mandl", 2.4, 3.2) : v.f("mandl", 0.9, 1.9)),
+        at: [s * headR * (trapjaw ? 0.22 : 0.34), -headR * (trapjaw ? 0.1 : 0.2), headR * (trapjaw ? 0.6 : 0.45)],
+        rotX: Math.PI / 2 - (trapjaw ? 0.05 : 0.2),
+        rotZ: s * (trapjaw ? v.f("mands", 0.55, 0.85) : v.f("mands", 0.15, 0.5)), color: dark,
       });
+      /* the trigger hairs a trap-jaw fires on, as a real tip */
+      if (trapjaw) {
+        ball(k, head, `mandible-tooth-${s > 0 ? "l" : "r"}`, { merge: true,
+          r: headR * 0.12, at: [s * headR * 0.55, -headR * 0.1, headR * 1.5], color: shade(dark, -0.2), subdiv: 0,
+        });
+      }
     }
   }
   antennaPair(k, head, {
@@ -2152,7 +2191,10 @@ function coleoptera(k, col, opt = {}) {
   const headR = pronR * v.f("hr", 0.5, 0.78);
   const head = ball(k, pronotum, "head", { rx: headR, ry: headR * 0.85, rz: headR, at: [0, -by * 0.06, bz * 0.3 + headR * 0.4], color: dark });
 
-  if (opt.horn || v.on("horn", 0.15)) {
+  /* No longhorn has a rostral horn. The coin flip was giving Epepeotes and
+     Rhytiphora a cone off the front of the head, which reads as a rhino
+     beetle's — the one beetle a cerambycid must not be mistaken for. */
+  if (opt.horn || (!opt.longhorn && !opt.snout && v.on("horn", 0.15))) {
     cone(k, head, "horn", { r: headR * 0.3, h: headR * v.f("hornl", 1.6, 3.2), at: [0, headR * 0.3, headR * 0.2], rotX: v.f("horna", 0.3, 0.8), color: shade(accentOf(k, col, col.base), -0.1) });
     if (v.on("horn2", 0.5)) cone(k, pronotum, "horn2", { r: pronR * 0.16, h: pronR * v.f("horn2l", 0.6, 1.4), at: [0, by * 0.6, bz * 0.1], rotX: 0.5, color: shade(accentOf(k, col, col.base), -0.2) });
   }
@@ -2238,8 +2280,8 @@ function orthoptera(k, col, opt = {}) {
   const tergN = v.i("tergn", 0, 3);
   for (let i = 0; i < tergN; i += 1) {
     ball(k, body, `tergite${i}`, {
-      rx: bx * 1.05, ry: by * 1.04, rz: bz * 0.075,
-      at: [0, -by * 0.05 * i, -bz * (0.14 + i * 0.24)],
+      rx: bx * 1.05, ry: by * 1.04, rz: bz * 0.1,
+      at: [0, -by * 0.05 * i, -bz * (0.12 + i * 0.2)],
       color: shade(col.base, i % 2 ? -0.34 : 0.14), subdiv: 0,
     });
   }
@@ -2266,10 +2308,16 @@ function orthoptera(k, col, opt = {}) {
       at: [0, by * 0.86, bz * (0.05 - i * 0.16)], color: shade(col.base, -0.3), subdiv: 0,
     });
   }
-  const headR = bx * v.f("hr", 0.9, 1.25);
+  /* The head. It was `bx * 0.9..1.25` with a further 1.0-1.4 on its height,
+     which on a body 0.07-0.11 wide and 0.2-0.32 long made a sphere as long as
+     the thorax and abdomen together — every one of the seven read as a
+     big-headed grub. A grasshopper's head is a small wedge, deeper than it is
+     wide, tucked under the front of the pronotum. */
+  const headR = bx * v.f("hr", 0.55, 0.72);
   const head = ball(k, pron, "head", {
-    rx: headR, ry: headR * v.f("hh", 1.0, 1.4), rz: headR * 0.95,
-    at: [0, bx * 0.1, bz * 0.2 + headR * 0.5], color: col.head ?? col.base,
+    rx: headR, ry: headR * v.f("hh", 1.25, 1.65), rz: headR * 1.15,
+    at: [0, -bx * 0.06, bz * 0.2 + headR * 0.7], rot: [v.f("hdip", 0.1, 0.4), 0, 0],
+    color: col.head ?? col.base,
   });
   /* Katydids are the long-horned grasshoppers: the antenna is as long as the
      whole animal and thread-fine, which is the single feature that tells one
@@ -2289,14 +2337,21 @@ function orthoptera(k, col, opt = {}) {
        the tibia made the two the same stick, which is why none of these read
        as a grasshopper. The femur now runs about as wide as the body is deep
        and the tibia stays a thin spring under it. */
-    const femurL = v.f("femur", 0.21, 0.3) * ST.femur;
-    const femurR = v.f("femurr", 0.042, 0.062);
+    const femurL = v.f("femur", 0.3, 0.42) * ST.femur;
+    const femurR = v.f("femurr", 0.058, 0.082);
+    /* The femur is a laterally flattened BLADE half the length of the animal,
+       carried up and back so the knee stands above the line of the back. What
+       shipped was 0.21-0.3 long and 0.042 thick with a round section, which at
+       gallery size is a small hexagonal block sitting on the abdomen — the one
+       feature that makes a grasshopper a grasshopper, missing from all seven.
+       The tibia stays a thin spring under it, and the two must not be the same
+       stick: 0.24 against a femur taper of 1.35 is a threefold difference. */
     const chain = legChain(k, body, `hind-${s > 0 ? "l" : "r"}`, {
-      at: [s * bx * 0.85, by * 0.05, -bz * 0.3], r: femurR,
+      at: [s * bx * 0.78, by * 0.12, -bz * 0.38], r: femurR,
       seg: [
-        { len: femurL, rz: s * -0.34, rx: ST.fold, taper: 1.2, bulge: 0.44 },
-        { len: femurL * v.f("tibia", 0.95, 1.3), rz: s * 0.12, rx: ST.ext, taper: 0.28 },
-        { len: femurL * 0.32, rz: s * 0.08, rx: -1.05 - ST.kick, taper: 0.4, root: femurL * 0.2 },
+        { len: femurL, rz: s * -0.3, rx: ST.fold, taper: 1.35, bulge: 0.4, zScale: 1.5 },
+        { len: femurL * v.f("tibia", 0.95, 1.25), rz: s * 0.12, rx: ST.ext, taper: 0.24 },
+        { len: femurL * 0.3, rz: s * 0.08, rx: -1.05 - ST.kick, taper: 0.34, root: femurL * 0.16 },
       ],
       color: dark,
     });
@@ -2307,7 +2362,11 @@ function orthoptera(k, col, opt = {}) {
     });
     if (v.on("spur", 0.5)) {
       for (let i = 0; i < 2; i += 1) {
-        cone(k, chain[1], `spur${i}${s > 0 ? "l" : "r"}`, { r: 0.008, h: 0.03, at: [0, femurL * (0.4 + i * 0.4), 0], rotZ: s * -1.3, color: dark, seg: 6 });
+        /* Placed along the TIBIA's own length. Pinned to the femur's instead,
+           a long-femured stance walked the second spur off the end of the
+           tibia and left it hanging in the air. */
+        const tibiaL = femurL * v.f("tibia", 0.95, 1.25);
+        cone(k, chain[1], `spur${i}${s > 0 ? "l" : "r"}`, { r: 0.008, h: 0.03, at: [0, tibiaL * (0.45 + i * 0.34), 0], rotZ: s * -1.3, root: 0.016, color: dark, seg: 6 });
       }
     }
   }
