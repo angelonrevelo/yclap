@@ -3,9 +3,16 @@
  * eye faces, stub limbs, blob canopies, leaves) that every species model is
  * composed from. Sits on top of glb.mjs.
  *
- * Style contract (matches the app's art): flat-shaded low-poly, the repo's
- * leaf greens, one mustard accent, ink for the eyes. Proportions are chibi on
- * purpose: big head, big glossy eyes, stubby limbs.
+ * Style contract (matches the app's art): low-poly with crease-aware smooth
+ * shading, the repo's leaf greens, one mustard accent, ink for the eyes.
+ * Proportions are chibi on purpose: big head, big glossy eyes, stubby limbs.
+ *
+ * Tessellation is a FLOOR here, not a suggestion. `subdiv: 0` and `seg: 5` are
+ * honoured as "as coarse as you like, down to the point where the surface stops
+ * reading as a surface" — a 20-face ball and a 5-sided tube both put every one
+ * of their edges past the 40-degree crease line, which is the audit's whole
+ * definition of "faceted". Callers who genuinely want a chunky hexagonal stem
+ * pass `exactSeg: true` and keep it.
  *
  * Pivot rule: a part's node carries its position (and, via `pivot`, its
  * animation hinge); geometry is baked centered on the node origin. Rotate the
@@ -13,7 +20,7 @@
  * canopies sway at the trunk top.
  */
 import {
-  Cute, icosphere, cylinderGeo, torusArcGeo,
+  Cute, icosphere, cylinderGeo, torusArcGeo, discGeo, capsuleGeo,
   hex, hsl, mix, shade, hash32, jitterColor, pick,
   mCompose, mRx, mRy, mRz, apply,
 } from "./glb.mjs";
@@ -40,6 +47,14 @@ export const FURS = ["#e08a3c", "#9aa0a6", "#2f2f33", "#b58a5a", "#c89a5e", "#7a
 
 const BLUSH = hex("#f0a0a8");
 
+/**
+ * Pack-wide shading default, in degrees of crease angle. Facets that meet more
+ * gently than this share an averaged normal; anything sharper stays a hard
+ * edge. 40 matches the audit's own definition of a crease, so what the gate
+ * calls faceted is exactly what ships looking faceted.
+ */
+export const SMOOTH_DEFAULT = 40;
+
 function norm3([x, y, z]) {
   const l = Math.hypot(x, y, z) || 1;
   return [x / l, y / l, z / l];
@@ -59,9 +74,9 @@ export function grad(top, bottom, lo = -0.35, hi = 0.35) {
  * and returns the main node so animation can target it.
  */
 export class Kit {
-  constructor(spec, { idleDur = 1.6 } = {}) {
+  constructor(spec, { idleDur = 1.6, smooth = SMOOTH_DEFAULT } = {}) {
     this.spec = spec;
-    this.cute = new Cute(spec.species_code, { idleDur });
+    this.cute = new Cute(spec.species_code, { idleDur, smooth });
     this.dur = idleDur;
     this.seed = hash32(spec.scientific_name ?? spec.species_code);
     this.hash = (n) => (hash32(`${spec.scientific_name}:${n}`) % 10000) / 10000;
@@ -78,42 +93,65 @@ export class Kit {
    * the part's position in the parent frame; `pivot` (optional) moves the node
    * origin away from the geometry so swings hinge correctly.
    */
-  blob(parent, { r, rx, ry, rz, at = [0, 0, 0], pivot = null, rotX = 0, rotY = 0, rotZ = 0, color, colorFn, name = "blob", subdiv }) {
+  blob(parent, { r, rx, ry, rz, at = [0, 0, 0], pivot = null, rotX = 0, rotY = 0, rotZ = 0, color, colorFn, name = "blob", subdiv, smooth }) {
     const scale = r ? [r, r, r] : [rx, ry, rz];
-    // small bits go chunky on purpose: fewer faces, smaller files
-    const s = subdiv ?? (Math.max(...scale) < 0.055 ? 0 : 1);
+    /* Tessellation floor. A 20-face icosahedron has a 41.8-degree dihedral,
+       which is just over the audit's 40-degree crease threshold, so EVERY edge
+       of a subdiv-0 ball counts as a hard crease and the part reads as a rock.
+       One subdivision drops that to zero hard edges for four times the faces;
+       a big ball earns a second so its silhouette is round at gallery size. */
+    const big = Math.max(...scale);
+    const s = subdiv ?? (big < 0.05 ? 1 : 2);
     const origin = pivot ?? at;
     const offset = [at[0] - origin[0], at[1] - origin[1], at[2] - origin[2]];
     const node = this.cute.node(name, { parent, at: origin });
-    this.cute.add(node, icosphere(s), { at: offset, rotX, rotY, rotZ, scale, color, colorFn });
+    this.cute.add(node, icosphere(Math.max(1, s)), { at: offset, rotX, rotY, rotZ, scale, color, colorFn, smooth });
     return node;
   }
 
   /** Flat disc — eyes, spots, petals. */
-  disc(parent, { r, at, rotX = 0, rotY = 0, rotZ = 0, color, name = "disc", pivot = null }) {
-    return this.blob(parent, { r, at, pivot, rotX, rotY, rotZ, color, name, subdiv: 0 });
+  disc(parent, { r, at, rotX = 0, rotY = 0, rotZ = 0, color, name = "disc", pivot = null, subdiv = 1, smooth }) {
+    return this.blob(parent, { r, at, pivot, rotX, rotY, rotZ, color, name, subdiv, smooth });
   }
 
-  /** Cone along +Y before rotation (beaks, horns, spikes). */
-  cone(parent, { r, h, at = [0, 0, 0], pivot = null, rotX = 0, rotY = 0, rotZ = 0, color, name = "cone", seg = 6 }) {
-    return this.tube(parent, { r, r2: 0, h, at, pivot, rotX, rotY, rotZ, color, name, seg });
-  }
-
-  /** Cylinder / tapered tube along +Y before rotation. */
-  tube(parent, { r, r2, h, at = [0, 0, 0], pivot = null, rotX = 0, rotY = 0, rotZ = 0, color, name = "tube", seg = 7 }) {
+  /** Flat n-gon plate in the XZ plane before rotation (spots, lily pads). */
+  plate(parent, { r, at = [0, 0, 0], pivot = null, rotX = 0, rotY = 0, rotZ = 0, color, colorFn, name = "plate", seg = 12, smooth }) {
     const origin = pivot ?? at;
     const offset = [at[0] - origin[0], at[1] - origin[1], at[2] - origin[2]];
     const node = this.cute.node(name, { parent, at: origin });
-    this.cute.add(node, cylinderGeo(r, r2 ?? r, h, seg), { at: offset, rotX, rotY, rotZ, color });
+    this.cute.add(node, discGeo(r, seg), { at: offset, rotX, rotY, rotZ, color, colorFn, smooth });
+    return node;
+  }
+
+  /** Cone along +Y before rotation (beaks, horns, spikes). */
+  cone(parent, { r, h, at = [0, 0, 0], pivot = null, rotX = 0, rotY = 0, rotZ = 0, color, name = "cone", seg = 10, smooth, exactSeg }) {
+    return this.tube(parent, { r, r2: 0, h, at, pivot, rotX, rotY, rotZ, color, name, seg, smooth, exactSeg });
+  }
+
+  /** Cylinder / tapered tube along +Y before rotation. */
+  tube(parent, { r, r2, h, at = [0, 0, 0], pivot = null, rotX = 0, rotY = 0, rotZ = 0, color, colorFn, name = "tube", seg = 10, smooth, exactSeg = false, capBase = true, capTop = true }) {
+    const origin = pivot ?? at;
+    const offset = [at[0] - origin[0], at[1] - origin[1], at[2] - origin[2]];
+    const node = this.cute.node(name, { parent, at: origin });
+    this.cute.add(node, cylinderGeo(r, r2 ?? r, h, seg, { exactSeg, capBase, capTop }), { at: offset, rotX, rotY, rotZ, color, colorFn, smooth });
+    return node;
+  }
+
+  /** Rounded limb along +Y from y=0 to y=h — a tube with hemisphere ends. */
+  limb(parent, { r, h, at = [0, 0, 0], pivot = null, rotX = 0, rotY = 0, rotZ = 0, color, colorFn, name = "limb", seg = 10, cap = 2, smooth }) {
+    const origin = pivot ?? at;
+    const offset = [at[0] - origin[0], at[1] - origin[1], at[2] - origin[2]];
+    const node = this.cute.node(name, { parent, at: origin });
+    this.cute.add(node, capsuleGeo(r, h, seg, cap), { at: offset, rotX, rotY, rotZ, color, colorFn, smooth });
     return node;
   }
 
   /** Torus arc in the XY plane (smiles, fiddleheads, tendrils). */
-  arc(parent, { R, r, a0, a1, at = [0, 0, 0], pivot = null, rotX = 0, rotY = 0, rotZ = 0, color, name = "arc", segs = 8 }) {
+  arc(parent, { R, r, a0, a1, at = [0, 0, 0], pivot = null, rotX = 0, rotY = 0, rotZ = 0, color, colorFn, name = "arc", segs = 12, smooth, exactSeg = false }) {
     const origin = pivot ?? at;
     const offset = [at[0] - origin[0], at[1] - origin[1], at[2] - origin[2]];
     const node = this.cute.node(name, { parent, at: origin });
-    this.cute.add(node, torusArcGeo(R, r, a0, a1, segs), { at: offset, rotX, rotY, rotZ, color });
+    this.cute.add(node, torusArcGeo(R, r, a0, a1, segs, { exactSeg }), { at: offset, rotX, rotY, rotZ, color, colorFn, smooth });
     return node;
   }
 
@@ -166,7 +204,7 @@ export class Kit {
       const p = eyeAt(side);
       // orientation goes on the NODE (so the mirrored eye can share the mesh)
       const eye = this.cute.node(`${name}-eye-${tag}`, { parent, at: p.at, rot: [-p.pitch, p.yaw, 0] });
-      this.cute.add(eye, icosphere(0), { scale: [Re, Re, Re * 0.35], color: APP.paper });
+      this.cute.add(eye, icosphere(2), { scale: [Re, Re, Re * 0.35], color: APP.paper });
       this.disc(eye, { name: `${name}-pupil-${tag}`, r: Re * 0.5, at: [0, -Re * 0.08, Re * 0.5], color: APP.ink });
       this.disc(eye, { name: `${name}-spark-${tag}`, r: Re * 0.3, at: [Re * 0.18, Re * 0.22, Re * 0.72], color: APP.paper });
       return eye;
@@ -268,4 +306,4 @@ export class Kit {
   }
 }
 
-export { icosphere, cylinderGeo, torusArcGeo, hex, hsl, mix, shade, hash32, pick, jitterColor, mCompose, mRx, mRy, mRz, apply };
+export { icosphere, cylinderGeo, torusArcGeo, discGeo, capsuleGeo, hex, hsl, mix, shade, hash32, pick, jitterColor, mCompose, mRx, mRy, mRz, apply };

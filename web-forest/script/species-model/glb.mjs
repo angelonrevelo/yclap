@@ -1,10 +1,23 @@
 /**
  * Zero-dependency glTF 2.0 (.glb) writer for the cute species-model pack.
  *
- * Everything is flat-shaded low-poly built from icosphere/cone/cylinder
- * primitives with per-vertex colors — no textures, no external packages.
- * Animation is node-transform only (rotation/translation/scale channels on an
- * "idle" clip), which every glTF viewer (model-viewer included) plays.
+ * Everything is low-poly built from icosphere/cone/cylinder/capsule primitives
+ * with per-vertex colors — no textures, no external packages. Animation is
+ * node-transform only (rotation/translation/scale channels on an "idle" clip),
+ * which every glTF viewer (model-viewer included) plays.
+ *
+ * Shading is per-part and crease-aware. A part added with `smooth` off gets the
+ * classic three-vertices-per-face split and reads hard-edged; with `smooth` on
+ * (a crease angle in degrees) vertices weld by position and their normals
+ * average, but only across facets that meet more gently than the crease, so a
+ * ball reads round while a cap rim, a fold and a cone tip stay sharp. Welding
+ * also removes the 3x vertex duplication, which is why turning smoothing ON
+ * made this pack SMALLER even as it quadrupled the triangle count.
+ *
+ * Two other size levers live in the writer: zero-area faces are dropped before
+ * they reach a buffer (they shade black and carry a zero-length normal), and
+ * nodes whose geometry is byte-identical share one mesh — the six identical
+ * legs, the twelve identical petals, the mirrored pair of eyes.
  *
  * Coordinate sense used across the pack: +Y up, creature faces +Z, ground at
  * y=0, whole model inside roughly a 1-unit box so one gallery camera fits all.
@@ -216,46 +229,170 @@ function norm3([x, y, z]) {
   return [x / l, y / l, z / l];
 }
 
-/** Truncated cone along +Y from y=0 to y=h, radius r1 at base, r2 at top. */
-export function cylinderGeo(r1, r2, h, seg = 7) {
+/**
+ * Truncated cone along +Y from y=0 to y=h, radius r1 at base, r2 at top.
+ *
+ * Degenerate-free by construction. The old version emitted a full ring at
+ * every radius, so a cone (r2 = 0) shipped `seg` zero-area side triangles plus
+ * a whole zero-area top cap — 12 wasted, black-shading faces on every beak in
+ * the pack. A zero radius now collapses to a single apex vertex and its cap is
+ * skipped; the seam ring is shared by index rather than duplicated.
+ *
+ * `seg` is a floor, not a literal: fewer than ~10 radial segments puts adjacent
+ * side facets more than 40 degrees apart, which is exactly what "faceted" means
+ * in the audit. Pass `{ exactSeg: true }` when a chunky hexagonal stem is the
+ * intent and the coarseness must survive.
+ */
+export function cylinderGeo(r1, r2, h, seg = 10, opt = {}) {
+  const { exactSeg = false, minSeg = 12, capBase = true, capTop = true } = opt;
+  const S = Math.max(3, Math.round(exactSeg ? seg : Math.max(seg, minSeg)));
+  const EPS = 1e-7;
+  const a1 = Math.abs(r1) < EPS ? 0 : r1;
+  const a2 = Math.abs(r2) < EPS ? 0 : r2;
   const positions = [];
   const indices = [];
-  for (let i = 0; i <= seg; i += 1) {
-    const a = (i / seg) * Math.PI * 2;
-    const c = Math.cos(a);
-    const s = Math.sin(a);
-    positions.push([c * r1, 0, s * r1], [c * r2, h, s * r2]);
+  if (!a1 && !a2) return { positions, indices };
+
+  const ring = (r, y) => {
+    const base = positions.length;
+    for (let i = 0; i < S; i += 1) {
+      const a = (i / S) * Math.PI * 2;
+      positions.push([Math.cos(a) * r, y, Math.sin(a) * r]);
+    }
+    return base;
+  };
+
+  /* A zero-height ring pair is a disc, not a tube — emit one so callers that
+     flatten a part to nothing still get a visible, non-degenerate face. */
+  if (Math.abs(h) < EPS) {
+    const r = Math.max(a1, a2);
+    const b = ring(r, 0);
+    const c = positions.length;
+    positions.push([0, 0, 0]);
+    for (let i = 0; i < S; i += 1) indices.push([b + i, c, b + ((i + 1) % S)]);
+    return { positions, indices };
   }
-  for (let i = 0; i < seg; i += 1) {
-    const a = i * 2;
-    indices.push([a, a + 1, a + 2], [a + 1, a + 3, a + 2]);
+
+  const b0 = a1 ? ring(a1, 0) : -1;
+  const b1 = a2 ? ring(a2, h) : -1;
+  const apexBase = a1 ? -1 : (positions.push([0, 0, 0]), positions.length - 1);
+  const apexTop = a2 ? -1 : (positions.push([0, h, 0]), positions.length - 1);
+
+  for (let i = 0; i < S; i += 1) {
+    const j = (i + 1) % S;
+    if (b0 >= 0 && b1 >= 0) {
+      indices.push([b0 + i, b1 + i, b0 + j], [b1 + i, b1 + j, b0 + j]);
+    } else if (b0 >= 0) {
+      indices.push([b0 + i, apexTop, b0 + j]);
+    } else {
+      indices.push([apexBase, b1 + i, b1 + j]);
+    }
   }
-  // caps (top disc at y=h, base disc at y=0)
-  const topC = positions.length;
-  positions.push([0, h, 0]);
-  const baseC = positions.length;
-  positions.push([0, 0, 0]);
-  for (let i = 0; i < seg; i += 1) {
-    const a = i * 2;
-    indices.push([a + 1, topC, a + 3]);
-    indices.push([a, baseC, a + 2]);
+  if (b1 >= 0 && capTop) {
+    const c = positions.length;
+    positions.push([0, h, 0]);
+    for (let i = 0; i < S; i += 1) indices.push([b1 + i, c, b1 + ((i + 1) % S)]);
+  }
+  if (b0 >= 0 && capBase) {
+    const c = positions.length;
+    positions.push([0, 0, 0]);
+    for (let i = 0; i < S; i += 1) indices.push([b0 + i, b0 + ((i + 1) % S), c]);
   }
   return { positions, indices };
 }
 
-/** Square-tube torus arc in the XY plane (around +Z), angles in radians. */
-export function torusArcGeo(R, r, a0, a1, segs = 8) {
+/**
+ * Flat n-gon disc in the XZ plane, radius r, centred on the origin, facing +Y.
+ * Coplanar by construction, so it costs `seg` triangles and contributes zero
+ * hard edges — the cheap way to draw a spot, a petal or a lily pad.
+ */
+export function discGeo(r, seg = 12) {
+  const S = Math.max(3, Math.round(seg));
+  const positions = [[0, 0, 0]];
+  const indices = [];
+  for (let i = 0; i < S; i += 1) {
+    const a = (i / S) * Math.PI * 2;
+    positions.push([Math.cos(a) * r, 0, Math.sin(a) * r]);
+  }
+  for (let i = 0; i < S; i += 1) indices.push([1 + i, 0, 1 + ((i + 1) % S)]);
+  return { positions, indices };
+}
+
+/**
+ * Capsule along +Y spanning y=0..h, radius r: a tube with hemisphere ends.
+ * A drop-in for `cylinderGeo(r, r, h)` that reads as a smooth limb instead of
+ * a cut pipe, and carries no flat cap rim to throw a hard crease.
+ */
+export function capsuleGeo(r, h, seg = 12, cap = 3) {
+  const S = Math.max(3, Math.round(seg));
+  const C = Math.max(1, Math.round(cap));
+  const R = Math.min(Math.abs(r), Math.abs(h) / 2 || Math.abs(r));
   const positions = [];
   const indices = [];
-  for (let i = 0; i <= segs; i += 1) {
-    const a = a0 + ((a1 - a0) * i) / segs;
+  const ringAt = (rr, y) => {
+    const base = positions.length;
+    for (let i = 0; i < S; i += 1) {
+      const a = (i / S) * Math.PI * 2;
+      positions.push([Math.cos(a) * rr, y, Math.sin(a) * rr]);
+    }
+    return base;
+  };
+  positions.push([0, 0, 0]);
+  const bottom = 0;
+  const ring = [];
+  const ringMeta = [];
+  /* Profile as (radius, y) pairs, then dedupe: at h = 2R the two hemisphere
+     equators land on the same circle and a duplicated ring is a band of
+     zero-area quads. */
+  const profile = [];
+  for (let k = 1; k <= C; k += 1) {
+    const t = (k / C) * (Math.PI / 2);
+    profile.push([R * Math.sin(t), R - R * Math.cos(t)]);
+  }
+  for (let k = C; k >= 1; k -= 1) {
+    const t = (k / C) * (Math.PI / 2);
+    profile.push([R * Math.sin(t), h - R + R * Math.cos(t)]);
+  }
+  for (const [rr, y] of profile) {
+    const prev = ringMeta.length ? ringMeta[ringMeta.length - 1] : null;
+    if (prev && Math.abs(prev[0] - rr) < 1e-9 && Math.abs(prev[1] - y) < 1e-9) continue;
+    ringMeta.push([rr, y]);
+    ring.push(ringAt(rr, y));
+  }
+  positions.push([0, h, 0]);
+  const top = positions.length - 1;
+  for (let i = 0; i < S; i += 1) indices.push([bottom, ring[0] + ((i + 1) % S), ring[0] + i]);
+  for (let k = 0; k + 1 < ring.length; k += 1) {
+    const p = ring[k];
+    const q = ring[k + 1];
+    for (let i = 0; i < S; i += 1) {
+      const j = (i + 1) % S;
+      indices.push([p + i, q + i, p + j], [q + i, q + j, p + j]);
+    }
+  }
+  const last = ring[ring.length - 1];
+  for (let i = 0; i < S; i += 1) indices.push([last + i, top, last + ((i + 1) % S)]);
+  return { positions, indices };
+}
+
+/**
+ * Square-tube torus arc in the XY plane (around +Z), angles in radians.
+ * `segs` is a floor for the same reason cylinderGeo's is.
+ */
+export function torusArcGeo(R, r, a0, a1, segs = 12, opt = {}) {
+  const { exactSeg = false, minSeg = 12 } = opt;
+  const S = Math.max(2, Math.round(exactSeg ? segs : Math.max(segs, minSeg)));
+  const positions = [];
+  const indices = [];
+  for (let i = 0; i <= S; i += 1) {
+    const a = a0 + ((a1 - a0) * i) / S;
     const cx = Math.cos(a) * R;
     const cy = Math.sin(a) * R;
     positions.push(
       [cx - r, cy - r, 0], [cx + r, cy - r, 0], [cx + r, cy + r, 0], [cx - r, cy + r, 0],
     );
   }
-  for (let i = 0; i < segs; i += 1) {
+  for (let i = 0; i < S; i += 1) {
     const a = i * 4;
     indices.push([a, a + 1, a + 4], [a + 1, a + 5, a + 4]);
     indices.push([a + 1, a + 2, a + 5], [a + 2, a + 6, a + 5]);
@@ -273,9 +410,14 @@ export function torusArcGeo(R, r, a0, a1, segs = 8) {
  * share one mesh (`linkMesh`) to keep files small.
  */
 export class Cute {
-  constructor(name, { idleDur = 1.6 } = {}) {
+  constructor(name, { idleDur = 1.6, smooth = false } = {}) {
     this.name = name;
     this.idleDur = idleDur;
+    /* Default shading mode for every part added to this model. `false` keeps
+       the classic per-face split; a number is a crease angle in degrees, and
+       `true` means 40 — normals average across facets that meet more gently
+       than that, and stay hard across anything sharper. */
+    this.smooth = smooth;
     this.nodes = [];
     this.channels = [];
     this.root = this.node("root");
@@ -299,10 +441,13 @@ export class Cute {
   /**
    * Add a transformed primitive to a node.
    * geo: {positions, indices} in unit/local space.
-   * opts: {at, rotX, rotY, rotZ, scale, color | colorFn, subdiv}
+   * opts: {at, rotX, rotY, rotZ, scale, color | colorFn, smooth}
+   *
+   * `smooth` overrides the model-wide default: false for a hard-edged part,
+   * true for the 40-degree default crease, or a number of degrees.
    */
   add(node, geo, opts = {}) {
-    const { at = [0, 0, 0], rotX = 0, rotY = 0, rotZ = 0, scale = [1, 1, 1], color, colorFn } = opts;
+    const { at = [0, 0, 0], rotX = 0, rotY = 0, rotZ = 0, scale = [1, 1, 1], color, colorFn, smooth } = opts;
     const m = mCompose(
       mS(scale),
       rotX ? mRx(rotX) : mIdentity(),
@@ -311,7 +456,7 @@ export class Cute {
       mT(at),
     );
     const positions = geo.positions.map((p) => apply(m, p));
-    node.parts.push({ positions, indices: geo.indices, color, colorFn });
+    node.parts.push({ positions, indices: geo.indices, color, colorFn, smooth });
     return node;
   }
 
@@ -412,6 +557,7 @@ export class Cute {
 
     const meshes = [];
     const meshKey = new Map(); // src node -> mesh index
+    const meshDedup = new Map(); // content hash -> mesh index
 
     // First pass: nodes that own parts
     const owners = this.nodes.filter((n) => !n.meshOf && n.parts.length > 0);
@@ -421,36 +567,14 @@ export class Cute {
       const colors = [];
       const indices = [];
       for (const part of node.parts) {
+        const built = buildPart(part, part.smooth ?? this.smooth);
         const base = positions.length / 3;
-        // flat shading: duplicate every vertex per face so normals are per-face
-        let vi = 0; // vertex count added by this part so far
-        for (const [a, b, c] of part.indices) {
-          const A = part.positions[a];
-          const B = part.positions[b];
-          const C = part.positions[c];
-          const u = [B[0] - A[0], B[1] - A[1], B[2] - A[2]];
-          const v = [C[0] - A[0], C[1] - A[1], C[2] - A[2]];
-          let nx = u[1] * v[2] - u[2] * v[1];
-          let ny = u[2] * v[0] - u[0] * v[2];
-          let nz = u[0] * v[1] - u[1] * v[0];
-          const len = Math.hypot(nx, ny, nz) || 1;
-          nx /= len;
-          ny /= len;
-          nz /= len;
-          for (const P of [A, B, C]) {
-            positions.push(P[0], P[1], P[2]);
-            normals.push(nx, ny, nz);
-            const col = part.colorFn ? part.colorFn(P) : (part.color ?? [0.8, 0.8, 0.8]);
-            colors.push(
-              Math.max(0, Math.min(255, Math.round(col[0] * 255))),
-              Math.max(0, Math.min(255, Math.round(col[1] * 255))),
-              Math.max(0, Math.min(255, Math.round(col[2] * 255))),
-            );
-            vi += 1;
-          }
-          indices.push(base + vi - 3, base + vi - 2, base + vi - 1);
-        }
+        for (const v of built.position) positions.push(v);
+        for (const v of built.normal) normals.push(v);
+        for (const v of built.color) colors.push(v);
+        for (const i of built.index) indices.push(base + i);
       }
+      if (indices.length === 0) continue; // every face was degenerate: no mesh
       const vCount = positions.length / 3;
       const posMin = [Infinity, Infinity, Infinity];
       const posMax = [-Infinity, -Infinity, -Infinity];
@@ -464,6 +588,19 @@ export class Cute {
       for (let i = 0; i < normals.length; i += 1) nrmArr[i] = Math.round(normals[i] * 127);
       const colArr = new Uint8Array(colors);
       const idxArr = new Uint16Array(indices);
+
+      /* Mesh instancing. A pack this size repeats the same little shape over
+         and over — six identical legs, twelve identical petals, a mirrored
+         pair of eyes — and each one used to get its own copy of the bytes.
+         Nodes whose geometry is byte-identical now share one mesh, which is
+         what `linkMesh` did by hand and this does for every case nobody
+         remembered to link. */
+      const hashKey = `${vCount}:${indices.length}:${fnvBytes(posArr)}:${fnvBytes(nrmArr)}:${fnvBytes(colArr)}:${fnvBytes(idxArr)}`;
+      const seen = meshDedup.get(hashKey);
+      if (seen !== undefined) {
+        meshKey.set(node, seen);
+        continue;
+      }
 
       const mesh = {
         primitives: [
@@ -481,16 +618,16 @@ export class Cute {
       };
       meshes.push(mesh);
       meshKey.set(node, meshes.length - 1);
+      meshDedup.set(hashKey, meshes.length - 1);
     }
     for (const node of this.nodes) {
       if (node.meshOf && node.parts.length === 0) {
         // link node: reference the source's mesh (source must own parts)
         const src = node.meshOf;
-        if (!meshKey.has(src)) throw new Error(`linkMesh source has no mesh: ${src.name}`);
-        node._meshIndex = meshKey.get(src);
+        if (meshKey.has(src)) node._meshIndex = meshKey.get(src);
       }
     }
-    for (const node of owners) node._meshIndex = meshKey.get(node);
+    for (const node of owners) if (meshKey.has(node)) node._meshIndex = meshKey.get(node);
 
     // nodes
     const gltfNodes = this.nodes.map((node) => {
@@ -580,6 +717,153 @@ export class Cute {
     out.set(bin, binHeaderAt + 8);
     return out;
   }
+}
+
+const DEGEN_EPS = 1e-12;
+/** cos(55 deg) — how far a facet may sit from its smoothing group's average. */
+const COS_APEX = Math.cos((55 * Math.PI) / 180);
+
+const clamp255 = (v) => Math.max(0, Math.min(255, Math.round(v * 255)));
+
+/**
+ * Turn one transformed part into interleaved vertex arrays, dropping every
+ * zero-area triangle on the way.
+ *
+ * A degenerate face carries a zero-length normal, which is why the audit's
+ * "degenerate triangles" and "non-unit normals" counts were the same 83 models:
+ * one defect, counted twice. Filtering here rather than in each primitive means
+ * a caller who scales a part flat, or hands in a collapsed profile, still ships
+ * clean geometry.
+ *
+ * `smooth` false → the classic flat look: three fresh vertices per face, each
+ * carrying the face normal. `smooth` true/number → vertices are welded by
+ * position and their normals averaged, but only across faces that meet at less
+ * than the crease angle, so a cylinder's cap rim and a leaf's fold stay sharp
+ * while its curved flank reads round. Welding also collapses the 3x vertex
+ * duplication, so a smooth part is markedly smaller than a flat one.
+ */
+function buildPart(part, smooth) {
+  const P = part.positions;
+  const colorAt = (p) => (part.colorFn ? part.colorFn(p) : (part.color ?? [0.8, 0.8, 0.8]));
+  const face = [];
+  for (const [a, b, c] of part.indices) {
+    const A = P[a], B = P[b], C = P[c];
+    const ux = B[0] - A[0], uy = B[1] - A[1], uz = B[2] - A[2];
+    const vx = C[0] - A[0], vy = C[1] - A[1], vz = C[2] - A[2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const len = Math.hypot(nx, ny, nz);
+    if (!(len > DEGEN_EPS)) continue;
+    face.push({ v: [a, b, c], n: [nx / len, ny / len, nz / len] });
+  }
+
+  const position = [], normal = [], color = [], index = [];
+  if (!smooth) {
+    let n = 0;
+    for (const f of face) {
+      for (const vi of f.v) {
+        const p = P[vi];
+        position.push(p[0], p[1], p[2]);
+        normal.push(f.n[0], f.n[1], f.n[2]);
+        const col = colorAt(p);
+        color.push(clamp255(col[0]), clamp255(col[1]), clamp255(col[2]));
+      }
+      index.push(n, n + 1, n + 2);
+      n += 3;
+    }
+    return { position, normal, color, index };
+  }
+
+  const cosCrease = Math.cos(((typeof smooth === "number" ? smooth : 40) * Math.PI) / 180);
+  const keyOf = (p) => `${p[0].toFixed(6)},${p[1].toFixed(6)},${p[2].toFixed(6)}`;
+  /* Faces touching each welded position. */
+  const at = new Map();
+  face.forEach((f, fi) => {
+    for (const vi of f.v) {
+      const k = keyOf(P[vi]);
+      let bucket = at.get(k);
+      if (!bucket) { bucket = { p: P[vi], face: [] }; at.set(k, bucket); }
+      bucket.face.push(fi);
+    }
+  });
+  /* Per position, cluster its faces by normal agreement; each cluster becomes
+     one vertex, so a crease splits into two vertices with two normals. */
+  const slot = new Map(); // `${posKey}#${clusterRoot}` -> output vertex index
+  const cluster = new Map(); // posKey -> Map(faceIndex -> clusterRoot)
+  for (const [k, bucket] of at) {
+    const list = bucket.face;
+    const parent = list.map((_, i) => i);
+    const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+    for (let i = 0; i < list.length; i += 1) {
+      for (let j = i + 1; j < list.length; j += 1) {
+        const a = face[list[i]].n, b = face[list[j]].n;
+        if (a[0] * b[0] + a[1] * b[1] + a[2] * b[2] >= cosCrease) {
+          const ra = find(i), rb = find(j);
+          if (ra !== rb) parent[ra] = rb;
+        }
+      }
+    }
+    const member = new Map(); // cluster root -> face indices
+    const map = new Map();
+    list.forEach((fi, i) => {
+      const r = find(i);
+      map.set(fi, r);
+      if (!member.has(r)) member.set(r, []);
+      member.get(r).push(fi);
+    });
+    /* Fan-apex guard. A cone's tip is one position shared by every side facet;
+       each neighbouring pair meets gently enough to weld, so the whole ring
+       chains into one cluster whose averaged normal points straight up the
+       axis — nowhere near any surface it is meant to shade, and the tip renders
+       as a dark pinprick. A face that disagrees with its own cluster's average
+       by more than this keeps its own normal. */
+    for (const [r, fl] of [...member]) {
+      if (fl.length < 3) continue;
+      const avg = [0, 0, 0];
+      for (const fi of fl) { avg[0] += face[fi].n[0]; avg[1] += face[fi].n[1]; avg[2] += face[fi].n[2]; }
+      const al = Math.hypot(avg[0], avg[1], avg[2]) || 1;
+      const keep = [];
+      for (const fi of fl) {
+        const n = face[fi].n;
+        if ((n[0] * avg[0] + n[1] * avg[1] + n[2] * avg[2]) / al >= COS_APEX) keep.push(fi);
+        else { member.set(`${r}!${fi}`, [fi]); map.set(fi, `${r}!${fi}`); }
+      }
+      if (keep.length) member.set(r, keep);
+      else member.delete(r);
+    }
+    const acc = new Map();
+    for (const [r, fl] of member) {
+      const sum = [0, 0, 0];
+      for (const fi of fl) { sum[0] += face[fi].n[0]; sum[1] += face[fi].n[1]; sum[2] += face[fi].n[2]; }
+      acc.set(r, sum);
+    }
+    cluster.set(k, map);
+    const col = colorAt(bucket.p);
+    for (const [r, sum] of acc) {
+      const len = Math.hypot(sum[0], sum[1], sum[2]) || 1;
+      slot.set(`${k}#${r}`, position.length / 3);
+      position.push(bucket.p[0], bucket.p[1], bucket.p[2]);
+      normal.push(sum[0] / len, sum[1] / len, sum[2] / len);
+      color.push(clamp255(col[0]), clamp255(col[1]), clamp255(col[2]));
+    }
+  }
+  face.forEach((f, fi) => {
+    for (const vi of f.v) {
+      const k = keyOf(P[vi]);
+      index.push(slot.get(`${k}#${cluster.get(k).get(fi)}`));
+    }
+  });
+  return { position, normal, color, index };
+}
+
+/** FNV-1a over a typed array's bytes — the mesh-instancing content key. */
+function fnvBytes(typed) {
+  const b = new Uint8Array(typed.buffer, typed.byteOffset, typed.byteLength);
+  let h = 2166136261;
+  for (let i = 0; i < b.length; i += 1) {
+    h ^= b[i];
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(36);
 }
 
 function eulerToQuat([rx, ry, rz]) {
