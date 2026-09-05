@@ -3484,27 +3484,60 @@ const ZONED_GENUS = new Set((
 const WOODY_GENUS = new Set("ganoderma fomitopsis phellinus fomes fuscoporia nigroporus".split(" "));
 /** Hard black stromata and cushions on wood — routed to coral, but not corals. */
 const STROMA_GENUS = new Set("annulohypoxylon daldinia hypoxylon nemania kretzschmaria biscogniauxia".split(" "));
+/**
+ * Brackets whose common name IS their colour. The artist's bracket is a grey
+ * woody half-disc with a white pore surface you can draw on; reishi is
+ * lacquered mahogany; turkey-tail is banded tan. All three were coming out of
+ * the hashed pool as something else entirely.
+ */
+const BRACKET_COLOR = {
+  "ganoderma applanatum": "#8d8073",
+  "ganoderma sessile": "#8a2f18",
+  "ganoderma lucidum": "#7d2410",
+  "ganoderma polychromum": "#6f3a22",
+  "trametes versicolor": "#a08258",
+  "stereum ostrea": "#b0743a",
+  "trametes lactinea": "#d8cfb4",
+  "trametes villosa": "#d2c9ae",
+  "schizophyllum commune": "#cfc4ac",
+};
+
 /** Stinkhorns — routed to puffball, but a stinkhorn is a stalk and a slimy cap. */
 const STINKHORN_GENUS = new Set("phallus mutinus clathrus lysurus simblum".split(" "));
 
 /**
- * ONE bracket, attached along ONE edge on ONE face of the log.
+ * ONE bracket: a half-disc that meets the wood along a chord and projects from
+ * that chord only.
  *
- * The first pass drew a shelf as a symmetric lens centred on a point out at
- * radius, which meant half of every shelf was inside the log and came out the
- * far side as a needle point — about twenty of the forty-four had a blade
- * skewered clean through the trunk. A real bracket has a chord where it meets
- * the wood and grows outward from there only, so that is what this is: a
- * closed outline running along the attachment chord at `r0` and back around
- * the rim at `r`, lofted into a thin domed shelf.
+ * Two passes got this wrong in two different ways. The first drew the shelf as
+ * a symmetric lens centred out at radius, so half of it lay inside the log and
+ * came out of the far side as a needle. The second fixed the needle by running
+ * the outline along the attachment arc at `r0` and back around a rim at a
+ * CONSTANT `r` — which is an annulus sector, and at the arcs it was drawn with
+ * that is a washer threaded onto the post. All forty-six read as a kebab.
+ *
+ * The shape that reads as a bracket is neither: the projection has to fall off
+ * towards the ends of the attachment, so the shelf is widest where it leaves
+ * the wood face and closes back onto the log at both edges. `taper` is that
+ * falloff; `lobe` ripples the rim for the species whose margin is wavy. The
+ * outline stays star-shaped about the seed point, so the top and bottom fans
+ * never fold back on themselves.
  */
-function shelfGeo({ r0, r, h, arc = Math.PI * 0.95, seg = 10, droop = 0.3 }) {
-  const rimY = -droop * (r - r0);
+function shelfGeo({ r0, r, h, arc = Math.PI * 0.66, seg = 12, droop = 0.3, lobe = 0, taper = 0.45 }) {
+  const proj = (t) => Math.sin(Math.PI * Math.min(1, Math.max(0, t))) ** taper;
+  /* A lip the ends never fall below. Letting the projection go to zero puts the
+     rim exactly on the attachment arc there, and float32 rounding in the file
+     collapses those triangles to zero area — nine models tripped the degenerate
+     gate on it. */
+  const reach = (t) => r0 + (r - r0) * (0.09 + 0.91 * proj(t)) * (1 + lobe * 0.15 * Math.cos(t * Math.PI * 5));
   const ring = (side) => {
     const pts = [];
     for (let j = 0; j <= seg; j += 1) {
-      const a = -arc / 2 + (arc * j) / seg;
-      pts.push([Math.sin(a) * r, rimY + side * h * 0.16, Math.cos(a) * r]);
+      const t = j / seg;
+      const a = -arc / 2 + arc * t;
+      const rr = reach(t);
+      const dy = -droop * (rr - r0);
+      pts.push([Math.sin(a) * rr, dy + side * h * (0.05 + 0.14 * proj(t)), Math.cos(a) * rr]);
     }
     for (let j = seg; j >= 0; j -= 1) {
       const a = -arc / 2 + (arc * j) / seg;
@@ -3512,11 +3545,12 @@ function shelfGeo({ r0, r, h, arc = Math.PI * 0.95, seg = 10, droop = 0.3 }) {
     }
     return { pts };
   };
-  const cz = (r0 + r) * 0.5;
+  const cz = r0 + (r - r0) * 0.42;
+  const midY = -droop * (r - r0) * 0.42;
   return clean(loft([
-    { pole: [0, -h * 0.45 + rimY * 0.3, cz] },
+    { pole: [0, midY - h * 0.5, cz] },
     ring(-1), ring(1),
-    { pole: [0, h * 0.6 + rimY * 0.3, cz] },
+    { pole: [0, midY + h * 0.6, cz] },
   ]));
 }
 
@@ -3553,60 +3587,97 @@ function mushroom(k, col, opt = {}) {
   if (kind === "bracket") {
     const zoned = ZONED_GENUS.has(g);
     const woody = WOODY_GENUS.has(g);
+    /* The few brackets whose colour IS the identification. Everything else
+       keeps its pooled tone; these four are named for what they look like and
+       were coming out of the pool red, purple and orange. */
+    const named = BRACKET_COLOR[sciOf(k)];
     /* Ganoderma applanatum is the artist's bracket: a woody GREY half-disc,
        and it was shipping as red needle blades. */
-    const shelfCol = woody ? mix(capCol, hex("#8a8a80"), 0.55) : capCol;
-    const shelfDark = woody ? mix(capDark, hex("#5a5a52"), 0.5) : capDark;
+    const shelfCol = named ? hex(named) : woody ? mix(capCol, hex("#8a8a80"), 0.62) : capCol;
+    const shelfDark = named ? shade(hex(named), -0.34) : woody ? mix(capDark, hex("#5a5a52"), 0.58) : capDark;
+    const pore = mix(paper, shelfCol, woody ? 0.28 : 0.14);
     grow(k, col, {
       salt: `fungi:bracket:${zoned ? "z" : woody ? "w" : "p"}`,
       /* Roughly round in plan. The general aspect pool runs to nineteen to one,
          and a shelf stretched nineteen to one is a knife blade — which is what
          the remaining "skewers" turned out to be once the geometry itself was
          attached properly. */
-      axSet: [0.7, 1.05, 1.4, 1.75],
-      azSet: [0.7, 1.05, 1.4, 1.75],
+      axSet: [0.55, 0.75, 0.95, 1.15],
+      azSet: [0.55, 0.75, 0.95, 1.15],
+      /* A woody bracket is a few big shelves; a turkey-tail is a crowd of thin
+         ones. Both used to draw whatever the part lottery handed them, which is
+         how Ganoderma ended up with a dozen little washers. */
+      pLevel: woody ? [8, 8, 16] : zoned ? [16, 16, 24] : [8, 16, 24],
       height: 0.4,
       breathe: 0.02,
       sway: 0.015,
       bands: [0, 1, 2, 3, 4, 5],
       spine(p, pl) {
-        pl.logR = 0.05;
+        /* A thicker snag. The post used to be a tenth as wide as the shelves
+           reached, so whatever the shelves did the model read as beads on a
+           skewer; wood you can believe a bracket is feeding on is most of the
+           difference. */
+        pl.logR = 0.072;
         pl.anchorColor = wood;
+        /* Every shelf on ONE face, give or take. That is the diagnostic the
+           gallery was missing: brackets are a shelf on the side of a log, and
+           spreading them evenly around the axis makes a bottle brush no matter
+           how good the individual shelf is. */
+        /* Off to one side, but the FRONT side. The face is drawn on +Z and the
+           gallery looks down that axis, so a hashed azimuth put half the pack's
+           shelves round the back and those tiles read as a bare log — six of
+           them did, and it was the geometry that was hiding, not missing. */
+        pl.faceA = (pl.u("face") < 0.5 ? -1 : 1) * (0.72 + pl.u("face2") * 0.55);
+        pl.spread = woody ? 1.0 : zoned ? 1.8 : 1.15;
         p.spine("log", (node) => {
-          p.add(node, xf(tubeGeo(0.055, 0.048, 1, 12)), { color: wood, colorFn: grad(shade(wood, 0.12), shade(wood, -0.25), 0, 1) });
-          p.add(node, xf(sphereGeo(12, 5), { sx: 0.05, sy: 0.02, sz: 0.05, at: [0, 1, 0] }), { color: shade(wood, -0.2) });
-          addFace(p, node, { at: [0, 0.42, 0.05], r: 0.042, tri: p.budget * 8 });
+          p.add(node, xf(tubeGeo(0.078, 0.068, 1, 13)), { color: wood, colorFn: grad(shade(wood, 0.12), shade(wood, -0.25), 0, 1) });
+          p.add(node, xf(sphereGeo(13, 5), { sx: 0.068, sy: 0.026, sz: 0.068, at: [0, 1, 0] }), { color: shade(wood, -0.22) });
+          addFace(p, node, { at: [0, 0.4, 0.072], r: 0.05, tri: p.budget * 8 });
         });
       },
       slot(p, pl, s) {
-        const { node, band, a } = s;
+        const { node, band } = s;
         if (band <= 1 && s.i % 3 === 2) {
           addTuft(p, node, { tri: p.budget, at: [0, 0, 0], r: 0.05, n: 3, color: APP.green, color2: APP.greenDeep, squash: 0.6 });
           return;
         }
-        const r0 = pl.logR * 0.92;
-        const r = r0 + 0.09 + pl.u(`sr${s.g}`) * (woody ? 0.1 : 0.14);
-        const h = (woody ? 0.05 : zoned ? 0.016 : 0.03) * (0.8 + pl.u(`sh${s.g}`) * 0.5);
-        const seg = p.budget >= 90 ? 12 : p.budget >= 50 ? 9 : 7;
-        const base = s.g % 2 ? shelfCol : shelfDark;
-        p.add(node, xf(shelfGeo({
-          /* Never past a half-circle. A shelf that wraps more than 180 degrees
-             stops being star-shaped about the point its top face fans from,
-             and the fan then folds back on itself as the needle spikes the
-             review saw coming out of the far side of the log. */
-          r0, r, h, seg, arc: Math.PI * (woody ? 0.7 : 0.62 + pl.u(`sa${s.g}`) * 0.32),
-          droop: woody ? 0.12 : 0.26 + pl.u(`sd${s.g}`) * 0.2,
-        }), { ry: a }),
-        {
-          color: base,
-          colorFn: zoned
-            ? zoneFn([mix(shelfCol, paper, 0.62), shelfCol, shelfDark, shade(shelfCol, 0.2)], r0, r)
+        /* Clustered on the chosen face, alternating a little either side of it
+           the way a real tier does, rather than the golden angle. */
+        const a = pl.faceA + (pl.u(`sf${s.g}`) - 0.5) * pl.spread + (s.g % 2 ? 0.16 : -0.16);
+        const r0 = pl.logR * 0.94;
+        /* Tiered: the shelves low on the log are the big ones. */
+        const tier = 1 - 0.3 * s.t;
+        const r = r0 + ((woody ? 0.24 : zoned ? 0.19 : 0.21) + pl.u(`sr${s.g}`) * (woody ? 0.11 : 0.1)) * tier;
+        const h = (woody ? 0.062 : zoned ? 0.014 : 0.03) * (0.8 + pl.u(`sh${s.g}`) * 0.5);
+        /* A shelf costs four triangles per outline point, and the fair-share
+           allowance grows by only 1.4 budgets per slot — so a fixed segment
+           count priced the thin-shelf genera out of their own shelves entirely
+           and turkey-tail, both Stereum and Coriolopsis shipped as a bare log
+           with the fallback leaf on it. Segment count follows the budget. */
+        const seg = Math.max(5, Math.min(13, Math.floor(p.budget / 8)));
+        const arc = Math.PI * (woody ? 0.62 + pl.u(`sa${s.g}`) * 0.1 : 0.5 + pl.u(`sa${s.g}`) * 0.22);
+        const shelf = {
+          r0, r, h, seg, arc,
+          /* Woody brackets are thick and nearly level; a thin fan hangs. */
+          droop: woody ? 0.1 : 0.24 + pl.u(`sd${s.g}`) * 0.18,
+          /* Turkey-tail and kin have a wavy margin; a polypore's is entire. */
+          lobe: zoned ? 1 : 0,
+          taper: woody ? 0.34 : 0.45,
+        };
+        p.add(node, xf(shelfGeo(shelf), { ry: a }), {
+          color: s.g % 2 ? shelfCol : shelfDark,
+          colorFn: named && !zoned ? grad(shade(shelfCol, 0.16), shelfDark, 0, 0.22) : zoned
+            /* Concentric zonation, and it has to be read across the PROJECTION
+               rather than across the whole radius, or the bands all fall in the
+               part of the shelf that is buried in the log. */
+            ? zoneFn([mix(shelfCol, paper, 0.66), shelfCol, shelfDark, shade(shelfCol, 0.22)], r0, r)
             : capGrad,
         });
-        // the pore surface, a shade paler, tucked just under the shelf
+        /* The pore surface, a shade paler, tucked just under the shelf and
+           drawn to the same outline so it cannot poke out past the margin. */
         if (p.budget >= 58) {
-          p.add(node, xf(shelfGeo({ r0, r: r * 0.94, h: h * 0.34, seg: Math.max(7, seg - 2), arc: Math.PI * 0.9, droop: 0.3 }),
-            { ry: a, at: [0, -h * 0.9, 0] }), { color: shade(paper, -0.1) });
+          p.add(node, xf(shelfGeo({ ...shelf, r: r0 + (r - r0) * 0.93, h: h * 0.3, seg: Math.max(8, seg - 2) }),
+            { ry: a, at: [0, -h * 0.85, 0] }), { color: pore });
         }
       },
     });
