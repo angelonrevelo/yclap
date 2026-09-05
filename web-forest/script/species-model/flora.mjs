@@ -608,6 +608,239 @@ class Plant {
     return { baseWide, crownWide, baseNode };
   }
 
+  /**
+   * The exact vertex stream `glb.mjs` will write for this node — position and
+   * multiplicity, in order.
+   *
+   * The repair below has to reason about the same numbers the gate will read
+   * back out of the file, and there are two steps between a part's geometry and
+   * those numbers: the writer welds corners by position and splits a welded
+   * position back into one vertex per normal cluster, and the gate then reads
+   * only every `n/220`-th vertex of the result. Guess either and the repair
+   * certifies joins the gate cannot see — the first attempt at this pass did
+   * exactly that, and `lagundi` shipped its floating leaf anyway. So the weld
+   * is replayed here rather than approximated: same crease angle, same fan-apex
+   * guard, same order. Positions only; normals and colour do not move a vertex.
+   */
+  weldedVert(node) {
+    const COS_CREASE = Math.cos((40 * Math.PI) / 180);
+    const COS_APEX = Math.cos((55 * Math.PI) / 180);
+    const keyOf = (p) => `${p[0].toFixed(6)},${p[1].toFixed(6)},${p[2].toFixed(6)}`;
+    const out = [];
+    /* Per PART, not per node: the writer welds inside a part and concatenates,
+       so two parts of one node that share a corner still ship two vertices. */
+    for (const part of node.parts) {
+      const P = part.positions;
+      const face = [];
+      for (const [a, b, c] of part.indices) {
+        const A = P[a], B = P[b], C = P[c];
+        const ux = B[0] - A[0], uy = B[1] - A[1], uz = B[2] - A[2];
+        const vx = C[0] - A[0], vy = C[1] - A[1], vz = C[2] - A[2];
+        const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+        const len = Math.hypot(nx, ny, nz);
+        if (!(len > 1e-12)) continue;
+        face.push({ v: [A, B, C], n: [nx / len, ny / len, nz / len] });
+      }
+      const at = new Map();
+      face.forEach((f, fi) => {
+        for (const q of f.v) {
+          const k = keyOf(q);
+          let bucket = at.get(k);
+          if (!bucket) { bucket = { p: q, face: [] }; at.set(k, bucket); }
+          bucket.face.push(fi);
+        }
+      });
+      for (const [, bucket] of at) {
+        const list = bucket.face;
+        const parent = list.map((_, i) => i);
+        const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+        for (let i = 0; i < list.length; i += 1) {
+          for (let j = i + 1; j < list.length; j += 1) {
+            const a = face[list[i]].n, b = face[list[j]].n;
+            if (a[0] * b[0] + a[1] * b[1] + a[2] * b[2] >= COS_CREASE) {
+              const ra = find(i), rb = find(j);
+              if (ra !== rb) parent[ra] = rb;
+            }
+          }
+        }
+        const member = new Map();
+        list.forEach((fi, i) => {
+          const r = find(i);
+          if (!member.has(r)) member.set(r, []);
+          member.get(r).push(fi);
+        });
+        let count = 0;
+        for (const [, fl] of member) {
+          if (fl.length < 3) { count += 1; continue; }
+          const avg = [0, 0, 0];
+          for (const fi of fl) { avg[0] += face[fi].n[0]; avg[1] += face[fi].n[1]; avg[2] += face[fi].n[2]; }
+          const al = Math.hypot(avg[0], avg[1], avg[2]) || 1;
+          let keep = 0, split = 0;
+          for (const fi of fl) {
+            const n = face[fi].n;
+            if ((n[0] * avg[0] + n[1] * avg[1] + n[2] * avg[2]) / al >= COS_APEX) keep += 1;
+            else split += 1;
+          }
+          count += split + (keep ? 1 : 0);
+        }
+        for (let i = 0; i < count; i += 1) out.push(bucket.p);
+      }
+    }
+    return out;
+  }
+
+  /** That stream read the way the gate reads it: one vertex in `n/220`. */
+  auditSample(node, sx, sy, sz) {
+    const v = this.weldedVert(node);
+    const step = Math.max(1, Math.floor(v.length / 220));
+    const dy = node.at[1];
+    const out = [];
+    for (let i = 0; i < v.length; i += step) out.push([v[i][0] * sx, (v[i][1] + dy) * sy, v[i][2] * sz]);
+    return out;
+  }
+
+  /**
+   * Close every hole the connectivity gate can see, by measuring instead of
+   * hoping.
+   *
+   * `anchor()` above is a DESIGN rule — a part that sits off to one side gets a
+   * pedicel back to the axis — and for most of the pack that is enough. It is
+   * not a proof, for one reason: contact is decided on VERTICES. A trunk drawn
+   * as a lathe has vertex rings only at its two ends, so a pedicel that runs to
+   * the axis half way up the trunk ends in empty vertex space; the surfaces
+   * interpenetrate and the gate still calls it a hole, correctly, because the
+   * points sampled on each side never come within tolerance of one another.
+   * That is why the gate went from 0 to 271 the moment it stopped comparing
+   * bounding boxes: the holes were always there.
+   *
+   * So this replays the gate on the parts about to ship and, wherever an island
+   * is left, grows a stem along the shortest segment between it and the body.
+   *
+   * The join is marked with a small bead on BOTH sides. That is the part worth
+   * explaining: the gate reads a SUBSAMPLE of each part — roughly one vertex in
+   * `n/220` — and the writer welds vertices by position before that, so the
+   * generator cannot know which vertices the gate will end up looking at. A
+   * stem whose tip lands exactly on a vertex of the trunk still fails when that
+   * vertex is one of the two in three the gate skipped — which is precisely how
+   * `lagundi` kept its floating leaf through a first attempt at this. A dozen
+   * vertices packed inside a tenth of the tolerance on each side of the join
+   * cannot all be skipped, so the join holds whatever the sampling does.
+   */
+  repairConnection(sx, sy, sz, slack, dry = false) {
+    const node = this.node.filter((n) => n.parts.length);
+    if (node.length <= 1) return 1;
+
+    /* The gate's own points, and the gate's own boxes: the boxes come from
+       every vertex, the contact test from the subsample. */
+    const pt = node.map((n) => this.auditSample(n, sx, sy, sz));
+    const box = node.map((n) => {
+      const b = this.localBox(n);
+      return {
+        lo: [b.lo[0] * sx, (b.lo[1] + n.at[1]) * sy, b.lo[2] * sz],
+        hi: [b.hi[0] * sx, (b.hi[1] + n.at[1]) * sy, b.hi[2] * sz],
+      };
+    });
+    const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+    for (const b of box) for (let k = 0; k < 3; k += 1) { lo[k] = Math.min(lo[k], b.lo[k]); hi[k] = Math.max(hi[k], b.hi[k]); }
+    const tol = Math.max(1e-6, Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) / 2) * slack;
+
+    /* A grid at the tolerance, so contact is a neighbour-cell scan rather than
+       every vertex in the model against every other. */
+    const grid = new Map();
+    const key = (a, b, c) => `${a},${b},${c}`;
+    const cellOf = (q) => [Math.floor(q[0] / tol), Math.floor(q[1] / tol), Math.floor(q[2] / tol)];
+    pt.forEach((s, i) => {
+      for (const q of s) {
+        const c = cellOf(q);
+        const k = key(c[0], c[1], c[2]);
+        let bucket = grid.get(k);
+        if (!bucket) { bucket = []; grid.set(k, bucket); }
+        bucket.push([q, i]);
+      }
+    });
+
+    const parent = node.map((_, i) => i);
+    const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+    const tol2 = tol * tol;
+    let island = node.length;
+    outer:
+    for (const [, bucket] of grid) {
+      for (const [q, i] of bucket) {
+        const c = cellOf(q);
+        for (let dx = -1; dx <= 1; dx += 1) for (let dy = -1; dy <= 1; dy += 1) for (let dz = -1; dz <= 1; dz += 1) {
+          const other = grid.get(key(c[0] + dx, c[1] + dy, c[2] + dz));
+          if (!other) continue;
+          for (const [r, j] of other) {
+            const ri = find(i), rj = find(j);
+            if (ri === rj) continue;
+            if ((q[0] - r[0]) ** 2 + (q[1] - r[1]) ** 2 + (q[2] - r[2]) ** 2 > tol2) continue;
+            parent[ri] = rj;
+            island -= 1;
+            if (island === 1) break outer;
+          }
+        }
+      }
+    }
+    const group = new Map();
+    for (let i = 0; i < node.length; i += 1) {
+      const r = find(i);
+      if (!group.has(r)) group.set(r, []);
+      group.get(r).push(i);
+    }
+    const comp = [...group.values()].sort((a, b) => b.length - a.length);
+    if (dry) return comp.length;
+    if (comp.length <= 1) return 1;
+    const main = new Set(comp[0]);
+
+    const color = this.plan.anchorColor ?? this.plan.pal?.deep ?? this.col.dark ?? APP.greenDeep;
+    const bead = (host, at, r) => this.add(host, xf(sphereGeo(6, 3), {
+      sx: r / sx, sy: r / sy, sz: r / sz, at,
+    }), { color }, true);
+
+    for (const island of comp.slice(1)) {
+      let best = Infinity, from = null, to = null, hostIdx = -1;
+      for (const i of island) {
+        for (let j = 0; j < node.length; j += 1) {
+          if (!main.has(j)) continue;
+          let g2 = 0;
+          for (let k = 0; k < 3; k += 1) {
+            const g = Math.max(box[i].lo[k] - box[j].hi[k], box[j].lo[k] - box[i].hi[k], 0);
+            g2 += g * g;
+          }
+          if (g2 >= best) continue;
+          const a = pt[i], b = pt[j];
+          const sa = Math.max(1, Math.floor(a.length / 260)), sb = Math.max(1, Math.floor(b.length / 260));
+          for (let x = 0; x < a.length; x += sa) {
+            for (let y = 0; y < b.length; y += sb) {
+              const d = (a[x][0] - b[y][0]) ** 2 + (a[x][1] - b[y][1]) ** 2 + (a[x][2] - b[y][2]) ** 2;
+              if (d < best) { best = d; to = a[x]; from = b[y]; hostIdx = i; }
+            }
+          }
+        }
+      }
+      if (hostIdx < 0 || !from || !to) continue;
+      /* `to` is the island's own point, `from` the body's: the stem grows out
+         of the island so its geometry lands in the island's mesh. */
+      const host = node[hostIdx];
+      const loc = (q, n) => [q[0] / sx, q[1] / sy - n.at[1], q[2] / sz];
+      const B = loc(to, host), A = loc(from, host);
+      const d = [A[0] - B[0], A[1] - B[1], A[2] - B[2]];
+      const len = Math.hypot(d[0], d[1], d[2]);
+      if (len > tol * 0.08) {
+        const w = Math.max(0.0018, len * 0.05);
+        const rx = Math.acos(Math.max(-1, Math.min(1, d[1] / len)));
+        const ry = Math.atan2(d[0], d[2]);
+        this.add(host, xf(lathe([[w, 0], [w * 0.8, len]], 5), { rx, ry, at: B }), { color }, true);
+      }
+      /* `A` is a point the gate itself will read on the body side, so the tip
+         only has to be read on the island side — hence the bead: fourteen
+         positions in a bud a tenth of the tolerance across, consecutive in the
+         stream, which no stride can skip. */
+      bead(host, A, tol * 0.09);
+    }
+    return comp.length;
+  }
+
   /** Normalise the silhouette to the planned aspect and the archetype height. */
   finish() {
     const H = typeof this.style.height === "function" ? this.style.height(this.plan) : (this.style.height ?? 0.5);
@@ -627,7 +860,7 @@ class Plant {
        * base in — three passes, because shrinking the base can move the box
        * that the scales were derived from.
        */
-      for (let pass = 0; pass < 3; pass += 1) {
+      for (let pass = 0; pass < 4; pass += 1) {
         const { baseWide, crownWide, baseNode } = this.heaviness(f.sx, f.sz);
         if (crownWide < 1e-6 || baseWide <= crownWide * 0.7) break;
         const k = Math.max(0.12, (crownWide * 0.7) / baseWide);
@@ -660,6 +893,20 @@ class Plant {
           ]);
         }
       }
+    }
+    /*
+     * LAST, once every part — the face included — is where it will ship: close
+     * the holes.
+     *
+     * After the face correction, not before: that correction moves vertices,
+     * and a stem measured against a vertex that then moves is a stem that
+     * misses. Re-fitting between passes because a stem changes the body box a
+     * hair and therefore the scales, and at a tolerance tighter than the gate's
+     * own so that hair cannot reopen anything.
+     */
+    for (let pass = 0; pass < 4; pass += 1) {
+      if (this.repairConnection(f.sx, H, f.sz, 0.05) <= 1) break;
+      f = fit();
     }
     this.body.scale = [f.sx, H, f.sz];
     this.body.at = [-((f.lo[0] + f.hi[0]) / 2) * f.sx, 0, -((f.lo[2] + f.hi[2]) / 2) * f.sz];
@@ -759,7 +1006,7 @@ function addLeaf(p, node, o) {
   const {
     at = [0, 0, 0], yaw = 0, pitch = 0, roll = 0,
     len, wid, thick = null, shape = "lanceolate", form = "simple",
-    color, colorFn, stalkColor, stalk = 0.25, leaflet = 5,
+    color, colorFn, stalkColor, stalk = 0.25, leaflet = 5, leafletShape = null,
     bend = 0, sweep = 0, fold = 0, tri = 64,
   } = o;
   const th = thick ?? Math.max(0.004, wid * 0.16);
@@ -802,6 +1049,21 @@ function addLeaf(p, node, o) {
       const ll = body * (form === "frond" ? 0.52 : 0.44) * (1 - 0.5 * Math.abs(t - 0.42));
       for (const s of [1, -1]) blade(ll, wid * 0.46, form === "frond" ? "linear" : shape, [0, 0, petLen + t * body], s * (1.05 + 0.25 * t), each, -0.15 * ll);
     }
+  } else if (form === "fan" && left >= 70) {
+    /*
+     * A costapalmate fan: many NARROW segments radiating from the petiole tip.
+     * The fan palms were drawing the generic palmate form, which spends its
+     * whole width on five or seven leaflets half the blade wide — so Livistona
+     * came out as a handful of opaque broadleaf blobs and Licuala as two flat
+     * lobes. A fan palm's fan is the segments; there have to be a lot of them
+     * and each has to be a strap.
+     */
+    const nlf = Math.max(5, Math.min(13, Math.min(leaflet, Math.floor(left / 16))));
+    const each = left / nlf;
+    for (let i = 0; i < nlf; i += 1) {
+      const t = i / (nlf - 1) - 0.5;
+      blade(body * (1 - 0.3 * Math.abs(t) * 2), wid * 0.13, "linear", [0, 0, petLen], t * 2.5, each);
+    }
   } else if (form === "ladder" && left >= 44) {
     /* A sword fern: one long rachis carrying MANY small paired pinnae. The
        generic pinnate form tops out at nine leaflets and spends its whole
@@ -814,7 +1076,10 @@ function addLeaf(p, node, o) {
     for (let i = 0; i < nlf; i += 1) {
       const t = (i + 0.55) / (nlf + 0.25);
       const ll = body * 0.26 * (1 - 0.5 * Math.abs(t - 0.34));
-      for (const s of [1, -1]) blade(ll, wid * 0.6, "elliptic", [0, 0, petLen + t * body], s * 1.36, each, -0.1 * ll);
+      /* The leaflet's own shape carries through. Caryota's fishtail leaflet —
+         a wedge, blunt and jagged at the tip — is the genus diagnostic, and the
+         ladder used to hardcode a plain ellipse over the top of it. */
+      for (const s of [1, -1]) blade(ll, wid * 0.6, leafletShape ?? "elliptic", [0, 0, petLen + t * body], s * 1.36, each, -0.1 * ll);
     }
   } else if (form === "lobed" && left >= 60) {
     blade(body, wid, shape, [0, 0, petLen], 0, left * 0.5);
@@ -1141,6 +1406,18 @@ const BLOOM = {
   impatiens: { kind: "star", color: "#e84a8a", r: 0.055 },
   cosmos: { kind: "daisy", color: "#e84a8a", r: 0.09 },
   chrysanthemum: { kind: "daisy", color: "#f6d028", r: 0.08 },
+  /* Asteraceae whose flower head IS the plant. Nine of them shipped plain
+     green — a sunflower with no sunflower — because nothing named them and the
+     hashed flower pool has a "none" in it. */
+  leucanthemum: { kind: "daisy", color: "#fbfbf4", c2: "#f4c62a", r: 0.075 },
+  mauranthemum: { kind: "daisy", color: "#fbfbf4", c2: "#f4c62a", r: 0.055 },
+  melampodium: { kind: "daisy", color: "#f7c81f", r: 0.05 },
+  sphagneticola: { kind: "daisy", color: "#f8ca22", r: 0.055 },
+  wollastonia: { kind: "daisy", color: "#f6c62c", r: 0.05 },
+  tridax: { kind: "daisy", color: "#fbf6e2", c2: "#f4c62a", r: 0.05 },
+  bidens: { kind: "daisy", color: "#fbf6e2", c2: "#f4c62a", r: 0.048 },
+  emilia: { kind: "brush", color: "#e05a86", r: 0.04 },
+  ageratum: { kind: "brush", color: "#9d9ade", r: 0.042 },
   tagetes: { kind: "daisy", color: "#f6b22d", r: 0.075 },
   zinnia: { kind: "daisy", color: "#ff3920", r: 0.08 },
   celosia: { kind: "spike", color: "#ff3920", r: 0.06 },
@@ -1169,7 +1446,15 @@ function bloomOf(k) {
 
 // ---------- trees ----------
 
-const CROWN_FORM = ["round", "broad", "conical", "vase", "layered", "columnar", "weeping", "open"];
+/*
+ * Broadleaf crowns only. `conical` is NOT in here: it is the conifer skirt, and
+ * while it was in the hashed pool twelve broadleaf trees drew it — Narra and
+ * Dao among them, both curated walk-list natives, both shipping as Christmas
+ * trees standing next to the real Araucaria with the identical silhouette. A
+ * hash is not a way to decide whether something is a pine; only genus is, and
+ * `forced` is the only way in now.
+ */
+const CROWN_FORM = ["round", "broad", "vase", "layered", "columnar", "weeping", "open"];
 
 /**
  * The crown core, drawn into the trunk part so that part carries the model to
@@ -1201,15 +1486,27 @@ function crownCore(p, pl, node, form, th, cw, leaf, deep) {
     p.add(node, xf(capGeo(cw * 0.4, depth, 12, 5, "funnel"), { at: [0, th, 0] }), { color: leaf, colorFn: g });
     coreR = cw * 0.4; coreY = th + depth * 0.72;
   } else if (form === "columnar") {
-    p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.26, sy: depth * 0.52, sz: cw * 0.26, at: [0, th + depth * 0.5, 0] }), { color: leaf, colorFn: g });
-    coreR = cw * 0.26; coreY = th + depth * 0.5;
+    /* Wider than it was. A columnar crown at a quarter of the crown width on a
+       trunk that is already narrow is a green pole — thirteen trees shipped as
+       one, Tamarind and Diospyros and Jackfruit among them. */
+    p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.36, sy: depth * 0.52, sz: cw * 0.36, at: [0, th + depth * 0.5, 0] }), { color: leaf, colorFn: g });
+    coreR = cw * 0.36; coreY = th + depth * 0.5;
   } else if (form === "open") {
-    p.add(node, xf(sphereGeo(10, 5), { sx: cw * 0.22, sy: depth * 0.28, sz: cw * 0.22, at: [0, 1 - depth * 0.3, 0] }), { color: leaf, colorFn: g });
-    coreR = cw * 0.22; coreY = 1 - depth * 0.3;
+    const cy = th + depth * 0.6;
+    p.add(node, xf(sphereGeo(10, 5), { sx: cw * 0.24, sy: cy - th, sz: cw * 0.24, at: [0, cy, 0] }), { color: leaf, colorFn: g });
+    coreR = cw * 0.24; coreY = cy;
   } else {
-    const d = 0.44 + pl.u("cy") * 0.16;
-    p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.38, sy: depth * d * 0.85, sz: cw * 0.38, at: [0, 1 - depth * d, 0] }), { color: leaf, colorFn: g });
-    coreR = cw * 0.38; coreY = 1 - depth * d;
+    /*
+     * Seated ON the trunk. The round crown used to be a ball whose radius was
+     * set independently of where its centre sat, so at the shallow end of the
+     * range its underside floated a seventh of the model's height clear of the
+     * trunk top — that is Katmon's gap, and Katmon is on the walk list. The
+     * half-depth is now whatever it takes to reach the collar.
+     */
+    const d = 0.5 + pl.u("cy") * 0.1;
+    const cy = th + depth * d;
+    p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.38, sy: cy - th, sz: cw * 0.38, at: [0, cy, 0] }), { color: leaf, colorFn: g });
+    coreR = cw * 0.38; coreY = cy;
   }
   return { coreR, coreY };
 }
@@ -1243,13 +1540,17 @@ function tree(k, col, opt = {}) {
     salt: "tree:" + (opt.canopy ?? "auto") + (spec ? "b" : "") + (conifer ? "c" : "") + (opt.fruit ? "f" : "") + (opt.thick ? "t" : ""),
     upright: true,
     // a conifer is a spire: it never gets to be as wide as it is tall
-    axSet: conifer ? [0.3, 0.5, 0.7] : ASPECT_UP,
-    azSet: conifer ? [0.3, 0.5, 0.7] : ASPECT_UP,
+    /* Broadleaf trees get their OWN pool rather than the shared upright one,
+       whose bottom rung is 0.15. A crown a seventh as wide as the tree is tall
+       is a green pole with a bark boot, which is what Diospyros, Jackfruit and
+       Tamarind were: not a crown form problem, a footprint problem. */
+    axSet: conifer ? [0.3, 0.5, 0.7] : [0.42, 0.72, 1.02, 1.32],
+    azSet: conifer ? [0.3, 0.5, 0.7] : [0.42, 0.72, 1.02, 1.32],
     maxAniso: 1.9,
     // fewer, better-fed canopy sprays: at thirty-two parts each one is down to
     // forty-eight triangles, which buys two two-row blades and reads as facets
     pLevel: [10, 16, 22, 28],
-    height: (pl) => 0.7 + pl.u("size") * 0.55,
+    height: (pl) => 0.68 + pl.u("size") * 0.42,
     breathe: 0.012,
     sway: 0.03,
     bands: [0, 1, 2, 3, 4, 5],
@@ -1258,10 +1559,10 @@ function tree(k, col, opt = {}) {
       pl.conifer = conifer;
       // a pencil footprint has to carry a pencil crown, or it reads as a ball
       // skewered on a stick
-      if (Math.max(pl.ax, pl.az) <= 0.2) pl.crownForm = pl.H("col") % 2 ? "columnar" : "conical";
+      if (Math.max(pl.ax, pl.az) <= 0.2) pl.crownForm = "columnar";
       // how much bare trunk shows under the foliage: the other half of "reads
       // as a tree", and it costs the silhouette nothing
-      pl.trunkH = 0.2 + pl.u("th") * 0.34;
+      pl.trunkH = 0.26 + pl.u("th") * 0.3;
       pl.crownW = ((pl.ax + pl.az) / 2) * 0.92;
       pl.anchorColor = shade(trunkOf(col), 0.05);
       const tr = trunkOf(col);
@@ -1269,7 +1570,10 @@ function tree(k, col, opt = {}) {
       const r0 = (0.026 + pl.u("tr") * 0.03) * thick;
       const lean = (pl.u("lean") - 0.5) * 0.14;
       p.spine("trunk", (node) => {
-        p.add(node, xf(tubeGeo(r0 * (1.2 + pl.u("flare") * 0.7), r0 * (0.4 + pl.u("taper") * 0.45), pl.trunkH + 0.05, 12, r0 * 0.1), { rz: lean }),
+        /* The taper has a FLOOR. At 0.4 the trunk reaches a hairline at the
+           collar and reads as no trunk at all under the crown — Katmon and Teak
+           both. A tree narrows; it does not vanish. */
+        p.add(node, xf(tubeGeo(r0 * (1.2 + pl.u("flare") * 0.7), r0 * (0.6 + pl.u("taper") * 0.3), pl.trunkH + 0.05, 12, r0 * 0.1), { rz: lean }),
           { color: tr, colorFn: grad(shade(tr, 0.14), shade(tr, -0.22), 0, pl.trunkH) });
         const core = crownCore(p, pl, node, pl.crownForm, pl.trunkH, pl.crownW, pl.pal.leaf, pl.pal.deep);
         // The face belongs in the crown — a tree that smiles from its ankles
@@ -1357,7 +1661,7 @@ function tree(k, col, opt = {}) {
       const shapeR = pl.crownForm === "conical" ? 1 - t * 0.62
         : pl.crownForm === "vase" ? 0.55 + t * 0.45
           : pl.crownForm === "broad" ? 1 - t * 0.3
-            : pl.crownForm === "columnar" ? 0.62
+            : pl.crownForm === "columnar" ? 0.84
               : 1 - t * 0.18;
       const r = reachOf(pl, a, (0.55 + pl.u("cb" + s.g) * 0.4) * shapeR);
       const rr = Math.max(0.032, r * (0.34 + pl.u("cs" + s.g) * 0.3));
@@ -1466,10 +1770,13 @@ function palm(k, col, opt = {}) {
     axSet: ASPECT_CROWN,
     azSet: ASPECT_CROWN,
     height: (pl) => (0.8 + pl.u("size") * 0.5) * (1 + tall * 0.28),
-    /* A palm carries eight to twenty fronds, not thirty-two, and the
+    /* A palm carries eight to sixteen fronds, not thirty-two, and the
        difference is what pays for each of them to be a divided FROND rather
-       than the broad undivided blade a 48-triangle budget can afford. */
-    pLevel: [8, 12, 16, 20],
+       than the broad undivided blade a 48-triangle budget can afford. The
+       ceiling came down from twenty when the costapalmate fan turned out to
+       need eighty triangles before it will cut a single segment — at twenty
+       parts Livistona was still shipping four broad lobes. */
+    pLevel: [8, 10, 12, 16],
     breathe: 0.012,
     sway: 0.04,
     bands: [0, 1, 2, 4, 5],
@@ -1484,11 +1791,16 @@ function palm(k, col, opt = {}) {
       p.spine("trunk", (node) => {
         const tr = trunkOf(col);
         const { trunkH, r0 } = pl;
-        p.add(node, xf(tubeGeo(r0 * (bottle ? 2.1 : 1.3), r0 * (bottle ? 0.55 : 0.82 + pl.u("tp") * 0.16), trunkH, 12, bottle ? r0 * 1.5 : 0)),
+        /* A bottle palm's base is swollen, not spherical. At 2.1 radii with
+           another 1.5 of bulge on top it was an onion with a sprig on it. */
+        p.add(node, xf(tubeGeo(r0 * (bottle ? 1.7 : 1.3), r0 * (bottle ? 0.6 : 0.82 + pl.u("tp") * 0.16), trunkH, 12, bottle ? r0 * 0.85 : 0)),
           { color: tr, colorFn: grad(shade(tr, 0.14), shade(tr, -0.22), 0, trunkH) });
         const rings = 4 + (pl.H("rg") % 6);
         for (let i = 1; i <= rings; i += 1) {
-          p.add(node, xf(discGeo(r0 * 1.12, r0 * 0.14, 9), { at: [0, (i / (rings + 1)) * trunkH, 0] }), { color: shade(tr, -0.22) });
+          /* Leaf scars, not a screw thread. At 1.12 radii and 0.14 deep on a
+             pale trunk they read as a drill bit — Roystonea regia in the
+             sheet. */
+          p.add(node, xf(discGeo(r0 * 1.04, r0 * 0.08, 10), { at: [0, (i / (rings + 1)) * trunkH, 0] }), { color: shade(tr, -0.14) });
         }
         // a SLIM crown shaft — not the opaque green barrel that was capping
         // the stump and standing in for the whole crown
@@ -1516,7 +1828,16 @@ function palm(k, col, opt = {}) {
             });
           }
         } else {
-          p.add(node, xf(coneGeo(br * 0.34, br * 1.1, 9), { rz: -Math.cos(a) * 1.0, rx: Math.sin(a) * 1.0 }), { color: trunkOf(col) });
+          /*
+           * A root buttress, not a skirt. At a third of the base reach wide and
+           * a full reach long, laid almost flat, eight of these merged with the
+           * trunk into one brown mass — which is the "crown wider than the
+           * plant is tall on a trunk reduced to a root flare" in nine of the
+           * twenty-three, and on Hyophorbe it swallowed the bottle entirely and
+           * read as an onion. Narrower, shorter and steeper.
+           */
+          const k2 = bottle ? 0.45 : 1;
+          p.add(node, xf(coneGeo(br * 0.2 * k2, br * 0.66 * k2, 9), { rz: -Math.cos(a) * 1.3, rx: Math.sin(a) * 1.3 }), { color: trunkOf(col) });
         }
         return;
       }
@@ -1531,12 +1852,28 @@ function palm(k, col, opt = {}) {
 
       const r = reachOf(pl, a, 0.95);
       if (pl.disc) {
-        // Licuala: one circular pleated disc on a long petiole, and nothing else
+        /*
+         * Licuala: a circular PLEATED fan on a long petiole. It was a lobed
+         * crust plate, which at gallery size is a flat lobe and nothing else —
+         * two of them, and the review read the plant as two flat lobes. The
+         * pleats are the fan: wedge segments radiating the whole way round the
+         * petiole's tip, splayed a little out of plane so the disc reads as
+         * folded rather than as a disc.
+         */
         const L = r * 0.55;
         p.add(node, xf(tubeGeo(0.011, 0.008, L, 9), { rz: -Math.cos(a) * 0.85, rx: Math.sin(a) * 0.85 }), { color: pl.pal.deep });
-        p.add(node, xf(crustGeo({ r: r * 0.62, thick: r * 0.09, lobe: 11, wob: 0.09, seg: p.budget >= 70 ? 22 : 14, rise: 1 }),
-          { rx: 0.45, ry: a, at: [Math.cos(a) * (L * 0.75 + r * 0.5), L * 0.66, Math.sin(a) * (L * 0.75 + r * 0.5)] }),
-        { color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });
+        const tip = [Math.cos(a) * (L * 0.75 + r * 0.12), L * 0.66, Math.sin(a) * (L * 0.75 + r * 0.12)];
+        const nseg = Math.max(7, Math.min(14, Math.floor(p.budget / 12)));
+        const pleat = [[], []];
+        for (let j = 0; j < nseg; j += 1) {
+          const t = j / (nseg - 1) - 0.5;
+          pleat[j % 2].push(xf(bladeGeo({
+            len: r * 0.68 * (1 - 0.18 * Math.abs(t) * 2), wid: r * 0.16, thick: r * 0.02,
+            shape: "spatulate", rows: 3, ring: 4,
+          }), { rx: 0.4 + Math.abs(t) * 0.35, ry: a + t * 2.7, at: tip }));
+        }
+        p.add(node, mergeGeo(pleat[0]), { color: pl.pal.leaf, colorFn: pl.pal.grad });
+        p.add(node, mergeGeo(pleat[1]), { color: mix(pl.pal.leaf, pl.pal.deep, 0.55), colorFn: pl.pal.grad });
         return;
       }
       addLeaf(p, node, {
@@ -1544,8 +1881,9 @@ function palm(k, col, opt = {}) {
         len: r * (pl.fan ? 0.85 : 1.15),
         wid: r * (pl.fan ? 1.05 : pl.fishtail ? 0.42 : 0.24 + pl.u(`fw${s.g}`) * 0.12),
         shape: pl.fishtail ? "spatulate" : "linear",
-        form: pl.fan ? "palmate" : "ladder",
-        leaflet: pl.fan ? 7 : 9,
+        form: pl.fan ? "fan" : "ladder",
+        leaflet: pl.fan ? 12 : 9,
+        leafletShape: pl.fishtail ? "spatulate" : null,
         bend: -r * (pl.fan ? 0.2 : 0.45 + pl.u(`fb${s.g}`) * 0.4),
         color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad, stalkColor: pl.pal.deep,
         stalk: pl.fan ? 0.42 : 0.18,
@@ -1653,7 +1991,11 @@ function bananaKind(k, col, opt = {}) {
         return;
       }
       // the inflorescence: the one thing that names the species
-      if (band === 2 || (band >= top - 1 && s.i === 0 && !pl.musa)) {
+      /* ONE inflorescence per tier, not one per slot. Band 2 was handed to the
+         bract wholesale, so a plan that put four units there drew four cones
+         and almost no foliage — Heliconia psittacorum and Curcuma longa both
+         came out as spiky cones with nothing green on them. */
+      if ((band === 2 && s.i === 0) || (band >= top - 1 && s.i === 0 && !pl.musa)) {
         const br = baseReach(pl, 0.8);
         if (pl.claw) {
           lobsterClaw(p, node, {
@@ -1737,6 +2079,11 @@ function cycad(k, col) {
     upright: true,
     axSet: ASPECT_CROWN,
     azSet: ASPECT_CROWN,
+    /* Few fronds, each of them actually pinnate. addLeaf will not cut pinnae
+       under eighty triangles, and at thirty-two parts the budget leaves
+       twenty-eight — so Cycas revoluta, whose stiff pinnate frond is the whole
+       plant, drew broad entire straps. */
+    pLevel: [8, 10, 12, 16],
     // a crown-tufted plant carries its leaves at the top, so band 3 is left
     // to the axis alone and the foliage units can only land in 4 and 5
     height: (pl) => 0.45 + pl.u("size") * 0.3,
@@ -1760,9 +2107,11 @@ function cycad(k, col) {
         return;
       }
       const r = reachOf(pl, a, 0.95);
+      /* Up and arching, not hanging. A cycad crown is a shuttlecock; a positive
+         pitch on every frond laid the whole plant flat. */
       addLeaf(p, node, {
-        tri: p.budget, yaw: a, pitch: 0.3 + pl.u("fr" + s.g) * 0.6, len: r, wid: r * 0.24,
-        shape: "linear", form: "frond", leaflet: 4 + (s.g % 4), bend: -r * 0.22,
+        tri: p.budget, yaw: a, pitch: -0.72 + pl.u("fr" + s.g) * 0.75, len: r * 1.15, wid: r * 0.26,
+        shape: "linear", form: "frond", leaflet: 9, bend: r * 0.3,
         color: pl.pal.deep, colorFn: pl.pal.grad, stalkColor: trunkOf(col), stalk: 0.16,
       });
     },
@@ -1807,75 +2156,102 @@ function shrub(k, col, opt = {}) {
       pl.bloomSpec = bloomSpec;
       // where the foliage starts, measured off the ground — a shrub is leafy
       // from about a tenth of its height, not from half way up a bare pole
-      pl.stemH = 0.08 + pl.u("sh") * 0.14;
+      pl.stemH = 0.05 + pl.u("sh") * 0.09;
       pl.crownW = ((pl.ax + pl.az) / 2) * 0.92;
       pl.anchorColor = trunkOf(col);
       p.spine("clump", (node) => {
         const tr = trunkOf(col);
-        const r0 = 0.013 + pl.u("sr") * 0.011;
+        const r0 = 0.016 + pl.u("sr") * 0.013;
         const leaf = opt.colorful ? CROTON[pl.H("cc") % CROTON.length] : pl.pal.leaf;
         const g = opt.colorful ? undefined : grad(shade(pl.pal.leaf, 0.2), pl.pal.deep, pl.stemH, 1);
         const depth = 1 - pl.stemH;
         const cw = pl.crownW;
 
         // the clump: several slender stems out of the ground, no leader
-        const ns = 3 + (pl.H("st") % 3);
+        const ns = 4 + (pl.H("st") % 3);
         const stem = [];
+        const top = [];
         for (let i = 0; i < ns; i += 1) {
           const a = i * 2.399 + pl.u("s0") * TAU;
-          const lean = 0.1 + 0.2 * ((i % 3) / 3);
-          const h = (0.5 + 0.42 * (((i * 5) % 7) / 7)) * (pl.bush === "upright" ? 1.1 : 1);
+          const lean = 0.16 + 0.26 * ((i % 3) / 3);
+          const h = (0.52 + 0.44 * (((i * 5) % 7) / 7)) * (pl.bush === "upright" ? 1.08 : 1);
           stem.push(xf(tubeGeo(r0 * (1.15 - 0.08 * i), r0 * 0.42, h, 9), {
             rz: -Math.cos(a) * lean, rx: Math.sin(a) * lean,
             at: [Math.cos(a) * r0 * 1.1, 0, Math.sin(a) * r0 * 1.1],
           }));
+          top.push([Math.cos(a) * (r0 * 1.1 + Math.sin(lean) * h), h * Math.cos(lean), Math.sin(a) * (r0 * 1.1 + Math.sin(lean) * h)]);
         }
         p.add(node, mergeGeo(stem), { color: tr, colorFn: grad(shade(tr, 0.12), shade(tr, -0.24), 0, 0.6) });
 
-        /* The core is deliberately SMALL. It is there to be the thing the
-           leaves hang off, not the shrub: a big opaque mass in the axis part
-           swallows every leaf slot and the archetype goes straight back to
-           being one blob eighty-nine times. */
-        let coreR = cw * 0.32, coreY = pl.stemH + depth * 0.45;
+        /*
+         * MANY small heads, never one big one.
+         *
+         * The old axis drew a single smooth ellipsoid a third of the crown wide
+         * and half its depth, and that one part WAS the shrub: it swallowed
+         * every leaf the slots added and fifty-three of the eighty-nine read as
+         * one or two horizontal lenses with a face on them. Murraya was
+         * literally two blobs.
+         *
+         * A shrub's outline is made of shoot tips. So the axis now carries a
+         * head per stem plus a low skirt — each one small enough that the leaf
+         * blades the slots hang on the outside are what the eye actually reads,
+         * and bumpy enough that the silhouette is not a lens.
+         */
+        const headR = cw * (pl.bush === "airy" ? 0.15 : 0.185);
+        const head = [];
+        const put = (x, y, z, rr, ry, col) => {
+          p.add(node, xf(sphereGeo(9, 5), { sx: rr, sy: ry, sz: rr, at: [x, y, z] }), { color: col, colorFn: g });
+          head.push({ at: [x, y, z], r: rr, ry });
+        };
         if (pl.bush === "tiered") {
           for (let i = 0; i < 3; i += 1) {
-            p.add(node, xf(capGeo(cw * (0.36 - i * 0.08), depth * 0.26, 12, 4, "flat"),
-              { at: [0, pl.stemH + i * depth * 0.32, 0] }), { color: i % 2 ? leaf : pl.pal.deep, colorFn: g });
+            const rr = cw * (0.3 - i * 0.07);
+            p.add(node, xf(capGeo(rr, depth * 0.2, 12, 4, "flat"), { at: [0, pl.stemH + i * depth * 0.3, 0] }),
+              { color: i % 2 ? leaf : pl.pal.deep, colorFn: g });
           }
-          coreR = cw * 0.36; coreY = pl.stemH + depth * 0.16;
-        } else if (pl.bush === "upright") {
-          p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.34, sy: depth * 0.42, sz: cw * 0.34, at: [0, pl.stemH + depth * 0.46, 0] }), { color: leaf, colorFn: g });
-          coreR = cw * 0.34; coreY = pl.stemH + depth * 0.46;
-        } else if (pl.bush === "airy") {
-          for (let i = 0; i < 3; i += 1) {
-            const a = i * 2.399 + pl.u("a0") * TAU;
-            p.add(node, xf(sphereGeo(10, 5), {
-              sx: cw * 0.19, sy: depth * 0.2, sz: cw * 0.19,
-              at: [Math.cos(a) * cw * 0.18, pl.stemH + depth * (0.32 + 0.29 * i), Math.sin(a) * cw * 0.18],
-            }), { color: i % 2 ? leaf : pl.pal.deep, colorFn: g });
-          }
-          coreR = cw * 0.19; coreY = 1 - depth * 0.25;
+          head.push({ at: [0, pl.stemH + depth * 0.16, 0], r: cw * 0.3, ry: depth * 0.2 });
         } else {
-          const d = pl.bush === "arching" ? 0.42 : 0.48;
-          p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.36, sy: depth * d * 0.6, sz: cw * 0.36, at: [0, 1 - depth * d, 0] }), { color: leaf, colorFn: g });
-          p.add(node, xf(capGeo(cw * 0.26, depth * 0.26, 11, 4, "flat"), { at: [0, pl.stemH * 0.4, 0] }), { color: pl.pal.deep, colorFn: g });
-          coreR = cw * 0.32; coreY = 1 - depth * d;
+          top.forEach((t, i) => {
+            const rr = headR * (0.82 + 0.4 * (((i * 3) % 5) / 5));
+            put(t[0] * 0.9, Math.max(pl.stemH + depth * 0.2, t[1]), t[2] * 0.9, rr, rr * (pl.bush === "upright" ? 1.25 : 0.86), i % 2 ? leaf : pl.pal.deep);
+          });
+          /* The skirt. Foliage carried DOWN to the ground is half of what makes
+             a shrub read as a shrub rather than a lollipop, and it lives in the
+             axis on purpose: the gate's trunk-versus-canopy test excludes the
+             axis, so low foliage here cannot make the plant read bottom-heavy. */
+          const nsk = pl.bush === "airy" ? 2 : 3;
+          for (let i = 0; i < nsk; i += 1) {
+            const a = i * 2.05 + pl.u("k0") * TAU;
+            put(Math.cos(a) * cw * 0.24, pl.stemH + depth * 0.12, Math.sin(a) * cw * 0.24,
+              headR * 0.9, headR * 0.62, i % 2 ? pl.pal.deep : leaf);
+          }
         }
-        const fr = Math.max(0.028, Math.min(coreR * 0.42, cw * 0.15));
-        addFace(p, node, { at: [0, coreY, coreR * 0.86], r: fr, tri: p.budget * 8 });
+        /* The face rides the head that faces the viewer and sits highest — it
+           has to be ON a head, not at the axis, or it hangs in the gap between
+           shoots and the face-attachment gate sees it. */
+        const seat = head.reduce((b, h) => (h.at[1] + h.at[2] * 0.6 > b.at[1] + b.at[2] * 0.6 ? h : b), head[0]);
+        const fr = Math.max(0.028, Math.min(seat.r * 0.55, cw * 0.14));
+        addFace(p, node, { at: [seat.at[0], seat.at[1], seat.at[2] + seat.r * 0.9], r: fr, tri: p.budget * 8 });
       });
     },
     slot(p, pl, s) {
       const { node, band, a, top } = s;
       if (band <= 1) {
-        // another shoot out of the clump, leafy right down to its foot
+        /* Another shoot out of the clump, and it carries LEAVES. It used to end
+           in a smooth lump, which made the bottom of every shrub a ring of
+           knuckles under a canopy — the low foliage a shrub is supposed to have
+           has to look like foliage. */
         const br = baseReach(pl, 0.36);
-        p.add(node, xf(tubeGeo(br * 0.2, br * 0.11, br * 1.5, 9), { rz: -Math.cos(a) * 0.34, rx: Math.sin(a) * 0.34 }), { color: trunkOf(col) });
-        addLump(p, node, {
-          rx: br * 0.5, ry: br * 0.42, rz: br * 0.5, yaw: a, tri: p.budget * 0.6,
-          at: [Math.cos(a) * br * 0.5, br * 0.7, Math.sin(a) * br * 0.5],
-          color: pl.pal.deep, colorFn: opt.colorful ? undefined : pl.pal.grad,
-        });
+        p.add(node, xf(tubeGeo(br * 0.18, br * 0.1, br * 1.4, 9), { rz: -Math.cos(a) * 0.34, rx: Math.sin(a) * 0.34 }), { color: trunkOf(col) });
+        const at = [Math.cos(a) * br * 0.46, br * 0.7, Math.sin(a) * br * 0.46];
+        for (let i = 0; i < 3; i += 1) {
+          addLeaf(p, node, {
+            tri: p.budget / 3, yaw: a + (i - 1) * 0.9, pitch: 0.55 + i * 0.2, at,
+            len: br * 0.95, wid: br * 0.42, shape: pl.shape, form: "simple",
+            color: i % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: opt.colorful ? undefined : pl.pal.grad,
+            stalkColor: pl.pal.deep, stalk: 0,
+          });
+        }
         return;
       }
       const spec = pl.bloomSpec;
@@ -1896,8 +2272,13 @@ function shrub(k, col, opt = {}) {
         });
         return;
       }
-      const droop = pl.bush === "arching" ? 0.75 : pl.bush === "upright" ? -0.35 : 0.2;
-      const r = reachOf(pl, a, (0.7 + pl.u("lr" + s.g) * 0.35) * (pl.bush === "airy" ? 1.05 : 1));
+      /* Angled, not flat. At a pitch of 0.2 a blade lies level, and a ring of
+         level blades is a pinwheel seen from above — which is what a third of
+         the family was doing over the top of its own canopy. */
+      const droop = pl.bush === "arching" ? 0.85 : pl.bush === "upright" ? 0.12 : 0.5;
+      /* Out past the heads. The axis carries small shoot tips now, and a leaf
+         that stops short of them is a leaf nobody can see. */
+      const r = reachOf(pl, a, (0.88 + pl.u("lr" + s.g) * 0.34) * (pl.bush === "airy" ? 1.05 : 1));
       /* A variegated shrub is still mostly a LEAF. Painting every blade from
          the croton pool left Excoecaria as magenta spikes radiating from a
          point with no green mass at all. */
@@ -1906,13 +2287,47 @@ function shrub(k, col, opt = {}) {
         : (s.g % 2 ? pl.pal.leaf : pl.pal.deep);
       addLeaf(p, node, {
         tri: p.budget, yaw: a, pitch: droop + pl.u("lp" + s.g) * 0.5,
-        len: r, wid: r * (0.34 + pl.u("lw" + s.g) * 0.34), shape: pl.shape, form: pl.form,
+        len: r * 0.88, wid: r * (0.42 + pl.u("lw" + s.g) * 0.3), shape: pl.shape, form: pl.form,
         leaflet: 3 + (s.g % 4),
         color: lc, colorFn: opt.colorful ? undefined : pl.pal.grad, stalkColor: pl.pal.deep, stalk: 0.2,
       });
     },
   });
 }
+
+/**
+ * Leaf architecture that is a DIAGNOSTIC, keyed on the name.
+ *
+ * Cassava is palmate, both Oxalis are trifoliate, Mimosa pudica is bipinnate,
+ * the umbrella trees are palmate. Twenty herbs whose leaf is the whole point of
+ * recognising them were drawing whatever the hash handed them, which was a
+ * plain strap most of the time — a palmate cassava leaf and a simple lanceolate
+ * one are not close enough for a hash to choose between.
+ */
+const LEAF_FORM = {
+  "manihot esculenta": "palmate",
+  oxalis: "trifoliate",
+  "mimosa pudica": "pinnate",
+  mimosa: "pinnate",
+  heptapleurum: "palmate",
+  schefflera: "palmate",
+  "tacca leontopetaloides": "palmate",
+  thaumatophyllum: "pinnate",
+  philodendron: "pinnate",
+  "zamioculcas zamiifolia": "pinnate",
+  "biophytum sensitivum": "pinnate",
+  vicia: "pinnate",
+  desmodium: "trifoliate",
+  senna: "pinnate",
+  chamaecrista: "pinnate",
+  moringa: "pinnate",
+  leucaena: "pinnate",
+  trifolium: "trifoliate",
+  medicago: "trifoliate",
+  "phyllanthus niruri": "pinnate",
+  murdannia: "simple",
+};
+const leafFormOf = (k) => LEAF_FORM[sciOf(k)] ?? LEAF_FORM[genusOf(k)] ?? null;
 
 function herb(k, col, opt = {}) {
   const spec = bloomOf(k);
@@ -1924,12 +2339,18 @@ function herb(k, col, opt = {}) {
        sheets like a folded tarp" are at the wide end of it. */
     axSet: [0.4, 0.8, 1.2, 1.6, 2.0, 2.4],
     azSet: [0.4, 0.8, 1.2, 1.6, 2.0, 2.4],
+    /* Denser. The general pool starts at eight parts, and eight parts on a herb
+       is a bare stick carrying two leaves and a coloured dot — about
+       twenty-five of the family looked exactly like that, Abelmoschus with no
+       leaves at all. A herb is a leafy thing; it needs the slots. */
+    pLevel: [16, 22, 28, 34],
     height: 0.5,
     breathe: 0.022,
     sway: 0.06,
     bands: [0, 1, 2, 3, 4, 5],
     flowerKind: flower,
     spine(p, pl) {
+      pl.leafForm = leafFormOf(k);
       p.spine("stem", (node) => {
         const stemR = 0.008 + pl.u("sr") * 0.014;
         const woody = pl.u("wd") > 0.72;
@@ -1944,16 +2365,52 @@ function herb(k, col, opt = {}) {
             p.add(node, xf(discGeo(stemR * 1.5, stemR * 0.7, 8), { at: [lean * t0 * t0 * 0.5, t0, 0] }), { color: shade(stemCol, -0.2) });
           }
         }
+        /* A skirt of basal leaves in the axis. A herb drawn as a bare vertical
+           wire with the slots hung off it reads as a stick even when the slots
+           are full — the plant has to have a base. */
+        const br = baseReach(pl, 0.5);
+        for (let i = 0; i < 5; i += 1) {
+          const aa = i * 2.399 + pl.u("b0") * TAU;
+          p.add(node, xf(bladeGeo({
+            len: br * (0.8 + ((i * 3) % 4) * 0.1), wid: br * 0.34, thick: 0.01,
+            shape: pl.shape, rows: 4, ring: 4, bend: -br * 0.18,
+          }), { rx: 0.55 + (i % 3) * 0.16, ry: aa, at: [0, 0.035 + (i % 2) * 0.03, 0] }),
+          { color: i % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });
+        }
+        /*
+         * A TERMINAL head, in the axis, for the species whose flower is the
+         * reason anyone knows the plant. Leaving it to the slots meant it
+         * depended on how the band lottery fell — Helianthus annuus, a
+         * sunflower, could and did ship with no sunflower on it. In the axis it
+         * is not a lottery.
+         */
+        if (spec) {
+          addFlower(p, node, {
+            tri: 260, at: [0, 0.965, 0], kind: spec.kind, r: spec.r * 1.5, yaw: pl.u("tf") * TAU,
+            color: spec.color, color2: spec.color2 ?? shade(spec.color, 0.3), stalkLen: 0.05,
+            stalkColor: mix(pl.pal.deep, pl.pal.leaf, 0.35), pitch: 0.18,
+          });
+        } else {
+          // otherwise the stem ends in a shoot tip, not in a bare wire
+          for (let i = 0; i < 3; i += 1) {
+            p.add(node, xf(bladeGeo({ len: 0.1, wid: 0.045, thick: 0.01, shape: pl.shape, rows: 4, ring: 4, bend: -0.03 }),
+              { rx: -0.5 + i * 0.45, ry: i * 2.1 + pl.u("t0") * TAU, at: [0, 0.9, 0] }),
+            { color: i % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });
+          }
+        }
         addFace(p, node, { at: [0, 0.3, stemR * 1.05], r: Math.max(0.03, stemR * 2.2) });
       });
     },
     slot(p, pl, s) {
       const { node, band, a, top } = s;
       const kind = pl.flower;
-      const flowering = kind !== "none" && band >= top && s.i < Math.max(1, Math.round(s.n * 0.6));
+      /* The top TWO bands, and most of each. One flower in the top band alone
+         is a coloured dot on a stick, which is what the review saw; a herb that
+         is grown for its flower carries a head, not a pixel. */
+      const flowering = kind !== "none" && band >= top - 1 && s.i < Math.max(1, Math.round(s.n * 0.75));
       if (flowering) {
         const r = reachOf(pl, a, 0.3 + pl.u(`fs${s.g}`) * 0.3);
-        const fr = (opt.flowerR ?? spec?.r ?? 0.07) * (0.75 + pl.u(`fz${s.g}`) * 0.6);
+        const fr = (opt.flowerR ?? spec?.r ?? 0.075) * (0.85 + pl.u(`fz${s.g}`) * 0.5);
         const fc = spec?.color ?? flowerOf(col);
         addFlower(p, node, { tri: Math.max(110, p.budget),
           at: [Math.cos(a) * r, 0, Math.sin(a) * r], kind, r: fr, yaw: a,
@@ -1967,7 +2424,7 @@ function herb(k, col, opt = {}) {
          wide aspect is a plant seen from above rather than from the side.
          Basal leaves still spread; stem leaves are carried up and out. */
       const pitch = basal ? 0.1 + pl.u(`bp${s.g}`) * 0.35 : -0.55 + pl.u(`lp${s.g}`) * 0.9;
-      const form = p.budget < 34 ? "simple" : pl.form;
+      const form = pl.leafForm ?? (p.budget < 34 ? "simple" : pl.form);
       const pair = [1];
       for (const sgn of pair) {
         addLeaf(p, node, { tri: p.budget,
@@ -2352,6 +2809,16 @@ function fern(k, col) {
     axSet: form === "spikemoss" ? [1.3, 1.8, 2.3] : form === "nest" ? [0.6, 0.9, 1.2] : form === "sword" ? [0.8, 1.1, 1.4] : ASPECT,
     azSet: form === "spikemoss" ? [1.3, 1.8, 2.3] : form === "nest" ? [0.6, 0.9, 1.2] : form === "sword" ? [0.8, 1.1, 1.4] : ASPECT,
     height: form === "spikemoss" ? 0.3 : form === "nest" ? 0.66 : 0.55,
+    /*
+     * FEWER, better-fed fronds. A divided frond needs eighty triangles before
+     * addLeaf will cut pinnae into it at all, and at twenty-four or thirty-two
+     * parts the per-part budget leaves forty-five — so twelve ferns drew a
+     * broad ENTIRE blade where the pinnae are the whole identification:
+     * Tectaria, Davallia, Christella, Pteris, both Nephrolepis. A fern is a
+     * handful of fronds, not thirty leaves; sixteen parts is the ceiling now
+     * and every frond can afford to be a frond.
+     */
+    pLevel: form === "spikemoss" ? [12, 16, 20] : [8, 10, 12, 16],
     breathe: 0.02,
     sway: 0.05,
     bands: [0, 1, 2, 3, 4, 5],
@@ -2362,17 +2829,29 @@ function fern(k, col) {
       pl.wiry = wiry;
       p.spine("frond0", (node) => {
         if (form === "spikemoss") {
-          p.add(node, xf(capGeo(0.34, 0.4, 13, 5, "flat")), { color: pl.pal.deep, colorFn: grad(shade(pl.pal.leaf, 0.2), pl.pal.deep, 0, 0.4) });
+          /*
+           * A creeping frondose MAT. All three Selaginella were a solid drum
+           * with spikes stuck in it — kraussiana read as a flowerpot — because
+           * the axis was a 0.34-by-0.4 flat cap that no amount of foliage could
+           * hide. A spikemoss has no such body: it is a low spray of small
+           * branched frondlets lying almost flat, on a wiry creeping stem.
+           */
+          const creep = [];
+          for (let i = 0; i < 5; i += 1) {
+            const a = i * 1.257 + pl.u("c0") * TAU;
+            creep.push(xf(tubeGeo(0.016, 0.011, 0.3, 7), { rz: -Math.cos(a) * 1.25, rx: Math.sin(a) * 1.25, at: [0, 0.05, 0] }));
+          }
+          p.add(node, mergeGeo(creep), { color: shade(pl.pal.deep, -0.2) });
           const bunch = [[], []];
           for (let i = 0; i < 12; i += 1) {
             const a = i * 2.399 + pl.u("s0") * TAU;
-            const rr = 0.28 * Math.sqrt((i + 0.3) / 12);
-            bunch[i % 2].push(xf(bladeGeo({ len: 0.5 - rr * 0.7, wid: 0.09, thick: 0.012, shape: "spatulate", rows: 4, ring: 4, bend: 0.12 }),
-              { rx: -1.15 + rr * 1.5, ry: a, at: [Math.cos(a) * rr, 0.3 - rr * 0.5, Math.sin(a) * rr] }));
+            const rr = 0.3 * Math.sqrt((i + 0.3) / 12);
+            bunch[i % 2].push(xf(bladeGeo({ len: 0.42 - rr * 0.4, wid: 0.13, thick: 0.009, shape: "lanceolate", rows: 5, ring: 4, bend: 0.06 }),
+              { rx: -0.55 + rr * 0.9, ry: a, at: [Math.cos(a) * rr, 0.07 + (i % 3) * 0.05, Math.sin(a) * rr] }));
           }
           p.add(node, mergeGeo(bunch[0]), { color: pl.pal.leaf, colorFn: pl.pal.grad });
           p.add(node, mergeGeo(bunch[1]), { color: pl.pal.deep });
-          addFace(p, node, { at: [0, 0.22, 0.24], r: 0.062, tri: p.budget * 8 });
+          addFace(p, node, { at: [0, 0.14, 0.1], r: 0.058, tri: p.budget * 8 });
           return;
         }
         p.add(node, xf(tubeGeo(0.012, 0.008, 0.18, 8)), { color: wiry });
@@ -2386,12 +2865,20 @@ function fern(k, col) {
             shape: "elliptic", form: "ladder", tri: 620, bend: -0.3, stalk: 0.06, roll: 0.12,
             color: pl.pal.leaf, colorFn: pl.pal.grad, stalkColor: wiry,
           });
+        } else if (form === "nest" || form === "strap") {
+          // a bird's-nest fern IS an entire strap: no jagged splitting at all
+          p.add(node, xf(bladeGeo({ len: 0.88, wid: 0.2, thick: 0.02, shape: "obovate", rows: 7, ring: 4, bend: -0.06, fold: 0.3 }),
+            { rx: -1.5, at: [0, 0.16, 0] }), { color: pl.pal.leaf, colorFn: pl.pal.grad });
         } else {
-          const bl = { rows: 7, ring: 4 };
-          const g = form === "nest"
-            ? bladeGeo({ len: 0.88, wid: 0.2, thick: 0.02, shape: "obovate", ...bl, bend: -0.06, fold: 0.3 })
-            : bladeGeo({ len: 0.9, wid: 0.16, thick: 0.02, shape: "lanceolate", ...bl, bend: -0.16 });
-          p.add(node, xf(g, { rx: form === "nest" ? -1.5 : -1.35, at: [0, 0.16, 0] }), { color: pl.pal.leaf, colorFn: pl.pal.grad });
+          /* And the axis frond has to be divided too. It is the tallest thing
+             in the model, so an undivided one makes the whole fern read as a
+             slab however many divided fronds hang off it — the same trap the
+             sword form already had a note about. */
+          addLeaf(p, node, {
+            at: [0, 0.16, 0], yaw: 0, pitch: -1.3, len: 0.92, wid: 0.2, thick: 0.016,
+            shape: "linear", form: "frond", leaflet: 8, tri: 560, bend: -0.24, stalk: 0.1,
+            color: pl.pal.leaf, colorFn: pl.pal.grad, stalkColor: wiry,
+          });
         }
         addFace(p, node, { at: [0, 0.09, 0.03], r: 0.034, tri: p.budget * 8 });
       });
@@ -2408,8 +2895,8 @@ function fern(k, col) {
           for (let j = 0; j < n; j += 1) {
             const aa = a + (sgn > 0 ? 0 : Math.PI) + (j - (n - 1) / 2) * 0.6;
             const rr = r * (0.4 + 0.6 * ((j + 0.5) / n));
-            bunch[j % 2].push(xf(bladeGeo({ len: 0.16 + r * 0.5, wid: 0.075, thick: 0.011, shape: "spatulate", rows: 3, ring: 4, bend: 0.1 }),
-              { rx: -0.85 + pl.u(`sp${s.g}${j}`) * 0.7, ry: aa, at: [Math.cos(aa) * rr, 0, Math.sin(aa) * rr] }));
+            bunch[j % 2].push(xf(bladeGeo({ len: 0.16 + r * 0.55, wid: 0.1, thick: 0.008, shape: "lanceolate", rows: 5, ring: 4, bend: 0.06 }),
+              { rx: -0.45 + pl.u(`sp${s.g}${j}`) * 0.5, ry: aa, at: [Math.cos(aa) * rr, 0, Math.sin(aa) * rr] }));
           }
         }
         if (bunch[0].length) p.add(node, mergeGeo(bunch[0]), { color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });
@@ -2523,6 +3010,10 @@ function shootGeo({ at, len, wid, tilt, yaw, rows = 3 }) {
     { rx: -Math.PI / 2 + tilt, ry: yaw, at });
 }
 
+/** The cushion mound, shared so a shoot can be seated on its own profile. */
+const DOME_R = 0.5;
+const DOME_H = 0.36;
+
 /** A pair of flat forked ribbon lobes lying almost flat — a thalloid liverwort. */
 function ribbon(p, node, { at, len, wid, yaw, tilt, color, colorFn }) {
   for (const s of [1, -1]) {
@@ -2580,7 +3071,19 @@ function moss(k, col) {
               });
             }
           }
-          p.add(node, xf(sphereGeo(10, 5), { sx: 0.09, sy: 0.14, sz: 0.09, at: [0, 0.86, 0] }), { color: mix(leaf, deep, 0.4) });
+          /*
+             A liverwort has no persistent seta and capsule. That is the whole
+             reason this form exists and it was drawing one anyway — a raised
+             stalked sphere on Riccia, Ricciocarpos, Riccardia and
+             Myriocoleopsis, four plants that anatomically cannot have it.
+             What a thalloid liverwort DOES carry is gemma cups: shallow open
+             cups sitting flat on the ribbon surface.
+           */
+          for (let j = 0; j < 3; j += 1) {
+            const aa = pl.u("gc") * TAU + j * 2.1;
+            p.add(node, xf(capGeo(0.075, 0.05, 10, 3, "funnel"), { at: [Math.cos(aa) * 0.16, 0.7, Math.sin(aa) * 0.16] }),
+              { color: mix(leaf, deep, 0.45) });
+          }
           addFace(p, node, { at: [0, 0.5, 0.1], r: 0.075, tri: p.budget * 8 });
         });
         return;
@@ -2604,14 +3107,16 @@ function moss(k, col) {
       // cushion: a low mound crowded with tiny upright shoots, and the seta +
       // capsule that only a real moss gets to have
       p.spine("cushion", (node) => {
-        p.add(node, xf(capGeo(0.44, 0.34, 14, 5, "flat")), { color: deep, colorFn: grad(shade(leaf, 0.2), deep, 0, 0.34) });
+        p.add(node, xf(capGeo(DOME_R, DOME_H, 14, 5, "flat")), { color: deep, colorFn: grad(shade(leaf, 0.2), deep, 0, DOME_H) });
         const bunch = [[], []];
-        for (let i = 0; i < 14; i += 1) {
+        /* Twenty-two, not fourteen: a cushion is a crowd of shoots and a bare
+           dome with a dozen spikes on it reads as a bald hill. */
+        for (let i = 0; i < 22; i += 1) {
           const a = i * 2.399 + pl.u("c0") * TAU;
-          const rr = 0.34 * Math.sqrt((i + 0.35) / 14);
+          const rr = DOME_R * 0.86 * Math.sqrt((i + 0.35) / 22);
           bunch[i % 2].push(shootGeo({
-            at: [Math.cos(a) * rr, 0.27 - rr * 0.4, Math.sin(a) * rr],
-            len: 0.34 - rr * 0.5, wid: 0.05, tilt: rr * 1.4, yaw: a,
+            at: [Math.cos(a) * rr, DOME_H * (1 - (rr / DOME_R) ** 2.6) ** 0.55 - 0.04, Math.sin(a) * rr],
+            len: 0.3 - rr * 0.34, wid: 0.048, tilt: rr * 1.5, yaw: a,
           }));
         }
         p.add(node, mergeGeo(bunch[0]), { color: leaf });
@@ -2671,9 +3176,19 @@ function moss(k, col) {
         return;
       }
 
-      // cushion: a knot of tiny shoots, tighter and shorter the higher it sits,
-      // so the family reads as a dome of turf rather than a splayed lens
-      const r = reachOf(pl, a, 0.92 * (1 - 0.7 * t));
+      /*
+       * Cushion: a knot of tiny shoots ON the mound.
+       *
+       * The reach used to come from the plan's aspect, which runs to 2.45 —
+       * so a shoot could be placed at radius 1.1 around a dome of radius 0.44
+       * and hang in mid air with nothing under it. Ten of the sixteen true
+       * mosses had their blades floating free of the cushion,
+       * Hygroamblystegium worst of all. Moss is turf: the shoots grow out of
+       * the mound, so their feet are pinned to the mound's own profile.
+       */
+      const r = Math.min(DOME_R * 0.92, reachOf(pl, a, 0.92 * (1 - 0.7 * t)));
+      /** Height of the cushion cap at a given radius, so a shoot can stand on it. */
+      const seat = (rr) => DOME_H * Math.max(0, 1 - (Math.min(1, rr / DOME_R) ** 2.6)) ** 0.55 - 0.05;
       const n = Math.max(1, Math.min(4, Math.floor(p.budget / 22)));
       const bunch = [[], []];
       for (const sgn of [1, -1]) {
@@ -2681,7 +3196,7 @@ function moss(k, col) {
           const aa = a + (sgn > 0 ? 0 : Math.PI) + (j - (n - 1) / 2) * 0.55;
           const rr = r * (0.45 + 0.55 * ((j + 0.5) / n));
           bunch[(j + (sgn > 0 ? 0 : 1)) % 2].push(shootGeo({
-            at: [Math.cos(aa) * rr, 0, Math.sin(aa) * rr],
+            at: [Math.cos(aa) * rr, seat(rr), Math.sin(aa) * rr],
             len: 0.1 + pl.u(`ml${s.g}${j}`) * 0.13 + r * 0.3,
             wid: 0.034 + pl.u(`mw${s.g}`) * 0.02,
             tilt: 0.18 + pl.u(`mt${s.g}${j}`) * 0.5, yaw: aa, rows: 3,
@@ -2733,8 +3248,13 @@ function cactus(k, col, opt = {}) {
        it rescales x and z independently to the planned aspect, so the thin
        axis of a pad gets inflated back into a barrel. Giving the pad body a
        narrow az against a wide ax is the only way to keep it a pad. */
-    axSet: kind === "pads" ? [0.85, 1.15, 1.45] : kind === "globe" ? [0.85, 1.2, 1.55] : [0.3, 0.55, 0.8],
-    azSet: kind === "pads" ? [0.3, 0.44, 0.58] : kind === "globe" ? [0.85, 1.2, 1.55] : [0.3, 0.55, 0.8],
+    /* The pad pool is NARROW in x as well as thin in z. A pad chain fills the
+       height and the spine then normalises that height to one unit, so a wide
+       x aspect makes every pad come back out wider than it is tall — which is
+       exactly the "flat horizontal discs" both Opuntia were shipping, and no
+       amount of drawing them upright fixes it. */
+    axSet: kind === "pads" ? [0.32, 0.44, 0.56] : kind === "globe" ? [0.85, 1.2, 1.55] : [0.3, 0.55, 0.8],
+    azSet: kind === "pads" ? [0.2, 0.29, 0.38] : kind === "globe" ? [0.85, 1.2, 1.55] : [0.3, 0.55, 0.8],
     height: kind === "globe" ? 0.34 : 0.62,
     breathe: 0.014,
     sway: 0.015,
@@ -2746,19 +3266,26 @@ function cactus(k, col, opt = {}) {
         const gp = pl.pal;
         const cg = grad(shade(gp.leaf, 0.14), gp.deep, 0, 0.9);
         if (kind === "pads") {
-          // a chain of flat oval pads, each joined to the last at its foot
+          /* A chain of UPRIGHT pads, each joined to the last at its foot. Thin
+             matters more than it looks: the silhouette pass rescales x and z
+             independently to the planned aspect, so a pad drawn at 0.3 of its
+             own width in z comes back out as a barrel and both Opuntia read as
+             flat discs stacked horizontally. Draw them thinner AND narrow the
+             z aspect pool, or the normalisation undoes it. */
           let y = 0;
           let lean = 0;
-          for (let i = 0; i < 4; i += 1) {
-            const rr = 0.185 - i * 0.026;
-            lean += (i % 2 ? 1 : -1) * 0.2;
-            p.add(node, xf(sphereGeo(13, 7), { sx: rr, sy: rr * 1.45, sz: rr * 0.3, at: [Math.sin(lean) * rr * 0.5, y + rr * 1.3, 0], rz: lean }),
+          pl.bodyR = 0.15;
+          for (let i = 0; i < 3; i += 1) {
+            const rr = 0.15 - i * 0.022;
+            lean += (i % 2 ? 1 : -1) * 0.22;
+            p.add(node, xf(sphereGeo(13, 7), { sx: rr, sy: rr * 2.2, sz: rr * 0.17, at: [Math.sin(lean) * rr * 0.6, y + rr * 2, 0], rz: lean }),
               { color: gp.deep, colorFn: cg });
-            y += rr * 2.3;
+            y += rr * 3.4;
           }
-          addFace(p, node, { at: [0, 0.32, 0.06], r: 0.055, tri: p.budget * 8 });
+          addFace(p, node, { at: [0, 0.32, 0.045], r: 0.055, tri: p.budget * 8 });
         } else if (kind === "globe") {
           // a squat ribbed globe under a fur of spines
+          pl.bodyR = 0.4;
           p.add(node, xf(sphereGeo(15, 8), { sx: 0.4, sy: 0.5, sz: 0.4, at: [0, 0.5, 0] }), { color: gp.deep, colorFn: grad(shade(gp.leaf, 0.16), gp.deep, 0.1, 0.9) });
           /* Mammillaria is named for its tubercles and worn under a dense
              white fur; a bare green egg with five spines is not it. */
@@ -2774,6 +3301,7 @@ function cactus(k, col, opt = {}) {
           }
           addFace(p, node, { at: [0, 0.55, 0.42], r: 0.09, tri: p.budget * 8 });
         } else {
+          pl.bodyR = 0.075;
           p.add(node, xf(tubeGeo(0.075, 0.055, 0.92, 14, 0.012)), { color: gp.deep, colorFn: cg });
           p.add(node, xf(capGeo(0.055, 0.09, 14, 5, "dome"), { at: [0, 0.92, 0] }), { color: gp.deep });
           addFace(p, node, { at: [0, 0.3, 0.072], r: 0.05, tri: p.budget * 8 });
@@ -2794,9 +3322,14 @@ function cactus(k, col, opt = {}) {
         if (p.budget >= 56) areole(p, node, { at: [Math.cos(a) * rr * 1.1, rr * 1.7, Math.sin(a) * rr * 1.1], r: 0.007, n: 4, len: 0.05, color: spineCol });
         return;
       }
-      // areole spine clusters: short, white, and paired across the axis so the
-      // part is connected without a pedicel
-      const r = reachOf(pl, a, pl.kind === "globe" ? 0.42 : 0.5);
+      /*
+       * Areole spine clusters: short, white, paired across the axis so the part
+       * is connected without a pedicel — and pinned to the BODY's own radius.
+       * The reach came from the plan's aspect, which on a column runs to four
+       * times the stem's own width, so the spine tufts hung in the air a body
+       * away from the plant: Euphorbia lactea and Opuntia ficus-indica both.
+       */
+      const r = Math.min((pl.bodyR ?? 0.1) * 0.96, reachOf(pl, a, pl.kind === "globe" ? 0.42 : 0.5));
       const len = pl.kind === "globe" ? 0.075 : 0.055;
       for (const sgn of [1, -1]) {
         areole(p, node, {
@@ -2985,9 +3518,19 @@ function rosetteBlades(k, col, opt = {}) {
       });
       // Agave finishes every blade with a hard terminal spine
       if (pl.form === "rigid" && p.budget >= 52) {
-        const y = Math.sin(-pitch) * len, rr = Math.cos(-pitch) * len;
-        p.add(node, xf(coneGeo(r * 0.035, r * 0.16, 7), { rz: -Math.cos(a) * (1.5708 + pitch), rx: Math.sin(a) * (1.5708 + pitch), at: [Math.cos(a) * rr, y, Math.sin(a) * rr] }),
-          { color: shade(trunkOf(col), -0.2) });
+        /*
+         * At the blade's OWN tip. addLeaf lays a blade along +Z and then turns
+         * it by pitch about x and yaw about y, which puts the tip at
+         * (L·cosP·sinA, −L·sinP, L·cosP·cosA); the spine was placed with cos
+         * and sin swapped, so every one of them sat ninety degrees round from
+         * the leaf it belongs to. That is Agave desmetiana's "brown triangles
+         * floating detached around the rosette".
+         */
+        const d = [Math.cos(pitch) * Math.sin(a), -Math.sin(pitch), Math.cos(pitch) * Math.cos(a)];
+        const tip = [d[0] * len, d[1] * len, d[2] * len];
+        p.add(node, xf(coneGeo(r * 0.035, r * 0.16, 7), {
+          rx: Math.acos(Math.max(-1, Math.min(1, d[1]))), ry: Math.atan2(d[0], d[2]), at: tip,
+        }), { color: shade(trunkOf(col), -0.2) });
       }
     },
   });
@@ -3109,13 +3652,21 @@ function vine(k, col) {
        tendrils did. */
     axSet: ASPECT_VINE,
     azSet: ASPECT_VINE,
+    /* Leafy all the way UP. At eight parts a climber is three big leaves near
+       the top of a bare pole, which is thirteen of the fifty-seven — Epipremnum,
+       Hoya, Basella, Hedera, Dioscorea. A vine's leaves are spaced along the
+       stem, so there have to be enough of them to space. */
+    pLevel: [16, 22, 26, 32],
     height: 0.9,
     breathe: 0.018,
     sway: 0.05,
     bands: [0, 1, 2, 3, 4, 5],
     spine(p, pl) {
-      pl.turn = 1.9 + pl.u("tw") * 1.9;
-      pl.coilR = 0.055 + pl.u("cr") * 0.035;
+      /* Enough turns that the wrap is legible under the foliage. Below two the
+         stem is a lazy diagonal and the leaves cover it, so the model reads as
+         leaves bunched on a pole — which was the complaint. */
+      pl.turn = 2.7 + pl.u("tw") * 1.8;
+      pl.coilR = 0.058 + pl.u("cr") * 0.032;
       pl.cucurbit = cucurbit;
       pl.bloomSpec = bloomOf(k);
       pl.anchorColor = pl.pal.deep;
@@ -3125,7 +3676,7 @@ function vine(k, col) {
         // size and costs one tube; without it a twining stem is just a squiggle.
         p.add(node, xf(tubeGeo(0.024, 0.016, 1, 10)), { color: prop, colorFn: grad(shade(prop, 0.12), shade(prop, -0.26), 0, 1) });
         // the stem, wound round it
-        p.add(node, xf(coilGeo({ R: pl.coilR, r: 0.014, h: 0.97, turn: pl.turn, segs: 26, ring: 7 })),
+        p.add(node, xf(coilGeo({ R: pl.coilR, r: 0.019, h: 0.97, turn: pl.turn, segs: 30, ring: 7 })),
           { color: pl.pal.deep, colorFn: grad(shade(pl.pal.leaf, 0.1), pl.pal.deep, 0, 1) });
         addFace(p, node, { at: [0, 0.36, pl.coilR + 0.02], r: 0.04, tri: p.budget * 8 });
       });
@@ -3168,7 +3719,7 @@ function vine(k, col) {
         return;
       }
 
-      const r = reachOf(pl, a, 0.8);
+      const r = reachOf(pl, a, 0.7);
       const cf = varie
         ? (q) => (q[0] + q[2] > 0.02 ? mix(pl.pal.leaf, hex("#e8d44a"), 0.55) : pl.pal.deep)
         : pl.pal.grad;
@@ -3193,37 +3744,167 @@ function vine(k, col) {
   });
 }
 
+/**
+ * Water plants, and they are NOT one plant.
+ *
+ * Six of the twelve shipped the same template — floating pads plus a small
+ * emergent shoot — whatever the species was, which erased duckweed's
+ * millimetre fronds, both Marsilea's four-leaflet clover, Pistia's fluted
+ * rosette, Neptunia's bipinnate leaf and Hydrilla's whorled stem. Each of those
+ * IS the identification, so each gets a body of its own; the rest keep the pads
+ * and the emergent shoot, which is right for them.
+ */
+const WATER_FORM = {
+  lemna: "frond",
+  wolffia: "frond",
+  spirodela: "frond",
+  marsilea: "clover",
+  pistia: "rosette",
+  neptunia: "pinnate",
+  hydrilla: "whorl",
+  egeria: "whorl",
+  elodea: "whorl",
+  ceratophyllum: "whorl",
+};
+
 function waterPlant(k, col) {
+  const form = WATER_FORM[genusOf(k)] ?? "pad";
   grow(k, col, {
-    salt: "water",
-    height: 0.35,
+    salt: `water:${form}`,
+    /* Duckweed is a raft of tiny fronds and reads flat; a whorled stem is a
+       column. One pool for all twelve is how they came to look alike. */
+    axSet: form === "frond" ? [1.3, 1.7, 2.1] : form === "whorl" ? [0.5, 0.75, 1.0] : [0.9, 1.25, 1.6],
+    azSet: form === "frond" ? [1.3, 1.7, 2.1] : form === "whorl" ? [0.5, 0.75, 1.0] : [0.9, 1.25, 1.6],
+    /* Not FLATTER than 1.3 to 1, and not shorter than 0.22. The face is scaled
+       back to isotropic about its seat using the smallest of the three body
+       scales, and on a model whose height is a tenth of its width that pick
+       leaves the face a razor in z — which the face gate reads, correctly, as
+       a face that vanishes edge-on. Duckweed is small, not two-dimensional. */
+    height: form === "frond" ? 0.16 : form === "whorl" ? 0.5 : 0.35,
     breathe: 0.028,
     sway: 0.05,
     bands: [0, 1, 2, 3, 4, 5],
     spine(p, pl) {
+      pl.form = form;
       p.spine("stem", (node) => {
-        p.add(node, xf(tubeGeo(0.012, 0.009, 0.86, 10)), { color: pl.pal.deep });
+        const { leaf, deep } = pl.pal;
+        if (form === "frond") {
+          /* Duckweed: a raft of tiny flat fronds with a single root under some
+             of them. No stem at all — the whole plant is two millimetres. */
+          /* The raft floats at the TOP of the part, with the roots hanging
+             the rest of the way down. That is not decoration: the axis is
+             renormalised to span exactly one unit, so a body only six
+             hundredths of a unit deep gets stretched sixteen-fold in y — and
+             the face, which is baked into this part, is stretched with it into
+             a tall sliver that the face gate reads as a razor. A duckweed with
+             its roots on is a body of ordinary proportions. */
+          const raft = [[], []];
+          const top = 0.5;
+          for (let i = 0; i < 11; i += 1) {
+            const a = i * 2.399 + pl.u("d0") * TAU;
+            const rr = 0.34 * Math.sqrt((i + 0.4) / 11);
+            raft[i % 2].push(xf(sphereGeo(10, 4), { sx: 0.11, sy: 0.035, sz: 0.085, at: [Math.cos(a) * rr, top + (i % 2) * 0.02, Math.sin(a) * rr], ry: a }));
+            if (i % 3 === 0) {
+              raft[1].push(xf(tubeGeo(0.007, 0.004, top - 0.02, 6), { rx: Math.PI, at: [Math.cos(a) * rr, top, Math.sin(a) * rr] }));
+            }
+          }
+          p.add(node, mergeGeo(raft[0]), { color: leaf, colorFn: pl.pal.grad });
+          p.add(node, mergeGeo(raft[1]), { color: deep });
+          addFace(p, node, { at: [0, top + 0.02, 0.07], r: 0.05, tri: p.budget * 8 });
+          return;
+        }
+        if (form === "rosette") {
+          /* Pistia: a funnel rosette of fluted wedge leaves sitting on the
+             water, with a beard of roots under it. */
+          const rose = [[], []];
+          for (let i = 0; i < 9; i += 1) {
+            const a = i * 2.399 + pl.u("r0") * TAU;
+            rose[i % 2].push(xf(bladeGeo({
+              len: 0.6 - (i % 3) * 0.06, wid: 0.34, thick: 0.03, shape: "spatulate", rows: 5, ring: 5, fold: 0.55, bend: 0.14,
+            }), { rx: -0.95 - (i % 3) * 0.12, ry: a, at: [Math.cos(a) * 0.035, 0.12, Math.sin(a) * 0.035] }));
+          }
+          p.add(node, mergeGeo(rose[0]), { color: leaf, colorFn: pl.pal.grad });
+          p.add(node, mergeGeo(rose[1]), { color: mix(leaf, deep, 0.5) });
+          const root = [];
+          for (let i = 0; i < 5; i += 1) {
+            const a = i * 1.257 + pl.u("t0") * TAU;
+            root.push(xf(tubeGeo(0.008, 0.004, 0.12, 6), { rx: Math.PI - 0.2, ry: a, at: [Math.cos(a) * 0.03, 0.12, Math.sin(a) * 0.03] }));
+          }
+          p.add(node, mergeGeo(root), { color: shade(deep, -0.2) });
+          addFace(p, node, { at: [0, 0.24, 0.09], r: 0.055, tri: p.budget * 8 });
+          return;
+        }
+        if (form === "whorl") {
+          /* Hydrilla: a slender stem in WHORLS of little strap leaves, five to
+             a node, all the way up. */
+          p.add(node, xf(tubeGeo(0.014, 0.009, 1, 9)), { color: deep, colorFn: grad(shade(leaf, 0.15), deep, 0, 1) });
+          const whorl = [[], []];
+          for (let i = 0; i < 7; i += 1) {
+            const y = 0.1 + i * 0.13;
+            for (let j = 0; j < 5; j += 1) {
+              const a = (j / 5) * TAU + i * 0.5 + pl.u("w0") * TAU;
+              whorl[j % 2].push(xf(bladeGeo({ len: 0.13, wid: 0.03, thick: 0.008, shape: "linear", rows: 3, ring: 4, bend: -0.02 }),
+                { rx: -0.5, ry: a, at: [Math.cos(a) * 0.012, y, Math.sin(a) * 0.012] }));
+            }
+          }
+          p.add(node, mergeGeo(whorl[0]), { color: leaf, colorFn: pl.pal.grad });
+          p.add(node, mergeGeo(whorl[1]), { color: deep });
+          addFace(p, node, { at: [0, 0.3, 0.016], r: 0.032, tri: p.budget * 8 });
+          return;
+        }
+        p.add(node, xf(tubeGeo(0.012, 0.009, 0.86, 10)), { color: deep });
         addFlower(p, node, { tri: p.budget, at: [0, 0.9, 0], kind: "star", r: 0.09, color: flowerOf(col) });
-        p.add(node, xf(sphereGeo(12, 5), { sx: 0.05, sy: 0.02, sz: 0.05, at: [0, 0.012, 0] }), { color: pl.pal.deep });
+        p.add(node, xf(sphereGeo(12, 5), { sx: 0.05, sy: 0.02, sz: 0.05, at: [0, 0.012, 0] }), { color: deep });
         addFace(p, node, { at: [0, 0.2, 0.013], r: 0.03 });
       });
     },
     slot(p, pl, s) {
       const { node, band, a } = s;
       const r = reachOf(pl, a, 0.95);
+      if (pl.form === "clover") {
+        /* Marsilea: FOUR leaflets on a long petiole. A water fern that looks
+           like a four-leaf clover is recognised by that and by nothing else. */
+        const L = r * 0.75;
+        p.add(node, xf(tubeGeo(0.008, 0.006, L, 7), { rz: -Math.cos(a) * 0.28, rx: Math.sin(a) * 0.28 }), { color: pl.pal.deep });
+        const tip = [Math.cos(a) * L * Math.sin(0.28), L * Math.cos(0.28), Math.sin(a) * L * Math.sin(0.28)];
+        const lobe = [];
+        for (let j = 0; j < 4; j += 1) {
+          lobe.push(xf(bladeGeo({ len: r * 0.34, wid: r * 0.3, thick: 0.008, shape: "obovate", rows: 3, ring: 4 }),
+            { rx: 1.42, ry: a + (j / 4) * TAU + 0.78, at: tip }));
+        }
+        p.add(node, mergeGeo(lobe), { color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });
+        return;
+      }
+      if (pl.form === "pinnate") {
+        // Neptunia: a bipinnate mimosa leaf on a floating stolon
+        addLeaf(p, node, {
+          tri: Math.max(96, p.budget), yaw: a, pitch: 0.15 + pl.u(`np${s.g}`) * 0.4,
+          len: r * 0.95, wid: r * 0.3, shape: "elliptic", form: "frond", leaflet: 9,
+          rows: 3, ring: 4, stalk: 0.3,
+          color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad, stalkColor: pl.pal.deep,
+        });
+        return;
+      }
+      if (pl.form === "frond" || pl.form === "rosette" || pl.form === "whorl") {
+        // the axis carries the whole plant; the slots are outliers of the raft
+        const rr = Math.min(r, pl.form === "whorl" ? 0.12 : 0.42);
+        p.add(node, xf(sphereGeo(10, 4), {
+          sx: pl.form === "whorl" ? 0.03 : 0.1, sy: pl.form === "whorl" ? 0.012 : 0.028, sz: pl.form === "whorl" ? 0.024 : 0.08,
+          at: [Math.cos(a) * rr * 0.7, 0, Math.sin(a) * rr * 0.7], ry: a,
+        }), { color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });
+        return;
+      }
       if (band <= 2) {
         addCap(p, node, { r: r * 0.55, h: r * 0.14, shape: "flat", tri: p.budget, at: [Math.cos(a) * r * 0.42, 0, Math.sin(a) * r * 0.42],
           color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad });
         p.add(node, xf(tubeGeo(0.007, 0.005, r * 0.45, 6), { rz: -1.5708, ry: a }), { color: pl.pal.deep });
         return;
       }
-      for (const sgn of [1]) {
-        addLeaf(p, node, { tri: p.budget,
-          yaw: a + (sgn > 0 ? 0 : Math.PI), pitch: 0.35 + pl.u(`wp${s.g}`) * 0.5,
-          len: r * 0.8, wid: r * 0.36, shape: "elliptic", rows: 5, ring: 4, stalk: 0.2,
-          color: pl.pal.leaf, colorFn: pl.pal.grad, stalkColor: pl.pal.deep,
-        });
-      }
+      addLeaf(p, node, { tri: p.budget,
+        yaw: a, pitch: 0.35 + pl.u(`wp${s.g}`) * 0.5,
+        len: r * 0.8, wid: r * 0.36, shape: "elliptic", rows: 5, ring: 4, stalk: 0.2,
+        color: pl.pal.leaf, colorFn: pl.pal.grad, stalkColor: pl.pal.deep,
+      });
     },
   });
 }
@@ -3241,27 +3922,60 @@ const ZONED_GENUS = new Set((
 const WOODY_GENUS = new Set("ganoderma fomitopsis phellinus fomes fuscoporia nigroporus".split(" "));
 /** Hard black stromata and cushions on wood — routed to coral, but not corals. */
 const STROMA_GENUS = new Set("annulohypoxylon daldinia hypoxylon nemania kretzschmaria biscogniauxia".split(" "));
+/**
+ * Brackets whose common name IS their colour. The artist's bracket is a grey
+ * woody half-disc with a white pore surface you can draw on; reishi is
+ * lacquered mahogany; turkey-tail is banded tan. All three were coming out of
+ * the hashed pool as something else entirely.
+ */
+const BRACKET_COLOR = {
+  "ganoderma applanatum": "#8d8073",
+  "ganoderma sessile": "#8a2f18",
+  "ganoderma lucidum": "#7d2410",
+  "ganoderma polychromum": "#6f3a22",
+  "trametes versicolor": "#a08258",
+  "stereum ostrea": "#b0743a",
+  "trametes lactinea": "#d8cfb4",
+  "trametes villosa": "#d2c9ae",
+  "schizophyllum commune": "#cfc4ac",
+};
+
 /** Stinkhorns — routed to puffball, but a stinkhorn is a stalk and a slimy cap. */
 const STINKHORN_GENUS = new Set("phallus mutinus clathrus lysurus simblum".split(" "));
 
 /**
- * ONE bracket, attached along ONE edge on ONE face of the log.
+ * ONE bracket: a half-disc that meets the wood along a chord and projects from
+ * that chord only.
  *
- * The first pass drew a shelf as a symmetric lens centred on a point out at
- * radius, which meant half of every shelf was inside the log and came out the
- * far side as a needle point — about twenty of the forty-four had a blade
- * skewered clean through the trunk. A real bracket has a chord where it meets
- * the wood and grows outward from there only, so that is what this is: a
- * closed outline running along the attachment chord at `r0` and back around
- * the rim at `r`, lofted into a thin domed shelf.
+ * Two passes got this wrong in two different ways. The first drew the shelf as
+ * a symmetric lens centred out at radius, so half of it lay inside the log and
+ * came out of the far side as a needle. The second fixed the needle by running
+ * the outline along the attachment arc at `r0` and back around a rim at a
+ * CONSTANT `r` — which is an annulus sector, and at the arcs it was drawn with
+ * that is a washer threaded onto the post. All forty-six read as a kebab.
+ *
+ * The shape that reads as a bracket is neither: the projection has to fall off
+ * towards the ends of the attachment, so the shelf is widest where it leaves
+ * the wood face and closes back onto the log at both edges. `taper` is that
+ * falloff; `lobe` ripples the rim for the species whose margin is wavy. The
+ * outline stays star-shaped about the seed point, so the top and bottom fans
+ * never fold back on themselves.
  */
-function shelfGeo({ r0, r, h, arc = Math.PI * 0.95, seg = 10, droop = 0.3 }) {
-  const rimY = -droop * (r - r0);
+function shelfGeo({ r0, r, h, arc = Math.PI * 0.66, seg = 12, droop = 0.3, lobe = 0, taper = 0.45 }) {
+  const proj = (t) => Math.sin(Math.PI * Math.min(1, Math.max(0, t))) ** taper;
+  /* A lip the ends never fall below. Letting the projection go to zero puts the
+     rim exactly on the attachment arc there, and float32 rounding in the file
+     collapses those triangles to zero area — nine models tripped the degenerate
+     gate on it. */
+  const reach = (t) => r0 + (r - r0) * (0.09 + 0.91 * proj(t)) * (1 + lobe * 0.15 * Math.cos(t * Math.PI * 5));
   const ring = (side) => {
     const pts = [];
     for (let j = 0; j <= seg; j += 1) {
-      const a = -arc / 2 + (arc * j) / seg;
-      pts.push([Math.sin(a) * r, rimY + side * h * 0.16, Math.cos(a) * r]);
+      const t = j / seg;
+      const a = -arc / 2 + arc * t;
+      const rr = reach(t);
+      const dy = -droop * (rr - r0);
+      pts.push([Math.sin(a) * rr, dy + side * h * (0.05 + 0.14 * proj(t)), Math.cos(a) * rr]);
     }
     for (let j = seg; j >= 0; j -= 1) {
       const a = -arc / 2 + (arc * j) / seg;
@@ -3269,11 +3983,12 @@ function shelfGeo({ r0, r, h, arc = Math.PI * 0.95, seg = 10, droop = 0.3 }) {
     }
     return { pts };
   };
-  const cz = (r0 + r) * 0.5;
+  const cz = r0 + (r - r0) * 0.42;
+  const midY = -droop * (r - r0) * 0.42;
   return clean(loft([
-    { pole: [0, -h * 0.45 + rimY * 0.3, cz] },
+    { pole: [0, midY - h * 0.5, cz] },
     ring(-1), ring(1),
-    { pole: [0, h * 0.6 + rimY * 0.3, cz] },
+    { pole: [0, midY + h * 0.6, cz] },
   ]));
 }
 
@@ -3286,6 +4001,24 @@ function shelfGeo({ r0, r, h, arc = Math.PI * 0.95, seg = 10, droop = 0.3 }) {
 function zoneFn(band, r0, r) {
   const span = Math.max(1e-6, r - r0);
   return (q) => band[Math.max(0, Math.floor(((Math.hypot(q[0], q[2]) - r0) / span) * band.length * 1.4)) % band.length];
+}
+
+/**
+ * An open CUP: a wall rising from a narrow foot to a wide rim, then back down
+ * the inside. `capGeo`'s funnel cannot do this — it forces its last ring to
+ * zero radius, so it closes to a point, and Auricularia nigricans shipped as a
+ * pointed witch's hat. An ear fungus is a concavity; the concavity is the
+ * identification.
+ */
+function cupGeo({ r, h, wall = 0.16, seg = 14, rows = 5 }) {
+  const prof = [];
+  const out = (t) => r * (0.24 + 0.76 * t ** 0.65);
+  for (let i = 0; i <= rows; i += 1) prof.push([out(i / rows), h * (i / rows)]);
+  for (let i = rows; i >= 0; i -= 1) {
+    const t = i / rows;
+    prof.push([Math.max(0.003, out(t) * (1 - wall)), h * t * 0.94 + h * 0.05]);
+  }
+  return clean(lathe(prof, seg));
 }
 
 /** A frilly ruffled lobe — snow fungus, and the rim of an ear. */
@@ -3310,60 +4043,97 @@ function mushroom(k, col, opt = {}) {
   if (kind === "bracket") {
     const zoned = ZONED_GENUS.has(g);
     const woody = WOODY_GENUS.has(g);
+    /* The few brackets whose colour IS the identification. Everything else
+       keeps its pooled tone; these four are named for what they look like and
+       were coming out of the pool red, purple and orange. */
+    const named = BRACKET_COLOR[sciOf(k)];
     /* Ganoderma applanatum is the artist's bracket: a woody GREY half-disc,
        and it was shipping as red needle blades. */
-    const shelfCol = woody ? mix(capCol, hex("#8a8a80"), 0.55) : capCol;
-    const shelfDark = woody ? mix(capDark, hex("#5a5a52"), 0.5) : capDark;
+    const shelfCol = named ? hex(named) : woody ? mix(capCol, hex("#8a8a80"), 0.62) : capCol;
+    const shelfDark = named ? shade(hex(named), -0.34) : woody ? mix(capDark, hex("#5a5a52"), 0.58) : capDark;
+    const pore = mix(paper, shelfCol, woody ? 0.28 : 0.14);
     grow(k, col, {
       salt: `fungi:bracket:${zoned ? "z" : woody ? "w" : "p"}`,
       /* Roughly round in plan. The general aspect pool runs to nineteen to one,
          and a shelf stretched nineteen to one is a knife blade — which is what
          the remaining "skewers" turned out to be once the geometry itself was
          attached properly. */
-      axSet: [0.7, 1.05, 1.4, 1.75],
-      azSet: [0.7, 1.05, 1.4, 1.75],
+      axSet: [0.55, 0.75, 0.95, 1.15],
+      azSet: [0.55, 0.75, 0.95, 1.15],
+      /* A woody bracket is a few big shelves; a turkey-tail is a crowd of thin
+         ones. Both used to draw whatever the part lottery handed them, which is
+         how Ganoderma ended up with a dozen little washers. */
+      pLevel: woody ? [8, 8, 16] : zoned ? [16, 16, 24] : [8, 16, 24],
       height: 0.4,
       breathe: 0.02,
       sway: 0.015,
       bands: [0, 1, 2, 3, 4, 5],
       spine(p, pl) {
-        pl.logR = 0.05;
+        /* A thicker snag. The post used to be a tenth as wide as the shelves
+           reached, so whatever the shelves did the model read as beads on a
+           skewer; wood you can believe a bracket is feeding on is most of the
+           difference. */
+        pl.logR = 0.072;
         pl.anchorColor = wood;
+        /* Every shelf on ONE face, give or take. That is the diagnostic the
+           gallery was missing: brackets are a shelf on the side of a log, and
+           spreading them evenly around the axis makes a bottle brush no matter
+           how good the individual shelf is. */
+        /* Off to one side, but the FRONT side. The face is drawn on +Z and the
+           gallery looks down that axis, so a hashed azimuth put half the pack's
+           shelves round the back and those tiles read as a bare log — six of
+           them did, and it was the geometry that was hiding, not missing. */
+        pl.faceA = (pl.u("face") < 0.5 ? -1 : 1) * (0.72 + pl.u("face2") * 0.55);
+        pl.spread = woody ? 1.0 : zoned ? 1.8 : 1.15;
         p.spine("log", (node) => {
-          p.add(node, xf(tubeGeo(0.055, 0.048, 1, 12)), { color: wood, colorFn: grad(shade(wood, 0.12), shade(wood, -0.25), 0, 1) });
-          p.add(node, xf(sphereGeo(12, 5), { sx: 0.05, sy: 0.02, sz: 0.05, at: [0, 1, 0] }), { color: shade(wood, -0.2) });
-          addFace(p, node, { at: [0, 0.42, 0.05], r: 0.042, tri: p.budget * 8 });
+          p.add(node, xf(tubeGeo(0.078, 0.068, 1, 13)), { color: wood, colorFn: grad(shade(wood, 0.12), shade(wood, -0.25), 0, 1) });
+          p.add(node, xf(sphereGeo(13, 5), { sx: 0.068, sy: 0.026, sz: 0.068, at: [0, 1, 0] }), { color: shade(wood, -0.22) });
+          addFace(p, node, { at: [0, 0.4, 0.072], r: 0.05, tri: p.budget * 8 });
         });
       },
       slot(p, pl, s) {
-        const { node, band, a } = s;
+        const { node, band } = s;
         if (band <= 1 && s.i % 3 === 2) {
           addTuft(p, node, { tri: p.budget, at: [0, 0, 0], r: 0.05, n: 3, color: APP.green, color2: APP.greenDeep, squash: 0.6 });
           return;
         }
-        const r0 = pl.logR * 0.92;
-        const r = r0 + 0.09 + pl.u(`sr${s.g}`) * (woody ? 0.1 : 0.14);
-        const h = (woody ? 0.05 : zoned ? 0.016 : 0.03) * (0.8 + pl.u(`sh${s.g}`) * 0.5);
-        const seg = p.budget >= 90 ? 12 : p.budget >= 50 ? 9 : 7;
-        const base = s.g % 2 ? shelfCol : shelfDark;
-        p.add(node, xf(shelfGeo({
-          /* Never past a half-circle. A shelf that wraps more than 180 degrees
-             stops being star-shaped about the point its top face fans from,
-             and the fan then folds back on itself as the needle spikes the
-             review saw coming out of the far side of the log. */
-          r0, r, h, seg, arc: Math.PI * (woody ? 0.7 : 0.62 + pl.u(`sa${s.g}`) * 0.32),
-          droop: woody ? 0.12 : 0.26 + pl.u(`sd${s.g}`) * 0.2,
-        }), { ry: a }),
-        {
-          color: base,
-          colorFn: zoned
-            ? zoneFn([mix(shelfCol, paper, 0.62), shelfCol, shelfDark, shade(shelfCol, 0.2)], r0, r)
+        /* Clustered on the chosen face, alternating a little either side of it
+           the way a real tier does, rather than the golden angle. */
+        const a = pl.faceA + (pl.u(`sf${s.g}`) - 0.5) * pl.spread + (s.g % 2 ? 0.16 : -0.16);
+        const r0 = pl.logR * 0.94;
+        /* Tiered: the shelves low on the log are the big ones. */
+        const tier = 1 - 0.3 * s.t;
+        const r = r0 + ((woody ? 0.24 : zoned ? 0.19 : 0.21) + pl.u(`sr${s.g}`) * (woody ? 0.11 : 0.1)) * tier;
+        const h = (woody ? 0.062 : zoned ? 0.014 : 0.03) * (0.8 + pl.u(`sh${s.g}`) * 0.5);
+        /* A shelf costs four triangles per outline point, and the fair-share
+           allowance grows by only 1.4 budgets per slot — so a fixed segment
+           count priced the thin-shelf genera out of their own shelves entirely
+           and turkey-tail, both Stereum and Coriolopsis shipped as a bare log
+           with the fallback leaf on it. Segment count follows the budget. */
+        const seg = Math.max(5, Math.min(13, Math.floor(p.budget / 8)));
+        const arc = Math.PI * (woody ? 0.62 + pl.u(`sa${s.g}`) * 0.1 : 0.5 + pl.u(`sa${s.g}`) * 0.22);
+        const shelf = {
+          r0, r, h, seg, arc,
+          /* Woody brackets are thick and nearly level; a thin fan hangs. */
+          droop: woody ? 0.1 : 0.24 + pl.u(`sd${s.g}`) * 0.18,
+          /* Turkey-tail and kin have a wavy margin; a polypore's is entire. */
+          lobe: zoned ? 1 : 0,
+          taper: woody ? 0.34 : 0.45,
+        };
+        p.add(node, xf(shelfGeo(shelf), { ry: a }), {
+          color: s.g % 2 ? shelfCol : shelfDark,
+          colorFn: named && !zoned ? grad(shade(shelfCol, 0.16), shelfDark, 0, 0.22) : zoned
+            /* Concentric zonation, and it has to be read across the PROJECTION
+               rather than across the whole radius, or the bands all fall in the
+               part of the shelf that is buried in the log. */
+            ? zoneFn([mix(shelfCol, paper, 0.66), shelfCol, shelfDark, shade(shelfCol, 0.22)], r0, r)
             : capGrad,
         });
-        // the pore surface, a shade paler, tucked just under the shelf
+        /* The pore surface, a shade paler, tucked just under the shelf and
+           drawn to the same outline so it cannot poke out past the margin. */
         if (p.budget >= 58) {
-          p.add(node, xf(shelfGeo({ r0, r: r * 0.94, h: h * 0.34, seg: Math.max(7, seg - 2), arc: Math.PI * 0.9, droop: 0.3 }),
-            { ry: a, at: [0, -h * 0.9, 0] }), { color: shade(paper, -0.1) });
+          p.add(node, xf(shelfGeo({ ...shelf, r: r0 + (r - r0) * 0.93, h: h * 0.3, seg: Math.max(8, seg - 2) }),
+            { ry: a, at: [0, -h * 0.85, 0] }), { color: pore });
         }
       },
     });
@@ -3410,6 +4180,11 @@ function mushroom(k, col, opt = {}) {
        horizontal starburst of thin spikes lying flat on the ground. */
     grow(k, col, {
       salt: "fungi:coral",
+      /* A coral's branches are SIX tubes per slot, and the fair-share allowance
+         grows by 1.4 budgets — so at thirty-two parts the whole candelabra was
+         rejected and the slot fell back to one leaf. Ramariopsis kunzei shipped
+         with two branches where a coral needs many. */
+      pLevel: [8, 10, 14],
       axSet: [0.35, 0.6, 0.85],
       azSet: [0.35, 0.6, 0.85],
       height: 0.4,
@@ -3574,6 +4349,12 @@ function mushroom(k, col, opt = {}) {
     const frilly = jelly && (g === "tremella" || g === "dacryopinax" || g === "phaeotremella");
     grow(k, col, {
       salt: `fungi:${kind}${ear ? ":ear" : frilly ? ":frill" : ""}`,
+      /* An ear is roughly round in plan. With no pool of its own this fell
+         through to the general one, which runs to 2.9, and Auricularia
+         polytricha came out as a cup rolled flat with its face sliding off the
+         rim. */
+      axSet: ear ? [0.75, 1.0, 1.25] : jelly ? [0.6, 0.95, 1.3, 1.65] : undefined,
+      azSet: ear ? [0.75, 1.0, 1.25] : jelly ? [0.6, 0.95, 1.3, 1.65] : undefined,
       height: jelly ? 0.26 : 0.3,
       breathe: 0.03,
       bands: [0, 1, 2, 3, 4, 5],
@@ -3582,10 +4363,10 @@ function mushroom(k, col, opt = {}) {
         p.spine("body", (node) => {
           if (ear) {
             // the ear/cup concavity is the whole of Auricularia
-            p.add(node, xf(capGeo(0.24, 0.62, 14, 6, "funnel"), { rx: -0.5, at: [0, 0.16, 0] }), { color: capCol, colorFn: capGrad });
-            p.add(node, xf(capGeo(0.19, 0.44, 13, 5, "funnel"), { rx: -0.5, at: [0, 0.24, 0.02] }), { color: shade(capCol, -0.22) });
-            p.add(node, xf(tubeGeo(0.03, 0.05, 0.2, 10)), { color: shade(capCol, -0.3) });
-            addFace(p, node, { at: [0, 0.5, 0.16], r: 0.062, tri: p.budget * 8 });
+            p.add(node, xf(cupGeo({ r: 0.3, h: 0.6, wall: 0.14, seg: 15 }), { rx: -0.42, at: [0, 0.14, 0] }), { color: capCol, colorFn: capGrad });
+            p.add(node, xf(cupGeo({ r: 0.2, h: 0.38, wall: 0.2, seg: 12 }), { rx: -0.42, at: [0, 0.2, 0.05] }), { color: shade(capCol, -0.24) });
+            p.add(node, xf(tubeGeo(0.03, 0.05, 0.18, 10)), { color: shade(capCol, -0.3) });
+            addFace(p, node, { at: [0, 0.34, 0.13], r: 0.058, tri: p.budget * 8 });
           } else if (frilly) {
             const lobe = [];
             for (let i = 0; i < 7; i += 1) {
@@ -3627,7 +4408,7 @@ function mushroom(k, col, opt = {}) {
         if (pl.ear) {
           const rr = reachOf(pl, a, 0.55);
           for (const sgn of [1, -1]) {
-            p.add(node, xf(capGeo(rr * 0.6, rr * 1.1, 11, 4, "funnel"), { rx: -0.6, ry: a + (sgn > 0 ? 0 : Math.PI), at: [Math.cos(a) * rr * 0.4 * sgn, 0, Math.sin(a) * rr * 0.4 * sgn] }),
+            p.add(node, xf(cupGeo({ r: rr * 0.62, h: rr * 1.0, wall: 0.18, seg: 11, rows: 4 }), { rx: -0.6, ry: a + (sgn > 0 ? 0 : Math.PI), at: [Math.cos(a) * rr * 0.4 * sgn, 0, Math.sin(a) * rr * 0.4 * sgn] }),
               { color: s.g % 2 ? capCol : capDark, colorFn: capGrad });
           }
           return;
@@ -3643,6 +4424,16 @@ function mushroom(k, col, opt = {}) {
   // classic gilled mushroom
   grow(k, col, {
     salt: "fungi:cap",
+    /*
+     * Roughly as wide as it is tall. With no pool of its own this fell through
+     * to the general one, which runs from 0.15 to 2.9 — and a toadstool at
+     * either end is not a toadstool. At the wide end the cap flattens into a
+     * disc broader than the whole model is high and the stalk disappears under
+     * it: eleven "pancakes", Mycena and Marasmius and Hygrocybe among them. At
+     * the narrow end it is a rocket, which is the other two.
+     */
+    axSet: [0.6, 0.85, 1.1, 1.35],
+    azSet: [0.6, 0.85, 1.1, 1.35],
     height: 0.32,
     breathe: 0.03,
     sway: 0.04,
@@ -3651,8 +4442,13 @@ function mushroom(k, col, opt = {}) {
       p.spine("stalk", (node) => {
         const shape = CAP_SHAPE[pl.H("cs") % CAP_SHAPE.length];
         const stalkH = 0.45 + pl.u("sh") * 0.3;
-        const sr = 0.026 + pl.u("sr") * 0.026;
-        const capR = 0.09 + pl.u("cr") * 0.09;
+        /* Slimmer. At 0.026-0.052 against a cap of 0.09-0.18 the stalk was a
+           tin can with a lid on it. */
+        const sr = 0.017 + pl.u("sr") * 0.019;
+        const capR = 0.085 + pl.u("cr") * 0.085;
+        pl.capR = capR;
+        pl.stalkH = stalkH;
+        pl.sr = sr;
         p.add(node, xf(tubeGeo(sr * 1.3, sr, stalkH, 12, sr * 0.15)), { color: stalkCol, colorFn: grad(shade(stalkCol, 0.1), shade(stalkCol, -0.18), 0, stalkH) });
         if (pl.u("ring") > 0.5) {
           p.add(node, xf(discGeo(sr * 2, sr * 0.32, 9), { at: [0, stalkH * 0.72, 0] }), { color: shade(stalkCol, -0.12) });
@@ -3665,26 +4461,49 @@ function mushroom(k, col, opt = {}) {
     },
     slot(p, pl, s) {
       const { node, band, a, top } = s;
+      /*
+       * Cap spots, and they have to be ON the cap. They were placed at a fixed
+       * radius of 0.07 whatever the cap's own radius was and whatever height
+       * the band put them at, so on six models the spots hung in the air beside
+       * the mushroom and read as a rendering failure. The band target is known
+       * before the part is placed, so the cap's radius at that height is too.
+       */
       if (band >= top - 1 && (opt.spots || pl.u("sp") > 0.55)) {
-        for (const sgn of [1]) {
-          p.add(node, xf(discGeo(0.024, 0.008, 7), { at: [Math.cos(a) * 0.07 * sgn, 0, Math.sin(a) * 0.07 * sgn] }), { color: paper });
+        const ty = (band + 0.35 + (0.55 * (s.i + 0.5)) / Math.max(1, s.n)) / 6;
+        const up = (ty - pl.stalkH) / Math.max(1e-6, 1 - pl.stalkH);
+        if (up > 0 && up < 1) {
+          const rr = pl.capR * Math.sqrt(Math.max(0, 1 - up * up)) * 0.82;
+          p.add(node, xf(discGeo(Math.min(0.026, rr * 0.4), 0.008, 7), { at: [Math.cos(a) * rr, 0, Math.sin(a) * rr] }), { color: paper });
+          return;
         }
-        return;
       }
       if (band <= 1) {
-        // a sibling button mushroom sprouting alongside
+        /*
+         * A sibling button sprouting alongside — and CLOSE alongside. At 1.6
+         * radii out its box cleared the axis, so the connectivity pedicel fired
+         * and every sibling ended up as a little cap on the end of a visible
+         * wire sticking out of the stalk. A troop of mushrooms crowds the
+         * parent; at 0.6 radii the button's own box straddles the axis and no
+         * wire is drawn at all.
+         */
         const r = 0.04 + pl.u(`br${s.g}`) * 0.04;
-        for (const sgn of [1]) {
-          p.add(node, xf(tubeGeo(r * 0.25, r * 0.2, r * 1.2, 7), { at: [Math.cos(a) * r * 1.6 * sgn, -r * 0.5, Math.sin(a) * r * 1.6 * sgn] }), { color: stalkCol });
-          /* A real little dome. Under 96 triangles addCap falls back to a thick
-             lens, and a lens on its side is a flat red wedge sticking out of
-             the stalk, not a button mushroom. */
-          addCap(p, node, { r: r * 0.7, h: r * 0.6, shape: "dome", tri: Math.max(110, p.budget), at: [Math.cos(a) * r * 1.6 * sgn, r * 0.7, Math.sin(a) * r * 1.6 * sgn], color: s.g % 2 ? capCol : capDark });
-        }
+        const off = r * 0.6;
+        p.add(node, xf(tubeGeo(r * 0.25, r * 0.2, r * 1.3, 9), { at: [Math.cos(a) * off, -r * 0.6, Math.sin(a) * off] }), { color: stalkCol });
+        /* A real little dome. Under 96 triangles addCap falls back to a thick
+           lens, and a lens on its side is a flat red wedge sticking out of
+           the stalk, not a button mushroom. */
+        addCap(p, node, { r: r * 0.7, h: r * 0.62, shape: "dome", tri: Math.max(110, p.budget), at: [Math.cos(a) * off, r * 0.7, Math.sin(a) * off], color: s.g % 2 ? capCol : capDark });
         return;
       }
-      for (const sgn of [1]) {
-        p.add(node, xf(bladeGeo({ len: 0.07, wid: 0.03, thick: 0.012, shape: "linear", rows: 4, ring: 4 }), { rx: -0.4, ry: a + (sgn > 0 ? 0 : Math.PI) }), { color: shade(stalkCol, -0.14) });
+      /* Veil scales pressed against the stalk. These slots used to be a single
+         horizontal strap sticking straight out of the stalk at every height,
+         which reads as whiskers on a toadstool. A scale lying along the stalk
+         reads as the scurf a real one carries. */
+      for (let j = 0; j < 2; j += 1) {
+        const aa = a + (j - 0.5) * 0.9;
+        p.add(node, xf(bladeGeo({ len: pl.sr * 1.5, wid: pl.sr * 0.7, thick: pl.sr * 0.24, shape: "lanceolate", rows: 4, ring: 4 }),
+          { rx: -2.7, ry: aa, at: [Math.cos(aa) * pl.sr * 0.8, pl.sr * 0.6, Math.sin(aa) * pl.sr * 0.8] }),
+        { color: shade(stalkCol, j % 2 ? -0.14 : -0.05) });
       }
     },
   });
