@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T06:11:33.707Z",
+ "generated_at": "2026-09-05T06:16:39.586Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -165,7 +165,7 @@
    "archetype": "mammal",
    "palette_source": "known",
    "file": "species/felis-catus.glb",
-   "bytes": 52736,
+   "bytes": 54900,
    "display_scale_m": 0.45
   },
   {
@@ -1050,7 +1050,7 @@
    "archetype": "spider",
    "palette_source": "known",
    "file": "species/nephila-pilipes.glb",
-   "bytes": 45752,
+   "bytes": 45760,
    "display_scale_m": 0.07
   },
   {
@@ -1500,7 +1500,7 @@
    "archetype": "mammal",
    "palette_source": "known",
    "file": "species/canis-familiaris.glb",
-   "bytes": 44856,
+   "bytes": 46976,
    "display_scale_m": 0.5
   },
   {
@@ -2970,7 +2970,7 @@
    "archetype": "spider",
    "palette_source": "derived",
    "file": "species/tylorida-ventralis.glb",
-   "bytes": 41596,
+   "bytes": 41604,
    "display_scale_m": 0.035
   },
   {
@@ -3150,7 +3150,7 @@
    "archetype": "spider-jumping",
    "palette_source": "known",
    "file": "species/plexippus-petersi.glb",
-   "bytes": 62016,
+   "bytes": 62024,
    "display_scale_m": 0.014
   },
   {
@@ -3990,7 +3990,7 @@
    "archetype": "spider",
    "palette_source": "known",
    "file": "species/leucauge-argentina.glb",
-   "bytes": 47732,
+   "bytes": 47744,
    "display_scale_m": 0.025
   },
   {
@@ -4125,7 +4125,7 @@
    "archetype": "spider-spiny",
    "palette_source": "known",
    "file": "species/gasteracantha-kuhli.glb",
-   "bytes": 70036,
+   "bytes": 70028,
    "display_scale_m": 0.015
   },
   {
@@ -5970,7 +5970,7 @@
    "archetype": "spider",
    "palette_source": "derived",
    "file": "species/cyrtophora-cicatrosa.glb",
-   "bytes": 60084,
+   "bytes": 60076,
    "display_scale_m": 0.035
   },
   {
@@ -8235,7 +8235,7 @@
    "archetype": "spider",
    "palette_source": "derived",
    "file": "species/oedignatha-scrobiculata.glb",
-   "bytes": 52860,
+   "bytes": 52864,
    "display_scale_m": 0.035
   },
   {
@@ -8340,7 +8340,7 @@
    "archetype": "hemiptera",
    "palette_source": "known",
    "file": "species/hemisphaerius-coccinelloides.glb",
-   "bytes": 51232,
+   "bytes": 59472,
    "display_scale_m": 0.01
   },
   {
@@ -8655,7 +8655,7 @@
    "archetype": "mammal",
    "palette_source": "known",
    "file": "species/ptenochirus-jagorii.glb",
-   "bytes": 43800,
+   "bytes": 55252,
    "display_scale_m": 0.15
   },
   {
@@ -9660,7 +9660,7 @@
    "archetype": "worm",
    "palette_source": "known",
    "file": "species/tubifex-tubifex.glb",
-   "bytes": 40088,
+   "bytes": 30240,
    "display_scale_m": 0.03
   },
   {
@@ -10800,7 +10800,7 @@
    "archetype": "spider-jumping",
    "palette_source": "derived",
    "file": "species/carrhotus-viduus.glb",
-   "bytes": 55556,
+   "bytes": 55564,
    "display_scale_m": 0.012
   },
   {
@@ -12525,7 +12525,7 @@
    "archetype": "hemiptera",
    "palette_source": "known",
    "file": "species/corythucha-juglandis.glb",
-   "bytes": 49788,
+   "bytes": 52536,
    "display_scale_m": 0.006
   },
   {
@@ -12705,7 +12705,7 @@
    "archetype": "hemiptera",
    "palette_source": "known",
    "file": "species/ceroplastes-sinensis.glb",
-   "bytes": 47424,
+   "bytes": 12336,
    "display_scale_m": 0.008
   },
   {
@@ -12735,7 +12735,7 @@
    "archetype": "spider",
    "palette_source": "derived",
    "file": "species/scytodes-pallida.glb",
-   "bytes": 57948,
+   "bytes": 57952,
    "display_scale_m": 0.035
   },
   {
@@ -13500,7 +13500,7 @@
    "archetype": "spider-jumping",
    "palette_source": "derived",
    "file": "species/harmochirus-brachiatus.glb",
-   "bytes": 66004,
+   "bytes": 66012,
    "display_scale_m": 0.012
   },
   {
@@ -13530,7 +13530,7 @@
    "archetype": "spider-jumping",
    "palette_source": "derived",
    "file": "species/telamonia-festiva.glb",
-   "bytes": 62464,
+   "bytes": 62456,
    "display_scale_m": 0.012
   },
   {
@@ -13575,7 +13575,7 @@
    "archetype": "spider",
    "palette_source": "derived",
    "file": "species/neoscona-theisi.glb",
-   "bytes": 39884,
+   "bytes": 39888,
    "display_scale_m": 0.035
   },
   {
@@ -13605,7 +13605,7 @@
    "archetype": "spider",
    "palette_source": "derived",
    "file": "species/pandercetes-plumipes.glb",
-   "bytes": 53608,
+   "bytes": 53600,
    "display_scale_m": 0.035
   },
   {
@@ -13725,7 +13725,7 @@
    "archetype": "spider",
    "palette_source": "derived",
    "file": "species/cyrtophora-cylindroides.glb",
-   "bytes": 62692,
+   "bytes": 62700,
    "display_scale_m": 0.035
   },
   {
@@ -13995,7 +13995,7 @@
    "archetype": "spider",
    "palette_source": "known",
    "file": "species/argiope-catenulata.glb",
-   "bytes": 60312,
+   "bytes": 60316,
    "display_scale_m": 0.03
   },
   {
@@ -14295,7 +14295,7 @@
    "archetype": "pillbug",
    "palette_source": "known",
    "file": "species/nagurus-nanus.glb",
-   "bytes": 37804,
+   "bytes": 37624,
    "display_scale_m": 0.008
   },
   {
@@ -14730,7 +14730,7 @@
    "archetype": "spider",
    "palette_source": "known",
    "file": "species/leucauge-tessellata.glb",
-   "bytes": 45404,
+   "bytes": 45408,
    "display_scale_m": 0.035
   },
   {
@@ -14745,7 +14745,7 @@
    "archetype": "spider-spiny",
    "palette_source": "known",
    "file": "species/gasteracantha-mediofusca.glb",
-   "bytes": 54748,
+   "bytes": 54756,
    "display_scale_m": 0.012
   },
   {
@@ -15465,7 +15465,7 @@
    "archetype": "spider-jumping",
    "palette_source": "derived",
    "file": "species/cytaea-dispalans.glb",
-   "bytes": 63548,
+   "bytes": 63552,
    "display_scale_m": 0.012
   },
   {
@@ -15990,7 +15990,7 @@
    "archetype": "scorpion",
    "palette_source": "known",
    "file": "species/chaerilus-celebensis.glb",
-   "bytes": 55780,
+   "bytes": 55808,
    "display_scale_m": 0.05
   },
   {
@@ -16155,7 +16155,7 @@
    "archetype": "spider",
    "palette_source": "derived",
    "file": "species/bijoaraneus-mitificus.glb",
-   "bytes": 42360,
+   "bytes": 42364,
    "display_scale_m": 0.035
   },
   {

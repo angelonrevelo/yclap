@@ -806,18 +806,29 @@ function bird(k, col, opt = {}) {
 function mammal(k, col, opt = {}) {
   const v = vary(k);
   const dark = darkOf(col);
-  const bx = 0.27 * v.f("bx", 0.86, 1.14);
-  const by = 0.22 * v.f("by", 0.86, 1.16);
-  const bz = 0.36 * v.f("bz", 0.86, 1.16);
-  const legH = v.f("legh", 0.11, 0.19);
+  /* A fruit bat is a mammal with a WING, and it was reaching the tail switch
+     as "rod" — a brown stick out of one flank, and no wings at all. */
+  const bat = opt.tail === "bat-wing" || /^(ptenochirus|cynopterus|rousettus|pteropus|macroglossus|eonycteris|haplonycteris|pipistrellus|scotophilus|hipposideros|rhinolophus|taphozous)-/.test(who(k));
+  const bx = 0.27 * v.f("bx", 0.9, 1.2) * (bat ? 0.72 : 1);
+  const by = 0.22 * v.f("by", 0.9, 1.2) * (bat ? 0.86 : 1);
+  const bz = 0.36 * v.f("bz", 0.9, 1.2) * (bat ? 0.8 : 1);
+  const legH = bat ? v.f("legh", 0.06, 0.09) : v.f("legh", 0.11, 0.19);
   const body = ball(k, k.root, "body", { rx: bx, ry: by, rz: bz, at: [0, legH + by * 0.86, 0], color: col.base });
   ball(k, body, "belly", { rx: bx * 0.72, ry: by * 0.66, rz: bz * 0.74, at: [0, -by * 0.4, bz * 0.3], color: bellyOf(col) });
   if (v.on("ruff", 0.4)) ball(k, body, "ruff", { rx: bx * 0.9, ry: by * 0.9, rz: bz * 0.3, at: [0, by * 0.1, bz * 0.6], color: shade(col.base, 0.16) });
 
-  const headR = v.f("headr", 0.23, 0.3);
-  const head = ball(k, body, "head", { r: headR, at: [0, by * 0.9, bz * 0.6], color: col.base });
+  /* The head was 0.23-0.30 in radius against a body half-width of 0.27 — as
+     big as the whole animal, and parked in front of it, so the cat and the dog
+     framed as busts with the body hidden directly behind the skull. It is a
+     head on a body now, set back and up rather than out in front. */
+  const headR = v.f("headr", 0.15, 0.2) * (bat ? 1.1 : 1);
+  const neck = ball(k, body, "neck", {
+    rx: headR * 0.68, ry: headR * 0.7, rz: headR * 0.7,
+    at: [0, by * 0.72, bz * 0.5], color: shade(col.base, 0.06),
+  });
+  const head = ball(k, neck, "head", { r: headR, at: [0, headR * 0.62, headR * 0.5], color: col.base });
 
-  const ears = opt.ears ?? v.pick("ears", ["point", "big", "floppy", "round"]);
+  const ears = opt.ears ?? (bat ? "point" : v.pick("ears", ["point", "big", "floppy", "round"]));
   if (ears === "floppy") {
     for (const s of [1, -1]) {
       blade(k, head, `ear${s > 0 ? "l" : "r"}`, {
@@ -857,14 +868,44 @@ function mammal(k, col, opt = {}) {
     }
   }
 
-  const tail = opt.tail ?? v.pick("tail", ["bush", "rod", "curl", "bush"]);
+  const tail = bat ? "bat-wing" : (opt.tail ?? v.pick("tail", ["bush", "rod", "curl", "bush"]));
   if (tail === "bat-wing") {
-    for (const s of [1, -1]) {
-      blade(k, body, `wing${s > 0 ? "l" : "r"}`, {
-        outline: bladeOutline(0.34, 0.22, { n: 12, taper: 0.22, notch: 0.25 }), thick: 0.03,
-        at: [s * bx * 0.5, by * 0.2, -bz * 0.06], rot: [0, 0, s * 0.45], off: [s * 0.3, 0, 0], color: dark,
+    /* The wing: a membrane stretched between the arm and the flank, with the
+       finger struts drawn across it. Held part-folded, which is how a roosting
+       fruit bat sits and what keeps the model inside its tile. */
+    const wingLen = v.f("wingl", 0.34, 0.46);
+    const wingChord = wingLen * v.f("wingc", 0.62, 0.82);
+    const membrane = shade(col.base, -0.3);
+    {
+      const w = bladeWings(k, body, {
+        at: [0, by * 0.42, bz * 0.06], gap: bx * 0.62,
+        outline: bladeOutline(wingLen, wingChord, { n: 13, taper: 0.34, notch: 0.22, sweep: -0.18 }),
+        thick: 0.022, reach: wingLen * 0.06,
+        tilt: v.f("wtl", -0.16, 0.1), yaw: v.f("wyaw", 0.3, 0.52), roll: v.f("wrl", 0.12, 0.36),
+        color: membrane, flap: v.f("wf", 0.12, 0.24), dur: v.f("wd", 1.2, 1.8), name: "wing",
       });
+      // finger struts drawn across the membrane
+      for (const [wi, node] of w.entries()) {
+        const sd = wi === 0 ? 1 : -1;
+        for (let f = 0; f < 4; f += 1) {
+          const t = f / 3;
+          spindle(k, node, `finger${f}-${sd > 0 ? "l" : "r"}`, {
+            merge: true, r: 0.011, len: wingLen * (0.9 - t * 0.2),
+            at: [0, 0.013, wingChord * (0.3 - t * 0.45)],
+            rot: [0, 0, sd * -Math.PI / 2 + sd * (0.12 - t * 0.5)],
+            color: shade(col.base, -0.12), seg: 5,
+          });
+        }
+        ball(k, node, `thumb-${sd > 0 ? "l" : "r"}`, { merge: true,
+          r: 0.02, at: [sd * wingLen * 0.26, 0.015, wingChord * 0.4], color: shade(col.base, -0.08), subdiv: 0,
+        });
+      }
     }
+    // a short tail membrane between the hind legs
+    blade(k, body, "uropatagium", {
+      outline: bladeOutline(bx * 0.9, bz * 0.5, { n: 10, taper: -0.3 }), thick: 0.018,
+      at: [0, -by * 0.35, -bz * 0.62], rot: [0.5, 0, 0], off: [0, 0, -bz * 0.36], color: membrane,
+    });
   } else if (tail === "rod") {
     const t = k.cute.node("tail", { parent: body, at: [0, by * 0.5, -bz * 0.8], rot: null });
     k.cute.add(t, spindleGeo(0.03, v.f("taill", 0.26, 0.42), { seg: 10, bulge: 0.35 }), { rotX: 1.9 });
@@ -2068,9 +2109,17 @@ function hemiptera(k, col, opt = {}) {
   col = toned(k, col);
   const dark = darkOf(col);
   const cicada = opt.kind === "cicada";
-  const bx = cicada ? v.f("bx", 0.09, 0.13) : v.f("bx", 0.1, 0.19);
-  const by = cicada ? v.f("by", 0.08, 0.12) : v.f("by", 0.05, 0.1);
-  const bz = cicada ? v.f("bz", 0.17, 0.24) : v.f("bz", 0.15, 0.26);
+  /* Three hemipterans that are not shaped like a shield bug at all. Scale
+     insects are sessile waxy blobs with neither wings nor legs; lace bugs are
+     flat, with a lacy hood and wings far wider than the body; and one of the
+     planthoppers is a dome that mimics a ladybird. */
+  const scale = /^(ceroplastes|icerya|coccus|saissetia|pulvinaria|aspidiotus|planococcus|maconellicoccus|paracoccus)-/.test(who(k));
+  const lace = /^(corythucha|stephanitis|leptodictya|gargaphia)-/.test(who(k));
+  const domed = /^(hemisphaerius|hysteropterum|issus)-/.test(who(k));
+  if (scale) { hemipteraScale(k, col, v); return; }
+  const bx = cicada ? v.f("bx", 0.09, 0.13) : v.f("bx", 0.1, 0.19) * (lace ? 0.8 : domed ? 1.1 : 1);
+  const by = cicada ? v.f("by", 0.08, 0.12) : v.f("by", 0.05, 0.1) * (lace ? 0.55 : domed ? 1.6 : 1);
+  const bz = cicada ? v.f("bz", 0.17, 0.24) : v.f("bz", 0.15, 0.26) * (domed ? 0.8 : 1);
   const bodyY = by * 1.2;
   const body = ball(k, k.root, "body", {
     rx: bx, ry: by, rz: bz, at: [0, bodyY, -bz * 0.1],
@@ -2126,11 +2175,32 @@ function hemiptera(k, col, opt = {}) {
      (rotX of a half turn) and every shield bug in the pack read as a rabbit.
      A cicada is the one exception here: it roofs its long clear wings over the
      body, so it gets a real tent angle and a wing longer than its abdomen. */
-  const wingCol = cicada ? shade(col.base, 0.42) : shade(col.base, v.f("wsh", -0.26, 0.1));
-  const wingLen = cicada ? bz * v.f("cwl", 1.15, 1.5) : bz * v.f("wl", 0.62, 0.82);
-  const wingW = cicada ? bx * v.f("cww", 0.5, 0.68) : bx * v.f("ww", 0.66, 0.84);
-  const wingTilt = cicada ? v.f("wingp", 0.1, 0.24) : v.f("wingp", 0.02, 0.12);
-  const wingRoll = cicada ? v.f("wingr", 0.5, 0.9) : v.f("wingr", 0.04, 0.2);
+  const wingCol = cicada ? shade(col.base, 0.42) : lace ? mix(col.base, hex("#efeee8"), 0.66) : shade(col.base, v.f("wsh", -0.26, 0.1));
+  const wingLen = cicada ? bz * v.f("cwl", 1.15, 1.5) : bz * (lace ? v.f("wl", 0.9, 1.05) : v.f("wl", 0.62, 0.82));
+  const wingW = cicada ? bx * v.f("cww", 0.5, 0.68) : bx * (lace ? v.f("ww", 1.4, 1.75) : v.f("ww", 0.66, 0.84));
+  const wingTilt = cicada ? v.f("wingp", 0.1, 0.24) : lace ? 0.01 : v.f("wingp", 0.02, 0.12);
+  const wingRoll = cicada ? v.f("wingr", 0.5, 0.9) : lace ? 0.02 : v.f("wingr", 0.04, 0.2);
+  if (lace) {
+    /* The hood: the inflated lacy bubble a lace bug carries over its head. */
+    ball(k, body, "hood", {
+      rx: bx * 0.62, ry: by * 1.5, rz: bz * 0.34,
+      at: [0, by * 0.9, bz * 0.5], color: mix(col.base, hex("#efeee8"), 0.55),
+    });
+  }
+  if (domed) {
+    // the beetle-mimic dome, with a ladybird's spots on it
+    ball(k, body, "dome", {
+      rx: bx * 0.98, ry: by * 1.15, rz: bz * 0.92,
+      at: [0, by * 0.3, -bz * 0.05], color: col.base, colorFn: col.shellGrad,
+    });
+    for (let i = 0; i < 5; i += 1) {
+      const a = (i / 5) * Math.PI * 2 + 0.4;
+      ball(k, body, `spot${i}`, { merge: true,
+        r: bx * v.f("spotr", 0.17, 0.24),
+        at: [Math.cos(a) * bx * 0.5, by * 1.2, Math.sin(a) * bz * 0.45], color: ink, subdiv: 0,
+      });
+    }
+  }
   for (const s of [1, -1]) {
     const out = bladeOutline(wingW, wingLen, { n: 12, taper: v.f("wt", 0.1, 0.34), notch: v.f("wn", -0.15, 0.2) });
     const w = blade(k, body, `wing-${s > 0 ? "l" : "r"}`, {
@@ -2165,6 +2235,40 @@ function hemiptera(k, col, opt = {}) {
     color: cicada ? (col.accent ?? shade(col.base, 0.3)) : ink, pupil: cicada ? ink : paper, pupilR: 0.36, spark: cicada,
   });
   k.idle({ breatheK: v.f("br", 0.035, 0.06), bobAmp: v.f("bob", 0.008, 0.022) });
+}
+
+/**
+ * A scale insect: an adult female is a sessile waxy blob glued to a twig, with
+ * no wings, no visible legs and no head to speak of. Drawing Ceroplastes as a
+ * winged bug with six legs was not a stylisation, it was the wrong animal.
+ */
+function hemipteraScale(k, col, v) {
+  const r = v.f("r", 0.16, 0.24);
+  const h = r * v.f("h", 0.7, 1.0);
+  const wax = mix(col.base, hex("#f2ead8"), v.f("wax", 0.35, 0.6));
+  const body = ball(k, k.root, "test", {
+    rx: r, ry: h, rz: r * v.f("z", 0.85, 1.15), at: [0, h * 0.86, 0], color: wax,
+  });
+  /* The wax plates: a scale's shell is laid down in a ring of lobes with a
+     raised nucleus in the middle, and counting them is the species knob. */
+  const plateN = v.i("platen", 5, 8);
+  for (let i = 0; i < plateN; i += 1) {
+    const a = (i / plateN) * Math.PI * 2 + v.f("pa", 0, 1.2);
+    ball(k, body, `plate${i}`, {
+      rx: r * v.f("pw", 0.3, 0.44), ry: h * v.f("ph", 0.5, 0.75), rz: r * v.f("pz", 0.3, 0.44),
+      at: [Math.cos(a) * r * 0.72, -h * 0.16, Math.sin(a) * r * 0.72],
+      color: shade(wax, i % 2 ? -0.14 : 0.1),
+    });
+  }
+  ball(k, body, "nucleus", {
+    rx: r * v.f("nw", 0.3, 0.46), ry: h * v.f("nh", 0.45, 0.7), rz: r * v.f("nw", 0.3, 0.46),
+    at: [0, h * 0.6, 0], color: col.accent ?? shade(col.base, -0.2),
+  });
+  // the sunken base where it sits on the bark
+  ball(k, k.root, "foot", {
+    rx: r * 1.08, ry: h * 0.16, rz: r * 1.08, at: [0, h * 0.14, 0], color: shade(wax, -0.26),
+  });
+  k.idle({ breatheK: v.f("br", 0.03, 0.05), bobAmp: 0 });
 }
 
 /* ── flies, mosquitoes, crane flies ───────────────────────────────────────── */
@@ -2631,9 +2735,15 @@ function spider(k, col, opt = {}) {
     spiny: [1.85, 0.5, 0.85],
   }[abdForm];
   const pedicel = ball(k, ceph, "pedicel", { r: cx * 0.36, at: [0, cx * 0.06, -cz * 0.75], color: shade(dark, -0.1), subdiv: 0 });
+  /* The abdomen hangs off a pedicel a third the width of the cephalothorax.
+     `lift` up to half the abdomen's own radius could carry it clear of that
+     joint with a visible gap — and the part-level connectivity check still
+     passed, because the two boxes still overlapped at a corner. Clamped to
+     what the pedicel can actually bridge. */
+  const abdLift = clamp(ar * (B.lift + v.f("abdlift", -0.08, 0.16)), -cx * 0.3, cx * 0.32 + ar * shape[1] * 0.28);
   const abd = ball(k, pedicel, "abdomen", {
     rx: ar * shape[0], ry: ar * shape[1], rz: ar * shape[2],
-    at: [0, ar * (B.lift + v.f("abdlift", -0.08, 0.16)), -ar * shape[2] * 0.7],
+    at: [0, abdLift, -ar * shape[2] * 0.58],
     rot: [v.f("abdpitch", -0.45, 0.35), 0, 0],
     color: col.base, colorFn: col.shellGrad,
   });
@@ -2756,13 +2866,16 @@ function scorpion(k, col, opt = {}) {
   let at = [0, by * 0.6, -bz * 0.75];
   for (let i = 0; i < tailN; i += 1) {
     const r = by * (1.05 - i * (0.5 / tailN));
-    const n = k.cute.node(`tail${i}`, { parent: p, at, rot: [i === 0 ? -1.1 - arch * 0.2 : -arch, 0, 0] });
+    /* The metasoma arches UP and forward over the back. Every joint was
+       turning the same way as the first, which curled it flat along the
+       ground behind the animal and left the sting pointing at nothing. */
+    const n = k.cute.node(`tail${i}`, { parent: p, at, rot: [i === 0 ? -1.15 - arch * 0.15 : arch, 0, 0] });
     k.cute.add(n, ballGeo(r, tailLen * 0.62, r, 1), { at: [0, tailLen * 0.5, 0], color: shade(col.base, -i * 0.05) });
     p = n;
     at = [0, tailLen * 0.86, 0];
   }
   const bulb = ball(k, p, "sting-bulb", { rx: by * 0.8, ry: by * 0.95, rz: by * 0.8, at: [0, tailLen * 0.8, 0], color: shade(col.base, 0.12) });
-  cone(k, bulb, "sting", { r: by * 0.32, h: v.f("stingl", 0.05, 0.1), at: [0, 0, -by * 0.2], rotX: -1.9, color: col.accent ?? APP.red });
+  cone(k, bulb, "sting", { r: by * 0.34, h: v.f("stingl", 0.07, 0.13), at: [0, by * 0.3, 0], rotX: 1.7, color: col.accent ?? APP.red });
 
   // pedipalps
   const armLen = v.f("arml", 0.09, 0.17);
@@ -2779,9 +2892,17 @@ function scorpion(k, col, opt = {}) {
       rx: v.f("clawx", 0.03, 0.055), ry: v.f("clawy", 0.02, 0.032), rz: v.f("clawz", 0.04, 0.08),
       at: [0, armLen * 0.42, 0], rot: [1.4, 0, 0], color: shade(col.base, -0.1),
     });
+    /* A pincer is two fingers with DAYLIGHT between them. Two short cones a
+       centimetre apart inside the hand read as one lump, which is why the
+       scorpion had no claws to speak of. The fixed finger is longer than the
+       movable one, and both are half again the length of the hand. */
+    const clawZ = v.f("clawz", 0.04, 0.08);
+    const clawX = v.f("clawx", 0.03, 0.055);
     for (const t of [1, -1]) {
       cone(k, claw, `pincer${t > 0 ? "a" : "b"}-${s > 0 ? "l" : "r"}`, {
-        r: 0.012, h: v.f("pincerl", 0.035, 0.07), at: [t * 0.016, 0, v.f("clawz", 0.04, 0.08) * 0.5], rotX: Math.PI / 2, rotZ: t * -0.25, color: shade(col.base, -0.2), seg: 8,
+        r: 0.013, h: clawZ * (t > 0 ? 2.0 : 1.5),
+        at: [t * clawX * 0.55, 0, clawZ * 0.62],
+        rotX: Math.PI / 2, rotZ: t * -0.34, color: shade(col.base, -0.24), seg: 8,
       });
     }
   }
@@ -3086,9 +3207,12 @@ function crab(k, col, opt = {}) {
 function pillbug(k, col, opt = {}) {
   const v = vary(k);
   const dark = darkOf(col);
-  const n = v.i("segn", 4, 7);
-  const r0 = v.f("r", 0.075, 0.11);
-  const segLen = v.f("segl", 0.075, 0.115);
+  /* A woodlouse is about twice as long as it is wide. Seven segments at 0.1
+     each against a body 0.2 across drew a caterpillar — which is exactly what
+     the review saw the pillbug as. */
+  const n = v.i("segn", 5, 7);
+  const r0 = v.f("r", 0.095, 0.135);
+  const segLen = r0 * v.f("segl", 0.42, 0.58);
   const arch = v.f("arch", 0.05, 0.2);
   const seg = [];
   let p = k.root;
@@ -3097,7 +3221,7 @@ function pillbug(k, col, opt = {}) {
     const t = i / (n - 1);
     const r = r0 * (1 - Math.abs(t - 0.25) * v.f("taper", 0.3, 0.6));
     const node = ball(k, p, `seg${i}`, {
-      rx: r, ry: r * v.f("flat", 0.6, 0.9), rz: segLen * 0.6,
+      rx: r, ry: r * v.f("flat", 0.5, 0.72), rz: segLen * 0.72,
       at, rot: i === 0 ? null : [arch, 0, 0], color: shade(col.base, i % 2 ? 0.08 : -0.04),
     });
     seg.push(node);
@@ -3148,8 +3272,19 @@ function worm(k, col, opt = {}) {
   }
   const headR = r0 * v.f("hr", 0.85, 1.2);
   const head = ball(k, k.root, "head", { rx: headR, ry: headR * 0.9, rz: headR * v.f("hz", 1.0, 1.5), at: [0, r0 * 1.15, step * 0.5 + step * 0.5], color: shade(col.base, 0.14) });
-  beadEyes(k, head, { r: headR * v.f("eyer", 0.3, 0.46), at: [0, headR * 0.2, headR * 0.5], gap: headR * 0.5, color: paper, pupil: ink, spark: true });
-  k.arc(head, { name: "smile", R: headR * 0.4, r: headR * 0.12, a0: Math.PI * 1.2, a1: Math.PI * 1.8, at: [0, -headR * 0.1, headR * 0.85], color: ink, segs: 6 });
+  /* Oligochaetes have no eyes at all. Giving a sludge worm two and a smile is
+     a factual error the review caught on Tubifex specifically. */
+  const blind = /^(tubifex|eisenia|lumbricus|pheretima|amynthas|perionyx|polypheretima|metaphire|dichogaster|pontoscolex)-/.test(who(k));
+  if (blind) {
+    // the prostomium: the fleshy lobe over the mouth, which is all it has
+    ball(k, head, "prostomium", {
+      rx: headR * 0.6, ry: headR * 0.5, rz: headR * 0.5,
+      at: [0, headR * 0.1, headR * 0.9], color: shade(col.base, 0.26),
+    });
+  } else {
+    beadEyes(k, head, { r: headR * v.f("eyer", 0.3, 0.46), at: [0, headR * 0.2, headR * 0.5], gap: headR * 0.5, color: paper, pupil: ink, spark: true });
+    k.arc(head, { name: "smile", R: headR * 0.4, r: headR * 0.12, a0: Math.PI * 1.2, a1: Math.PI * 1.8, at: [0, -headR * 0.1, headR * 0.85], color: ink, segs: 6 });
+  }
   k.idle({ breatheK: v.f("br", 0.03, 0.05), bobAmp: 0 });
 }
 
