@@ -1052,6 +1052,96 @@ function grow(k, col, style) {
   return p;
 }
 
+/* ══ the flower a species is actually known for ════════════════════════════
+ *
+ * About thirty-five species whose COMMON NAME is the flower were rendering as
+ * plain green: sunflower, poinsettia, both hibiscus, four ixora, three
+ * gardenia, African tulip, flamboyant, golden shower, and so on. The
+ * archetypes could all draw a flower already — nothing told them to. This is
+ * that instruction, keyed on the name, with the real colour rather than a
+ * hashed pick from the pool, and read by shrub, tree, herb and vine alike so
+ * one table fixes the lot.
+ *
+ * `kind` is an addFlower form; `r` is the head radius in axis units.
+ */
+const BLOOM = {
+  // shrubs
+  "hibiscus rosa-sinensis": { kind: "trumpet", color: "#ff3920", r: 0.085 },
+  hibiscus: { kind: "trumpet", color: "#ff3920", r: 0.08 },
+  ixora: { kind: "ball", color: "#ff3920", r: 0.055 },
+  gardenia: { kind: "daisy", color: "#f8f4ec", r: 0.06 },
+  calliandra: { kind: "brush", color: "#e8496a", r: 0.06 },
+  mussaenda: { kind: "star", color: "#f8f4ec", r: 0.07 },
+  hamelia: { kind: "trumpet", color: "#ff6a20", r: 0.05 },
+  caesalpinia: { kind: "brush", color: "#ff6a20", r: 0.065 },
+  lantana: { kind: "ball", color: "#f6b22d", r: 0.05 },
+  duranta: { kind: "spike", color: "#6a7fd8", r: 0.05 },
+  tabernaemontana: { kind: "daisy", color: "#f8f4ec", r: 0.055 },
+  nerium: { kind: "star", color: "#e84a8a", r: 0.055 },
+  allamanda: { kind: "trumpet", color: "#f6d028", r: 0.075 },
+  brunfelsia: { kind: "star", color: "#9a5ad8", r: 0.055 },
+  clerodendrum: { kind: "ball", color: "#e84a8a", r: 0.06 },
+  rosa: { kind: "daisy", color: "#e84a8a", r: 0.06 },
+  bougainvillea: { kind: "star", color: "#e84a8a", r: 0.05 },
+  jasminum: { kind: "star", color: "#f8f4ec", r: 0.045 },
+  plumbago: { kind: "star", color: "#6a7fd8", r: 0.045 },
+  turnera: { kind: "daisy", color: "#f6d028", r: 0.05 },
+  // the poinsettia is a BRACT, and only pulcherrima has it
+  "euphorbia pulcherrima": { kind: "star", color: "#ff3920", r: 0.085 },
+  "euphorbia milii": { kind: "star", color: "#ff3920", r: 0.04 },
+
+  // trees
+  spathodea: { kind: "trumpet", color: "#ff3920", r: 0.075 },
+  delonix: { kind: "star", color: "#ff3920", r: 0.06 },
+  cassia: { kind: "catkin", color: "#f6d028", r: 0.075 },
+  senna: { kind: "spike", color: "#f6d028", r: 0.055 },
+  peltophorum: { kind: "spike", color: "#f6d028", r: 0.06 },
+  tabebuia: { kind: "trumpet", color: "#e8a0c8", r: 0.07 },
+  handroanthus: { kind: "trumpet", color: "#f6d028", r: 0.07 },
+  plumeria: { kind: "star", color: "#f8f4ec", r: 0.06 },
+  lagerstroemia: { kind: "brush", color: "#c84ab5", r: 0.06 },
+  millingtonia: { kind: "trumpet", color: "#f8f4ec", r: 0.055 },
+  bauhinia: { kind: "star", color: "#e84a8a", r: 0.065 },
+  cananga: { kind: "star", color: "#d8d84a", r: 0.055 },
+  barringtonia: { kind: "brush", color: "#f8f4ec", r: 0.06 },
+  erythrina: { kind: "brush", color: "#ff3920", r: 0.06 },
+  callistemon: { kind: "brush", color: "#ff3920", r: 0.06 },
+  jacaranda: { kind: "trumpet", color: "#9a5ad8", r: 0.06 },
+  pterocarpus: { kind: "spike", color: "#f6d028", r: 0.05 },
+  saraca: { kind: "ball", color: "#ff8c5a", r: 0.055 },
+  michelia: { kind: "daisy", color: "#ffef8a", r: 0.05 },
+  magnolia: { kind: "daisy", color: "#f8f4ec", r: 0.07 },
+
+  // herbs
+  helianthus: { kind: "daisy", color: "#f6c22d", r: 0.12 },
+  catharanthus: { kind: "star", color: "#e84a8a", r: 0.06 },
+  impatiens: { kind: "star", color: "#e84a8a", r: 0.055 },
+  cosmos: { kind: "daisy", color: "#e84a8a", r: 0.09 },
+  chrysanthemum: { kind: "daisy", color: "#f6d028", r: 0.08 },
+  tagetes: { kind: "daisy", color: "#f6b22d", r: 0.075 },
+  zinnia: { kind: "daisy", color: "#ff3920", r: 0.08 },
+  celosia: { kind: "spike", color: "#ff3920", r: 0.06 },
+  gomphrena: { kind: "ball", color: "#c84ab5", r: 0.045 },
+  portulaca: { kind: "daisy", color: "#e84a8a", r: 0.05 },
+  torenia: { kind: "trumpet", color: "#6a7fd8", r: 0.045 },
+  ruellia: { kind: "trumpet", color: "#9a5ad8", r: 0.07 },
+  crossandra: { kind: "trumpet", color: "#ff8c5a", r: 0.055 },
+  pentas: { kind: "ball", color: "#e84a8a", r: 0.05 },
+  angelonia: { kind: "spike", color: "#9a5ad8", r: 0.05 },
+  vinca: { kind: "star", color: "#e84a8a", r: 0.055 },
+};
+
+/**
+ * The bloom this species is grown for, or null. Species-level entries win over
+ * the genus, because Euphorbia pulcherrima is a poinsettia and Euphorbia
+ * lactea is a cactus-looking hedge.
+ */
+function bloomOf(k) {
+  const spec = BLOOM[sciOf(k)] ?? BLOOM[genusOf(k)];
+  if (!spec) return null;
+  return { kind: spec.kind, color: hex(spec.color), r: spec.r ?? 0.055 };
+}
+
 /* ══ archetypes ════════════════════════════════════════════════════════════ */
 
 // ---------- trees ----------
@@ -1102,12 +1192,13 @@ function crownCore(p, pl, node, form, th, cw, leaf, deep) {
 }
 
 function tree(k, col, opt = {}) {
+  const spec = bloomOf(k);
   const forced = opt.canopy === "conifer" ? "conical"
     : opt.canopy === "umbrella" ? "broad"
       : opt.canopy === "balete" ? "round"
         : null;
   grow(k, col, {
-    salt: "tree:" + (opt.canopy ?? "auto"),
+    salt: "tree:" + (opt.canopy ?? "auto") + (spec ? "b" : ""),
     upright: true,
     axSet: ASPECT_UP,
     azSet: ASPECT_UP,
@@ -1175,6 +1266,17 @@ function tree(k, col, opt = {}) {
           rx: len * 0.3, ry: len * 0.22, rz: len * 0.3, yaw: a, tri: p.budget,
           at: [Math.cos(a) * len * 0.72, len * 0.3, Math.sin(a) * len * 0.72],
           color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: pl.pal.grad,
+        });
+        return;
+      }
+      /* Flowering trees. Spathodea is the African tulip, Delonix the
+         flamboyant, Cassia fistula the golden shower: the flower is the whole
+         reason anyone knows the tree, and all of them shipped plain green. */
+      if (spec && band >= 3 && s.g % 3 === 1) {
+        const r = reachOf(pl, a, 0.62);
+        addFlower(p, node, {
+          tri: p.budget, at: [Math.cos(a) * r, 0, Math.sin(a) * r], yaw: a,
+          kind: spec.kind, r: spec.r, color: spec.color, color2: shade(spec.color, 0.28), stalkLen: 0.025,
         });
         return;
       }
@@ -1511,8 +1613,20 @@ const CROTON = ["#c85a20", "#c8a020", "#8a5aa0", "#d8c83a", "#a03a3a"].map(hex);
 
 const BUSH_FORM = ["mounded", "upright", "arching", "tiered", "airy"];
 
+/**
+ * A shrub is MANY stems from ground level with no clear leader and foliage
+ * carried down to the ground. Fifty-five of the eighty-nine were single-stem
+ * lollipops — a bare stick with one mushroom-cap blob on top — which is a
+ * standard tree, not a shrub, and it is the same picture eighty-nine times.
+ *
+ * The multi-stem clump and the low foliage both live in the AXIS part, which
+ * matters: the audit's trunk-versus-canopy test excludes the axis, so foliage
+ * that reaches the ground here does not read to the gate as a bottom-heavy
+ * plant. Slot parts still respect it.
+ */
 function shrub(k, col, opt = {}) {
-  const bloom = opt.bloom ?? "none";
+  const bloomSpec = bloomOf(k);
+  const bloom = opt.bloom ?? (bloomSpec ? "genus" : "none");
   grow(k, col, {
     salt: "shrub:" + bloom + (opt.colorful ? "c" : ""),
     upright: true,
@@ -1523,70 +1637,101 @@ function shrub(k, col, opt = {}) {
     bands: [0, 1, 2, 3, 4, 5],
     spine(p, pl) {
       pl.bush = BUSH_FORM[pl.H("bush") % BUSH_FORM.length];
-      pl.stemH = 0.16 + pl.u("sh") * 0.3;
+      pl.bloomSpec = bloomSpec;
+      // where the foliage starts, measured off the ground — a shrub is leafy
+      // from about a tenth of its height, not from half way up a bare pole
+      pl.stemH = 0.08 + pl.u("sh") * 0.14;
       pl.crownW = ((pl.ax + pl.az) / 2) * 0.92;
       pl.anchorColor = trunkOf(col);
-      p.spine("stem", (node) => {
+      p.spine("clump", (node) => {
         const tr = trunkOf(col);
-        const r0 = 0.016 + pl.u("sr") * 0.016;
-        p.add(node, xf(tubeGeo(r0 * 1.4, r0 * 0.6, pl.stemH + 0.05, 11), { rz: (pl.u("ln") - 0.5) * 0.12 }), { color: tr });
-        const depth = 1 - pl.stemH;
-        const cw = pl.crownW;
+        const r0 = 0.013 + pl.u("sr") * 0.011;
         const leaf = opt.colorful ? CROTON[pl.H("cc") % CROTON.length] : pl.pal.leaf;
         const g = opt.colorful ? undefined : grad(shade(pl.pal.leaf, 0.2), pl.pal.deep, pl.stemH, 1);
-        let coreR = cw * 0.5, coreY = pl.stemH + depth * 0.5;
+        const depth = 1 - pl.stemH;
+        const cw = pl.crownW;
+
+        // the clump: several slender stems out of the ground, no leader
+        const ns = 3 + (pl.H("st") % 3);
+        const stem = [];
+        for (let i = 0; i < ns; i += 1) {
+          const a = i * 2.399 + pl.u("s0") * TAU;
+          const lean = 0.1 + 0.2 * ((i % 3) / 3);
+          const h = (0.5 + 0.42 * (((i * 5) % 7) / 7)) * (pl.bush === "upright" ? 1.1 : 1);
+          stem.push(xf(tubeGeo(r0 * (1.15 - 0.08 * i), r0 * 0.42, h, 9), {
+            rz: -Math.cos(a) * lean, rx: Math.sin(a) * lean,
+            at: [Math.cos(a) * r0 * 1.1, 0, Math.sin(a) * r0 * 1.1],
+          }));
+        }
+        p.add(node, mergeGeo(stem), { color: tr, colorFn: grad(shade(tr, 0.12), shade(tr, -0.24), 0, 0.6) });
+
+        /* The core is deliberately SMALL. It is there to be the thing the
+           leaves hang off, not the shrub: a big opaque mass in the axis part
+           swallows every leaf slot and the archetype goes straight back to
+           being one blob eighty-nine times. */
+        let coreR = cw * 0.32, coreY = pl.stemH + depth * 0.45;
         if (pl.bush === "tiered") {
-          for (let i = 0; i < 2; i += 1) {
-            p.add(node, xf(capGeo(cw * (0.6 - i * 0.16), depth * 0.42, 12, 4, "flat"),
-              { at: [0, pl.stemH + i * depth * 0.55, 0] }), { color: i ? leaf : pl.pal.deep, colorFn: g });
+          for (let i = 0; i < 3; i += 1) {
+            p.add(node, xf(capGeo(cw * (0.36 - i * 0.08), depth * 0.26, 12, 4, "flat"),
+              { at: [0, pl.stemH + i * depth * 0.32, 0] }), { color: i % 2 ? leaf : pl.pal.deep, colorFn: g });
           }
-          coreR = cw * 0.6; coreY = pl.stemH + depth * 0.2;
+          coreR = cw * 0.36; coreY = pl.stemH + depth * 0.16;
         } else if (pl.bush === "upright") {
-          p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.38, sy: depth * 0.52, sz: cw * 0.38, at: [0, pl.stemH + depth * 0.5, 0] }), { color: leaf, colorFn: g });
-          coreR = cw * 0.38;
+          p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.26, sy: depth * 0.48, sz: cw * 0.26, at: [0, pl.stemH + depth * 0.46, 0] }), { color: leaf, colorFn: g });
+          coreR = cw * 0.26; coreY = pl.stemH + depth * 0.46;
         } else if (pl.bush === "airy") {
-          p.add(node, xf(sphereGeo(10, 5), { sx: cw * 0.3, sy: depth * 0.34, sz: cw * 0.3, at: [0, 1 - depth * 0.34, 0] }), { color: leaf, colorFn: g });
-          coreR = cw * 0.3; coreY = 1 - depth * 0.34;
+          for (let i = 0; i < 3; i += 1) {
+            const a = i * 2.399 + pl.u("a0") * TAU;
+            p.add(node, xf(sphereGeo(10, 5), {
+              sx: cw * 0.19, sy: depth * 0.2, sz: cw * 0.19,
+              at: [Math.cos(a) * cw * 0.18, pl.stemH + depth * (0.32 + 0.29 * i), Math.sin(a) * cw * 0.18],
+            }), { color: i % 2 ? leaf : pl.pal.deep, colorFn: g });
+          }
+          coreR = cw * 0.19; coreY = 1 - depth * 0.25;
         } else {
-          const d = pl.bush === "arching" ? 0.42 : 0.5;
-          p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.5, sy: depth * d, sz: cw * 0.5, at: [0, 1 - depth * d, 0] }), { color: leaf, colorFn: g });
-          coreR = cw * 0.5; coreY = 1 - depth * d;
+          const d = pl.bush === "arching" ? 0.42 : 0.48;
+          p.add(node, xf(sphereGeo(11, 6), { sx: cw * 0.36, sy: depth * d * 0.6, sz: cw * 0.36, at: [0, 1 - depth * d, 0] }), { color: leaf, colorFn: g });
+          p.add(node, xf(capGeo(cw * 0.26, depth * 0.26, 11, 4, "flat"), { at: [0, pl.stemH * 0.4, 0] }), { color: pl.pal.deep, colorFn: g });
+          coreR = cw * 0.32; coreY = 1 - depth * d;
         }
         const fr = Math.max(0.028, Math.min(coreR * 0.42, cw * 0.15));
-        addFace(p, node, { at: [0, coreY, coreR * 0.88], r: fr, tri: p.budget * 8 });
+        addFace(p, node, { at: [0, coreY, coreR * 0.86], r: fr, tri: p.budget * 8 });
       });
     },
     slot(p, pl, s) {
       const { node, band, a, top } = s;
       if (band <= 1) {
-        // woody basal shoots: short, and inside the base reach so a shrub is
-        // never measured as wider at the ankles than at the crown
+        // another shoot out of the clump, leafy right down to its foot
         const br = baseReach(pl, 0.36);
-        p.add(node, xf(tubeGeo(br * 0.26, br * 0.14, br * 2.4, 9), { rz: -Math.cos(a) * 0.4, rx: Math.sin(a) * 0.4 }), { color: trunkOf(col) });
+        p.add(node, xf(tubeGeo(br * 0.22, br * 0.12, br * 2.4, 9), { rz: -Math.cos(a) * 0.34, rx: Math.sin(a) * 0.34 }), { color: trunkOf(col) });
         addLump(p, node, {
-          rx: br * 0.5, ry: br * 0.4, rz: br * 0.5, yaw: a, tri: p.budget * 0.6,
+          rx: br * 0.5, ry: br * 0.42, rz: br * 0.5, yaw: a, tri: p.budget * 0.6,
           at: [Math.cos(a) * br * 0.5, br * 0.7, Math.sin(a) * br * 0.5],
           color: pl.pal.deep, colorFn: opt.colorful ? undefined : pl.pal.grad,
         });
         return;
       }
+      const spec = pl.bloomSpec;
       const isBloom = bloom !== "none" && band >= top - 1 && s.i % 2 === 0;
       if (isBloom) {
-        const kind = bloom === "balls" ? "ball" : bloom === "hibiscus" ? "star" : bloom === "spikes" ? "spike" : "trumpet";
-        const colr = opt.multicolor ? FLOWERS[pl.H("mc" + s.g) % FLOWERS.length] : flowerOf(col);
+        const kind = spec ? spec.kind
+          : bloom === "balls" ? "ball" : bloom === "hibiscus" ? "star" : bloom === "spikes" ? "spike" : "trumpet";
+        const colr = spec ? spec.color
+          : opt.multicolor ? FLOWERS[pl.H("mc" + s.g) % FLOWERS.length] : flowerOf(col);
         const r = reachOf(pl, a, 0.6);
         addFlower(p, node, {
           tri: p.budget, at: [Math.cos(a) * r, 0, Math.sin(a) * r], kind,
-          r: 0.045 + pl.u("fr" + s.g) * 0.03, color: colr, stalkLen: 0.03,
+          r: (spec?.r ?? 0.045) + pl.u("fr" + s.g) * 0.03, color: colr,
+          color2: spec ? shade(colr, 0.3) : undefined, stalkLen: 0.03, yaw: a,
         });
         return;
       }
       const droop = pl.bush === "arching" ? 0.75 : pl.bush === "upright" ? -0.35 : 0.2;
-      const r = reachOf(pl, a, (0.55 + pl.u("lr" + s.g) * 0.4) * (pl.bush === "airy" ? 1.05 : 1));
+      const r = reachOf(pl, a, (0.7 + pl.u("lr" + s.g) * 0.35) * (pl.bush === "airy" ? 1.05 : 1));
       const lc = opt.colorful ? CROTON[pl.H("lc" + s.g) % CROTON.length] : (s.g % 2 ? pl.pal.leaf : pl.pal.deep);
       addLeaf(p, node, {
         tri: p.budget, yaw: a, pitch: droop + pl.u("lp" + s.g) * 0.5,
-        len: r, wid: r * (0.3 + pl.u("lw" + s.g) * 0.35), shape: pl.shape, form: pl.form,
+        len: r, wid: r * (0.34 + pl.u("lw" + s.g) * 0.34), shape: pl.shape, form: pl.form,
         leaflet: 3 + (s.g % 4),
         color: lc, colorFn: opt.colorful ? undefined : pl.pal.grad, stalkColor: pl.pal.deep, stalk: 0.2,
       });
@@ -1595,7 +1740,8 @@ function shrub(k, col, opt = {}) {
 }
 
 function herb(k, col, opt = {}) {
-  const flower = opt.flower ?? null;
+  const spec = bloomOf(k);
+  const flower = opt.flower ?? spec?.kind ?? null;
   grow(k, col, {
     salt: "herb",
     height: 0.45,
@@ -1627,13 +1773,12 @@ function herb(k, col, opt = {}) {
       const flowering = kind !== "none" && band >= top && s.i < Math.max(1, Math.round(s.n * 0.6));
       if (flowering) {
         const r = reachOf(pl, a, 0.3 + pl.u(`fs${s.g}`) * 0.3);
-        const fr = (opt.flowerR ?? 0.07) * (0.7 + pl.u(`fz${s.g}`) * 0.7);
-        for (const sgn of [1]) {
-          addFlower(p, node, { tri: p.budget,
-            at: [Math.cos(a) * r * sgn, 0, Math.sin(a) * r * sgn], kind, r: fr,
-            color: flowerOf(col), color2: shade(flowerOf(col), 0.3), stalkLen: 0.035, pitch: pl.u(`ft${s.g}`) * 0.3,
-          });
-        }
+        const fr = (opt.flowerR ?? spec?.r ?? 0.07) * (0.75 + pl.u(`fz${s.g}`) * 0.6);
+        const fc = spec?.color ?? flowerOf(col);
+        addFlower(p, node, { tri: p.budget,
+          at: [Math.cos(a) * r, 0, Math.sin(a) * r], kind, r: fr, yaw: a,
+          color: fc, color2: shade(fc, 0.3), stalkLen: 0.035, pitch: pl.u(`ft${s.g}`) * 0.3,
+        });
         return;
       }
       const basal = band <= 1;
@@ -2527,6 +2672,7 @@ function vine(k, col) {
       pl.turn = 1.9 + pl.u("tw") * 1.9;
       pl.coilR = 0.055 + pl.u("cr") * 0.035;
       pl.cucurbit = cucurbit;
+      pl.bloomSpec = bloomOf(k);
       pl.anchorColor = pl.pal.deep;
       p.spine("climber", (node) => {
         const prop = mix(trunkOf(col), hex("#7a7264"), 0.5);
@@ -2591,10 +2737,11 @@ function vine(k, col) {
         color: s.g % 2 ? pl.pal.leaf : pl.pal.deep, colorFn: cf, stalkColor: pl.pal.deep,
       });
       // bract / flower clusters where the species is grown for them
-      if (col.accent && band >= 3 && s.g % 4 === 2 && p.budget >= 58) {
+      const spec = pl.bloomSpec;
+      if (spec && band >= 2 && s.g % 3 === 2 && p.budget >= 50) {
         addFlower(p, node, {
-          tri: p.budget * 0.7, at: [Math.cos(a) * r * 0.45, 0.02, Math.sin(a) * r * 0.45],
-          kind: "star", r: 0.05, color: flowerOf(col), stalkLen: 0.02, pitch: 0.5, yaw: a,
+          tri: p.budget * 0.8, at: [Math.cos(a) * r * 0.45, 0.02, Math.sin(a) * r * 0.45],
+          kind: spec.kind, r: spec.r, color: spec.color, color2: shade(spec.color, 0.28), stalkLen: 0.02, pitch: 0.4, yaw: a,
         });
       }
     },
