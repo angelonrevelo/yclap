@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T05:23:24.848Z",
+ "generated_at": "2026-09-05T05:32:01.868Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -132,11 +132,11 @@
    "source": "curated",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/balete.glb",
-   "bytes": 67284,
-   "display_scale_m": 5
+   "bytes": 98572,
+   "display_scale_m": 6
   },
   {
    "species_code": "lagundi",
@@ -297,10 +297,10 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Animalia",
-   "archetype": "insectGeneric",
+   "archetype": "myriapod",
    "palette_source": "known",
    "file": "species/trigoniulus-corallinus.glb",
-   "bytes": 37528,
+   "bytes": 36164,
    "display_scale_m": 0.05
   },
   {
@@ -1167,7 +1167,7 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Insecta",
-   "archetype": "coleoptera",
+   "archetype": "coleoptera-rhino",
    "palette_source": "known",
    "file": "species/xylotrupes-philippinensis.glb",
    "bytes": 46348,
@@ -1287,11 +1287,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-elastica.glb",
-   "bytes": 49064,
-   "display_scale_m": 5
+   "bytes": 86644,
+   "display_scale_m": 6
   },
   {
    "species_code": "poecilia-reticulata",
@@ -1902,11 +1902,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-septica.glb",
-   "bytes": 51036,
-   "display_scale_m": 5
+   "bytes": 96704,
+   "display_scale_m": 6
   },
   {
    "species_code": "gallus-gallus",
@@ -2352,11 +2352,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-pseudopalma.glb",
-   "bytes": 67380,
-   "display_scale_m": 5
+   "bytes": 91948,
+   "display_scale_m": 6
   },
   {
    "species_code": "heptapleurum-arboricola",
@@ -2907,11 +2907,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-variegata.glb",
-   "bytes": 52284,
-   "display_scale_m": 5
+   "bytes": 42788,
+   "display_scale_m": 6
   },
   {
    "species_code": "crossandra-infundibuliformis",
@@ -3057,11 +3057,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-benjamina.glb",
-   "bytes": 71608,
-   "display_scale_m": 5
+   "bytes": 82944,
+   "display_scale_m": 6
   },
   {
    "species_code": "tabebuia-heterophylla",
@@ -3087,11 +3087,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-microcarpa.glb",
-   "bytes": 68424,
-   "display_scale_m": 5
+   "bytes": 64364,
+   "display_scale_m": 6
   },
   {
    "species_code": "areca-catechu",
@@ -3147,7 +3147,7 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Arachnida",
-   "archetype": "spider",
+   "archetype": "spider-jumping",
    "palette_source": "known",
    "file": "species/plexippus-petersi.glb",
    "bytes": 54208,
@@ -3612,7 +3612,7 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Arachnida",
-   "archetype": "spider",
+   "archetype": "spider-jumping",
    "palette_source": "known",
    "file": "species/menemerus-bivittatus.glb",
    "bytes": 56356,
@@ -4077,11 +4077,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-ampelos.glb",
-   "bytes": 57944,
-   "display_scale_m": 5
+   "bytes": 90796,
+   "display_scale_m": 6
   },
   {
    "species_code": "homalomena-philippinensis",
@@ -4107,11 +4107,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Arachnida",
-   "archetype": "spider",
+   "archetype": "spider-jumping",
    "palette_source": "derived",
    "file": "species/phintella-piatensis.glb",
-   "bytes": 54336,
-   "display_scale_m": 0.035
+   "bytes": 65068,
+   "display_scale_m": 0.012
   },
   {
    "species_code": "gasteracantha-kuhli",
@@ -4122,7 +4122,7 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Arachnida",
-   "archetype": "spider",
+   "archetype": "spider-spiny",
    "palette_source": "known",
    "file": "species/gasteracantha-kuhli.glb",
    "bytes": 72552,
@@ -4347,7 +4347,7 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Mollusca",
-   "archetype": "snail",
+   "archetype": "slug",
    "palette_source": "known",
    "file": "species/laevicaulis-alte.glb",
    "bytes": 19852,
@@ -4422,11 +4422,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-religiosa.glb",
-   "bytes": 83572,
-   "display_scale_m": 5
+   "bytes": 79068,
+   "display_scale_m": 6
   },
   {
    "species_code": "lucilia-sericata",
@@ -4692,7 +4692,7 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Insecta",
-   "archetype": "coleoptera",
+   "archetype": "coleoptera-rhino",
    "palette_source": "known",
    "file": "species/oryctes-rhinoceros.glb",
    "bytes": 42784,
@@ -4752,7 +4752,7 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Arachnida",
-   "archetype": "spider",
+   "archetype": "spider-jumping",
    "palette_source": "known",
    "file": "species/hasarius-adansoni.glb",
    "bytes": 65584,
@@ -4767,11 +4767,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-fistulosa.glb",
-   "bytes": 91204,
-   "display_scale_m": 5
+   "bytes": 88008,
+   "display_scale_m": 6
   },
   {
    "species_code": "zamioculcas-zamiifolia",
@@ -5832,10 +5832,10 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Animalia",
-   "archetype": "insectGeneric",
+   "archetype": "myriapod",
    "palette_source": "known",
    "file": "species/leptogoniulus-sorornus.glb",
-   "bytes": 43228,
+   "bytes": 39424,
    "display_scale_m": 0.06
   },
   {
@@ -5907,7 +5907,7 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Arachnida",
-   "archetype": "spider",
+   "archetype": "spider-spiny",
    "palette_source": "known",
    "file": "species/gasteracantha-hecata.glb",
    "bytes": 53468,
@@ -6582,7 +6582,7 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Arachnida",
-   "archetype": "spider",
+   "archetype": "spider-jumping",
    "palette_source": "known",
    "file": "species/plexippus-paykulli.glb",
    "bytes": 65172,
@@ -6717,7 +6717,7 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Insecta",
-   "archetype": "hymenoptera-bee",
+   "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/scolia-superciliaris.glb",
    "bytes": 47172,
@@ -6777,7 +6777,7 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Insecta",
-   "archetype": "hymenoptera-bee",
+   "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/leptodialepis-bipartitus.glb",
    "bytes": 50716,
@@ -7362,7 +7362,7 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Mollusca",
-   "archetype": "snail",
+   "archetype": "slug",
    "palette_source": "known",
    "file": "species/sarasinula-plebeia.glb",
    "bytes": 21108,
@@ -7797,7 +7797,7 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Arachnida",
-   "archetype": "spider",
+   "archetype": "spider-spiny",
    "palette_source": "known",
    "file": "species/thelacantha-brevispina.glb",
    "bytes": 67508,
@@ -8082,11 +8082,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-nervosa.glb",
-   "bytes": 70500,
-   "display_scale_m": 5
+   "bytes": 52212,
+   "display_scale_m": 6
   },
   {
    "species_code": "heterotis-rotundifolia",
@@ -8172,11 +8172,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Arachnida",
-   "archetype": "spider",
+   "archetype": "spider-jumping",
    "palette_source": "derived",
    "file": "species/cosmophasis-lami.glb",
-   "bytes": 59148,
-   "display_scale_m": 0.035
+   "bytes": 59104,
+   "display_scale_m": 0.012
   },
   {
    "species_code": "maesa-perlarius",
@@ -8322,7 +8322,7 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Insecta",
-   "archetype": "hymenoptera-bee",
+   "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/scolia-clypeata.glb",
    "bytes": 49944,
@@ -8877,11 +8877,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-benghalensis.glb",
-   "bytes": 82232,
-   "display_scale_m": 5
+   "bytes": 38800,
+   "display_scale_m": 6
   },
   {
    "species_code": "ramariopsis-kunzei",
@@ -9102,11 +9102,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-carica.glb",
-   "bytes": 47236,
-   "display_scale_m": 5
+   "bytes": 84092,
+   "display_scale_m": 6
   },
   {
    "species_code": "momordica-charantia",
@@ -9177,11 +9177,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "cactus",
    "palette_source": "derived",
    "file": "species/euphorbia-lactea.glb",
-   "bytes": 77656,
-   "display_scale_m": 0.35
+   "bytes": 44336,
+   "display_scale_m": 1
   },
   {
    "species_code": "ipomoea-batatas",
@@ -9897,11 +9897,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Fungi",
-   "archetype": "mushroom",
+   "archetype": "mushroom-birdsnest",
    "palette_source": "derived",
    "file": "species/cyathus-stercoreus.glb",
-   "bytes": 93376,
-   "display_scale_m": 0.1
+   "bytes": 83700,
+   "display_scale_m": 0.02
   },
   {
    "species_code": "echinodorus-cordifolius",
@@ -10512,11 +10512,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-exasperata.glb",
-   "bytes": 41376,
-   "display_scale_m": 5
+   "bytes": 42692,
+   "display_scale_m": 6
   },
   {
    "species_code": "impatiens-balsamina",
@@ -10797,11 +10797,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Arachnida",
-   "archetype": "spider",
+   "archetype": "spider-jumping",
    "palette_source": "derived",
    "file": "species/carrhotus-viduus.glb",
-   "bytes": 41920,
-   "display_scale_m": 0.035
+   "bytes": 50336,
+   "display_scale_m": 0.012
   },
   {
    "species_code": "pluteus-longistriatus",
@@ -11157,11 +11157,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "herb",
+   "archetype": "cactus",
    "palette_source": "derived",
    "file": "species/euphorbia-milii.glb",
-   "bytes": 66996,
-   "display_scale_m": 0.35
+   "bytes": 67100,
+   "display_scale_m": 1
   },
   {
    "species_code": "fissidens-dubius",
@@ -11607,7 +11607,7 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Mollusca",
-   "archetype": "snail",
+   "archetype": "slug",
    "palette_source": "known",
    "file": "species/parmarion-martensi.glb",
    "bytes": 18208,
@@ -13497,11 +13497,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Arachnida",
-   "archetype": "spider",
+   "archetype": "spider-jumping",
    "palette_source": "derived",
    "file": "species/harmochirus-brachiatus.glb",
-   "bytes": 48944,
-   "display_scale_m": 0.035
+   "bytes": 58800,
+   "display_scale_m": 0.012
   },
   {
    "species_code": "pseudagrion-pilidorsum",
@@ -13527,11 +13527,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Arachnida",
-   "archetype": "spider",
+   "archetype": "spider-jumping",
    "palette_source": "derived",
    "file": "species/telamonia-festiva.glb",
-   "bytes": 55356,
-   "display_scale_m": 0.035
+   "bytes": 64448,
+   "display_scale_m": 0.012
   },
   {
    "species_code": "oxyopes-macilentus",
@@ -13557,11 +13557,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Arachnida",
-   "archetype": "spider",
+   "archetype": "spider-jumping",
    "palette_source": "derived",
    "file": "species/telamonia-vlijmi.glb",
-   "bytes": 48356,
-   "display_scale_m": 0.035
+   "bytes": 56276,
+   "display_scale_m": 0.012
   },
   {
    "species_code": "neoscona-theisi",
@@ -13767,11 +13767,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-racemosa.glb",
-   "bytes": 48120,
-   "display_scale_m": 5
+   "bytes": 89632,
+   "display_scale_m": 6
   },
   {
    "species_code": "deeringia-amaranthoides",
@@ -13887,7 +13887,7 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Insecta",
-   "archetype": "hymenoptera-bee",
+   "archetype": "hymenoptera-wasp",
    "palette_source": "known",
    "file": "species/sceliphron-madraspatanum.glb",
    "bytes": 49928,
@@ -14022,11 +14022,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-villosa.glb",
-   "bytes": 82424,
-   "display_scale_m": 5
+   "bytes": 82244,
+   "display_scale_m": 6
   },
   {
    "species_code": "hypolytrum-nemorum",
@@ -14547,11 +14547,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-rumphii.glb",
-   "bytes": 42608,
-   "display_scale_m": 5
+   "bytes": 47344,
+   "display_scale_m": 6
   },
   {
    "species_code": "auricularia-nigricans",
@@ -14742,7 +14742,7 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Arachnida",
-   "archetype": "spider",
+   "archetype": "spider-spiny",
    "palette_source": "known",
    "file": "species/gasteracantha-mediofusca.glb",
    "bytes": 54204,
@@ -15132,11 +15132,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-cumingii.glb",
-   "bytes": 69828,
-   "display_scale_m": 5
+   "bytes": 82348,
+   "display_scale_m": 6
   },
   {
    "species_code": "drypetes-littoralis",
@@ -15177,11 +15177,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-simplicissima.glb",
-   "bytes": 91776,
-   "display_scale_m": 5
+   "bytes": 76136,
+   "display_scale_m": 6
   },
   {
    "species_code": "henosepilachna-vigintioctomaculata",
@@ -15462,11 +15462,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Arachnida",
-   "archetype": "spider",
+   "archetype": "spider-jumping",
    "palette_source": "derived",
    "file": "species/cytaea-dispalans.glb",
-   "bytes": 61136,
-   "display_scale_m": 0.035
+   "bytes": 63704,
+   "display_scale_m": 0.012
   },
   {
    "species_code": "cyclocybe-parasitica",
@@ -15597,11 +15597,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-maclellandii.glb",
-   "bytes": 90720,
-   "display_scale_m": 5
+   "bytes": 88964,
+   "display_scale_m": 6
   },
   {
    "species_code": "rapala-caerulescens",
@@ -15822,11 +15822,11 @@
    "source": "inat",
    "rank": "species",
    "iconic_taxon_name": "Plantae",
-   "archetype": "tree",
+   "archetype": "tree-balete",
    "palette_source": "derived",
    "file": "species/ficus-nota.glb",
-   "bytes": 44332,
-   "display_scale_m": 5
+   "bytes": 94356,
+   "display_scale_m": 6
   },
   {
    "species_code": "xylaria-flabelliformis",
