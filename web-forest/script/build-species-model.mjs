@@ -330,7 +330,9 @@ const KNOWN = {
   "anoplolepis gracilipes": { opt: { kind: "ant" }, colors: { base: "#d8c878" }, scale: 0.01 },
   "apis dorsata": { opt: { kind: "bee" }, colors: { base: "#e8b62a" }, scale: 0.02 },
   "apis cerana": { opt: { kind: "bee" }, colors: { base: "#d8a02a" }, scale: 0.013 },
-  "vespa tropica": { opt: { kind: "hornet" }, colors: { base: "#e8b62a", dark: "#2b2b30" }, scale: 0.03 },
+  /* Greater banded hornet: yellow-orange gaster bands. Without an authored
+     accent the bands came out salmon from the derived pool. */
+  "vespa tropica": { opt: { kind: "hornet" }, colors: { base: "#e8b62a", accent: "#e07c1a", dark: "#2b2b30" }, scale: 0.03 },
   /* Black hornet with an orange abdomen — was rendering pink. */
   "vespa luctuosa": { opt: { kind: "hornet" }, colors: { base: "#2b2b30", accent: "#e8862a", dark: "#1a1a1e" }, scale: 0.025 },
   "xylocopa latipes": { opt: { kind: "bee" }, colors: { base: "#2b2b30" }, scale: 0.025 },
