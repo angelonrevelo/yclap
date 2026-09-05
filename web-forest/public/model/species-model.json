@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T07:57:13.178Z",
+ "generated_at": "2026-09-05T07:59:56.129Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -1995,7 +1995,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/hyophila-involuta.glb",
-   "bytes": 91816,
+   "bytes": 88328,
    "display_scale_m": 0.04
   },
   {
@@ -4035,7 +4035,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/rhynchostegium-confertum.glb",
-   "bytes": 102080,
+   "bytes": 91868,
    "display_scale_m": 0.04
   },
   {
@@ -4980,7 +4980,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/myriocoleopsis-minutissima.glb",
-   "bytes": 88260,
+   "bytes": 90192,
    "display_scale_m": 0.04
   },
   {
@@ -5310,7 +5310,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/grimmia-laevigata.glb",
-   "bytes": 99592,
+   "bytes": 92372,
    "display_scale_m": 0.04
   },
   {
@@ -7080,7 +7080,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/plagiothecium-denticulatum.glb",
-   "bytes": 87784,
+   "bytes": 85804,
    "display_scale_m": 0.04
   },
   {
@@ -8385,7 +8385,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/streblotrichum-convolutum.glb",
-   "bytes": 110740,
+   "bytes": 107476,
    "display_scale_m": 0.04
   },
   {
@@ -8400,7 +8400,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/claopodium-rostratum.glb",
-   "bytes": 105352,
+   "bytes": 99796,
    "display_scale_m": 0.04
   },
   {
@@ -8955,7 +8955,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/riccia-sorocarpa.glb",
-   "bytes": 73396,
+   "bytes": 75056,
    "display_scale_m": 0.04
   },
   {
@@ -8970,7 +8970,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/ricciocarpos-natans.glb",
-   "bytes": 82304,
+   "bytes": 83824,
    "display_scale_m": 0.04
   },
   {
@@ -8985,7 +8985,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/riccardia-palmata.glb",
-   "bytes": 74272,
+   "bytes": 77232,
    "display_scale_m": 0.04
   },
   {
@@ -9330,7 +9330,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/dicranoweisia-cirrata.glb",
-   "bytes": 92424,
+   "bytes": 90744,
    "display_scale_m": 0.04
   },
   {
@@ -10125,7 +10125,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/fissidens-bryoides.glb",
-   "bytes": 86480,
+   "bytes": 85104,
    "display_scale_m": 0.04
   },
   {
@@ -10500,7 +10500,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/neckera-pennata.glb",
-   "bytes": 76384,
+   "bytes": 72820,
    "display_scale_m": 0.04
   },
   {
@@ -11130,7 +11130,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/dumortiera-hirsuta.glb",
-   "bytes": 82276,
+   "bytes": 83740,
    "display_scale_m": 0.04
   },
   {
@@ -11175,7 +11175,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/fissidens-dubius.glb",
-   "bytes": 73624,
+   "bytes": 72572,
    "display_scale_m": 0.04
   },
   {
@@ -11205,7 +11205,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/hedwigia-ciliata.glb",
-   "bytes": 72400,
+   "bytes": 73720,
    "display_scale_m": 0.04
   },
   {
@@ -11220,7 +11220,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/hygroamblystegium-varium.glb",
-   "bytes": 105584,
+   "bytes": 113508,
    "display_scale_m": 0.04
   },
   {
@@ -11280,7 +11280,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/leskea-polycarpa.glb",
-   "bytes": 74512,
+   "bytes": 71924,
    "display_scale_m": 0.04
   },
   {
@@ -11295,7 +11295,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/leucobryum-albidum.glb",
-   "bytes": 108028,
+   "bytes": 102768,
    "display_scale_m": 0.04
   },
   {
@@ -11415,7 +11415,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/pogonatum-pensilvanicum.glb",
-   "bytes": 81136,
+   "bytes": 83392,
    "display_scale_m": 0.04
   },
   {
@@ -11580,7 +11580,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/trichostomum-crispulum.glb",
-   "bytes": 101192,
+   "bytes": 99796,
    "display_scale_m": 0.04
   },
   {
@@ -15435,7 +15435,7 @@
    "archetype": "moss",
    "palette_source": "derived",
    "file": "species/cyathodium-smaragdinum.glb",
-   "bytes": 51692,
+   "bytes": 55476,
    "display_scale_m": 0.04
   },
   {

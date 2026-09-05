@@ -2913,6 +2913,10 @@ function shootGeo({ at, len, wid, tilt, yaw, rows = 3 }) {
     { rx: -Math.PI / 2 + tilt, ry: yaw, at });
 }
 
+/** The cushion mound, shared so a shoot can be seated on its own profile. */
+const DOME_R = 0.5;
+const DOME_H = 0.36;
+
 /** A pair of flat forked ribbon lobes lying almost flat — a thalloid liverwort. */
 function ribbon(p, node, { at, len, wid, yaw, tilt, color, colorFn }) {
   for (const s of [1, -1]) {
@@ -2970,7 +2974,19 @@ function moss(k, col) {
               });
             }
           }
-          p.add(node, xf(sphereGeo(10, 5), { sx: 0.09, sy: 0.14, sz: 0.09, at: [0, 0.86, 0] }), { color: mix(leaf, deep, 0.4) });
+          /*
+             A liverwort has no persistent seta and capsule. That is the whole
+             reason this form exists and it was drawing one anyway — a raised
+             stalked sphere on Riccia, Ricciocarpos, Riccardia and
+             Myriocoleopsis, four plants that anatomically cannot have it.
+             What a thalloid liverwort DOES carry is gemma cups: shallow open
+             cups sitting flat on the ribbon surface.
+           */
+          for (let j = 0; j < 3; j += 1) {
+            const aa = pl.u("gc") * TAU + j * 2.1;
+            p.add(node, xf(capGeo(0.075, 0.05, 10, 3, "funnel"), { at: [Math.cos(aa) * 0.16, 0.7, Math.sin(aa) * 0.16] }),
+              { color: mix(leaf, deep, 0.45) });
+          }
           addFace(p, node, { at: [0, 0.5, 0.1], r: 0.075, tri: p.budget * 8 });
         });
         return;
@@ -2994,14 +3010,16 @@ function moss(k, col) {
       // cushion: a low mound crowded with tiny upright shoots, and the seta +
       // capsule that only a real moss gets to have
       p.spine("cushion", (node) => {
-        p.add(node, xf(capGeo(0.44, 0.34, 14, 5, "flat")), { color: deep, colorFn: grad(shade(leaf, 0.2), deep, 0, 0.34) });
+        p.add(node, xf(capGeo(DOME_R, DOME_H, 14, 5, "flat")), { color: deep, colorFn: grad(shade(leaf, 0.2), deep, 0, DOME_H) });
         const bunch = [[], []];
-        for (let i = 0; i < 14; i += 1) {
+        /* Twenty-two, not fourteen: a cushion is a crowd of shoots and a bare
+           dome with a dozen spikes on it reads as a bald hill. */
+        for (let i = 0; i < 22; i += 1) {
           const a = i * 2.399 + pl.u("c0") * TAU;
-          const rr = 0.34 * Math.sqrt((i + 0.35) / 14);
+          const rr = DOME_R * 0.86 * Math.sqrt((i + 0.35) / 22);
           bunch[i % 2].push(shootGeo({
-            at: [Math.cos(a) * rr, 0.27 - rr * 0.4, Math.sin(a) * rr],
-            len: 0.34 - rr * 0.5, wid: 0.05, tilt: rr * 1.4, yaw: a,
+            at: [Math.cos(a) * rr, DOME_H * (1 - (rr / DOME_R) ** 2.6) ** 0.55 - 0.04, Math.sin(a) * rr],
+            len: 0.3 - rr * 0.34, wid: 0.048, tilt: rr * 1.5, yaw: a,
           }));
         }
         p.add(node, mergeGeo(bunch[0]), { color: leaf });
@@ -3061,9 +3079,19 @@ function moss(k, col) {
         return;
       }
 
-      // cushion: a knot of tiny shoots, tighter and shorter the higher it sits,
-      // so the family reads as a dome of turf rather than a splayed lens
-      const r = reachOf(pl, a, 0.92 * (1 - 0.7 * t));
+      /*
+       * Cushion: a knot of tiny shoots ON the mound.
+       *
+       * The reach used to come from the plan's aspect, which runs to 2.45 —
+       * so a shoot could be placed at radius 1.1 around a dome of radius 0.44
+       * and hang in mid air with nothing under it. Ten of the sixteen true
+       * mosses had their blades floating free of the cushion,
+       * Hygroamblystegium worst of all. Moss is turf: the shoots grow out of
+       * the mound, so their feet are pinned to the mound's own profile.
+       */
+      const r = Math.min(DOME_R * 0.92, reachOf(pl, a, 0.92 * (1 - 0.7 * t)));
+      /** Height of the cushion cap at a given radius, so a shoot can stand on it. */
+      const seat = (rr) => DOME_H * Math.max(0, 1 - (Math.min(1, rr / DOME_R) ** 2.6)) ** 0.55 - 0.05;
       const n = Math.max(1, Math.min(4, Math.floor(p.budget / 22)));
       const bunch = [[], []];
       for (const sgn of [1, -1]) {
@@ -3071,7 +3099,7 @@ function moss(k, col) {
           const aa = a + (sgn > 0 ? 0 : Math.PI) + (j - (n - 1) / 2) * 0.55;
           const rr = r * (0.45 + 0.55 * ((j + 0.5) / n));
           bunch[(j + (sgn > 0 ? 0 : 1)) % 2].push(shootGeo({
-            at: [Math.cos(aa) * rr, 0, Math.sin(aa) * rr],
+            at: [Math.cos(aa) * rr, seat(rr), Math.sin(aa) * rr],
             len: 0.1 + pl.u(`ml${s.g}${j}`) * 0.13 + r * 0.3,
             wid: 0.034 + pl.u(`mw${s.g}`) * 0.02,
             tilt: 0.18 + pl.u(`mt${s.g}${j}`) * 0.5, yaw: aa, rows: 3,
