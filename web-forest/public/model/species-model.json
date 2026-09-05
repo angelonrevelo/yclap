@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T08:14:41.770Z",
+ "generated_at": "2026-09-05T08:16:42.810Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -270,7 +270,7 @@
    "archetype": "vine",
    "palette_source": "known",
    "file": "species/epipremnum-aureum.glb",
-   "bytes": 97740,
+   "bytes": 98852,
    "display_scale_m": 1
   },
   {
@@ -420,7 +420,7 @@
    "archetype": "vine",
    "palette_source": "known",
    "file": "species/epipremnum-pinnatum.glb",
-   "bytes": 76908,
+   "bytes": 86328,
    "display_scale_m": 1.2
   },
   {
@@ -870,7 +870,7 @@
    "archetype": "vine",
    "palette_source": "known",
    "file": "species/bougainvillea-spectabilis.glb",
-   "bytes": 81616,
+   "bytes": 90696,
    "display_scale_m": 3
   },
   {
@@ -915,7 +915,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/thunbergia-grandiflora.glb",
-   "bytes": 78596,
+   "bytes": 90596,
    "display_scale_m": 1
   },
   {
@@ -1065,7 +1065,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/syngonium-podophyllum.glb",
-   "bytes": 61592,
+   "bytes": 77984,
    "display_scale_m": 1
   },
   {
@@ -1245,7 +1245,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/antigonon-leptopus.glb",
-   "bytes": 83188,
+   "bytes": 91184,
    "display_scale_m": 1
   },
   {
@@ -1425,7 +1425,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/mikania-micrantha.glb",
-   "bytes": 86748,
+   "bytes": 93480,
    "display_scale_m": 1
   },
   {
@@ -1560,7 +1560,7 @@
    "archetype": "vine",
    "palette_source": "known",
    "file": "species/bougainvillea-glabra.glb",
-   "bytes": 76496,
+   "bytes": 88956,
    "display_scale_m": 3
   },
   {
@@ -2295,7 +2295,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/paederia-foetida.glb",
-   "bytes": 63512,
+   "bytes": 89264,
    "display_scale_m": 1
   },
   {
@@ -2490,7 +2490,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/syngonium-angustatum.glb",
-   "bytes": 98608,
+   "bytes": 99788,
    "display_scale_m": 1
   },
   {
@@ -2505,7 +2505,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/thunbergia-laurifolia.glb",
-   "bytes": 87292,
+   "bytes": 92896,
    "display_scale_m": 1
   },
   {
@@ -2790,7 +2790,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/coccinia-grandis.glb",
-   "bytes": 96268,
+   "bytes": 98048,
    "display_scale_m": 1
   },
   {
@@ -3120,7 +3120,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/abrus-precatorius.glb",
-   "bytes": 93688,
+   "bytes": 94788,
    "display_scale_m": 1
   },
   {
@@ -3315,7 +3315,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/philodendron-erubescens.glb",
-   "bytes": 61792,
+   "bytes": 85376,
    "display_scale_m": 1
   },
   {
@@ -5145,7 +5145,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/ipomoea-triloba.glb",
-   "bytes": 64888,
+   "bytes": 84784,
    "display_scale_m": 1
   },
   {
@@ -5160,7 +5160,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/hedera-canariensis.glb",
-   "bytes": 73464,
+   "bytes": 86896,
    "display_scale_m": 1
   },
   {
@@ -5700,7 +5700,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/tristellateia-australasiae.glb",
-   "bytes": 75296,
+   "bytes": 86676,
    "display_scale_m": 1
   },
   {
@@ -6360,7 +6360,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/allamanda-cathartica.glb",
-   "bytes": 94964,
+   "bytes": 98652,
    "display_scale_m": 1
   },
   {
@@ -6495,7 +6495,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/ipomoea-indica.glb",
-   "bytes": 61076,
+   "bytes": 78796,
    "display_scale_m": 1
   },
   {
@@ -6615,7 +6615,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/centrosema-virginianum.glb",
-   "bytes": 79224,
+   "bytes": 86456,
    "display_scale_m": 1
   },
   {
@@ -6915,7 +6915,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/basella-alba.glb",
-   "bytes": 94856,
+   "bytes": 97796,
    "display_scale_m": 1
   },
   {
@@ -7785,7 +7785,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/flagellaria-indica.glb",
-   "bytes": 56908,
+   "bytes": 76324,
    "display_scale_m": 1
   },
   {
@@ -8205,7 +8205,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/marsdenia-tinctoria.glb",
-   "bytes": 75724,
+   "bytes": 88608,
    "display_scale_m": 1
   },
   {
@@ -8355,7 +8355,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/luffa-aegyptiaca.glb",
-   "bytes": 84784,
+   "bytes": 97292,
    "display_scale_m": 1
   },
   {
@@ -9120,7 +9120,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/momordica-charantia.glb",
-   "bytes": 101000,
+   "bytes": 98456,
    "display_scale_m": 1
   },
   {
@@ -9195,7 +9195,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/ipomoea-batatas.glb",
-   "bytes": 57916,
+   "bytes": 77648,
    "display_scale_m": 1
   },
   {
@@ -9645,7 +9645,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/dioscorea-bulbifera.glb",
-   "bytes": 75904,
+   "bytes": 87432,
    "display_scale_m": 1
   },
   {
@@ -9675,7 +9675,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/galactia-striata.glb",
-   "bytes": 53100,
+   "bytes": 78940,
    "display_scale_m": 1
   },
   {
@@ -10035,7 +10035,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/vigna-radiata.glb",
-   "bytes": 73508,
+   "bytes": 86224,
    "display_scale_m": 1
   },
   {
@@ -10335,7 +10335,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/entada-gigas.glb",
-   "bytes": 55872,
+   "bytes": 80020,
    "display_scale_m": 1
   },
   {
@@ -10350,7 +10350,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/centrosema-pubescens.glb",
-   "bytes": 87976,
+   "bytes": 89032,
    "display_scale_m": 1
   },
   {
@@ -10410,7 +10410,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/hoya-carnosa.glb",
-   "bytes": 59200,
+   "bytes": 82308,
    "display_scale_m": 1
   },
   {
@@ -11115,7 +11115,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/dioscorea-alata.glb",
-   "bytes": 88720,
+   "bytes": 95024,
    "display_scale_m": 1
   },
   {
@@ -11190,7 +11190,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/hedera-colchica.glb",
-   "bytes": 62068,
+   "bytes": 80812,
    "display_scale_m": 1
   },
   {
@@ -11250,7 +11250,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/ipomoea-aquatica.glb",
-   "bytes": 55588,
+   "bytes": 82168,
    "display_scale_m": 1
   },
   {
@@ -11310,7 +11310,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/lygodium-japonicum.glb",
-   "bytes": 60512,
+   "bytes": 77672,
    "display_scale_m": 1
   },
   {
@@ -11475,7 +11475,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/schisandra-glabra.glb",
-   "bytes": 63812,
+   "bytes": 81824,
    "display_scale_m": 1
   },
   {
@@ -12555,7 +12555,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/syngonium-wendlandii.glb",
-   "bytes": 71388,
+   "bytes": 84828,
    "display_scale_m": 1
   },
   {
@@ -12975,7 +12975,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/tinospora-crispa.glb",
-   "bytes": 84516,
+   "bytes": 87360,
    "display_scale_m": 1
   },
   {
@@ -13095,7 +13095,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/lygodium-flexuosum.glb",
-   "bytes": 85804,
+   "bytes": 93748,
    "display_scale_m": 1
   },
   {
@@ -13200,7 +13200,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/calamus-rotang.glb",
-   "bytes": 95656,
+   "bytes": 97500,
    "display_scale_m": 1
   },
   {
@@ -13665,7 +13665,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/calamus-formosanus.glb",
-   "bytes": 94728,
+   "bytes": 95536,
    "display_scale_m": 1
   },
   {
@@ -13860,7 +13860,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/merremia-gemella.glb",
-   "bytes": 81400,
+   "bytes": 89816,
    "display_scale_m": 1
   },
   {
@@ -14115,7 +14115,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/parsonsia-alboflavescens.glb",
-   "bytes": 86008,
+   "bytes": 90556,
    "display_scale_m": 1
   },
   {
@@ -14145,7 +14145,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/parthenocissus-dalzielii.glb",
-   "bytes": 61864,
+   "bytes": 85560,
    "display_scale_m": 1
   },
   {
@@ -14505,7 +14505,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/vitis-amurensis.glb",
-   "bytes": 70280,
+   "bytes": 86444,
    "display_scale_m": 1
   },
   {
@@ -14820,7 +14820,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/muehlenbeckia-gracillima.glb",
-   "bytes": 96088,
+   "bytes": 97636,
    "display_scale_m": 1
   },
   {
@@ -15255,7 +15255,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/malaisia-scandens.glb",
-   "bytes": 87964,
+   "bytes": 89472,
    "display_scale_m": 1
   },
   {
@@ -15375,7 +15375,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/piper-kawakamii.glb",
-   "bytes": 92256,
+   "bytes": 90552,
    "display_scale_m": 1
   },
   {
@@ -15540,7 +15540,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/sicyos-edulis.glb",
-   "bytes": 93936,
+   "bytes": 95380,
    "display_scale_m": 1
   },
   {
@@ -15570,7 +15570,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/causonis-trifolia.glb",
-   "bytes": 53632,
+   "bytes": 76516,
    "display_scale_m": 1
   },
   {
@@ -15735,7 +15735,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/distimake-dissectus.glb",
-   "bytes": 71084,
+   "bytes": 86604,
    "display_scale_m": 1
   },
   {
@@ -15765,7 +15765,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/tarlmounia-elliptica.glb",
-   "bytes": 77776,
+   "bytes": 91860,
    "display_scale_m": 1
   },
   {
@@ -15780,7 +15780,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/decalobanthus-peltatus.glb",
-   "bytes": 78460,
+   "bytes": 85144,
    "display_scale_m": 1
   },
   {
@@ -16050,7 +16050,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/phanera-kockiana.glb",
-   "bytes": 72316,
+   "bytes": 87380,
    "display_scale_m": 1
   },
   {
@@ -16185,7 +16185,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/rhaphidophora-elmeri.glb",
-   "bytes": 83804,
+   "bytes": 93808,
    "display_scale_m": 1
   },
   {
@@ -16245,7 +16245,7 @@
    "archetype": "vine",
    "palette_source": "derived",
    "file": "species/gynochthodes-umbellata.glb",
-   "bytes": 56716,
+   "bytes": 81940,
    "display_scale_m": 1
   },
   {

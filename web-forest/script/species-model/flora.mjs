@@ -3609,13 +3609,21 @@ function vine(k, col) {
        tendrils did. */
     axSet: ASPECT_VINE,
     azSet: ASPECT_VINE,
+    /* Leafy all the way UP. At eight parts a climber is three big leaves near
+       the top of a bare pole, which is thirteen of the fifty-seven — Epipremnum,
+       Hoya, Basella, Hedera, Dioscorea. A vine's leaves are spaced along the
+       stem, so there have to be enough of them to space. */
+    pLevel: [16, 22, 26, 32],
     height: 0.9,
     breathe: 0.018,
     sway: 0.05,
     bands: [0, 1, 2, 3, 4, 5],
     spine(p, pl) {
-      pl.turn = 1.9 + pl.u("tw") * 1.9;
-      pl.coilR = 0.055 + pl.u("cr") * 0.035;
+      /* Enough turns that the wrap is legible under the foliage. Below two the
+         stem is a lazy diagonal and the leaves cover it, so the model reads as
+         leaves bunched on a pole — which was the complaint. */
+      pl.turn = 2.7 + pl.u("tw") * 1.8;
+      pl.coilR = 0.058 + pl.u("cr") * 0.032;
       pl.cucurbit = cucurbit;
       pl.bloomSpec = bloomOf(k);
       pl.anchorColor = pl.pal.deep;
@@ -3625,7 +3633,7 @@ function vine(k, col) {
         // size and costs one tube; without it a twining stem is just a squiggle.
         p.add(node, xf(tubeGeo(0.024, 0.016, 1, 10)), { color: prop, colorFn: grad(shade(prop, 0.12), shade(prop, -0.26), 0, 1) });
         // the stem, wound round it
-        p.add(node, xf(coilGeo({ R: pl.coilR, r: 0.014, h: 0.97, turn: pl.turn, segs: 26, ring: 7 })),
+        p.add(node, xf(coilGeo({ R: pl.coilR, r: 0.019, h: 0.97, turn: pl.turn, segs: 30, ring: 7 })),
           { color: pl.pal.deep, colorFn: grad(shade(pl.pal.leaf, 0.1), pl.pal.deep, 0, 1) });
         addFace(p, node, { at: [0, 0.36, pl.coilR + 0.02], r: 0.04, tri: p.budget * 8 });
       });
@@ -3668,7 +3676,7 @@ function vine(k, col) {
         return;
       }
 
-      const r = reachOf(pl, a, 0.8);
+      const r = reachOf(pl, a, 0.7);
       const cf = varie
         ? (q) => (q[0] + q[2] > 0.02 ? mix(pl.pal.leaf, hex("#e8d44a"), 0.55) : pl.pal.deep)
         : pl.pal.grad;
