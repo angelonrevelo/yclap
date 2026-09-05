@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T06:05:06.642Z",
+ "generated_at": "2026-09-05T06:12:45.654Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -2415,7 +2415,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/schizophyllum-commune.glb",
-   "bytes": 65680,
+   "bytes": 87488,
    "display_scale_m": 0.15
   },
   {
@@ -2940,7 +2940,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/microporus-xanthopus.glb",
-   "bytes": 64712,
+   "bytes": 86488,
    "display_scale_m": 0.15
   },
   {
@@ -3375,7 +3375,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/trametes-cubensis.glb",
-   "bytes": 56732,
+   "bytes": 87848,
    "display_scale_m": 0.15
   },
   {
@@ -3960,7 +3960,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/hexagonia-tenuis.glb",
-   "bytes": 69420,
+   "bytes": 97352,
    "display_scale_m": 0.15
   },
   {
@@ -4230,7 +4230,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/ganoderma-applanatum.glb",
-   "bytes": 68356,
+   "bytes": 66160,
    "display_scale_m": 0.15
   },
   {
@@ -4410,7 +4410,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/ganoderma-lucidum.glb",
-   "bytes": 67772,
+   "bytes": 89968,
    "display_scale_m": 0.15
   },
   {
@@ -4575,7 +4575,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/earliella-scabrosa.glb",
-   "bytes": 66936,
+   "bytes": 63372,
    "display_scale_m": 0.15
   },
   {
@@ -5550,7 +5550,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/hexagonia-hydnoides.glb",
-   "bytes": 64540,
+   "bytes": 85928,
    "display_scale_m": 0.15
   },
   {
@@ -6045,7 +6045,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/fuscoporia-torulosa.glb",
-   "bytes": 67336,
+   "bytes": 82992,
    "display_scale_m": 0.15
   },
   {
@@ -6630,7 +6630,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/trametes-elegans.glb",
-   "bytes": 59172,
+   "bytes": 65148,
    "display_scale_m": 0.15
   },
   {
@@ -6735,7 +6735,7 @@
    "archetype": "mushroom-jelly",
    "palette_source": "derived",
    "file": "species/tremella-fuciformis.glb",
-   "bytes": 102264,
+   "bytes": 104440,
    "display_scale_m": 0.06
   },
   {
@@ -7140,7 +7140,7 @@
    "archetype": "mushroom-coral",
    "palette_source": "derived",
    "file": "species/xylaria-apiculata.glb",
-   "bytes": 64376,
+   "bytes": 43812,
    "display_scale_m": 0.08
   },
   {
@@ -7500,7 +7500,7 @@
    "archetype": "mushroom-jelly",
    "palette_source": "derived",
    "file": "species/auricularia-polytricha.glb",
-   "bytes": 102528,
+   "bytes": 82344,
    "display_scale_m": 0.06
   },
   {
@@ -7545,7 +7545,7 @@
    "archetype": "mushroom-coral",
    "palette_source": "derived",
    "file": "species/xylaria-filiformis.glb",
-   "bytes": 40556,
+   "bytes": 68684,
    "display_scale_m": 0.08
   },
   {
@@ -7575,7 +7575,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/trametes-villosa.glb",
-   "bytes": 62912,
+   "bytes": 91636,
    "display_scale_m": 0.15
   },
   {
@@ -7995,7 +7995,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/stereum-versicolor.glb",
-   "bytes": 61828,
+   "bytes": 75140,
    "display_scale_m": 0.15
   },
   {
@@ -8040,7 +8040,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/trametopsis-cervina.glb",
-   "bytes": 45196,
+   "bytes": 65324,
    "display_scale_m": 0.15
   },
   {
@@ -8310,7 +8310,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/fuscoporia-gilva.glb",
-   "bytes": 68344,
+   "bytes": 91172,
    "display_scale_m": 0.15
   },
   {
@@ -8460,7 +8460,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/coriolopsis-trogii.glb",
-   "bytes": 46820,
+   "bytes": 63980,
    "display_scale_m": 0.15
   },
   {
@@ -8850,7 +8850,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/trametes-versicolor.glb",
-   "bytes": 62588,
+   "bytes": 98352,
    "display_scale_m": 0.15
   },
   {
@@ -8895,7 +8895,7 @@
    "archetype": "mushroom-coral",
    "palette_source": "derived",
    "file": "species/ramariopsis-kunzei.glb",
-   "bytes": 73436,
+   "bytes": 62812,
    "display_scale_m": 0.08
   },
   {
@@ -8910,7 +8910,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/stereum-ostrea.glb",
-   "bytes": 47028,
+   "bytes": 96376,
    "display_scale_m": 0.15
   },
   {
@@ -8925,7 +8925,7 @@
    "archetype": "mushroom-coral",
    "palette_source": "derived",
    "file": "species/annulohypoxylon-thouarsianum.glb",
-   "bytes": 62608,
+   "bytes": 63236,
    "display_scale_m": 0.08
   },
   {
@@ -9255,7 +9255,7 @@
    "archetype": "mushroom-earthstar",
    "palette_source": "derived",
    "file": "species/geastrum-saccatum.glb",
-   "bytes": 55236,
+   "bytes": 79636,
    "display_scale_m": 0.08
   },
   {
@@ -9810,7 +9810,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/phaeolus-schweinitzii.glb",
-   "bytes": 67688,
+   "bytes": 80552,
    "display_scale_m": 0.15
   },
   {
@@ -10095,7 +10095,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/daedaleopsis-confragosa.glb",
-   "bytes": 59428,
+   "bytes": 81228,
    "display_scale_m": 0.15
   },
   {
@@ -10845,7 +10845,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/crepidotus-variabilis.glb",
-   "bytes": 63224,
+   "bytes": 94552,
    "display_scale_m": 0.15
   },
   {
@@ -10860,7 +10860,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/stereum-subtomentosum.glb",
-   "bytes": 63576,
+   "bytes": 81788,
    "display_scale_m": 0.15
   },
   {
@@ -11640,7 +11640,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/merulius-tremellosus.glb",
-   "bytes": 65772,
+   "bytes": 80432,
    "display_scale_m": 0.15
   },
   {
@@ -12645,7 +12645,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/trametes-lactinea.glb",
-   "bytes": 67988,
+   "bytes": 94676,
    "display_scale_m": 0.15
   },
   {
@@ -12720,7 +12720,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/stereum-gausapatum.glb",
-   "bytes": 60136,
+   "bytes": 90164,
    "display_scale_m": 0.15
   },
   {
@@ -13230,7 +13230,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/climacocystis-borealis.glb",
-   "bytes": 62148,
+   "bytes": 86240,
    "display_scale_m": 0.15
   },
   {
@@ -13260,7 +13260,7 @@
    "archetype": "mushroom-coral",
    "palette_source": "derived",
    "file": "species/daldinia-childiae.glb",
-   "bytes": 76568,
+   "bytes": 50372,
    "display_scale_m": 0.08
   },
   {
@@ -13275,7 +13275,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/flavodon-flavus.glb",
-   "bytes": 47024,
+   "bytes": 88700,
    "display_scale_m": 0.15
   },
   {
@@ -13290,7 +13290,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/ganoderma-sessile.glb",
-   "bytes": 61424,
+   "bytes": 90076,
    "display_scale_m": 0.15
   },
   {
@@ -13305,7 +13305,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/hymenochaete-rubiginosa.glb",
-   "bytes": 47440,
+   "bytes": 87788,
    "display_scale_m": 0.15
   },
   {
@@ -13320,7 +13320,7 @@
    "archetype": "mushroom-coral",
    "palette_source": "derived",
    "file": "species/hypoxylon-rubiginosum.glb",
-   "bytes": 75816,
+   "bytes": 29668,
    "display_scale_m": 0.08
   },
   {
@@ -13350,7 +13350,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/nigroporus-vinosus.glb",
-   "bytes": 68004,
+   "bytes": 90056,
    "display_scale_m": 0.15
   },
   {
@@ -13935,7 +13935,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/clitopilus-hobsonii.glb",
-   "bytes": 46896,
+   "bytes": 97176,
    "display_scale_m": 0.15
   },
   {
@@ -14055,7 +14055,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/resupinatus-alboniger.glb",
-   "bytes": 62680,
+   "bytes": 66700,
    "display_scale_m": 0.15
   },
   {
@@ -14475,7 +14475,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/ganoderma-polychromum.glb",
-   "bytes": 66360,
+   "bytes": 75772,
    "display_scale_m": 0.15
   },
   {
@@ -14520,7 +14520,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/fomitiporia-robusta.glb",
-   "bytes": 64940,
+   "bytes": 62892,
    "display_scale_m": 0.15
   },
   {
@@ -14565,7 +14565,7 @@
    "archetype": "mushroom-jelly",
    "palette_source": "derived",
    "file": "species/auricularia-nigricans.glb",
-   "bytes": 85576,
+   "bytes": 63780,
    "display_scale_m": 0.06
   },
   {
@@ -14640,7 +14640,7 @@
    "archetype": "mushroom-puffball",
    "palette_source": "derived",
    "file": "species/phallus-merulinus.glb",
-   "bytes": 102712,
+   "bytes": 77280,
    "display_scale_m": 0.07
   },
   {
@@ -14715,7 +14715,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/lentinus-squarrosulus.glb",
-   "bytes": 67176,
+   "bytes": 96076,
    "display_scale_m": 0.15
   },
   {
@@ -15240,7 +15240,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/favolaschia-manipularis.glb",
-   "bytes": 63032,
+   "bytes": 91272,
    "display_scale_m": 0.15
   },
   {
@@ -15645,7 +15645,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/xylobolus-spectabilis.glb",
-   "bytes": 62800,
+   "bytes": 87372,
    "display_scale_m": 0.15
   },
   {
@@ -15840,7 +15840,7 @@
    "archetype": "mushroom-coral",
    "palette_source": "derived",
    "file": "species/xylaria-flabelliformis.glb",
-   "bytes": 75984,
+   "bytes": 62348,
    "display_scale_m": 0.08
   },
   {
@@ -15855,7 +15855,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/trametes-sanguinea.glb",
-   "bytes": 67168,
+   "bytes": 82036,
    "display_scale_m": 0.15
   },
   {
@@ -15915,7 +15915,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/panus-tephroleucus.glb",
-   "bytes": 61744,
+   "bytes": 62408,
    "display_scale_m": 0.15
   },
   {
@@ -15960,7 +15960,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/steccherinum-nitidum.glb",
-   "bytes": 45816,
+   "bytes": 64284,
    "display_scale_m": 0.15
   },
   {
@@ -16065,7 +16065,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/inocutis-tamaricis.glb",
-   "bytes": 46992,
+   "bytes": 75660,
    "display_scale_m": 0.15
   },
   {
@@ -16140,7 +16140,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/hymenochaete-microcycla.glb",
-   "bytes": 67144,
+   "bytes": 81648,
    "display_scale_m": 0.15
   },
   {
@@ -16200,7 +16200,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/lentinus-arcularius.glb",
-   "bytes": 47280,
+   "bytes": 90420,
    "display_scale_m": 0.15
   },
   {
@@ -16260,7 +16260,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/irpex-latemarginatus.glb",
-   "bytes": 65844,
+   "bytes": 65536,
    "display_scale_m": 0.15
   },
   {
@@ -16335,7 +16335,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/fomitopsis-spraguei.glb",
-   "bytes": 67344,
+   "bytes": 90064,
    "display_scale_m": 0.15
   },
   {
@@ -16425,7 +16425,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/meripilus-lineatus.glb",
-   "bytes": 47080,
+   "bytes": 81448,
    "display_scale_m": 0.15
   },
   {
@@ -16440,7 +16440,7 @@
    "archetype": "mushroom-bracket",
    "palette_source": "derived",
    "file": "species/neocotylidia-diaphana.glb",
-   "bytes": 46096,
+   "bytes": 72308,
    "display_scale_m": 0.15
   },
   {

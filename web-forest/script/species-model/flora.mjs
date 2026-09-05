@@ -2787,8 +2787,75 @@ function waterPlant(k, col) {
 
 const CAP_SHAPE = ["dome", "bell", "flat", "funnel", "cone"];
 
+/** Genera whose bracket is zoned in concentric bands — turkey-tail and kin. */
+const ZONED_GENUS = new Set((
+  "trametes trametopsis stereum coriolopsis hexagonia lenzites daedaleopsis xylobolus " +
+  "schizophyllum microporus hymenochaete cerrena"
+).split(" "));
+/** Genera whose bracket is a thick woody half-disc. */
+const WOODY_GENUS = new Set("ganoderma fomitopsis phellinus fomes fuscoporia nigroporus".split(" "));
+/** Hard black stromata and cushions on wood — routed to coral, but not corals. */
+const STROMA_GENUS = new Set("annulohypoxylon daldinia hypoxylon nemania kretzschmaria biscogniauxia".split(" "));
+/** Stinkhorns — routed to puffball, but a stinkhorn is a stalk and a slimy cap. */
+const STINKHORN_GENUS = new Set("phallus mutinus clathrus lysurus simblum".split(" "));
+
+/**
+ * ONE bracket, attached along ONE edge on ONE face of the log.
+ *
+ * The first pass drew a shelf as a symmetric lens centred on a point out at
+ * radius, which meant half of every shelf was inside the log and came out the
+ * far side as a needle point — about twenty of the forty-four had a blade
+ * skewered clean through the trunk. A real bracket has a chord where it meets
+ * the wood and grows outward from there only, so that is what this is: a
+ * closed outline running along the attachment chord at `r0` and back around
+ * the rim at `r`, lofted into a thin domed shelf.
+ */
+function shelfGeo({ r0, r, h, arc = Math.PI * 0.95, seg = 10, droop = 0.3 }) {
+  const rimY = -droop * (r - r0);
+  const ring = (side) => {
+    const pts = [];
+    for (let j = 0; j <= seg; j += 1) {
+      const a = -arc / 2 + (arc * j) / seg;
+      pts.push([Math.sin(a) * r, rimY + side * h * 0.16, Math.cos(a) * r]);
+    }
+    for (let j = seg; j >= 0; j -= 1) {
+      const a = -arc / 2 + (arc * j) / seg;
+      pts.push([Math.sin(a) * r0, side * h, Math.cos(a) * r0]);
+    }
+    return { pts };
+  };
+  const cz = (r0 + r) * 0.5;
+  return clean(loft([
+    { pole: [0, -h * 0.45 + rimY * 0.3, cz] },
+    ring(-1), ring(1),
+    { pole: [0, h * 0.6 + rimY * 0.3, cz] },
+  ]));
+}
+
+/**
+ * Concentric zonation, keyed off distance from the log axis. Three tones, not
+ * two: turkey-tail is banded cream / mid / dark, and a brown-on-brown pair is
+ * invisible at gallery size — which is how the poster child of the family
+ * shipped as a plain lumpy mass.
+ */
+function zoneFn(band, r0, r) {
+  const span = Math.max(1e-6, r - r0);
+  return (q) => band[Math.max(0, Math.floor(((Math.hypot(q[0], q[2]) - r0) / span) * band.length * 1.4)) % band.length];
+}
+
+/** A frilly ruffled lobe — snow fungus, and the rim of an ear. */
+function ruffleGeo({ len, wid, thick, waves = 3, rows = 5, ring = 4 }) {
+  const g = bladeGeo({ len, wid, thick, shape: "orbicular", rows, ring });
+  g.positions = g.positions.map((q) => {
+    const t = q[2] / Math.max(1e-6, len);
+    return [q[0], q[1] + Math.sin(t * Math.PI * waves) * wid * 0.22 * (0.3 + t), q[2]];
+  });
+  return g;
+}
+
 function mushroom(k, col, opt = {}) {
   const kind = opt.kind ?? "cap";
+  const g = genusOf(k);
   const capCol = col.base ?? FUNGI_CAPS[0];
   const stalkCol = col.stalk ?? hex("#e8dcc0");
   const capDark = col.dark ?? shade(capCol, -0.3);
@@ -2796,35 +2863,62 @@ function mushroom(k, col, opt = {}) {
   const wood = hex("#7a5230");
 
   if (kind === "bracket") {
+    const zoned = ZONED_GENUS.has(g);
+    const woody = WOODY_GENUS.has(g);
+    /* Ganoderma applanatum is the artist's bracket: a woody GREY half-disc,
+       and it was shipping as red needle blades. */
+    const shelfCol = woody ? mix(capCol, hex("#8a8a80"), 0.55) : capCol;
+    const shelfDark = woody ? mix(capDark, hex("#5a5a52"), 0.5) : capDark;
     grow(k, col, {
-      salt: "fungi:bracket",
+      salt: `fungi:bracket:${zoned ? "z" : woody ? "w" : "p"}`,
+      /* Roughly round in plan. The general aspect pool runs to nineteen to one,
+         and a shelf stretched nineteen to one is a knife blade — which is what
+         the remaining "skewers" turned out to be once the geometry itself was
+         attached properly. */
+      axSet: [0.7, 1.05, 1.4, 1.75],
+      azSet: [0.7, 1.05, 1.4, 1.75],
       height: 0.4,
       breathe: 0.02,
-      sway: 0.02,
+      sway: 0.015,
       bands: [0, 1, 2, 3, 4, 5],
       spine(p, pl) {
+        pl.logR = 0.05;
+        pl.anchorColor = wood;
         p.spine("log", (node) => {
           p.add(node, xf(tubeGeo(0.055, 0.048, 1, 12)), { color: wood, colorFn: grad(shade(wood, 0.12), shade(wood, -0.25), 0, 1) });
           p.add(node, xf(sphereGeo(12, 5), { sx: 0.05, sy: 0.02, sz: 0.05, at: [0, 1, 0] }), { color: shade(wood, -0.2) });
-          addFace(p, node, { at: [0, 0.42, 0.052], r: 0.042 });
+          addFace(p, node, { at: [0, 0.42, 0.05], r: 0.042, tri: p.budget * 8 });
         });
       },
       slot(p, pl, s) {
         const { node, band, a } = s;
-        const r = 0.1 + pl.u(`sr${s.g}`) * 0.12;
-        const shelfShape = CAP_SHAPE[pl.H("cs") % CAP_SHAPE.length];
         if (band <= 1 && s.i % 3 === 2) {
           addTuft(p, node, { tri: p.budget, at: [0, 0, 0], r: 0.05, n: 3, color: APP.green, color2: APP.greenDeep, squash: 0.6 });
           return;
         }
-        addCap(p, node, {
-          r, h: r * (0.35 + pl.u(`sh${s.g}`) * 0.3), shape: shelfShape, sz: 0.75, rx: -0.35, ry: a, tri: p.budget,
-          at: [Math.cos(a) * r * 0.5, 0, Math.sin(a) * r * 0.5],
-          color: s.g % 2 ? capCol : capDark, colorFn: capGrad,
+        const r0 = pl.logR * 0.92;
+        const r = r0 + 0.09 + pl.u(`sr${s.g}`) * (woody ? 0.1 : 0.14);
+        const h = (woody ? 0.05 : zoned ? 0.016 : 0.03) * (0.8 + pl.u(`sh${s.g}`) * 0.5);
+        const seg = p.budget >= 90 ? 12 : p.budget >= 50 ? 9 : 7;
+        const base = s.g % 2 ? shelfCol : shelfDark;
+        p.add(node, xf(shelfGeo({
+          /* Never past a half-circle. A shelf that wraps more than 180 degrees
+             stops being star-shaped about the point its top face fans from,
+             and the fan then folds back on itself as the needle spikes the
+             review saw coming out of the far side of the log. */
+          r0, r, h, seg, arc: Math.PI * (woody ? 0.7 : 0.62 + pl.u(`sa${s.g}`) * 0.32),
+          droop: woody ? 0.12 : 0.26 + pl.u(`sd${s.g}`) * 0.2,
+        }), { ry: a }),
+        {
+          color: base,
+          colorFn: zoned
+            ? zoneFn([mix(shelfCol, paper, 0.62), shelfCol, shelfDark, shade(shelfCol, 0.2)], r0, r)
+            : capGrad,
         });
-        if (p.budget >= 60) {
-          p.add(node, xf(bladeGeo({ len: r * 1.4, wid: r * 1.5, thick: r * 0.09, shape: "orbicular", rows: 3, ring: 4 }),
-            { ry: a, at: [Math.cos(a) * r * 0.5, -r * 0.16, Math.sin(a) * r * 0.5] }), { color: shade(paper, -0.06) });
+        // the pore surface, a shade paler, tucked just under the shelf
+        if (p.budget >= 58) {
+          p.add(node, xf(shelfGeo({ r0, r: r * 0.94, h: h * 0.34, seg: Math.max(7, seg - 2), arc: Math.PI * 0.9, droop: 0.3 }),
+            { ry: a, at: [0, -h * 0.9, 0] }), { color: shade(paper, -0.1) });
         }
       },
     });
@@ -2832,28 +2926,88 @@ function mushroom(k, col, opt = {}) {
   }
 
   if (kind === "coral") {
+    const stroma = STROMA_GENUS.has(g);
+    if (stroma) {
+      /* Not a coral at all: a hard black cushion welded to dead wood. */
+      const black = mix(capDark, ink, 0.78);
+      grow(k, col, {
+        salt: "fungi:stroma",
+        axSet: [0.75, 1.05, 1.35],
+        azSet: [0.75, 1.05, 1.35],
+        height: 0.22,
+        breathe: 0.014,
+        sway: 0.01,
+        bands: [0, 1, 2, 3, 4, 5],
+        spine(p, pl) {
+          pl.anchorColor = black;
+          p.spine("stroma", (node) => {
+            // a piece of dead wood, wide and low, so the cushion reads as
+            // welded to a branch rather than as a toadstool on a stalk
+            p.add(node, xf(tubeGeo(0.3, 0.29, 0.24, 13)), { color: wood, colorFn: grad(shade(wood, 0.1), shade(wood, -0.28), 0, 0.24) });
+            p.add(node, xf(capGeo(0.3, 0.78, 15, 6, "dome"), { at: [0, 0.23, 0] }), { color: black, colorFn: grad(shade(black, 0.35), black, 0.3, 1) });
+            addFace(p, node, { at: [0, 0.62, 0.24], r: 0.075, tri: p.budget * 8 });
+          });
+        },
+        slot(p, pl, s) {
+          const { node, band, a } = s;
+          const t = (band + 0.5) / 6;
+          const r = reachOf(pl, a, 0.85 * (1 - 0.5 * t));
+          const rr = r * (0.4 + pl.u(`cr${s.g}`) * 0.3);
+          for (const sgn of [1, -1]) {
+            p.add(node, xf(sphereGeo(11, 6), { sx: rr, sy: rr * 0.8, sz: rr, at: [Math.cos(a) * r * 0.55 * sgn, 0, Math.sin(a) * r * 0.55 * sgn] }),
+              { color: s.g % 2 ? black : mix(black, capDark, 0.4), colorFn: grad(shade(black, 0.25), black, -rr, rr) });
+          }
+        },
+      });
+      return;
+    }
+    /* A coral fungus is an UPRIGHT branched candelabra. All seven were a
+       horizontal starburst of thin spikes lying flat on the ground. */
     grow(k, col, {
       salt: "fungi:coral",
-      height: 0.35,
+      axSet: [0.35, 0.6, 0.85],
+      azSet: [0.35, 0.6, 0.85],
+      height: 0.4,
       breathe: 0.024,
-      sway: 0.05,
+      sway: 0.04,
       bands: [0, 1, 2, 3, 4, 5],
       spine(p, pl) {
-        p.spine("stalk", (node) => {
-          p.add(node, xf(tubeGeo(0.03, 0.014, 0.55, 11)), { color: shade(capCol, -0.1) });
-          for (const sgn of [1]) {
-            p.add(node, xf(tubeGeo(0.012, 0.005, 0.5, 9), { rz: sgn * 0.22, at: [0, 0.5, 0] }), { color: capCol });
+        pl.anchorColor = capDark;
+        p.spine("trunk", (node) => {
+          p.add(node, xf(tubeGeo(0.05, 0.03, 0.3, 11)), { color: shade(capCol, -0.12) });
+          const branch = [];
+          for (let i = 0; i < 3; i += 1) {
+            const a = i * 2.399 + pl.u("b0") * TAU;
+            const lean = 0.16 + 0.1 * (i % 2);
+            branch.push(xf(tubeGeo(0.026, 0.012, 0.5 + 0.18 * (i % 3), 9), {
+              rz: -Math.cos(a) * lean, rx: Math.sin(a) * lean, at: [Math.cos(a) * 0.018, 0.28, Math.sin(a) * 0.018],
+            }));
+            branch.push(xf(tubeGeo(0.013, 0.006, 0.24, 8), {
+              rz: -Math.cos(a) * (lean + 0.5), rx: Math.sin(a) * (lean + 0.5),
+              at: [Math.cos(a) * 0.1, 0.72 + 0.1 * (i % 2), Math.sin(a) * 0.1],
+            }));
           }
-          addFace(p, node, { at: [0, 0.2, 0.028], r: 0.032 });
+          p.add(node, mergeGeo(branch), { color: capCol, colorFn: grad(shade(capCol, 0.3), capDark, 0.2, 1) });
+          addFace(p, node, { at: [0, 0.16, 0.042], r: 0.038, tri: p.budget * 8 });
         });
       },
       slot(p, pl, s) {
         const { node, a } = s;
-        const h = 0.16 + pl.u(`ch${s.g}`) * 0.2;
-        for (const sgn of [1]) {
-          p.add(node, xf(tubeGeo(0.012, 0.005, h, 9), { rz: -Math.cos(a) * sgn * 0.4, rx: Math.sin(a) * sgn * 0.4 }), { color: s.g % 2 ? capCol : capDark });
-          p.add(node, xf(ballGeo(p.budget * 0.4), { s: 0.011, at: [Math.cos(a) * sgn * h * 0.4, h, Math.sin(a) * sgn * h * 0.4] }), { color: shade(capCol, 0.25) });
+        const h = 0.2 + pl.u(`ch${s.g}`) * 0.22;
+        const lean = 0.14 + pl.u(`cl${s.g}`) * 0.3;   // from VERTICAL, not from flat
+        const arm = [];
+        for (const sgn of [1, -1]) {
+          const aa = a + (sgn > 0 ? 0 : Math.PI);
+          arm.push(xf(tubeGeo(0.014, 0.007, h, 9), { rz: -Math.cos(aa) * lean, rx: Math.sin(aa) * lean, at: [Math.cos(aa) * 0.012, 0, Math.sin(aa) * 0.012] }));
+          // the fork: a coral is a candelabra, so every arm splits
+          for (const f of [1, -1]) {
+            arm.push(xf(tubeGeo(0.008, 0.004, h * 0.5, 8), {
+              rz: -Math.cos(aa) * (lean + f * 0.45), rx: Math.sin(aa) * (lean + f * 0.45),
+              at: [Math.cos(aa) * (0.012 + h * Math.sin(lean)), h * Math.cos(lean), Math.sin(aa) * (0.012 + h * Math.sin(lean))],
+            }));
+          }
         }
+        p.add(node, mergeGeo(arm), { color: s.g % 2 ? capCol : capDark, colorFn: grad(shade(capCol, 0.32), capDark, 0, h) });
       },
     });
     return;
@@ -2888,26 +3042,81 @@ function mushroom(k, col, opt = {}) {
   }
 
   if (kind === "earthstar") {
+    /* An earthstar is a SPORE SAC sitting in the middle of a star of thick
+       recurved rays. Geastrum shipped with neither readable: the rays were
+       thin blades crushed flat by the band clamp and the sac was buried. */
+    const rayCol = mix(capDark, hex("#8a7a62"), 0.5);
     grow(k, col, {
       salt: "fungi:star",
-      height: 0.22,
+      axSet: [1.2, 1.6, 2.0],
+      azSet: [1.2, 1.6, 2.0],
+      height: 0.24,
       breathe: 0.026,
       bands: [0, 1, 2, 3, 4, 5],
       spine(p, pl) {
-        p.spine("ball", (node) => {
-          p.add(node, xf(sphereGeo(12, 6), { sx: 0.085, sy: 0.09, sz: 0.085, at: [0, 0.5, 0] }), { color: capCol, colorFn: capGrad });
-          p.add(node, xf(coneGeo(0.02, 0.09, 9), { at: [0, 0.56, 0] }), { color: capDark });
-          p.add(node, xf(sphereGeo(12, 5), { sx: 0.07, sy: 0.05, sz: 0.07, at: [0, 0.05, 0] }), { color: shade(capCol, -0.15) });
-          addFace(p, node, { at: [0, 0.52, 0.08], r: 0.05 });
+        pl.anchorColor = rayCol;
+        p.spine("sac", (node) => {
+          const ray = [];
+          for (let i = 0; i < 6; i += 1) {
+            const a = i * (TAU / 6) + pl.u("r0") * TAU;
+            ray.push(xf(bladeGeo({ len: 0.6, wid: 0.3, thick: 0.075, shape: "lanceolate", rows: 4, ring: 5, bend: -0.16 }),
+              { rx: 0.55, ry: a, at: [Math.cos(a) * 0.1, 0.16, Math.sin(a) * 0.1] }));
+          }
+          p.add(node, mergeGeo(ray), { color: rayCol, colorFn: grad(shade(rayCol, 0.2), shade(rayCol, -0.2), 0, 0.3) });
+          p.add(node, xf(sphereGeo(13, 7), { sx: 0.2, sy: 0.21, sz: 0.2, at: [0, 0.42, 0] }), { color: capCol, colorFn: capGrad });
+          p.add(node, xf(coneGeo(0.05, 0.28, 10), { at: [0, 0.56, 0] }), { color: capDark });
+          addFace(p, node, { at: [0, 0.45, 0.19], r: 0.07, tri: p.budget * 8 });
         });
       },
       slot(p, pl, s) {
         const { node, a } = s;
-        const l = 0.09 + pl.u(`sl${s.g}`) * 0.07;
-        for (const sgn of [1]) {
-          p.add(node, xf(bladeGeo({ len: l, wid: l * 0.55, thick: l * 0.18, shape: "lanceolate", rows: 4, ring: 4 }), {
-            rx: -0.5 - pl.u(`sa${s.g}`) * 0.9, ry: a + (sgn > 0 ? 0 : Math.PI),
-          }), { color: s.g % 2 ? shade(capCol, -0.1) : capDark });
+        const l = 0.2 + pl.u(`sl${s.g}`) * 0.16;
+        for (const sgn of [1, -1]) {
+          p.add(node, xf(bladeGeo({ len: l, wid: l * 0.55, thick: l * 0.22, shape: "lanceolate", rows: 4, ring: 5, bend: -l * 0.3 }), {
+            rx: 0.45 + pl.u(`sa${s.g}`) * 0.6, ry: a + (sgn > 0 ? 0 : Math.PI), at: [Math.cos(a) * 0.05 * sgn, 0, Math.sin(a) * 0.05 * sgn],
+          }), { color: s.g % 2 ? rayCol : shade(rayCol, -0.18) });
+        }
+      },
+    });
+    return;
+  }
+
+  if (kind === "puffball" && STINKHORN_GENUS.has(g)) {
+    /* A stinkhorn: a tall spongy white stalk out of a volva, with a dark
+       conical slimy cap. It had been shipping as a puffball, which is a ball. */
+    const spongy = mix(paper, hex("#e8dcc0"), 0.4);
+    grow(k, col, {
+      salt: "fungi:stinkhorn",
+      axSet: [0.3, 0.5, 0.7],
+      azSet: [0.3, 0.5, 0.7],
+      height: 0.5,
+      breathe: 0.02,
+      sway: 0.02,
+      bands: [0, 1, 2, 3, 4, 5],
+      spine(p, pl) {
+        pl.anchorColor = spongy;
+        p.spine("stalk", (node) => {
+          p.add(node, xf(tubeGeo(0.062, 0.05, 0.72, 13, 0.008)), { color: spongy, colorFn: grad(paper, shade(spongy, -0.18), 0, 0.72) });
+          // the pitted spongy surface
+          for (let i = 0; i < 10; i += 1) {
+            const a = i * 2.399;
+            const y = 0.14 + (i / 10) * 0.5;
+            p.add(node, xf(sphereGeo(8, 4), { s: 0.016, at: [Math.cos(a) * 0.056, y, Math.sin(a) * 0.056] }), { color: shade(spongy, -0.16) });
+          }
+          p.add(node, xf(capGeo(0.085, 0.3, 13, 5, "cone"), { at: [0, 0.7, 0] }), { color: mix(capDark, ink, 0.45) });
+          p.add(node, xf(sphereGeo(12, 6), { sx: 0.085, sy: 0.06, sz: 0.085, at: [0, 0.04, 0] }), { color: shade(spongy, -0.1) });
+          addFace(p, node, { at: [0, 0.36, 0.055], r: 0.05, tri: p.budget * 8 });
+        });
+      },
+      slot(p, pl, s) {
+        const { node, band, a } = s;
+        if (band <= 1) {
+          addTuft(p, node, { tri: p.budget, at: [0, 0, 0], r: 0.05, n: 3, color: shade(spongy, -0.14), color2: capDark, squash: 0.6 });
+          return;
+        }
+        const r = reachOf(pl, a, 0.6);
+        for (const sgn of [1, -1]) {
+          p.add(node, xf(sphereGeo(9, 5), { sx: 0.022, sy: 0.03, sz: 0.022, at: [Math.cos(a) * r * sgn, 0, Math.sin(a) * r * sgn] }), { color: shade(spongy, -0.12) });
         }
       },
     });
@@ -2916,21 +3125,41 @@ function mushroom(k, col, opt = {}) {
 
   if (kind === "puffball" || kind === "jelly") {
     const jelly = kind === "jelly";
+    const ear = jelly && g === "auricularia";
+    const frilly = jelly && (g === "tremella" || g === "dacryopinax" || g === "phaeotremella");
     grow(k, col, {
-      salt: `fungi:${kind}`,
-      height: jelly ? 0.22 : 0.3,
+      salt: `fungi:${kind}${ear ? ":ear" : frilly ? ":frill" : ""}`,
+      height: jelly ? 0.26 : 0.3,
       breathe: 0.03,
       bands: [0, 1, 2, 3, 4, 5],
       spine(p, pl) {
+        pl.ear = ear; pl.frilly = frilly;
         p.spine("body", (node) => {
-          if (jelly) {
-            p.add(node, xf(sphereGeo(14, 6), { sx: 0.15, sy: 0.07, sz: 0.12, at: [0, 0.35, 0] }), { color: capCol, colorFn: capGrad });
-            p.add(node, xf(sphereGeo(12, 6), { sx: 0.09, sy: 0.06, sz: 0.08, at: [0, 0.62, 0.03] }), { color: shade(capCol, 0.15) });
+          if (ear) {
+            // the ear/cup concavity is the whole of Auricularia
+            p.add(node, xf(capGeo(0.24, 0.62, 14, 6, "funnel"), { rx: -0.5, at: [0, 0.16, 0] }), { color: capCol, colorFn: capGrad });
+            p.add(node, xf(capGeo(0.19, 0.44, 13, 5, "funnel"), { rx: -0.5, at: [0, 0.24, 0.02] }), { color: shade(capCol, -0.22) });
+            p.add(node, xf(tubeGeo(0.03, 0.05, 0.2, 10)), { color: shade(capCol, -0.3) });
+            addFace(p, node, { at: [0, 0.5, 0.16], r: 0.062, tri: p.budget * 8 });
+          } else if (frilly) {
+            const lobe = [];
+            for (let i = 0; i < 7; i += 1) {
+              const a = i * 2.399 + pl.u("f0") * TAU;
+              lobe.push(xf(ruffleGeo({ len: 0.42 - (i % 3) * 0.05, wid: 0.3, thick: 0.02, waves: 3, rows: 5, ring: 4 }),
+                { rx: -1.1 + (i % 3) * 0.34, ry: a, at: [Math.cos(a) * 0.05, 0.16 + (i % 3) * 0.14, Math.sin(a) * 0.05] }));
+            }
+            p.add(node, mergeGeo(lobe), { color: capCol, colorFn: grad(shade(capCol, 0.25), capDark, 0.1, 0.9) });
+            p.add(node, xf(sphereGeo(11, 5), { sx: 0.07, sy: 0.05, sz: 0.07, at: [0, 0.06, 0] }), { color: capDark });
+            addFace(p, node, { at: [0, 0.2, 0.16], r: 0.06, tri: p.budget * 8 });
+          } else if (jelly) {
+            p.add(node, xf(sphereGeo(14, 6), { sx: 0.15, sy: 0.09, sz: 0.12, at: [0, 0.35, 0] }), { color: capCol, colorFn: capGrad });
+            p.add(node, xf(sphereGeo(12, 6), { sx: 0.09, sy: 0.07, sz: 0.08, at: [0, 0.66, 0.03] }), { color: shade(capCol, 0.15) });
+            addFace(p, node, { at: [0, 0.4, 0.1], r: 0.05 });
           } else {
             p.add(node, xf(tubeGeo(0.045, 0.06, 0.35, 12)), { color: shade(stalkCol, -0.05) });
             p.add(node, xf(sphereGeo(14, 6), { sx: 0.12, sy: 0.11, sz: 0.12, at: [0, 0.55, 0] }), { color: capCol, colorFn: capGrad });
+            addFace(p, node, { at: [0, 0.55, 0.11], r: 0.05 });
           }
-          addFace(p, node, { at: [0, jelly ? 0.4 : 0.55, jelly ? 0.1 : 0.11], r: 0.05 });
         });
       },
       slot(p, pl, s) {
@@ -2938,6 +3167,24 @@ function mushroom(k, col, opt = {}) {
         const r = 0.03 + pl.u(`wr${s.g}`) * 0.04;
         if (band <= 1) {
           addTuft(p, node, { tri: p.budget, at: [0, 0, 0], r, n: 3, color: shade(capCol, -0.2), color2: capDark, squash: 0.7 });
+          return;
+        }
+        if (pl.frilly) {
+          const rr = reachOf(pl, a, 0.7);
+          const lobe = [];
+          for (const sgn of [1, -1]) {
+            lobe.push(xf(ruffleGeo({ len: rr * 0.8, wid: rr * 0.7, thick: 0.016, waves: 3, rows: 4, ring: 4 }),
+              { rx: -0.9 + pl.u(`fr${s.g}`) * 0.8, ry: a + (sgn > 0 ? 0 : Math.PI), at: [Math.cos(a) * 0.03 * sgn, 0, Math.sin(a) * 0.03 * sgn] }));
+          }
+          p.add(node, mergeGeo(lobe), { color: s.g % 2 ? capCol : shade(capCol, 0.2), colorFn: capGrad });
+          return;
+        }
+        if (pl.ear) {
+          const rr = reachOf(pl, a, 0.55);
+          for (const sgn of [1, -1]) {
+            p.add(node, xf(capGeo(rr * 0.6, rr * 1.1, 11, 4, "funnel"), { rx: -0.6, ry: a + (sgn > 0 ? 0 : Math.PI), at: [Math.cos(a) * rr * 0.4 * sgn, 0, Math.sin(a) * rr * 0.4 * sgn] }),
+              { color: s.g % 2 ? capCol : capDark, colorFn: capGrad });
+          }
           return;
         }
         for (const sgn of [1]) {
@@ -2968,7 +3215,7 @@ function mushroom(k, col, opt = {}) {
         p.add(node, xf(capGeo(capR, 1 - stalkH, 14, 6, shape), { at: [0, stalkH, 0] }), { color: capCol, colorFn: capGrad });
         // gills
         p.add(node, xf(discGeo(capR * 0.85, capR * 0.08, 11), { at: [0, stalkH + 0.008, 0] }), { color: shade(paper, -0.08) });
-        addFace(p, node, { at: [0, stalkH * 0.5, sr * 1.1], r: Math.max(0.03, sr * 1.5) });
+        addFace(p, node, { at: [0, stalkH * 0.5, sr * 1.05], r: Math.max(0.03, sr * 1.5) });
       });
     },
     slot(p, pl, s) {
