@@ -1,6 +1,6 @@
 {
  "_comment": "One cute animated .glb per species known from the Ateneo Loyola Heights campus. Species list: iNaturalist species_counts sweep of the campus box (fetched 2026-09-03T16:44:34.730Z) merged with the curated guide list in src/data.ts. The AIS inventory (due 2026-09-09) supersedes this list when it lands. palette_source 'known' = colors written from the species' real appearance; 'derived' = deterministic pick from tuned pools, not observed data. display_scale_m is a suggested real-world height hint for AR, not a measurement.",
- "generated_at": "2026-09-05T06:27:26.081Z",
+ "generated_at": "2026-09-05T06:30:17.999Z",
  "campus_box": {
   "nelat": 14.6455,
   "nelng": 121.084,
@@ -195,7 +195,7 @@
    "archetype": "herb",
    "palette_source": "known",
    "file": "species/rivina-humilis.glb",
-   "bytes": 83960,
+   "bytes": 83128,
    "display_scale_m": 0.6
   },
   {
@@ -285,7 +285,7 @@
    "archetype": "herb",
    "palette_source": "known",
    "file": "species/asystasia-intrusa.glb",
-   "bytes": 89440,
+   "bytes": 90244,
    "display_scale_m": 0.4
   },
   {
@@ -405,7 +405,7 @@
    "archetype": "herb",
    "palette_source": "known",
    "file": "species/ruellia-simplex.glb",
-   "bytes": 49524,
+   "bytes": 48868,
    "display_scale_m": 0.9
   },
   {
@@ -525,7 +525,7 @@
    "archetype": "herb",
    "palette_source": "known",
    "file": "species/tridax-procumbens.glb",
-   "bytes": 80276,
+   "bytes": 79440,
    "display_scale_m": 0.3
   },
   {
@@ -585,7 +585,7 @@
    "archetype": "herb",
    "palette_source": "known",
    "file": "species/cyanthillium-cinereum.glb",
-   "bytes": 82368,
+   "bytes": 83244,
    "display_scale_m": 0.5
   },
   {
@@ -660,7 +660,7 @@
    "archetype": "herb",
    "palette_source": "known",
    "file": "species/tradescantia-pallida.glb",
-   "bytes": 80152,
+   "bytes": 78612,
    "display_scale_m": 0.35
   },
   {
@@ -705,7 +705,7 @@
    "archetype": "herb",
    "palette_source": "known",
    "file": "species/peperomia-pellucida.glb",
-   "bytes": 72104,
+   "bytes": 70764,
    "display_scale_m": 0.25
   },
   {
@@ -720,7 +720,7 @@
    "archetype": "herb",
    "palette_source": "known",
    "file": "species/solanum-diphyllum.glb",
-   "bytes": 73048,
+   "bytes": 72200,
    "display_scale_m": 0.8
   },
   {
@@ -750,7 +750,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/alternanthera-ficoidea.glb",
-   "bytes": 85924,
+   "bytes": 84648,
    "display_scale_m": 0.35
   },
   {
@@ -780,7 +780,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/asystasia-gangetica.glb",
-   "bytes": 43528,
+   "bytes": 43104,
    "display_scale_m": 0.35
   },
   {
@@ -810,7 +810,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/melothria-pendula.glb",
-   "bytes": 58776,
+   "bytes": 56924,
    "display_scale_m": 0.35
   },
   {
@@ -825,7 +825,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/callisia-fragrans.glb",
-   "bytes": 89316,
+   "bytes": 88676,
    "display_scale_m": 0.35
   },
   {
@@ -840,7 +840,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/arachis-pintoi.glb",
-   "bytes": 47840,
+   "bytes": 47808,
    "display_scale_m": 0.35
   },
   {
@@ -1020,7 +1020,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/alternanthera-bettzickiana.glb",
-   "bytes": 71204,
+   "bytes": 72000,
    "display_scale_m": 0.35
   },
   {
@@ -1110,7 +1110,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/oxalis-corniculata.glb",
-   "bytes": 47016,
+   "bytes": 46584,
    "display_scale_m": 0.35
   },
   {
@@ -1125,7 +1125,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/tradescantia-spathacea.glb",
-   "bytes": 45488,
+   "bytes": 45128,
    "display_scale_m": 0.35
   },
   {
@@ -1155,7 +1155,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/phyllanthus-urinaria.glb",
-   "bytes": 84320,
+   "bytes": 82344,
    "display_scale_m": 0.35
   },
   {
@@ -1395,7 +1395,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/pilea-microphylla.glb",
-   "bytes": 57048,
+   "bytes": 56308,
    "display_scale_m": 0.35
   },
   {
@@ -1440,7 +1440,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/torenia-fournieri.glb",
-   "bytes": 82968,
+   "bytes": 81692,
    "display_scale_m": 0.35
   },
   {
@@ -1605,7 +1605,7 @@
    "archetype": "herb",
    "palette_source": "known",
    "file": "species/mimosa-pudica.glb",
-   "bytes": 48232,
+   "bytes": 49216,
    "display_scale_m": 0.4
   },
   {
@@ -1710,7 +1710,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/torenia-crustacea.glb",
-   "bytes": 48256,
+   "bytes": 47512,
    "display_scale_m": 0.35
   },
   {
@@ -1785,7 +1785,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/episcia-cupreata.glb",
-   "bytes": 53784,
+   "bytes": 53960,
    "display_scale_m": 0.35
   },
   {
@@ -1860,7 +1860,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/euphorbia-graminea.glb",
-   "bytes": 46280,
+   "bytes": 45632,
    "display_scale_m": 0.35
   },
   {
@@ -1950,7 +1950,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/calyptocarpus-vialis.glb",
-   "bytes": 80212,
+   "bytes": 79788,
    "display_scale_m": 0.35
   },
   {
@@ -2130,7 +2130,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/manihot-esculenta.glb",
-   "bytes": 83388,
+   "bytes": 82856,
    "display_scale_m": 0.35
   },
   {
@@ -2145,7 +2145,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/tradescantia-zebrina.glb",
-   "bytes": 83280,
+   "bytes": 83568,
    "display_scale_m": 0.35
   },
   {
@@ -2190,7 +2190,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/ruellia-repens.glb",
-   "bytes": 79868,
+   "bytes": 78872,
    "display_scale_m": 0.35
   },
   {
@@ -2220,7 +2220,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/ruellia-blechum.glb",
-   "bytes": 95408,
+   "bytes": 94152,
    "display_scale_m": 0.35
   },
   {
@@ -2310,7 +2310,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/alternanthera-sessilis.glb",
-   "bytes": 87668,
+   "bytes": 87976,
    "display_scale_m": 0.35
   },
   {
@@ -2370,7 +2370,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/heptapleurum-arboricola.glb",
-   "bytes": 83008,
+   "bytes": 82228,
    "display_scale_m": 0.35
   },
   {
@@ -2730,7 +2730,7 @@
    "archetype": "herb",
    "palette_source": "known",
    "file": "species/catharanthus-roseus.glb",
-   "bytes": 75256,
+   "bytes": 75620,
    "display_scale_m": 0.5
   },
   {
@@ -2775,7 +2775,7 @@
    "archetype": "herb",
    "palette_source": "known",
    "file": "species/clitoria-ternatea.glb",
-   "bytes": 62948,
+   "bytes": 62428,
    "display_scale_m": 1.5
   },
   {
@@ -2805,7 +2805,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/phyllanthus-niruri.glb",
-   "bytes": 59808,
+   "bytes": 60360,
    "display_scale_m": 0.35
   },
   {
@@ -2820,7 +2820,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/synedrella-nodiflora.glb",
-   "bytes": 72524,
+   "bytes": 72936,
    "display_scale_m": 0.35
   },
   {
@@ -2880,7 +2880,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/eleutheranthera-ruderalis.glb",
-   "bytes": 79468,
+   "bytes": 79232,
    "display_scale_m": 0.35
   },
   {
@@ -3165,7 +3165,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/ageratum-conyzoides.glb",
-   "bytes": 43296,
+   "bytes": 43812,
    "display_scale_m": 0.35
   },
   {
@@ -3210,7 +3210,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/petiveria-alliacea.glb",
-   "bytes": 81536,
+   "bytes": 81248,
    "display_scale_m": 0.35
   },
   {
@@ -3225,7 +3225,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/pilea-nummulariifolia.glb",
-   "bytes": 50768,
+   "bytes": 51972,
    "display_scale_m": 0.35
   },
   {
@@ -3270,7 +3270,7 @@
    "archetype": "herb",
    "palette_source": "known",
    "file": "species/sphagneticola-trilobata.glb",
-   "bytes": 81196,
+   "bytes": 81132,
    "display_scale_m": 0.3
   },
   {
@@ -3285,7 +3285,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/elephantopus-scaber.glb",
-   "bytes": 73396,
+   "bytes": 73336,
    "display_scale_m": 0.35
   },
   {
@@ -3420,7 +3420,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/laportea-interrupta.glb",
-   "bytes": 95380,
+   "bytes": 94220,
    "display_scale_m": 0.35
   },
   {
@@ -3585,7 +3585,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/fatoua-villosa.glb",
-   "bytes": 80052,
+   "bytes": 79252,
    "display_scale_m": 0.35
   },
   {
@@ -3705,7 +3705,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/tithonia-diversifolia.glb",
-   "bytes": 63164,
+   "bytes": 62800,
    "display_scale_m": 0.35
   },
   {
@@ -3720,7 +3720,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/oldenlandia-corymbosa.glb",
-   "bytes": 83432,
+   "bytes": 83788,
    "display_scale_m": 0.35
   },
   {
@@ -3795,7 +3795,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/dicliptera-chinensis.glb",
-   "bytes": 84948,
+   "bytes": 84844,
    "display_scale_m": 0.35
   },
   {
@@ -3825,7 +3825,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/laportea-aestuans.glb",
-   "bytes": 83716,
+   "bytes": 83576,
    "display_scale_m": 0.35
   },
   {
@@ -3840,7 +3840,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/pisonia-grandis.glb",
-   "bytes": 91344,
+   "bytes": 90796,
    "display_scale_m": 0.35
   },
   {
@@ -4470,7 +4470,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/achyranthes-aspera.glb",
-   "bytes": 98464,
+   "bytes": 98024,
    "display_scale_m": 0.35
   },
   {
@@ -4485,7 +4485,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/achyranthes-japonica.glb",
-   "bytes": 70320,
+   "bytes": 71084,
    "display_scale_m": 0.35
   },
   {
@@ -4515,7 +4515,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/alternanthera-brasiliana.glb",
-   "bytes": 54144,
+   "bytes": 54096,
    "display_scale_m": 0.35
   },
   {
@@ -4620,7 +4620,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/euphorbia-tithymaloides.glb",
-   "bytes": 72060,
+   "bytes": 73332,
    "display_scale_m": 0.35
   },
   {
@@ -4650,7 +4650,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/pilea-cadierei.glb",
-   "bytes": 74424,
+   "bytes": 73972,
    "display_scale_m": 0.35
   },
   {
@@ -4680,7 +4680,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/arachnothryx-leucophylla.glb",
-   "bytes": 89816,
+   "bytes": 89392,
    "display_scale_m": 0.35
   },
   {
@@ -4710,7 +4710,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/spermacoce-remota.glb",
-   "bytes": 84104,
+   "bytes": 83940,
    "display_scale_m": 0.35
   },
   {
@@ -4965,7 +4965,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/heptapleurum-ellipticum.glb",
-   "bytes": 82060,
+   "bytes": 81292,
    "display_scale_m": 0.35
   },
   {
@@ -5280,7 +5280,7 @@
    "archetype": "herb",
    "palette_source": "known",
    "file": "species/emilia-sonchifolia.glb",
-   "bytes": 93096,
+   "bytes": 92592,
    "display_scale_m": 0.4
   },
   {
@@ -5355,7 +5355,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/trichostigma-octandrum.glb",
-   "bytes": 70592,
+   "bytes": 70560,
    "display_scale_m": 0.35
   },
   {
@@ -5385,7 +5385,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/cleome-rutidosperma.glb",
-   "bytes": 84300,
+   "bytes": 83660,
    "display_scale_m": 0.35
   },
   {
@@ -5400,7 +5400,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/cuphea-carthagenensis.glb",
-   "bytes": 88308,
+   "bytes": 87268,
    "display_scale_m": 0.35
   },
   {
@@ -5415,7 +5415,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/euphorbia-pulcherrima.glb",
-   "bytes": 94776,
+   "bytes": 93972,
    "display_scale_m": 0.35
   },
   {
@@ -5475,7 +5475,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/richardia-brasiliensis.glb",
-   "bytes": 94796,
+   "bytes": 93348,
    "display_scale_m": 0.35
   },
   {
@@ -5655,7 +5655,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/ruellia-tuberosa.glb",
-   "bytes": 83484,
+   "bytes": 84016,
    "display_scale_m": 0.35
   },
   {
@@ -5805,7 +5805,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/nelsonia-canescens.glb",
-   "bytes": 48748,
+   "bytes": 49412,
    "display_scale_m": 0.35
   },
   {
@@ -6210,7 +6210,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/cosmos-sulphureus.glb",
-   "bytes": 69032,
+   "bytes": 67880,
    "display_scale_m": 0.35
   },
   {
@@ -6300,7 +6300,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/parietaria-judaica.glb",
-   "bytes": 73908,
+   "bytes": 72696,
    "display_scale_m": 0.35
   },
   {
@@ -6465,7 +6465,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/alternanthera-caracasana.glb",
-   "bytes": 64352,
+   "bytes": 63608,
    "display_scale_m": 0.35
   },
   {
@@ -6480,7 +6480,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/commelina-benghalensis.glb",
-   "bytes": 48680,
+   "bytes": 49044,
    "display_scale_m": 0.35
   },
   {
@@ -6750,7 +6750,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/andrographis-paniculata.glb",
-   "bytes": 87824,
+   "bytes": 87720,
    "display_scale_m": 0.35
   },
   {
@@ -6870,7 +6870,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/abelmoschus-esculentus.glb",
-   "bytes": 78252,
+   "bytes": 64596,
    "display_scale_m": 0.35
   },
   {
@@ -6945,7 +6945,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/celosia-argentea.glb",
-   "bytes": 98760,
+   "bytes": 98300,
    "display_scale_m": 0.35
   },
   {
@@ -6975,7 +6975,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/crassocephalum-crepidioides.glb",
-   "bytes": 81436,
+   "bytes": 81028,
    "display_scale_m": 0.35
   },
   {
@@ -7050,7 +7050,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/phyllanthus-amarus.glb",
-   "bytes": 70708,
+   "bytes": 70212,
    "display_scale_m": 0.35
   },
   {
@@ -7065,7 +7065,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/pisonia-aculeata.glb",
-   "bytes": 96136,
+   "bytes": 97664,
    "display_scale_m": 0.35
   },
   {
@@ -7320,7 +7320,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/cyathula-prostrata.glb",
-   "bytes": 51632,
+   "bytes": 50400,
    "display_scale_m": 0.35
   },
   {
@@ -7395,7 +7395,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/euphorbia-hypericifolia.glb",
-   "bytes": 72136,
+   "bytes": 71188,
    "display_scale_m": 0.35
   },
   {
@@ -8100,7 +8100,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/heterotis-rotundifolia.glb",
-   "bytes": 45740,
+   "bytes": 45524,
    "display_scale_m": 0.35
   },
   {
@@ -8115,7 +8115,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/cardamine-occulta.glb",
-   "bytes": 69496,
+   "bytes": 70000,
    "display_scale_m": 0.35
   },
   {
@@ -8445,7 +8445,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/grona-triflora.glb",
-   "bytes": 87656,
+   "bytes": 85972,
    "display_scale_m": 0.35
   },
   {
@@ -8805,7 +8805,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/amaranthus-blitum.glb",
-   "bytes": 84472,
+   "bytes": 84540,
    "display_scale_m": 0.35
   },
   {
@@ -8820,7 +8820,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/polygonum-arenastrum.glb",
-   "bytes": 90944,
+   "bytes": 90840,
    "display_scale_m": 0.35
   },
   {
@@ -8835,7 +8835,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/chrysanthemum-morifolium.glb",
-   "bytes": 99224,
+   "bytes": 96596,
    "display_scale_m": 0.35
   },
   {
@@ -8940,7 +8940,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/cardamine-hirsuta.glb",
-   "bytes": 78364,
+   "bytes": 78764,
    "display_scale_m": 0.35
   },
   {
@@ -9015,7 +9015,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/helianthus-annuus.glb",
-   "bytes": 93456,
+   "bytes": 93820,
    "display_scale_m": 0.35
   },
   {
@@ -9030,7 +9030,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/sisymbrium-irio.glb",
-   "bytes": 96048,
+   "bytes": 94540,
    "display_scale_m": 0.35
   },
   {
@@ -9045,7 +9045,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/parietaria-hespera.glb",
-   "bytes": 82208,
+   "bytes": 81304,
    "display_scale_m": 0.35
   },
   {
@@ -9060,7 +9060,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/polycarpon-tetraphyllum.glb",
-   "bytes": 62292,
+   "bytes": 62264,
    "display_scale_m": 0.35
   },
   {
@@ -9075,7 +9075,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/solanum-americanum.glb",
-   "bytes": 84072,
+   "bytes": 84760,
    "display_scale_m": 0.35
   },
   {
@@ -9090,7 +9090,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/phyla-lanceolata.glb",
-   "bytes": 71972,
+   "bytes": 71672,
    "display_scale_m": 0.35
   },
   {
@@ -9210,7 +9210,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/solanum-melongena.glb",
-   "bytes": 53460,
+   "bytes": 53396,
    "display_scale_m": 0.35
   },
   {
@@ -9225,7 +9225,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/arachis-hypogaea.glb",
-   "bytes": 94180,
+   "bytes": 93168,
    "display_scale_m": 0.35
   },
   {
@@ -9345,7 +9345,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/impatiens-walleriana.glb",
-   "bytes": 82332,
+   "bytes": 82436,
    "display_scale_m": 0.35
   },
   {
@@ -9435,7 +9435,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/amaranthus-deflexus.glb",
-   "bytes": 91384,
+   "bytes": 91552,
    "display_scale_m": 0.35
   },
   {
@@ -9450,7 +9450,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/amaranthus-viridis.glb",
-   "bytes": 93672,
+   "bytes": 93568,
    "display_scale_m": 0.35
   },
   {
@@ -9480,7 +9480,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/eclipta-prostrata.glb",
-   "bytes": 52912,
+   "bytes": 52228,
    "display_scale_m": 0.35
   },
   {
@@ -9510,7 +9510,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/leucanthemum-maximum.glb",
-   "bytes": 57904,
+   "bytes": 57728,
    "display_scale_m": 0.35
   },
   {
@@ -9525,7 +9525,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/mauranthemum-paludosum.glb",
-   "bytes": 68244,
+   "bytes": 68304,
    "display_scale_m": 0.35
   },
   {
@@ -9555,7 +9555,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/thalictrum-dioicum.glb",
-   "bytes": 63916,
+   "bytes": 62460,
    "display_scale_m": 0.35
   },
   {
@@ -9585,7 +9585,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/evolvulus-nummularius.glb",
-   "bytes": 77008,
+   "bytes": 73492,
    "display_scale_m": 0.35
   },
   {
@@ -9600,7 +9600,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/evolvulus-glomeratus.glb",
-   "bytes": 61240,
+   "bytes": 60876,
    "display_scale_m": 0.35
   },
   {
@@ -9615,7 +9615,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/spinacia-oleracea.glb",
-   "bytes": 71972,
+   "bytes": 72612,
    "display_scale_m": 0.35
   },
   {
@@ -9930,7 +9930,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/ageratum-houstonianum.glb",
-   "bytes": 93648,
+   "bytes": 93716,
    "display_scale_m": 0.35
   },
   {
@@ -10020,7 +10020,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/phaseolus-vulgaris.glb",
-   "bytes": 80532,
+   "bytes": 80160,
    "display_scale_m": 0.35
   },
   {
@@ -10320,7 +10320,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/youngia-japonica.glb",
-   "bytes": 91060,
+   "bytes": 90444,
    "display_scale_m": 0.35
   },
   {
@@ -10455,7 +10455,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/gomphrena-serrata.glb",
-   "bytes": 80232,
+   "bytes": 79884,
    "display_scale_m": 0.35
   },
   {
@@ -10530,7 +10530,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/impatiens-balsamina.glb",
-   "bytes": 64444,
+   "bytes": 64048,
    "display_scale_m": 0.35
   },
   {
@@ -10620,7 +10620,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/tacca-leontopetaloides.glb",
-   "bytes": 56504,
+   "bytes": 57212,
    "display_scale_m": 0.35
   },
   {
@@ -10920,7 +10920,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/adenostemma-lavenia.glb",
-   "bytes": 93144,
+   "bytes": 92356,
    "display_scale_m": 0.35
   },
   {
@@ -10935,7 +10935,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/alternanthera-flavescens.glb",
-   "bytes": 90100,
+   "bytes": 90608,
    "display_scale_m": 0.35
   },
   {
@@ -10950,7 +10950,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/alternanthera-pungens.glb",
-   "bytes": 90968,
+   "bytes": 92276,
    "display_scale_m": 0.35
   },
   {
@@ -10995,7 +10995,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/ceratocephala-testiculata.glb",
-   "bytes": 62032,
+   "bytes": 61004,
    "display_scale_m": 0.35
   },
   {
@@ -11010,7 +11010,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/commelina-diffusa.glb",
-   "bytes": 78192,
+   "bytes": 78420,
    "display_scale_m": 0.35
   },
   {
@@ -11025,7 +11025,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/corchorus-aestuans.glb",
-   "bytes": 80920,
+   "bytes": 80652,
    "display_scale_m": 0.35
   },
   {
@@ -11040,7 +11040,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/corchorus-olitorius.glb",
-   "bytes": 57548,
+   "bytes": 58320,
    "display_scale_m": 0.35
   },
   {
@@ -11070,7 +11070,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/cuphea-hyssopifolia.glb",
-   "bytes": 82780,
+   "bytes": 82392,
    "display_scale_m": 0.35
   },
   {
@@ -11325,7 +11325,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/malvastrum-coromandelianum.glb",
-   "bytes": 51084,
+   "bytes": 51788,
    "display_scale_m": 0.35
   },
   {
@@ -11385,7 +11385,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/phyllanthus-acidus.glb",
-   "bytes": 64376,
+   "bytes": 63708,
    "display_scale_m": 0.35
   },
   {
@@ -11445,7 +11445,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/ruellia-nudiflora.glb",
-   "bytes": 63600,
+   "bytes": 63360,
    "display_scale_m": 0.35
   },
   {
@@ -11460,7 +11460,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/ruellia-prostrata.glb",
-   "bytes": 79148,
+   "bytes": 79728,
    "display_scale_m": 0.35
   },
   {
@@ -11535,7 +11535,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/stachytarpheta-jamaicensis.glb",
-   "bytes": 73328,
+   "bytes": 72456,
    "display_scale_m": 0.35
   },
   {
@@ -11595,7 +11595,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/turnera-ulmifolia.glb",
-   "bytes": 93972,
+   "bytes": 93880,
    "display_scale_m": 0.35
   },
   {
@@ -11835,7 +11835,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/persicaria-chinensis.glb",
-   "bytes": 51704,
+   "bytes": 51004,
    "display_scale_m": 0.35
   },
   {
@@ -11955,7 +11955,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/cnidoscolus-multilobus.glb",
-   "bytes": 74280,
+   "bytes": 73368,
    "display_scale_m": 0.35
   },
   {
@@ -12195,7 +12195,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/alternanthera-halimifolia.glb",
-   "bytes": 93744,
+   "bytes": 93536,
    "display_scale_m": 0.35
   },
   {
@@ -12255,7 +12255,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/chamissoa-altissima.glb",
-   "bytes": 83744,
+   "bytes": 81956,
    "display_scale_m": 0.35
   },
   {
@@ -12345,7 +12345,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/melampodium-divaricatum.glb",
-   "bytes": 93128,
+   "bytes": 93292,
    "display_scale_m": 0.35
   },
   {
@@ -12600,7 +12600,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/oxalis-triangularis.glb",
-   "bytes": 94868,
+   "bytes": 92780,
    "display_scale_m": 0.35
   },
   {
@@ -12615,7 +12615,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/turnera-subulata.glb",
-   "bytes": 76528,
+   "bytes": 75596,
    "display_scale_m": 0.35
   },
   {
@@ -12810,7 +12810,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/origanum-syriacum.glb",
-   "bytes": 84104,
+   "bytes": 84072,
    "display_scale_m": 0.35
   },
   {
@@ -13140,7 +13140,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/blumea-balsamifera.glb",
-   "bytes": 74308,
+   "bytes": 73736,
    "display_scale_m": 0.35
   },
   {
@@ -13425,7 +13425,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/arachis-duranensis.glb",
-   "bytes": 70368,
+   "bytes": 70888,
    "display_scale_m": 0.35
   },
   {
@@ -13785,7 +13785,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/deeringia-amaranthoides.glb",
-   "bytes": 83012,
+   "bytes": 82760,
    "display_scale_m": 0.35
   },
   {
@@ -13815,7 +13815,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/alternanthera-denticulata.glb",
-   "bytes": 66100,
+   "bytes": 65320,
    "display_scale_m": 0.35
   },
   {
@@ -14070,7 +14070,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/phyllanthus-myrtifolius.glb",
-   "bytes": 83632,
+   "bytes": 82104,
    "display_scale_m": 0.35
   },
   {
@@ -14205,7 +14205,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/biophytum-sensitivum.glb",
-   "bytes": 80588,
+   "bytes": 79556,
    "display_scale_m": 0.35
   },
   {
@@ -14445,7 +14445,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/lindernia-rotundifolia.glb",
-   "bytes": 72784,
+   "bytes": 73132,
    "display_scale_m": 0.35
   },
   {
@@ -14670,7 +14670,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/dyschoriste-nagchana.glb",
-   "bytes": 92024,
+   "bytes": 90968,
    "display_scale_m": 0.35
   },
   {
@@ -14805,7 +14805,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/rungia-pectinata.glb",
-   "bytes": 84392,
+   "bytes": 83848,
    "display_scale_m": 0.35
   },
   {
@@ -15030,7 +15030,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/lepidagathis-inaequalis.glb",
-   "bytes": 83548,
+   "bytes": 84360,
    "display_scale_m": 0.35
   },
   {
@@ -15105,7 +15105,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/brachystelma-molaventi.glb",
-   "bytes": 69264,
+   "bytes": 68676,
    "display_scale_m": 0.35
   },
   {
@@ -15120,7 +15120,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/pelargonium-glutinosum.glb",
-   "bytes": 73532,
+   "bytes": 74176,
    "display_scale_m": 0.35
   },
   {
@@ -15165,7 +15165,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/agrimonia-asiatica.glb",
-   "bytes": 96444,
+   "bytes": 96932,
    "display_scale_m": 0.35
   },
   {
@@ -15225,7 +15225,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/salvia-rosmarinus.glb",
-   "bytes": 67144,
+   "bytes": 67012,
    "display_scale_m": 0.35
   },
   {
@@ -15270,7 +15270,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/wollastonia-biflora.glb",
-   "bytes": 94712,
+   "bytes": 94036,
    "display_scale_m": 0.35
   },
   {
@@ -15300,7 +15300,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/rungia-taiwanensis.glb",
-   "bytes": 70132,
+   "bytes": 71300,
    "display_scale_m": 0.35
   },
   {
@@ -15345,7 +15345,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/abelmoschus-ficulneus.glb",
-   "bytes": 45976,
+   "bytes": 45752,
    "display_scale_m": 0.35
   },
   {
@@ -15555,7 +15555,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/peperomia-tetragona.glb",
-   "bytes": 69884,
+   "bytes": 70184,
    "display_scale_m": 0.35
   },
   {
@@ -15675,7 +15675,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/pseudostellaria-heterantha.glb",
-   "bytes": 94832,
+   "bytes": 94084,
    "display_scale_m": 0.35
   },
   {
@@ -15690,7 +15690,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/vicia-ramuliflora.glb",
-   "bytes": 81200,
+   "bytes": 81224,
    "display_scale_m": 0.35
   },
   {
@@ -16020,7 +16020,7 @@
    "archetype": "herb",
    "palette_source": "derived",
    "file": "species/goeppertia-picturata.glb",
-   "bytes": 83180,
+   "bytes": 83428,
    "display_scale_m": 0.35
   },
   {

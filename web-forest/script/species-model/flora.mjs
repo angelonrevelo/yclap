@@ -1901,7 +1901,12 @@ function herb(k, col, opt = {}) {
   const flower = opt.flower ?? spec?.kind ?? null;
   grow(k, col, {
     salt: "herb",
-    height: 0.45,
+    /* Never a pancake. The general pool runs down to 0.15 and up to 2.9, and a
+       herb at either end is a stick or a sheet; the review's "single flat
+       sheets like a folded tarp" are at the wide end of it. */
+    axSet: [0.4, 0.8, 1.2, 1.6, 2.0, 2.4],
+    azSet: [0.4, 0.8, 1.2, 1.6, 2.0, 2.4],
+    height: 0.5,
     breathe: 0.022,
     sway: 0.06,
     bands: [0, 1, 2, 3, 4, 5],
@@ -1939,14 +1944,17 @@ function herb(k, col, opt = {}) {
         return;
       }
       const basal = band <= 1;
-      const r = reachOf(pl, a, (basal ? 0.95 : 0.55 + pl.u(`lr${s.g}`) * 0.4));
-      const pitch = basal ? 0.15 + pl.u(`bp${s.g}`) * 0.35 : 0.3 + pl.u(`lp${s.g}`) * 0.75;
+      const r = reachOf(pl, a, (basal ? 0.95 : 0.6 + pl.u(`lr${s.g}`) * 0.4));
+      /* Positive pitch is DOWN. Every leaf on every herb drooped, which with a
+         wide aspect is a plant seen from above rather than from the side.
+         Basal leaves still spread; stem leaves are carried up and out. */
+      const pitch = basal ? 0.1 + pl.u(`bp${s.g}`) * 0.35 : -0.55 + pl.u(`lp${s.g}`) * 0.9;
       const form = p.budget < 34 ? "simple" : pl.form;
       const pair = [1];
       for (const sgn of pair) {
         addLeaf(p, node, { tri: p.budget,
           yaw: a + (sgn > 0 ? 0 : Math.PI), pitch,
-          len: r * (pair.length > 1 ? 0.95 : 1), wid: r * (0.22 + pl.u(`lw${s.g}`) * 0.42),
+          len: r * (pair.length > 1 ? 0.95 : 1), wid: r * (0.2 + pl.u(`lw${s.g}`) * 0.3),
           shape: pl.shape, form, leaflet: 3 + (s.g % 5),
           rows: form === "simple" ? 5 : 4, ring: 4,
           bend: -r * 0.18 * pl.u(`lb${s.g}`), sweep: (pl.u(`ls${s.g}`) - 0.5) * r * 0.2,
