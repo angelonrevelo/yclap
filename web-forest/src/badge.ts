@@ -185,11 +185,32 @@ export const BADGE_LIST: BadgeDef[] = [
     },
   },
   {
-    id: "shared-first",
-    name: "Shared Find",
-    blurb: "Your first find synced to the campus world — species, count, location, on the record.",
+    id: "return-visit",
+    name: "Return Visit",
+    blurb: "Log a find in a ground you already walked, on a different day. Monitoring is repeat looking.",
     group: "science",
-    check: (row) => firstAt(row, (s) => s.lat !== null && s.lon !== null),
+    /* Replaced "Shared Find", which claimed a find had been "synced to the
+       campus world" while checking only that it had a location — a claim a
+       device that has never reached a server cannot make, and a near-duplicate
+       of Count and Location besides. This measures something no other badge
+       does and that the project actually wants: the same ground, looked at
+       twice, which is what turns a walk into a time series. */
+    check: (row) => {
+      const seen_day = new Map<string, string>();
+      for (const s of [...row].sort((a, b) => a.created_at.localeCompare(b.created_at))) {
+        if (!isBadge(s)) continue;
+        const code = sectorCodeOf(s);
+        if (!code) continue;
+        const day = s.created_at.slice(0, 10);
+        const first_day = seen_day.get(code);
+        if (first_day === undefined) {
+          seen_day.set(code, day);
+        } else if (first_day !== day) {
+          return s.created_at;
+        }
+      }
+      return null;
+    },
   },
 ];
 

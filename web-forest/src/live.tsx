@@ -4,6 +4,8 @@ import { formatMeter, formatWalkMinute, type Fix } from "./geo";
 import { isBadge, type Sighting } from "./journal";
 import { species } from "./data";
 import { biome_sector, sectorByCode } from "./sector";
+import { displayName, kindOf } from "./kind";
+import { KindThumb } from "./kind-mark";
 import {
   poolFromFile,
   rankSpawn,
@@ -212,7 +214,16 @@ export function SpawnStrip({
                 background: is_reachable ? "rgba(0,134,83,0.05)" : "#fff",
               }}
             >
-              <TaxonThumb species_code={s.species_code} size={44} is_dim={!is_logged} />
+              {/* Curated artwork where we drew it; the taxon group where we did
+                  not. Never the plant silhouette standing in for a bird. */}
+              {sp ? (
+                /* Not dimmed. The dim state means "not in your collection",
+                   which is the journal grid's job; this strip is about what is
+                   out there, and the "In journal" pill already says which. */
+                <TaxonThumb species_code={s.species_code} size={44} />
+              ) : (
+                <KindThumb kind={kindOf(s.iconic_taxon_name, s.archetype)} size={44} />
+              )}
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div className="flex items-center gap-2" style={{ minWidth: 0 }}>
                   <span
@@ -224,13 +235,16 @@ export function SpawnStrip({
                       textOverflow: "ellipsis",
                     }}
                   >
-                    {sp?.common_name ?? s.common_name}
+                    {sp?.common_name ?? displayName(s.common_name)}
                   </span>
                   {is_logged && <Pill tone="native">In journal</Pill>}
                 </div>
                 <div style={{ fontSize: 11.5, color: "rgba(31,32,34,0.6)", marginTop: 3 }}>
                   {sector?.name ?? s.sector_code}
-                  {distance_m !== null && ` · ${formatMeter(distance_m)} · ${formatWalkMinute(distance_m)}`}
+                  {/* Walk minutes are for a distance worth pacing. Printing
+                      "≈1 min walk" beside "3 m" reads as filler, not help. */}
+                  {distance_m !== null &&
+                    ` · ${formatMeter(distance_m)}${distance_m >= 50 ? ` · ${formatWalkMinute(distance_m)}` : ""}`}
                 </div>
               </div>
               <RarityPill rarity={s.rarity} count={world.pool_count.get(s.species_code)} />

@@ -17,6 +17,8 @@ import {
 } from "./sector";
 import TileMap, { type Projection, type View } from "./tile-map";
 import { RARITY_ORDER, type Spawn } from "./spawn";
+import { kindOf } from "./kind";
+import { KindPath, KIND_TONE } from "./kind-mark";
 
 /**
  * The play view — the map as the owner asked for it on 09-03: "simple pokemon
@@ -582,14 +584,15 @@ export default function PlayMap({
                 rarity, so it survives greyscale like the pins do. */}
             {spawn.map((row) => {
               const p = project(row);
-              const tone = row.rarity === "common" ? "#4F7A57" : row.rarity === "uncommon" ? "#008653" : row.rarity === "rare" ? "#075D89" : "#B5811A";
+              const kind = kindOf(row.iconic_taxon_name, row.archetype);
+              const tone = KIND_TONE[kind];
               const tick = RARITY_ORDER.indexOf(row.rarity) + 1;
               const is_logged = seen_species.has(row.species_code);
               return (
                 <div
                   key={row.spawn_id}
                   onClick={onSelectSpawn ? () => onSelectSpawn(row) : undefined}
-                  title={`${row.common_name} — out until ${new Date(row.ends_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`}
+                  title={`${row.common_name} — ${row.rarity}, out until ${new Date(row.ends_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`}
                   style={{
                     position: "absolute",
                     left: p.x,
@@ -601,19 +604,26 @@ export default function PlayMap({
                     zIndex: 3,
                   }}
                 >
-                  <svg width="34" height="42" viewBox="0 0 34 42" aria-label={`${row.common_name} — ${row.rarity}`}>
-                    <ellipse cx="17" cy="39" rx="9" ry="3.4" fill="rgba(28,74,34,0.22)" />
-                    <line x1="17" y1="36" x2="17" y2="24" stroke={tone} strokeWidth="1.4" strokeDasharray="2 2" opacity="0.8" />
-                    <circle cx="17" cy="16" r="11" fill={is_logged ? tone : "#FFFFFF"} stroke={tone} strokeWidth="2.2" />
+                  <svg width="38" height="50" viewBox="0 0 38 50" aria-label={`${row.common_name} — ${kind}, ${row.rarity}`}>
+                    <ellipse cx="19" cy="47" rx="9" ry="3.4" fill="rgba(28,74,34,0.22)" />
+                    <line x1="19" y1="44" x2="19" y2="30" stroke={tone} strokeWidth="1.4" strokeDasharray="2 2" opacity="0.85" />
+                    {/* Rarity rides on the STEM as a tick count, so the disc is
+                        free to say what kind of thing this is. Both survive
+                        greyscale: one is a count, one is a shape. */}
                     {Array.from({ length: tick }, (_, i) => (
-                      <circle
-                        key={i}
-                        cx={17 - ((tick - 1) * 4) / 2 + i * 4}
-                        cy="16"
-                        r="1.7"
-                        fill={is_logged ? "#FFFFFF" : tone}
-                      />
+                      <circle key={i} cx="19" cy={43 - i * 3.4} r="1.5" fill={tone} />
                     ))}
+                    <circle cx="19" cy="15" r="13" fill={is_logged ? tone : "#FFFFFF"} stroke={tone} strokeWidth="2.2" />
+                    <g
+                      transform="translate(7 3) scale(1)"
+                      fill="none"
+                      stroke={is_logged ? "#FFFFFF" : tone}
+                      strokeWidth="1.9"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <KindPath kind={kind} />
+                    </g>
                   </svg>
                 </div>
               );

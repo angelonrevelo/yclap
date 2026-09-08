@@ -96,6 +96,11 @@ export interface Spawn {
   lon: number;
   sector_code: string;
   rarity: Rarity;
+  /** Carried from the pool so a list row can draw WHAT KIND of thing this is
+   *  without loading the 422 kB pool a second time. Only 25 species have
+   *  curated artwork; the other 1,073 have to say "a bird" honestly. */
+  iconic_taxon_name: string;
+  archetype: string;
   /** ISO instants — this find exists only inside its window. */
   starts_at: string;
   ends_at: string;
@@ -258,6 +263,8 @@ export function spawnForWindow(
         lon: at.lon,
         sector_code: s.sector_code,
         rarity: rarityFor(pick.count),
+        iconic_taxon_name: pick.iconic_taxon_name,
+        archetype: pick.archetype,
         starts_at,
         ends_at,
       });

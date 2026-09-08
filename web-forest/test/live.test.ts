@@ -9,6 +9,7 @@ import {
   type Spawn,
 } from "../src/spawn.ts";
 import { CAMPUS_CENTER, distanceMeter } from "../src/geo.ts";
+import { displayName, kindOf, KIND_LABEL } from "../src/kind.ts";
 
 /**
  * The live layer's contract.
@@ -28,6 +29,8 @@ function at(offset_m: number, over: Partial<Spawn> = {}): Spawn {
     lon: CAMPUS_CENTER.lon,
     sector_code: "sec-1",
     rarity: "common",
+    iconic_taxon_name: "Plantae",
+    archetype: "tree",
     starts_at: "2026-09-08T00:00:00.000Z",
     ends_at: "2026-09-08T00:30:00.000Z",
     ...over,
@@ -90,4 +93,33 @@ test("the window countdown never goes negative", () => {
 
 test("rarity order runs common to mythic, so the dot count reads as scarcity", () => {
   assert.deepEqual(RARITY_ORDER, ["common", "uncommon", "rare", "mythic"]);
+});
+
+test("a find says what group it is, and the finer archetype outranks the iconic taxon", () => {
+  assert.equal(kindOf("Aves", "bird"), "bird");
+  assert.equal(kindOf("Plantae", "herb"), "plant");
+  /* The failure this refuses: 1,073 uncurated species all drawing as the one
+     plant silhouette, which says "plant" about a bird. */
+  assert.equal(kindOf("Plantae", "tree-balete"), "tree");
+  assert.equal(kindOf("Fungi", "mushroom"), "fungus");
+  assert.equal(kindOf("Fungi", "mushroom-bracket"), "bracket");
+  assert.equal(kindOf("Insecta", "lepidoptera-moth"), "butterfly");
+  assert.equal(kindOf("Insecta", "coleoptera"), "insect");
+  assert.equal(kindOf("Arachnida", "spider-jumping"), "spider");
+  assert.equal(kindOf("Chromista", "unknown"), "other");
+});
+
+test("every kind the pool can produce has a label", () => {
+  for (const iconic of ["Plantae", "Insecta", "Fungi", "Arachnida", "Aves", "Animalia", "Actinopterygii", "Mollusca", "Reptilia", "Amphibia", "Mammalia"]) {
+    const k = kindOf(iconic, "unknown");
+    assert.ok(KIND_LABEL[k], `${iconic} -> ${k} has no label`);
+  }
+});
+
+test("display casing fixes the first word and never touches a proper one after it", () => {
+  assert.equal(displayName("broadleaf carpetgrass"), "Broadleaf carpetgrass");
+  assert.equal(displayName("Great Eggfly"), "Great Eggfly");
+  /* Must NOT become "Philippine Hanging-parrot". */
+  assert.equal(displayName("Philippine Hanging-Parrot"), "Philippine Hanging-Parrot");
+  assert.equal(displayName(""), "");
 });
