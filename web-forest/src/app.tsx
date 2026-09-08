@@ -51,8 +51,10 @@ import { LAYER_ORDER, nextLayer, prefetchCampus, SOURCE, type Layer, type View }
 import { useGeo } from "./use-geo";
 import { biomePresenceAt, rankEncounter, sectorResident, type BiomePresence } from "./nearby";
 import { cosmeticForStage } from "./cosmetic";
-import { BadgeShelf, reachableSpawn, SpawnStrip, useSpawnWorld, WorldStrip } from "./live";
-import type { Spawn } from "./spawn";
+import { BadgeShelf, loadSpawnPool, RarityPill, reachableSpawn, SpawnStrip, useSpawnWorld, WorldStrip } from "./live";
+import { KindThumb } from "./kind-mark";
+import { displayName, kindOf } from "./kind";
+import type { Rarity, Spawn, SpawnPoolEntry } from "./spawn";
 
 import {
   campusCodeForScientific,
@@ -925,6 +927,8 @@ function CameraSheet({
   onPick,
   onSave,
   onClose,
+  rarity,
+  pool_count,
 }: {
   pick_code: string;
   where: string;
@@ -932,12 +936,31 @@ function CameraSheet({
   onPick: (species_code: string) => void;
   onSave: (input: SaveInput) => void;
   onClose: () => void;
+  /** Set only when the camera was opened by walking into a find in the world.
+   *  Null for an ordinary log, where there is no rarity claim to make. */
+  rarity?: Rarity | null;
+  pool_count?: ReadonlyMap<string, number>;
 }) {
   const [shot, setShot] = useState<Shot | null>(null);
   const [note, setNote] = useState("");
   const [is_reporting, setReporting] = useState(false);
   const [reported_name, setReportedName] = useState("");
   const [identify, setIdentify] = useState<InatIdentifyState>({ status: "idle" });
+  /* The pool entry for a pick that is not one of the nine — resolved from the
+     already-loaded pool, so this costs no second fetch. */
+  const [pool, setPool] = useState<SpawnPoolEntry[] | null>(null);
+  const is_wild = !picker_order.includes(pick_code) && !species[pick_code];
+  useEffect(() => {
+    if (!is_wild || pool) return;
+    let alive = true;
+    loadSpawnPool().then((row) => {
+      if (alive) setPool(row);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [is_wild, pool]);
+  const wild_pick = is_wild ? (pool?.find((e) => e.species_code === pick_code) ?? null) : null;
 
   useEffect(() => {
     if (!shot) {
@@ -989,6 +1012,14 @@ function CameraSheet({
           <div>
             <div style={{ fontWeight: 800, fontSize: 18 }}>Log a sighting</div>
             <div style={{ fontSize: 12, color: "rgba(31,32,34,0.6)", marginTop: 2 }}>{where}</div>
+            {/* Only when you walked into a find in the world. An ordinary log
+                makes no rarity claim, because outside a spawn we do not know
+                that this individual is the species the pill would be about. */}
+            {rarity && (
+              <div style={{ marginTop: 6 }}>
+                <RarityPill rarity={rarity} count={pool_count?.get(pick_code)} />
+              </div>
+            )}
           </div>
           <button onClick={onClose} aria-label="Close">
             <CloseIcon />
@@ -1019,6 +1050,35 @@ function CameraSheet({
 
         <div style={{ marginTop: 18 }}><Eyebrow>WHAT DID YOU SEE?</Eyebrow></div>
         <div style={{ marginTop: 8, border: "1.5px solid #E4E7E8", borderRadius: 16, overflow: "hidden" }}>
+          {/* You walked to a find that is not on the nine-species guide list.
+              Without this row the sheet showed NOTHING selected while `pick_code`
+              was quietly set to it — so the save was right and the screen did
+              not say so, and one tap on any row below would have logged a
+              different species than the one you walked to. */}
+          {wild_pick && (
+            <div
+              style={{
+                padding: "12px 14px",
+                background: "rgba(0,134,83,0.08)",
+                borderBottom: "1px solid #E4E7E8",
+              }}
+            >
+              <span className="flex items-center gap-3">
+                <KindThumb kind={kindOf(wild_pick.iconic_taxon_name, wild_pick.archetype)} size={44} />
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: "block", fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>
+                    {displayName(wild_pick.common_name)}
+                  </span>
+                  <span style={{ display: "block", fontStyle: "italic", fontSize: 11.5, color: "rgba(31,32,34,0.6)" }}>
+                    {wild_pick.scientific_name}
+                  </span>
+                  <span style={{ display: "block", fontSize: 11, color: "#008653", fontWeight: 700, marginTop: 3 }}>
+                    Selected · from the campus sweep, not the guide&rsquo;s nine
+                  </span>
+                </span>
+              </span>
+            </div>
+          )}
           {picker_order.map((species_code, i) => {
             const sp = species[species_code];
             const is_active = species_code === pick_code;
@@ -1834,6 +1894,13 @@ function JournalScreen({
 }) {
   const summary = summarize(sighting);
   const seen_of_total = `${summary.species_count} of ${summary.species_total} species seen`;
+  /* Finds off the guide's nine are counted beside the fraction, never inside
+     it — the two are different universes and folding them together produced
+     "12 of 9". */
+  const wild_line =
+    summary.wild_species_count > 0
+      ? `+ ${summary.wild_species_count} more from the campus sweep`
+      : null;
   if (seen.size === 0) {
     return (
       <div
@@ -1889,8 +1956,23 @@ function JournalScreen({
           <Eyebrow>YOUR COLLECTION</Eyebrow>
           {/* Seen of findable, not seen of grid slots. The denominator is the
               curated starter list; padded slots have no species behind them. */}
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: "#008653", fontVariantNumeric: "tabular-nums" }}>
-            {seen_of_total}
+          <span style={{ textAlign: "right" }}>
+            <span
+              style={{
+                display: "block",
+                fontSize: 12.5,
+                fontWeight: 700,
+                color: "#008653",
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {seen_of_total}
+            </span>
+            {wild_line && (
+              <span style={{ display: "block", fontSize: 11, color: "rgba(31,32,34,0.55)", marginTop: 2 }}>
+                {wild_line}
+              </span>
+            )}
           </span>
         </div>
         <div style={{ marginTop: 14 }}>
@@ -2720,6 +2802,9 @@ export default function App() {
   const [pick_code, setPickCode] = useState("narra");
   /** Where the log is happening — the biome name when opened from a biome card. */
   const [camera_where, setCameraWhere] = useState<string | null>(null);
+  /** The rarity of the world-find that opened the camera. Null for any other
+   *  route into it — we only claim a rarity for a find we placed. */
+  const [camera_rarity, setCameraRarity] = useState<Rarity | null>(null);
   const [sighting, setSighting] = useState<Sighting[]>(() => readSighting());
   const [is_demo, setDemo] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
@@ -2817,6 +2902,7 @@ export default function App() {
     setRoute(next);
     setCameraOpen(false);
     setCameraWhere(null);
+    setCameraRarity(null);
     if (next !== "/map") setRestricted(true);
   };
 
@@ -2872,9 +2958,10 @@ export default function App() {
     if (at_id) setPinnedId(at_id);
   }, [at_id]);
 
-  const openCamera = (species_code: string, where?: string) => {
+  const openCamera = (species_code: string, where?: string, rarity: Rarity | null = null) => {
     setPickCode(species_code);
     setCameraWhere(where ?? null);
+    setCameraRarity(rarity);
     setCameraOpen(true);
   };
 
@@ -2890,7 +2977,7 @@ export default function App() {
   const walkToSpawn = (row: Spawn) => {
     const reach = reachableSpawn(spawn_world.spawn, geo.fix).some((r) => r.spawn_id === row.spawn_id);
     if (reach) {
-      openCamera(row.species_code, sectorByCode(row.sector_code)?.name);
+      openCamera(row.species_code, sectorByCode(row.sector_code)?.name, row.rarity);
       return;
     }
     setPickedSector(null);
@@ -2921,6 +3008,7 @@ export default function App() {
     const next_sighting = readSighting();
     setSighting(next_sighting);
     setCameraOpen(false);
+    setCameraRarity(null);
     /* The blind-box reveal fires when a located badge in a new sector advances
        the stage. Deterministic: same journal state → same stage → same cosmetic. */
     const next_stage = stageFor(seenSector(next_sighting).size);
@@ -3372,10 +3460,15 @@ export default function App() {
             <CameraSheet
               pick_code={pick_code}
               where={camera_where ?? sel.where}
+              rarity={camera_rarity}
+              pool_count={spawn_world.pool_count}
               fix_line={fix_line}
               onPick={setPickCode}
               onSave={saveSighting}
-              onClose={() => setCameraOpen(false)}
+              onClose={() => {
+                setCameraOpen(false);
+                setCameraRarity(null);
+              }}
             />
           )}
           {receipt && (
@@ -3413,10 +3506,15 @@ export default function App() {
             <CameraSheet
               pick_code={pick_code}
               where={camera_where ?? sel.where}
+              rarity={camera_rarity}
+              pool_count={spawn_world.pool_count}
               fix_line={fix_line}
               onPick={setPickCode}
               onSave={saveSighting}
-              onClose={() => setCameraOpen(false)}
+              onClose={() => {
+                setCameraOpen(false);
+                setCameraRarity(null);
+              }}
             />
           )}
           <MobileNav route={route} onRoute={go} />

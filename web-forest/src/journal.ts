@@ -549,6 +549,16 @@ export interface SummaryGroup {
 
 export interface JournalSummary {
   sighting_count: number;
+  /**
+   * Distinct species **from the curated list**, so it shares a universe with
+   * `species_total` below.
+   *
+   * It used to be every distinct `species_code` in the journal, which was fine
+   * while the only way to log anything was the nine-species picker. Walking to
+   * a find in the world can now log any of 1,098 species, and the old count
+   * would have printed "12 of 9 species seen" — a number that is not wrong so
+   * much as incoherent, because the two halves were counting different things.
+   */
   species_count: number;
   /**
    * The denominator behind "n of N species seen". It is the curated starter
@@ -556,6 +566,10 @@ export interface JournalSummary {
    * is not something a student can go and find.
    */
   species_total: number;
+  /** Distinct species logged that are NOT on the curated list — everything the
+   *  campus sweep knows about and the guide has not written a card for. Counted
+   *  separately rather than folded in, so neither number lies. */
+  wild_species_count: number;
   located_count: number;
   photo_count: number;
   day_count: number;
@@ -580,12 +594,15 @@ function tally(key_of: (s: Sighting) => string | null, row: Sighting[]): Summary
 /** Counts and groupings only. Deliberately no score, no rank, no streak. */
 export function summarize(row: Sighting[]): JournalSummary {
   const by_species = tally((s) => s.species_code, row);
+  const curated = new Set(picker_order);
+  const seen_species = new Set(row.map((s) => s.species_code));
   const by_day = tally((s) => (s.created_at ? s.created_at.slice(0, 10) : null), row);
   const stamp = row.map((s) => s.created_at).filter(Boolean).sort();
   return {
     sighting_count: row.length,
-    species_count: by_species.length,
+    species_count: [...seen_species].filter((c) => curated.has(c)).length,
     species_total: picker_order.length,
+    wild_species_count: [...seen_species].filter((c) => !curated.has(c)).length,
     located_count: row.filter((s) => s.lat !== null && s.lon !== null).length,
     photo_count: row.filter((s) => s.photo_data !== null).length,
     day_count: by_day.length,

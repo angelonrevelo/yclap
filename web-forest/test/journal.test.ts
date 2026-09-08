@@ -407,3 +407,34 @@ describe("stable catalogue number", () => {
     assert.deepEqual(withEntryIndex(mixed).map((s) => s.entry_index), [5, 6]);
   });
 });
+
+describe("seen-of-total against a 1,098-species world", () => {
+  it("the seen fraction and the wild count are two different universes", () => {
+    /* The bug: `species_count` used to be every distinct species_code, while
+       `species_total` was the nine-species picker. Walking to a find in the
+       world can log any of 1,098 species, so a student who logged three of
+       them read "12 of 9 species seen" — incoherent rather than merely wrong. */
+    const row = [
+      make({ sighting_id: "a", species_code: "narra" }),
+      make({ sighting_id: "b", species_code: "molave" }),
+      make({ sighting_id: "c", species_code: "firecracker-flower" }),
+      make({ sighting_id: "d", species_code: "great-eggfly" }),
+      make({ sighting_id: "e", species_code: "great-eggfly" }),
+    ];
+    const s = summarize(row);
+    assert.equal(s.species_count, 2, "only the curated two count against the curated total");
+    assert.ok(s.species_count <= s.species_total, "the fraction must never exceed its own denominator");
+    assert.equal(s.wild_species_count, 2, "two distinct off-list species, counted once each");
+    assert.equal(s.sighting_count, 5);
+  });
+
+  it("a journal of nothing but wild finds reads zero of nine, not nine of nine", () => {
+    const row = [
+      make({ sighting_id: "w1", species_code: "zebra-spiderwort" }),
+      make({ sighting_id: "w2", species_code: "sea-almond" }),
+    ];
+    const s = summarize(row);
+    assert.equal(s.species_count, 0);
+    assert.equal(s.wild_species_count, 2);
+  });
+});
