@@ -24,7 +24,11 @@
  *
  * Bump CACHE_VERSION whenever the shell needs to be re-fetched.
  */
-const CACHE_VERSION = "field-guide-v5";
+const CACHE_VERSION = "magisphere-v6";
+/* Deliberately NOT renamed with the shell. The cache key is what a device's
+   warmed campus is stored under; renaming it on the Magisphere rename would
+   have thrown away every tile banked by "Save offline" on the eve of the
+   showcase, to buy nothing but a matching string. */
 const TILE_CACHE = "field-guide-tile-v1";
 
 /**
@@ -58,7 +62,20 @@ const CHARACTER_MODELS = [
   "/model/character-sapling.glb",
   "/model/character-tree.glb",
 ];
-const SHELL = ["/", "/index.html", "/manifest.webmanifest", "/brand/icon-192.png", "/brand/icon-512.png", ...CHARACTER_MODELS];
+/* The spawn pool. 422 KB of real sweep data and the ONLY input to the rotating
+   world — without it offline, "Out right now" silently renders nothing, which
+   is the failure mode hardest to notice on a stage. The .glb files it points at
+   are still on-demand; this is the index, not the pack. */
+const WORLD_DATA = "/model/species-model.json";
+const SHELL = [
+  "/",
+  "/index.html",
+  "/manifest.webmanifest",
+  "/brand/icon-192.png",
+  "/brand/icon-512.png",
+  WORLD_DATA,
+  ...CHARACTER_MODELS,
+];
 
 /** Content-hashed build output. The only thing safe to serve cache-first. */
 function isImmutable(url) {

@@ -20,6 +20,14 @@
   --shadow-card: 0 12px 28px rgba(31, 32, 34, 0.12);
   --grad-forest: linear-gradient(115deg, #55d334, #008653);
   --grad-lagoon: linear-gradient(115deg, #058cd6, #45c223);
+  /* Committee brand kit, 2026-09-08. Sampled off the kit sheet: bark #704E2E,
+     leaf #ADE25D, ultramarine #1F01B1. Identity only — the ecology colours
+     above still carry native / exotic / threatened, because those have to hold
+     in greyscale and this ramp was not drawn against that test. */
+  --brand-bark: #704e2e;
+  --brand-leaf: #ade25d;
+  --brand-deep: #1f01b1;
+  --grad-brand: linear-gradient(115deg, #704e2e, #ade25d 62%, #1f01b1);
 }
 
 html,

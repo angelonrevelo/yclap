@@ -51,6 +51,8 @@ import { LAYER_ORDER, nextLayer, prefetchCampus, SOURCE, type Layer, type View }
 import { useGeo } from "./use-geo";
 import { biomePresenceAt, rankEncounter, sectorResident, type BiomePresence } from "./nearby";
 import { cosmeticForStage } from "./cosmetic";
+import { BadgeShelf, reachableSpawn, SpawnStrip, useSpawnWorld, WorldStrip } from "./live";
+import type { Spawn } from "./spawn";
 
 import {
   campusCodeForScientific,
@@ -175,13 +177,25 @@ function MobileNav({ route, onRoute }: { route: Route; onRoute: (r: Route) => vo
   );
 }
 
-function HomeScreen({ is_desktop, onWalk, onPlan }: { is_desktop: boolean; onWalk: () => void; onPlan: () => void }) {
+function HomeScreen({
+  is_desktop,
+  onWalk,
+  onPlan,
+  live,
+}: {
+  is_desktop: boolean;
+  onWalk: () => void;
+  onPlan: () => void;
+  /* The spawn strip, passed in rather than built here: home should not have to
+     know how the world is loaded to be able to show it. */
+  live?: React.ReactNode;
+}) {
   if (is_desktop) {
     return (
       <div className="flex-1 scroll-soft" style={{ background: "#F9F9F9", overflowY: "auto", overflowX: "hidden", padding: "56px 64px" }}>
         <div className="flex gap-14" style={{ alignItems: "flex-start" }}>
           <div style={{ maxWidth: 640 }}>
-            <div style={{ width: 72, height: 5, borderRadius: 999, background: "var(--grad-forest)", marginBottom: 26 }} />
+            <div style={{ width: 72, height: 5, borderRadius: 999, background: "var(--grad-brand)", marginBottom: 26 }} />
             <h1 style={{ fontWeight: 800, fontSize: 46, lineHeight: 1.12, letterSpacing: "-0.015em" }}>
               Two-thirds of this campus is green. Most of us cannot name what we are walking under.
             </h1>
@@ -210,6 +224,7 @@ function HomeScreen({ is_desktop, onWalk, onPlan }: { is_desktop: boolean; onWal
             <p style={{ fontSize: 12.5, color: "rgba(31,32,34,0.55)", marginTop: 10, lineHeight: 1.45, maxWidth: 560 }}>
               {AIS_GAP_NOTE}
             </p>
+            {live && <div style={{ marginTop: 22, maxWidth: 560 }}>{live}</div>}
             <div style={{ marginTop: 22, maxWidth: 560 }}>
               <LandmarkCard is_desktop />
             </div>
@@ -265,13 +280,13 @@ function HomeScreen({ is_desktop, onWalk, onPlan }: { is_desktop: boolean; onWal
         <div className="flex items-center gap-2">
           <PlantMark size={28} />
           <div>
-            <div style={{ fontWeight: 800, fontSize: 20, lineHeight: 1 }}>Field Guide</div>
+            <div style={{ fontWeight: 800, fontSize: 20, lineHeight: 1 }}>Magisphere</div>
             <div style={{ fontSize: 12, color: "#008653", fontWeight: 700, marginTop: 3 }}>Ateneo Loyola Heights</div>
           </div>
         </div>
       </header>
       <div style={{ paddingLeft: 20, paddingRight: 20, marginTop: 14 }}>
-        <div style={{ width: 56, height: 4, borderRadius: 999, background: "var(--grad-forest)", marginBottom: 16 }} />
+        <div style={{ width: 56, height: 4, borderRadius: 999, background: "var(--grad-brand)", marginBottom: 16 }} />
         <h1 style={{ fontWeight: 800, fontSize: 28, lineHeight: 1.15, letterSpacing: "-0.01em", maxWidth: 330 }}>
           Two-thirds of this campus is green. Most of us cannot name what we are walking under.
         </h1>
@@ -301,6 +316,7 @@ function HomeScreen({ is_desktop, onWalk, onPlan }: { is_desktop: boolean; onWal
       <p style={{ fontSize: 11.5, color: "rgba(31,32,34,0.55)", padding: "8px 20px 0", lineHeight: 1.4 }}>
         {AIS_GAP_NOTE}
       </p>
+      {live && <div style={{ padding: "18px 20px 0" }}>{live}</div>}
       <div style={{ padding: "18px 20px 0" }}>
         <LandmarkCard is_desktop={false} />
       </div>
@@ -1808,10 +1824,13 @@ function JournalScreen({
   sighting,
   seen,
   is_desktop,
+  pool_count,
 }: {
   sighting: Sighting[];
   seen: Set<string>;
   is_desktop: boolean;
+  /** species_code -> real campus observation count, for the rarity badges. */
+  pool_count: ReadonlyMap<string, number>;
 }) {
   const summary = summarize(sighting);
   const seen_of_total = `${summary.species_count} of ${summary.species_total} species seen`;
@@ -1880,6 +1899,12 @@ function JournalScreen({
         <p style={{ fontSize: 12, color: "rgba(31,32,34,0.55)", marginTop: 14 }}>
           A starter list — not the 1,809. Your own count only; nobody else&rsquo;s journal is in this number.
         </p>
+        <div style={{ marginTop: 26 }}>
+          <BadgeShelf sighting={sighting} pool_count={pool_count} is_desktop={is_desktop} />
+        </div>
+        <div style={{ marginTop: 20 }}>
+          <WorldStrip sighting={sighting} />
+        </div>
         <SightingLog sighting={sighting} />
         <ExportRow sighting={sighting} />
       </div>
@@ -2069,7 +2094,7 @@ function DesktopRail({
       >
         <PlantMark size={32} />
         <span style={{ minWidth: 0 }}>
-          <span style={{ display: "block", fontWeight: 800, fontSize: 17, lineHeight: 1 }}>Field Guide</span>
+          <span style={{ display: "block", fontWeight: 800, fontSize: 17, lineHeight: 1 }}>Magisphere</span>
           <span style={{ display: "block", fontSize: 11, color: "#008653", fontWeight: 700, marginTop: 2 }}>
             Ateneo Loyola Heights
           </span>
@@ -2714,6 +2739,9 @@ export default function App() {
   const [pin_filter, setPinFilter] = useState<Set<PinKind>>(() => new Set());
   const { is_desktop, is_wide } = useDesktop();
   const geo = useGeo(is_demo);
+  /* The rotating world. One fetch of the real sweep, recomputed when the
+     30-minute window rolls — see `live.tsx`. */
+  const spawn_world = useSpawnWorld();
   const seen = seenCode(sighting);
   const seen_sector = useMemo(() => seenSector(sighting), [sighting]);
   const stage = stageFor(seen_sector.size);
@@ -2848,6 +2876,29 @@ export default function App() {
     setPickCode(species_code);
     setCameraWhere(where ?? null);
     setCameraOpen(true);
+  };
+
+  /**
+   * Tapping a find in the world.
+   *
+   * Close enough to photograph → the camera opens on that species, which is the
+   * whole loop. Too far → the map goes there and stops following, so the find
+   * stays on screen while you walk to it. It deliberately does NOT open the
+   * camera from across campus: a find you log without standing at it is a
+   * record of nothing, and this app's one useful output is the location.
+   */
+  const walkToSpawn = (row: Spawn) => {
+    const reach = reachableSpawn(spawn_world.spawn, geo.fix).some((r) => r.spawn_id === row.spawn_id);
+    if (reach) {
+      openCamera(row.species_code, sectorByCode(row.sector_code)?.name);
+      return;
+    }
+    setPickedSector(null);
+    setPinnedId(null);
+    setFollowing(false);
+    setView((prev) => ({ ...prev, lat: row.lat, lon: row.lon, zoom: Math.max(prev.zoom, PLAY_ZOOM) }));
+    go("/map");
+    showToast(`${row.common_name} is out in ${sectorByCode(row.sector_code)?.name ?? row.sector_code}. Walk to it.`);
   };
 
   const saveSighting = ({ photo_data, inat: id, note, entry_kind, reported_name }: SaveInput) => {
@@ -3035,6 +3086,8 @@ export default function App() {
         }}
         bearing_degree={bearing}
         onBearing={setBearing}
+        spawn={spawn_world.spawn}
+        onSelectSpawn={walkToSpawn}
       />
 
       <MapChrome
@@ -3221,7 +3274,22 @@ export default function App() {
         <div style={{ height: "100%", display: "flex" }}>
           <DesktopRail route={route} onRoute={go} is_demo={is_demo} onDemo={() => setDemo((d) => !d)} seen_count={seen.size} is_wide={is_wide} />
           <div style={{ flex: 1, minWidth: 0, height: "100%", display: "flex", flexDirection: "column" }}>
-          {route === "/" && <HomeScreen is_desktop onWalk={() => go("/map")} onPlan={() => go("/plan")} />}
+          {route === "/" && (
+            <HomeScreen
+              is_desktop
+              onWalk={() => go("/map")}
+              onPlan={() => go("/plan")}
+              live={
+                <SpawnStrip
+                  world={spawn_world}
+                  fix={geo.fix}
+                  seen_species={seen}
+                  onPick={walkToSpawn}
+                  is_desktop
+                />
+              }
+            />
+          )}
           {/* Play goes full-bleed on desktop too — a projector wants the map,
               not a 38% reading column beside it. Field keeps the column. */}
           {route === "/map" && map_mode === "play" && (
@@ -3297,7 +3365,7 @@ export default function App() {
               </aside>
             </div>
           )}
-          {route === "/journal" && <JournalScreen sighting={sighting} seen={seen} is_desktop />}
+          {route === "/journal" && <JournalScreen sighting={sighting} seen={seen} is_desktop pool_count={spawn_world.pool_count} />}
           {route === "/plan" && <PlanScreen is_desktop />}
           </div>
           {is_camera_open && (
@@ -3328,9 +3396,18 @@ export default function App() {
         </div>
       ) : (
         <div style={{ position: "relative", height: "100%", overflowX: "hidden" }}>
-          {route === "/" && <HomeScreen is_desktop={false} onWalk={() => go("/map")} onPlan={() => go("/plan")} />}
+          {route === "/" && (
+            <HomeScreen
+              is_desktop={false}
+              onWalk={() => go("/map")}
+              onPlan={() => go("/plan")}
+              live={
+                <SpawnStrip world={spawn_world} fix={geo.fix} seen_species={seen} onPick={walkToSpawn} />
+              }
+            />
+          )}
           {route === "/map" && (map_mode === "play" ? playBody : mapBody)}
-          {route === "/journal" && <JournalScreen sighting={sighting} seen={seen} is_desktop={false} />}
+          {route === "/journal" && <JournalScreen sighting={sighting} seen={seen} is_desktop={false} pool_count={spawn_world.pool_count} />}
           {route === "/plan" && <PlanScreen is_desktop={false} />}
           {is_camera_open && (
             <CameraSheet

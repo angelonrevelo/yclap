@@ -327,6 +327,47 @@ export function spawnsNear(spawns: Spawn[], at: LatLon, radius_m: number = 60): 
     .map((r) => r.row);
 }
 
+/** How close you must be for a find to count as reachable — the catch radius. */
+export const REACH_RADIUS_M = 40;
+
+/** The finds you could photograph from where you are standing. */
+export function reachableSpawn(spawns: Spawn[], at: LatLon | null | undefined): Spawn[] {
+  if (!at) return [];
+  return spawnsNear(spawns, at, REACH_RADIUS_M);
+}
+
+export interface NearSpawn {
+  row: Spawn;
+  /** Null when there is no fix — an unmeasured distance, never a 0. */
+  distance_m: number | null;
+}
+
+/**
+ * What the strip shows, and in what order.
+ *
+ * With a fix: nearest first. Without one, "nearby" is a claim we cannot make,
+ * so it switches to the rarest thing out this window and reports the distance
+ * as null rather than as zero. The caller says which of the two it is showing.
+ */
+export function rankSpawn(spawns: Spawn[], at: LatLon | null, limit: number): NearSpawn[] {
+  if (at) {
+    return spawns
+      .map((row) => ({ row, distance_m: distanceMeter(at, row) }))
+      .sort((a, b) => a.distance_m - b.distance_m)
+      .slice(0, limit);
+  }
+  const rank = (r: Rarity) => -RARITY_ORDER.indexOf(r);
+  return [...spawns]
+    .sort((a, b) => rank(a.rarity) - rank(b.rarity) || a.spawn_id.localeCompare(b.spawn_id))
+    .slice(0, limit)
+    .map((row) => ({ row, distance_m: null }));
+}
+
+/** Whole minutes until this window closes. Never negative. */
+export function windowMinuteLeft(ends_at: string, now_ms: number): number {
+  return Math.max(0, Math.ceil((new Date(ends_at).getTime() - now_ms) / 60000));
+}
+
 /** Every sector find, indexed by the sector that holds it (for the map pass). */
 export function spawnBySector(spawns: Spawn[]): Map<string, Spawn[]> {
   const out = new Map<string, Spawn[]>();
