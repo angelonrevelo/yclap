@@ -49,55 +49,99 @@ target sizes, the map's raked camera on a real GPU, scroll performance with
 
 ---
 
-## Path B — the full test. Needs HTTPS.
-
-Two options, both of which put the app on the public internet for the duration.
-**Neither has been run yet — that is your call, not the build's.**
-
-### B1 · Cloudflare quick tunnel
-
-`cloudflared` is already installed on this Mac.
+## Path B — the full test. `npm run handset`. Publishes nothing.
 
 ```
 cd web-forest
-npm run build
-MAGISPHERE_HOST=127.0.0.1 npm run preview     # leave running
-cloudflared tunnel --url http://127.0.0.1:4178
+npm run handset          # builds, generates a local CA, serves HTTPS on :4179
 ```
 
-It prints a `https://<random>.trycloudflare.com` URL. Open that on the phone.
-No account needed. The URL dies when you Ctrl-C.
+It prints every address it is reachable on and the phone instructions. Then, on
+the phone, **once**:
 
-**What this exposes:** the built app, publicly, to anyone with the URL. There
-is no auth, no personal data in the build, and no secrets in the bundle — but
-it is a real public URL and it should not be left running.
+1. AirDrop (or email) `web-forest/script/cert/ca.crt` to the device.
+2. **iOS:** Settings → *Profile Downloaded* → Install. Then
+   **Settings → General → About → Certificate Trust Settings** and switch on
+   *Magisphere local CA*. **This second step is the one everybody misses** — the
+   profile installs fine without it and the certificate is still not trusted.
+3. **Android:** Settings → Security → Encryption & credentials → Install a
+   certificate → CA certificate.
 
-### B2 · Vercel
+Open `https://<mac-lan-ip>:4179/` and everything works: service worker, install
+to home screen, geolocation, camera.
 
-The repo is already linked to a Vercel project (`.vercel/project.json`,
-project `yclap`). `npx vercel --cwd web-forest` would deploy a preview with a
-real HTTPS URL. Longer-lived than B1, which is better for handing the link to
-the group and worse if you did not want it to persist.
+### Why this and not a tunnel
 
-### B3 · Tailscale — tried, does not work on this Mac
+Nothing leaves the wifi. No account, no public URL, no unfinished app on the
+open internet, and no decision anyone has to make first. The cost is one profile
+install on one phone.
 
-This would have been the best answer: HTTPS on your tailnet only, no public
-exposure, and it works over cellular. `tailscale serve --bg --https=443
-http://127.0.0.1:4178` against `gelos-macbook-pro.tailc64a7e.ts.net`.
+The certificate also covers this Mac's **Tailscale** address, so if the phone is
+on the tailnet the same URL works over cellular — without `tailscale serve`,
+which is what actually failed here (see below).
 
-It fails. The App Store build of Tailscale ships a sandboxed CLI that cannot
-run `serve` or `cert` from a shell:
+### What was verified, 2026-09-09
+
+Over `https://192.168.1.25:4179` with `curl --cacert script/cert/ca.crt`:
+
+| Check | Result |
+|---|---|
+| TLS validates against the generated CA | pass |
+| `subjectAltName` covers the LAN IP and the tailnet IP | pass — an IP only in the CN is rejected outright by iOS, and this is the usual cause of "works on the laptop, fails on the phone" |
+| `/manifest.webmanifest` | serves, reads `Magisphere` |
+| `/journal` (a client-side route with no file) | 200 via SPA fallback |
+| `/model/species-model.json` | 200, 431,651 bytes — the world data is reachable |
+| `sw.js` sent `Cache-Control: no-cache` | pass — otherwise you spend an evening testing yesterday's build |
+| Path traversal, raw and percent-encoded | returns `index.html`, never a file outside `dist/` |
+
+**Not verified, and cannot be from here:** that iOS accepts the profile and
+registers the service worker. That is the physical-phone step, and it is the
+whole point of this runbook.
+
+One bug found and fixed while building it: `openssl x509 -extfile /dev/stdin`
+reported success and produced a certificate with **no subjectAltName at all**.
+The script now writes the extension file to disk and then re-reads the
+certificate to prove the SAN landed, rather than trusting the exit code.
+
+### Cert hygiene
+
+`script/cert/` is gitignored — the CA private key must never be committed. The
+certificate is deliberately **30 days**: a local CA sitting trusted on a phone
+for a year is a liability nobody remembers. After it expires, `node
+script/serve-https.mjs --regenerate` and re-install on the phone.
+
+---
+
+## Path C — the public routes, if you ever want them
+
+Both work and both put the app on the open internet, which is why Path B is the
+default and neither of these has been run.
+
+- **Cloudflare quick tunnel.** `cloudflared` is installed.
+  `cloudflared tunnel --url http://127.0.0.1:4178` prints an
+  `https://<random>.trycloudflare.com`. No account; dies on Ctrl-C.
+- **Vercel.** The repo is linked (`.vercel/project.json`, project `yclap`).
+  `npx vercel --cwd web-forest` gives a longer-lived HTTPS preview — better for
+  handing the link to the group, worse if you did not want it to persist. The
+  CCC currently has screenshots and no app, so this is the natural way to give
+  them one.
+
+### Tailscale — tried, does not work on this Mac
+
+`tailscale serve --bg --https=443 http://127.0.0.1:4178` against
+`gelos-macbook-pro.tailc64a7e.ts.net` would have been ideal. It fails: the App
+Store build ships a sandboxed CLI that cannot run `serve` or `cert`.
 
 ```
 The Tailscale GUI failed to start: The operation couldn't be completed.
 (Tailscale.CLIError error 3.)
 ```
 
-Fixable by installing the standalone Tailscale build instead of the App Store
-one, which is not a thing to do four days before a showcase. Recorded here so
-nobody re-tries it. Note there is already an `iphone-15-pro-max` on the tailnet
-(offline, last seen ~28 days ago) — if that phone comes back online, the
-standalone-build route becomes the cleanest test rig for the future.
+Fixable by installing the standalone Tailscale build, which is not a thing to do
+four days before a showcase. Recorded so nobody re-tries it. Note there is
+already an `iphone-15-pro-max` on the tailnet (offline, last seen ~28 days) —
+Path B's certificate already covers the tailnet address, so that phone works
+today without any of this.
 
 ---
 
@@ -114,6 +158,16 @@ node server/sync-server.mjs --port 8788
 Point the app at it by building with `VITE_SYNC_URL=http://<mac-lan-ip>:8788`.
 Two phones on the same wifi then share a world. No auth — it is a demo hall
 server, not a service; do not run it on a public tunnel.
+
+**Gotcha that will bite on Path B:** an HTTPS page cannot `fetch` an HTTP
+endpoint — the browser blocks it as mixed content, silently, and the world strip
+just never appears. So over Path B the sync server needs HTTPS too. Either serve
+it behind the same certificate, or accept that Path B tests the single-device
+half and run multiplayer on Path A over plain HTTP, where both halves are
+insecure and consistent. On the day, a demo hall on one wifi with `VITE_SYNC_URL`
+pointed at an HTTP server means the app itself must also be served over HTTP —
+which costs the offline story. **Pick one before Saturday; you cannot have the
+service worker and an HTTP sync server in the same build.**
 
 ---
 
