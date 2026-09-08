@@ -125,6 +125,21 @@ and the chat:
 | **QCU** | > **Ivan (09-05):** "Sa quezon city university they created unique ideas din e, **recycling the fabric**" | A materials/circularity project |
 | **UP** | > **Ivan:** "UP lang di sinabihan na exciting project nila" — presented in the same group as ours on the Saturday | Unknown content |
 
+### I tried to open their actual files, and could not
+
+The Drive folder from the screenshot (`1LUaye1ZaD5fN14N5bcLjLaIsLgp9AaS7`) is
+shared with the account that can see the Session 2 and 3 materials. The Google
+Drive connection available to this session authenticates as
+**`mudtojan@ateneo.edu`** — the AIPO / IMPACT NXT account, not the one Youth
+CLAP shared with. Querying that folder id returns empty, and a `sharedWithMe`
+search for GINHAWA / PLV / Mapúa / PNU / PUP returns nothing.
+
+So the table above is read off the screenshot and the chat, and that is as far
+as it can honestly go from here. **If you want a real read of the other
+schools' work, open the folder on the account it was shared with** and either
+export the decks or point me at them; the analysis is twenty minutes once the
+files are reachable. Recorded so nobody assumes it was skipped.
+
 ### What this means for our positioning — inference, clearly marked
 
 Most of what is visible is **problem trees and proposals**. Ours is the only one I can see
