@@ -156,7 +156,7 @@ function MobileNav({ route, onRoute }: { route: Route; onRoute: (r: Route) => vo
             key={id}
             onClick={() => onRoute(id)}
             className="flex-1 flex flex-col items-center justify-center"
-            style={{ color: is_active ? "#008653" : "rgba(31,32,34,0.62)" }}
+            style={{ color: is_active ? "var(--ui-accent)" : "rgba(31,32,34,0.62)" }}
           >
             <span
               style={{
@@ -212,7 +212,7 @@ function HomeScreen({
             <div className="flex items-center gap-4" style={{ marginTop: 28 }}>
               <button
                 onClick={onWalk}
-                style={{ height: 52, padding: "0 30px", borderRadius: 12, background: "#008653", color: "#fff", fontWeight: 700, fontSize: 16 }}
+                style={{ height: 52, padding: "0 30px", borderRadius: 12, background: "var(--ui-accent)", color: "#fff", fontWeight: 700, fontSize: 16 }}
               >
                 Walk the campus
               </button>
@@ -266,7 +266,7 @@ function HomeScreen({
                   Demo campus · {DEMO_PIN.lat}, {DEMO_PIN.lon}
                 </div>
               </div>
-              <span style={{ width: 40, height: 40, borderRadius: 999, background: "#008653", display: "grid", placeItems: "center", color: "#fff", fontWeight: 800 }}>
+              <span style={{ width: 40, height: 40, borderRadius: 999, background: "var(--ui-accent)", display: "grid", placeItems: "center", color: "#fff", fontWeight: 800 }}>
                 →
               </span>
             </div>
@@ -283,7 +283,7 @@ function HomeScreen({
           <PlantMark size={28} />
           <div>
             <div style={{ fontWeight: 800, fontSize: 20, lineHeight: 1 }}>Magisphere</div>
-            <div style={{ fontSize: 12, color: "#008653", fontWeight: 700, marginTop: 3 }}>Ateneo Loyola Heights</div>
+            <div style={{ fontSize: 12, color: "var(--ui-accent)", fontWeight: 700, marginTop: 3 }}>Ateneo Loyola Heights</div>
           </div>
         </div>
       </header>
@@ -304,7 +304,7 @@ function HomeScreen({
       <div style={{ padding: "16px 20px 0" }}>
         <button
           onClick={onWalk}
-          style={{ width: "100%", height: 48, borderRadius: 12, background: "#008653", color: "#fff", fontWeight: 700, fontSize: 15 }}
+          style={{ width: "100%", height: 48, borderRadius: 12, background: "var(--ui-accent)", color: "#fff", fontWeight: 700, fontSize: 15 }}
         >
           Walk the campus
         </button>
@@ -505,7 +505,7 @@ function NearbySheet({
         <button
           onClick={onLog}
           className="flex items-center justify-center gap-2"
-          style={{ flex: 1, height: 48, borderRadius: 12, background: "#008653", color: "#fff", fontWeight: 700, fontSize: 15 }}
+          style={{ flex: 1, height: 48, borderRadius: 12, background: "var(--ui-accent)", color: "#fff", fontWeight: 700, fontSize: 15 }}
         >
           <GlyphDisc size={28}>
             <CameraIcon size={19} />
@@ -582,7 +582,7 @@ function SpeciesBack({ sp }: { sp: Species }) {
               padding: "9px 10px",
             }}
           >
-            <div style={{ fontSize: 10, fontWeight: 800, color: "#008653", letterSpacing: "0.05em" }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: "var(--ui-accent)", letterSpacing: "0.05em" }}>
               {tile.label.toUpperCase()}
             </div>
             <div style={{ fontSize: 13, fontWeight: 700, marginTop: 3, lineHeight: 1.25 }}>{tile.value}</div>
@@ -793,7 +793,7 @@ function BiomeBar({ presence, onExpand }: { presence: BiomePresence; onExpand: (
               display: "block",
               fontSize: 10,
               fontWeight: 700,
-              color: "#008653",
+              color: "var(--ui-accent)",
               letterSpacing: "0.07em",
               whiteSpace: "nowrap",
               overflow: "hidden",
@@ -901,6 +901,9 @@ function SuggestionList({
 
 /** The filter chips over the map. Kind comes from play-map's pin taxonomy. */
 const PIN_FILTER: { kind: PinKind; label: string; tone: string }[] = [
+  /* Ecology, not chrome — this is the legend for what a pin MEANS, so it keeps
+     the green the Native pill and the sector fills use. Deliberately the one
+     #008653 left in this file. */
   { kind: "native", label: "Native", tone: "#008653" },
   { kind: "exotic", label: "Exotic", tone: "#8A6A28" },
   { kind: "threatened", label: "Threatened", tone: "#B3391F" },
@@ -1072,7 +1075,7 @@ function CameraSheet({
                   <span style={{ display: "block", fontStyle: "italic", fontSize: 11.5, color: "rgba(31,32,34,0.6)" }}>
                     {wild_pick.scientific_name}
                   </span>
-                  <span style={{ display: "block", fontSize: 11, color: "#008653", fontWeight: 700, marginTop: 3 }}>
+                  <span style={{ display: "block", fontSize: 11, color: "var(--ui-accent)", fontWeight: 700, marginTop: 3 }}>
                     Selected · from the campus sweep, not the guide&rsquo;s nine
                   </span>
                 </span>
@@ -1226,7 +1229,7 @@ function CameraSheet({
               reported_name: is_reporting ? reported_name.trim() || "Unknown" : null,
             })
           }
-          style={{ width: "100%", height: 48, borderRadius: 12, background: "#008653", color: "#fff", fontWeight: 700, fontSize: 15, marginTop: 16 }}
+          style={{ width: "100%", height: 48, borderRadius: 12, background: "var(--ui-accent)", color: "#fff", fontWeight: 700, fontSize: 15, marginTop: 16 }}
         >
           {is_reporting ? "Save this report" : "Save to my journal"}
         </button>
@@ -1820,7 +1823,7 @@ function ProgressCard({ sighting, is_desktop }: { sighting: Sighting[]; is_deskt
               padding: "9px 11px",
             }}
           >
-            <div style={{ fontSize: 9.5, fontWeight: 800, color: "#008653", letterSpacing: "0.02em" }}>
+            <div style={{ fontSize: 9.5, fontWeight: 800, color: "var(--ui-accent)", letterSpacing: "0.02em" }}>
               BADGES
             </div>
             <div style={{ fontSize: 18, fontWeight: 800, marginTop: 2 }}>{p.badge_count}</div>
@@ -1941,7 +1944,7 @@ function JournalScreen({
           <img src={spot.success_log} width={56} height={56} alt="" />
           <h1 style={{ fontWeight: 800, fontSize: is_desktop ? 30 : 24 }}>Your journal</h1>
         </div>
-        <p style={{ fontSize: 13, color: "#008653", marginTop: 2 }}>Stays on this phone.</p>
+        <p style={{ fontSize: 13, color: "var(--ui-accent)", marginTop: 2 }}>Stays on this phone.</p>
         <p style={{ fontSize: 12, color: "rgba(31,32,34,0.55)", marginTop: 8, lineHeight: 1.45 }}>
           Reflection, not a race. Ateneo already designed an SDG game that way (Rodrigo, Favis, Cuyegkeng 2021 — RECIPE /
           Meaningful Gamification).
@@ -1962,7 +1965,7 @@ function JournalScreen({
                 display: "block",
                 fontSize: 12.5,
                 fontWeight: 700,
-                color: "#008653",
+                color: "var(--ui-accent)",
                 fontVariantNumeric: "tabular-nums",
               }}
             >
@@ -2177,7 +2180,7 @@ function DesktopRail({
         <PlantMark size={32} />
         <span style={{ minWidth: 0 }}>
           <span style={{ display: "block", fontWeight: 800, fontSize: 17, lineHeight: 1 }}>Magisphere</span>
-          <span style={{ display: "block", fontSize: 11, color: "#008653", fontWeight: 700, marginTop: 2 }}>
+          <span style={{ display: "block", fontSize: 11, color: "var(--ui-accent)", fontWeight: 700, marginTop: 2 }}>
             Ateneo Loyola Heights
           </span>
         </span>
@@ -2195,7 +2198,7 @@ function DesktopRail({
               style={{
                 fontWeight: 700,
                 fontSize: 14.5,
-                color: is_active ? "#008653" : "rgba(31,32,34,0.72)",
+                color: is_active ? "var(--ui-accent)" : "rgba(31,32,34,0.72)",
                 background: is_active ? "rgba(0,134,83,0.12)" : "transparent",
                 borderRadius: 14,
                 padding: "10px 12px",
@@ -2215,7 +2218,7 @@ function DesktopRail({
                     width: 4,
                     height: 18,
                     borderRadius: 999,
-                    background: "#008653",
+                    background: "var(--ui-accent)",
                   }}
                 />
               )}
@@ -3433,7 +3436,7 @@ export default function App() {
                     <button
                       onClick={() => openCamera(sel.species_code)}
                       className="flex items-center justify-center gap-2"
-                      style={{ width: "100%", height: 52, borderRadius: 12, background: "#008653", color: "#fff", fontWeight: 700, fontSize: 16, marginTop: 24 }}
+                      style={{ width: "100%", height: 52, borderRadius: 12, background: "var(--ui-accent)", color: "#fff", fontWeight: 700, fontSize: 16, marginTop: 24 }}
                     >
                       <GlyphDisc size={32}>
                         <ShutterIcon size={24} />

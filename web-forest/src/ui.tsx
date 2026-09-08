@@ -172,7 +172,7 @@ export function TaxonName({
           style={{
             fontSize: 10,
             fontWeight: 700,
-            color: "#008653",
+            color: "var(--ui-accent)",
             letterSpacing: "0.07em",
             whiteSpace: "nowrap",
             overflow: "hidden",
@@ -223,7 +223,7 @@ export function Fab({
         /* The kit glyphs are green on ink. A green disc would swallow them, so
            the disc is paper and the ring carries the brand colour instead. */
         background: "#F9F9F9",
-        border: is_leaf ? "4px solid #008653" : "1.5px solid #E4E7E8",
+        border: is_leaf ? "4px solid var(--ui-accent)" : "1.5px solid #E4E7E8",
         boxShadow: "0 8px 20px rgba(31,32,34,0.28)",
         flexShrink: 0,
         ...style,
@@ -235,7 +235,7 @@ export function Fab({
 }
 
 /** Section heading used across `/journal` and `/plan`. */
-export function Eyebrow({ children, tone = "#008653" }: { children: ReactNode; tone?: string }) {
+export function Eyebrow({ children, tone = "var(--ui-accent)" }: { children: ReactNode; tone?: string }) {
   return (
     <div style={{ fontSize: 11, fontWeight: 700, color: tone, letterSpacing: "0.06em" }}>{children}</div>
   );
@@ -273,7 +273,7 @@ export function Card({
  */
 export function Chip({
   is_on = false,
-  tone = "#008653",
+  tone = "var(--ui-accent)",
   onClick,
   children,
   style,

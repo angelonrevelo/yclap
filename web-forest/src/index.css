@@ -28,6 +28,14 @@
   --brand-leaf: #ade25d;
   --brand-deep: #1f01b1;
   --grad-brand: linear-gradient(115deg, #704e2e, #ade25d 62%, #1f01b1);
+  /* The two ROLES the one green used to serve, now separated.
+     --ui-accent is chrome: nav, buttons, section headings, the app's frame.
+     --eco-green is meaning: Native, a walked sector, a living thing.
+     They must not be the same value, or the UI cannot say which greens are
+     load-bearing. Bark is the kit's frame colour and clears 7:1 on white. */
+  --ui-accent: #704e2e;
+  --ui-accent-ink: #5b3f25;
+  --eco-green: #008653;
 }
 
 html,

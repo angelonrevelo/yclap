@@ -210,8 +210,8 @@ export function SpawnStrip({
                 width: "100%",
                 padding: 10,
                 borderRadius: RADIUS.tile,
-                border: `1.5px solid ${is_reachable ? "#008653" : "#E4E7E8"}`,
-                background: is_reachable ? "rgba(0,134,83,0.05)" : "#fff",
+                border: `1.5px solid ${is_reachable ? "var(--ui-accent)" : "#E4E7E8"}`,
+                background: is_reachable ? "rgba(112,78,46,0.05)" : "#fff",
               }}
             >
               {/* Curated artwork where we drew it; the taxon group where we did
@@ -279,8 +279,8 @@ function BadgeTile({ award }: { award: BadgeAward }) {
       style={{
         padding: 12,
         borderRadius: RADIUS.tile,
-        border: `1.5px solid ${is_earned ? "rgba(0,134,83,0.35)" : "#E4E7E8"}`,
-        background: is_earned ? "rgba(0,134,83,0.06)" : "#fff",
+        border: `1.5px solid ${is_earned ? "rgba(112,78,46,0.35)" : "#E4E7E8"}`,
+        background: is_earned ? "rgba(112,78,46,0.06)" : "#fff",
         opacity: is_earned ? 1 : 0.72,
       }}
     >
@@ -291,7 +291,7 @@ function BadgeTile({ award }: { award: BadgeAward }) {
           borderRadius: 999,
           display: "grid",
           placeItems: "center",
-          background: is_earned ? "#008653" : "rgba(31,32,34,0.08)",
+          background: is_earned ? "var(--ui-accent)" : "rgba(31,32,34,0.08)",
           color: is_earned ? "#fff" : "rgba(31,32,34,0.4)",
           fontWeight: 800,
           fontSize: 14,
@@ -303,7 +303,7 @@ function BadgeTile({ award }: { award: BadgeAward }) {
       <div style={{ fontWeight: 800, fontSize: 13, marginTop: 8, lineHeight: 1.2 }}>{award.def.name}</div>
       <div style={{ fontSize: 11, color: "rgba(31,32,34,0.6)", marginTop: 4, lineHeight: 1.35 }}>{award.def.blurb}</div>
       {is_earned && (
-        <div style={{ fontSize: 10.5, color: "#008653", fontWeight: 700, marginTop: 6 }}>
+        <div style={{ fontSize: 10.5, color: "var(--ui-accent)", fontWeight: 700, marginTop: 6 }}>
           Earned {new Date(award.earned_at as string).toLocaleDateString()}
         </div>
       )}
@@ -330,7 +330,7 @@ export function BadgeShelf({
     <div>
       <div className="flex items-baseline justify-between gap-3">
         <Eyebrow>YOUR BADGES</Eyebrow>
-        <span style={{ fontSize: 12.5, fontWeight: 700, color: "#008653", fontVariantNumeric: "tabular-nums" }}>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ui-accent)", fontVariantNumeric: "tabular-nums" }}>
           {earned_count} of {award.length} earned
         </span>
       </div>
