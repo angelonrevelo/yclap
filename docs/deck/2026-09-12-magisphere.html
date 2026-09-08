@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Magisphere — Youth CLAP Innovation Showcase, 12 September 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+/*
+ * Seven slides, 16:9, printable.
+ *
+ * The constraint is the committee's (Katherine, 2026-09-05): seven slides, no
+ * more, with a two-page concept note carrying the same information in document
+ * form. That note is docs/showcase/concept-note.md; the beat sheet and booth
+ * checklist are docs/showcase/deck-7-slide.md. This file is the projectable
+ * artefact and it says nothing those two do not.
+ *
+ * Palette is the committee brand kit sampled off the sheet, not eyeballed:
+ * bark #704E2E, leaf #ADE25D, ultramarine #1F01B1. Forest green stays for
+ * anything that carries an ECOLOGY meaning, because those readings have to
+ * survive greyscale and the brand ramp was not drawn against that test.
+ *
+ * Print: Chrome → Print → landscape, A4, background graphics on, margins none.
+ */
+:root{
+  --bark:#704e2e; --leaf:#ade25d; --deep:#1f01b1;
+  --green-deep:#008653; --green:#45c223;
+  --ink:#1f2022; --paper:#f9f9f9; --grid:#e4e7e8; --mute:#5b6165;
+  --brand:linear-gradient(115deg,#704e2e 0%,#ade25d 62%,#1f01b1 100%);
+}
+/* Slide geometry: 254 x 142.9mm — true 16:9, and small enough to sit inside
+   the content area of a Letter OR A4 landscape sheet.
+
+   `@page { size: ... }` is deliberately ABSENT. It was here, and it was the
+   bug: Chrome laid the document out against the declared 5.625in page box
+   while still printing onto Letter, so every slide came out fractionally over
+   its box and split across two pages — a 7-slide deck rendered as 14. Measured
+   across a grid of widths and heights before concluding it was the `size`
+   declaration and not the dimensions.
+
+   The ORIENTATION keyword alone is safe and necessary: without it Chrome
+   defaults to portrait and slices 38mm off the right of every slide. */
+@page{ size:landscape; margin:0; }
+*{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; background:#2a2c2e; }
+body{
+  font-family:Montserrat,"Avenir Next","Century Gothic",sans-serif;
+  color:var(--ink); -webkit-print-color-adjust:exact; print-color-adjust:exact;
+}
+.slide{
+  position:relative; width:254mm; height:142.9mm; background:#fff;
+  margin:0 auto 8mm; padding:12mm 14mm 10mm; overflow:hidden;
+  page-break-after:always; display:flex; flex-direction:column;
+}
+.slide:last-child{ page-break-after:auto; }
+@media print{ body{ background:#fff; } .slide{ margin:0; box-shadow:none; } }
+.slide::before{
+  content:""; position:absolute; left:14mm; top:7.5mm; width:26mm; height:1.6mm;
+  border-radius:999px; background:var(--brand);
+}
+.num{
+  position:absolute; right:14mm; bottom:7mm; font-size:8pt; font-weight:700;
+  letter-spacing:.14em; color:#9aa0a4;
+}
+.foot{
+  position:absolute; left:14mm; bottom:7mm; font-size:7.6pt; font-weight:700;
+  letter-spacing:.12em; text-transform:uppercase; color:#9aa0a4;
+}
+h1{ font-size:30pt; font-weight:800; letter-spacing:-.022em; line-height:1.06; margin:0; }
+h2{ font-size:20pt; font-weight:800; letter-spacing:-.018em; line-height:1.1; margin:0; }
+.eyebrow{ font-size:8pt; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--bark); }
+.lede{ font-size:11pt; color:var(--mute); line-height:1.45; margin-top:8px; max-width:150mm; }
+p{ margin:0 0 6px; }
+.body{ flex:1; display:flex; gap:9mm; margin-top:6mm; min-height:0; }
+.col{ flex:1; min-width:0; }
+.small{ font-size:8.6pt; color:var(--mute); line-height:1.45; }
+.tiny{ font-size:7.6pt; color:#8b9195; line-height:1.4; }
+b,strong{ font-weight:700; }
+
+.stat-row{ display:flex; gap:5mm; margin-top:6mm; }
+.stat{ flex:1; border:1.4px solid var(--grid); border-radius:16px; padding:5mm 5mm 4mm; }
+.stat .n{ font-size:21pt; font-weight:800; letter-spacing:-.03em; color:var(--bark); line-height:1; }
+.stat .l{ font-size:8.8pt; font-weight:700; margin-top:3mm; }
+.stat .s{ font-size:7.4pt; color:#8b9195; margin-top:1.5mm; }
+
+.shot{ border:1.4px solid var(--grid); border-radius:14px; overflow:hidden; background:var(--paper); }
+.shot img{ display:block; width:100%; height:auto; }
+.shot-cap{ font-size:7.4pt; color:#8b9195; padding:2mm 3mm; border-top:1px solid var(--grid); }
+.phone{ width:45mm; }
+/* A 390x844 shot at 52mm is 112mm tall, which overflows the 167mm slide once
+   the header is on it. Crop from the top rather than scale the whole phone
+   down: a shrunk screenshot is unreadable on a projector, a cropped one is
+   still the real screen. Measured — slide 3 was 45px over before this. */
+.phone .clip{ height:74mm; overflow:hidden; }
+.phone img{ width:100%; display:block; }
+
+ul{ margin:3mm 0 0; padding-left:5mm; }
+li{ font-size:9.2pt; line-height:1.45; margin-bottom:2.2mm; }
+li b{ color:var(--ink); }
+
+.rule{ height:1px; background:var(--grid); margin:5mm 0; }
+.tag{
+  display:inline-block; font-size:7.6pt; font-weight:700; letter-spacing:.06em;
+  border-radius:999px; padding:1.6mm 3.2mm; border:1.2px solid;
+}
+.tag.no{ color:#b03a24; border-color:rgba(176,58,36,.35); background:rgba(176,58,36,.07); }
+.tag.yes{ color:var(--green-deep); border-color:rgba(0,134,83,.35); background:rgba(0,134,83,.08); }
+.tag.gap{ color:var(--deep); border-color:rgba(31,1,177,.28); background:rgba(31,1,177,.06); }
+
+table{ width:100%; border-collapse:collapse; font-size:9pt; }
+th{ text-align:left; font-size:7.6pt; letter-spacing:.1em; text-transform:uppercase; color:#8b9195; padding:0 3mm 2mm 0; font-weight:700; }
+td{ padding:2.4mm 3mm 2.4mm 0; border-top:1px solid var(--grid); vertical-align:top; line-height:1.4; }
+td.t{ width:22mm; font-weight:700; color:var(--bark); font-variant-numeric:tabular-nums; }
+
+/* cover
+   NOT the full brand ramp. The kit's lime sits at ~85% luminance, so white
+   display type crossing that band loses contrast — fine on a laptop, unreadable
+   on a hall projector at the back of the room. The cover runs bark → deep,
+   which are the two DARK ends of the same kit, and the lime returns as a solid
+   accent rule where it has ink behind it. Same palette, legible at 20 m. */
+.cover{
+  background:linear-gradient(118deg,#5b3f25 0%,#704e2e 34%,#2a1a6b 72%,#1f01b1 100%);
+  color:#fff;
+}
+.cover .accent{ width:26mm; height:1.8mm; border-radius:999px; background:var(--leaf); margin-bottom:6mm; }
+.cover::before{ display:none; }
+.cover h1{ font-size:30pt; max-width:168mm; }
+.cover .eyebrow{ color:rgba(255,255,255,.85); }
+.cover .lede{ color:rgba(255,255,255,.92); font-size:11.5pt; }
+.cover .foot,.cover .num{ color:rgba(255,255,255,.7); }
+.cover .stat{ border-color:rgba(255,255,255,.35); }
+.cover .stat .n{ color:#fff; }
+.cover .stat .s{ color:rgba(255,255,255,.72); }
+.cover .stat .l{ color:rgba(255,255,255,.95); }
+</style>
+</head>
+<body>
+
+<!-- 1 ─────────────────────────────────────────────────────────────────── -->
+<section class="slide cover">
+  <div class="accent"></div>
+  <div class="eyebrow">Youth CLAP 2026 · Ateneo CCC · Innovation Showcase</div>
+  <h1 style="margin-top:5mm">Two-thirds of this campus is green.<br>Most of us cannot name what we are walking under.</h1>
+  <div class="lede">Magisphere — a campus-forest field guide you play by walking.</div>
+  <div class="stat-row">
+    <div class="stat"><div class="n">~⅔</div><div class="l">of 89 ha is green</div><div class="s">AIS, Loyola Heights</div></div>
+    <div class="stat"><div class="n">1,809</div><div class="l">trees inventoried</div><div class="s">AIS · SY 2025–2026</div></div>
+    <div class="stat"><div class="n">101</div><div class="l">threatened trees</div><div class="s">AIS arboretum</div></div>
+    <div class="stat"><div class="n">1,098</div><div class="l">species modelled in 3D</div><div class="s">iNaturalist campus sweep, 2026-09-03</div></div>
+  </div>
+  <div class="foot">Ateneo de Manila University · Loyola Heights</div>
+  <div class="num">1 / 7</div>
+</section>
+
+<!-- 2 ─────────────────────────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="eyebrow">The problem, from our own tree</div>
+  <h2 style="margin-top:4mm">The root we can actually act on is awareness.</h2>
+  <div class="body">
+    <div class="col">
+      <p class="small" style="font-size:9.4pt">
+        Climate stress on Ateneo's urban forest has three roots in our problem tree:
+        <b>infrastructure</b> taking soil and growing space, <b>policy</b> in which resilience
+        and native biodiversity lose to other priorities, and <b>awareness and knowledge</b> —
+        limited understanding of how species diversity builds resilience, and of what heat,
+        drought and extreme weather do to a forest.
+      </p>
+      <p class="small" style="font-size:9.4pt; margin-top:4mm">
+        Students are not positioned to fix the first two directly. We are positioned to fix
+        the third, and the third is upstream of the other two.
+      </p>
+      <div class="rule"></div>
+      <p class="small"><b>The chain we are claiming, stated so it can be argued with:</b></p>
+      <ul>
+        <li>A community that cannot <b>name</b> its forest…</li>
+        <li>…is not a <b>constituency</b> for that forest…</li>
+        <li>…when a car park is proposed over it.</li>
+      </ul>
+    </div>
+    <div class="col">
+      <p class="small"><b>What we are not claiming</b></p>
+      <p style="margin-top:3mm">
+        <span class="tag no">Not a planting drive</span>
+        <span class="tag no">Not a carbon-credit product</span>
+      </p>
+      <p style="margin-top:2mm">
+        <span class="tag no">Not a replacement for the AIS inventory</span>
+      </p>
+      <p class="small" style="margin-top:4mm">
+        AIS has already counted the trees. Their figures appear throughout the app cited to
+        them. What the inventory does <b>not</b> have is a count and a location contributed
+        by the people who walk past the tree — and that is the only thing this app produces.
+      </p>
+      <div class="rule"></div>
+      <p class="small">
+        The gamification follows Ateneo's own published work — Rodrigo, Favis &amp;
+        Cuyegkeng (2021), <em>RECIPE / Meaningful Gamification</em> — which is why there is
+        reflection and progression here, and no leaderboard.
+      </p>
+    </div>
+  </div>
+  <div class="foot">Magisphere · Youth CLAP 2026</div>
+  <div class="num">2 / 7</div>
+</section>
+
+<!-- 3 ─────────────────────────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="eyebrow">What it is</div>
+  <h2 style="margin-top:4mm">A rotating world of finds appears across campus every thirty minutes.<br>Walk to one, photograph it, and it enters your journal.</h2>
+  <div class="body">
+    <div class="col" style="flex:1.15">
+      <ul>
+        <li><b>1,098 species</b> with their own 3D model, from a real iNaturalist sweep of the campus box — 627 plants, 215 insects, 122 fungi, 43 arachnids, 41 birds, 50 others.</li>
+        <li><b>68 walkable sectors</b>, cut as faces of the real OpenStreetMap path network and with their greenness <em>measured off satellite imagery</em>, not inferred from the absence of a building.</li>
+        <li><b>Works offline.</b> Shell, character models and the world data are precached — verified with the network cut, not assumed.</li>
+        <li><b>No account, no app store.</b> A QR at the booth opens it.</li>
+      </ul>
+      <div class="rule"></div>
+      <p class="tiny">
+        Sector boundaries and paths © OpenStreetMap contributors, ODbL. Vegetation measured
+        from Esri World Imagery. Inventory figures AIS, SY 2025–2026. These credits are
+        licence terms, and they render inside the app.
+      </p>
+    </div>
+    <div class="col" style="display:flex; gap:6mm; align-items:flex-start">
+      <div class="shot phone">
+        <div class="clip"><img src="2026-09-12-asset/home-spawn-390.png" alt="Out right now — four finds with distance and rarity"></div>
+        <div class="shot-cap">Out right now — nearest first, with rarity</div>
+      </div>
+      <div class="shot phone">
+        <div class="clip"><img src="2026-09-12-asset/play-spawn-390.png" alt="The play map with spawn markers"></div>
+        <div class="shot-cap">The play map — a find is a glyph, not a dot</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot">Magisphere · Youth CLAP 2026</div>
+  <div class="num">3 / 7</div>
+</section>
+
+<!-- 4 ─────────────────────────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="eyebrow">The demo — sixty seconds, one path</div>
+  <h2 style="margin-top:4mm">Live on the phone, mirrored to the projector.</h2>
+  <div class="body">
+    <div class="col" style="flex:1.25">
+      <table>
+        <tr><th>Beat</th><th>On screen</th></tr>
+        <tr><td class="t">0:00</td><td>Home. <b>Out right now</b> — four finds, nearest first, each with metres and walk minutes.</td></tr>
+        <tr><td class="t">0:12</td><td>Tap the nearest. The map moves to it. The marker is a <b>bird</b>, or a bracket fungus, or a tree — not a generic dot.</td></tr>
+        <tr><td class="t">0:25</td><td>Walk in. Inside <b>40 m</b> the camera opens on that species and shows its rarity.</td></tr>
+        <tr><td class="t">0:40</td><td>Save. The journal count moves, the character advances a stage, the variant reveals.</td></tr>
+        <tr><td class="t">0:52</td><td>Journal → the badge shelf, with dates.</td></tr>
+      </table>
+      <div class="rule"></div>
+      <p class="small">
+        <b>If the wifi dies</b>, nothing above touches the network. The offline build is the
+        fallback and the path is identical. AV: mini projector, hub and HDMI on hand.
+      </p>
+    </div>
+    <div class="col" style="flex:.9">
+      <div class="shot phone" style="width:50mm">
+        <div class="clip"><img src="2026-09-12-asset/badge-390.png" alt="The badge shelf"></div>
+        <div class="shot-cap">Thirteen badges, four groups, dated</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot">Magisphere · Youth CLAP 2026</div>
+  <div class="num">4 / 7</div>
+</section>
+
+<!-- 5 ─────────────────────────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="eyebrow">The two rules we designed against</div>
+  <h2 style="margin-top:4mm">Rarity is data. Nothing ranks anyone.</h2>
+  <div class="body">
+    <div class="col">
+      <p class="small"><b>Rarity is data</b></p>
+      <p class="small" style="margin-top:2mm">
+        How rare a species is comes from <b>its own iNaturalist observation count inside the
+        campus box</b>. Seen 96 times → Common. Seen once → <b>“Once on campus”</b>, and the
+        card says where the number came from.
+      </p>
+      <p class="small" style="margin-top:3mm">
+        How <em>often</em> each band appears — 55 / 25 / 15 / 5 — is the one number we
+        invented, and the card says that too.
+      </p>
+      <p class="small" style="margin-top:3mm">
+        We could have made rarity up. Deriving it from real observation gaps is what makes a
+        walk produce <b>data</b> instead of points.
+      </p>
+    </div>
+    <div class="col">
+      <p class="small"><b>Nothing ranks anyone</b></p>
+      <p class="small" style="margin-top:2mm">
+        Thirteen badges, every one earned by doing the thing the app is for. No currency,
+        nothing purchasable, no loot-box odds, no expiry.
+      </p>
+      <p class="small" style="margin-top:3mm">
+        <b>No leaderboard — and no field in the data model one could be built from.</b> The
+        multiplayer sync carries a name, a stage and a count; there is nothing to sort by.
+        A test in the build refuses any badge whose name or description promises a fact
+        outside your own journal.
+      </p>
+      <p style="margin-top:4mm">
+        <span class="tag yes">Personal progression</span>
+        <span class="tag no">No public rank</span>
+      </p>
+    </div>
+    <div class="col" style="flex:.85">
+      <div class="shot">
+        <img src="2026-09-12-asset/badge-desktop.png" alt="The badge shelf at desktop width">
+        <div class="shot-cap">Earned by walking, never by paying</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot">Magisphere · Youth CLAP 2026</div>
+  <div class="num">5 / 7</div>
+</section>
+
+<!-- 6 ─────────────────────────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="eyebrow">What it produces, and what it does not</div>
+  <h2 style="margin-top:4mm">The honest half of the pitch.</h2>
+  <div class="body">
+    <div class="col">
+      <p class="small"><b>What it produces</b></p>
+      <p class="small" style="margin-top:2mm">
+        Every logged find carries <b>species, count, coordinate, accuracy and time</b>,
+        exportable as CSV and GeoJSON. That pair — a count and a location — is exactly what
+        the existing inventory does not have, and it is the input to an annual monitoring
+        report.
+      </p>
+      <p class="small" style="margin-top:3mm">
+        <b>Photos and notes never leave the device.</b> Only species, count and location are
+        ever shared, and only if a server is running.
+      </p>
+      <div class="rule"></div>
+      <p class="small"><b>Built to be checked</b></p>
+      <p class="small" style="margin-top:2mm">
+        208 automated tests, typecheck and lint green. Several exist specifically to stop the
+        app claiming more than it measured.
+      </p>
+    </div>
+    <div class="col">
+      <p class="small"><b>What we do not have yet</b></p>
+      <ul style="margin-top:2mm">
+        <li class="small" style="font-size:9pt"><b>The AIS species-per-sector inventory.</b> 6 of 68 walkable sectors name anything to find today.</li>
+        <li class="small" style="font-size:9pt"><b>The ADMUNAV path graph.</b> Not shared; we cut our own from OSM instead.</li>
+        <li class="small" style="font-size:9pt"><b>Origin data.</b> 9 of 1,098 species carry a native/exotic label, so the app's intended bias toward native species is inert today.</li>
+        <li class="small" style="font-size:9pt"><b>A test on a real handset.</b></li>
+        <li class="small" style="font-size:9pt"><b>Any usage number.</b> We measure none of the Output 2 targets and will not quote one we did not count.</li>
+      </ul>
+      <p style="margin-top:3mm">
+        <span class="tag gap">Stated, not discovered by a judge</span>
+      </p>
+    </div>
+  </div>
+  <div class="foot">Magisphere · Youth CLAP 2026</div>
+  <div class="num">6 / 7</div>
+</section>
+
+<!-- 7 ─────────────────────────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="eyebrow">The ask</div>
+  <h2 style="margin-top:4mm">Three things, and none of them is money.</h2>
+  <div class="body">
+    <div class="col" style="flex:1.2">
+      <ul>
+        <li><b>The AIS inventory</b> — or a decision that it will not be shared, so we can plan around its absence instead of waiting on it.</li>
+        <li><b>One faculty or office sponsor</b> willing to own an annual biodiversity monitoring report built on student-collected observations.</li>
+        <li><b>Mentor feedback on metric honesty</b> — which of the Output 2 numbers should we commit to measuring, given we measure none of them today?</li>
+      </ul>
+      <div class="rule"></div>
+      <p class="small">
+        Objectives this serves, from Output 2: an interactive biodiversity map by Q2 of
+        AY 2026–27; 500 students reached; 200 students in monitoring activity; one annual
+        monitoring report from community-generated data.
+      </p>
+    </div>
+    <div class="col">
+      <div class="shot">
+        <img src="2026-09-12-asset/play-desktop.png" alt="The play map at kiosk width">
+        <div class="shot-cap">The kiosk view — booth-ready at 1440 px</div>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:4mm; font-size:15pt; font-weight:800; letter-spacing:-.015em; color:var(--bark)">
+    Two-thirds of this campus is green. Now you can name it.
+  </div>
+  <div class="foot">Magisphere · Youth CLAP 2026 · Ateneo CCC</div>
+  <div class="num">7 / 7</div>
+</section>
+
+</body>
+</html>
