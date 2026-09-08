@@ -723,3 +723,101 @@ The pre-existing `make()` helper in `journal.test.ts` was missing `entry_kind`
 and `reported_name`, so its literal no longer satisfied `Sighting`. It went
 unnoticed because `tsconfig` does not cover `test/` — worth knowing that the
 test files are **not** typechecked by the gate.
+
+---
+
+## 2026-09-08 — the species pack lands, the game gets a screen, and the project gets a name
+
+Three passes in one day. The first was a **pull**: 67 commits of 3D model work
+existed only on the Windows box. Git-over-SSH could not reach it (Windows
+OpenSSH runs `cmd.exe`, which passes git's quoting through literally), so the
+repo came across as a 138 MB `git bundle --all`. All seven `model-*` branches
+were already merged into the tip; nothing was stranded.
+
+The second was **wiring**: `spawn.ts`, `badge.ts` and `sync.ts` had shipped with
+tests and no screen at all. The third was a **playtest**, which found three
+things the type checker could not.
+
+Gate at the tip: `build 0 · test 206 pass (was 158 this morning) · lint 0 errors`.
+
+### The pack, as measured
+
+| | |
+|---|---|
+| Species with a model | 1,098 — 627 Plantae, 215 Insecta, 122 Fungi, 43 Arachnida, 41 Aves, 50 others |
+| Pack on disk | 83 MB, largest model 117 kB against a 120 kB cap |
+| Quality gates | all eight at zero — disconnected · degenerate · bad-normal · near-duplicate · faceted · under-detailed · wrong-silhouette · floating face |
+| Coverage | 1,098 / 1,098 verdicts, 0 missing, 0 invented, 0 duplicate |
+
+### Shipped this pass
+
+| Item | Surface | Benchmark | Status |
+|---|---|---|---|
+| A world that is out right now | `live.tsx` · `SpawnStrip` · play map | Same window → same world on every device; nearest-first with a fix, rarest-first without one and distance reported as null, never a confident 0 m | **done** — deterministic per `sector_code:window_index`; `live.test.ts` pins both orderings and the null |
+| Walking to a find is the loop | `walkToSpawn` | Inside 40 m the camera opens on that species; outside it the map goes there and stops following, and the camera does NOT open | **done** — a find logged where you are not standing records the one thing the app exists to supply |
+| A find says what kind of thing it is | `kind.ts` · `kind-mark.tsx` | A bird, a bracket fungus and a grass draw as three different shapes on BOTH the list row and the map marker | **done** — 1,073 of 1,098 species have no curated artwork and were all drawing as one plant silhouette, which says "plant" about a bird. Eleven taxon groups, drawn schematically; nothing pretends to be a species portrait |
+| Rarity survives greyscale | `RarityPill` · spawn marker | Rarity legible without colour | **done** — one-to-four dot count on the pill, and the same count on the marker's stem, so the disc is free to carry the taxon glyph |
+| A badge shelf that is a history | `BadgeShelf` · `/journal` | Grouped, earned-dated, and the count is of real badges | **done** — 13 badges, four groups |
+| A badge may only claim what the journal proves | `badge.ts` · `badge.test.ts` | No badge name or blurb promises a fact outside this device; no two badges fire identically; every badge is reachable | **done** — see below |
+| Multiplayer that cannot become a ranking | `sync.ts` · `server/sync-server.mjs` · `WorldStrip` | The wire has no field a rank could be built from; renders nothing at all when no server answered | **done** — `node:sqlite`, LAN-only, no auth. Photos and notes never leave the device |
+| 3D character offline | `character-model.tsx` · `sw.js` | The four stage `.glb`s and the world data survive an offline load | **done** — closes the blocker carried since 09-05. `species-model.json` is precached too: it is the only input to the world, so without it offline the strip renders *nothing*, which is the worst way to find a gap on a hall projector |
+| The project has a name | shell · manifest · header | Magisphere everywhere a human reads it | **done** — poll closed 09-08 21:32 (MAGIScover / MAGISphere / Eagle-Eyed) |
+| Seven slides and a two-page note | `docs/showcase/` | Every figure measured in the repo or marked as not measured | **done** — [`deck-7-slide.md`](docs/showcase/deck-7-slide.md), [`concept-note.md`](docs/showcase/concept-note.md) |
+
+### A badge that was lying, and why nothing caught it
+
+`Shared Find` said "your first find **synced to the campus world**". Its check was
+`lat !== null`. A phone that had never contacted a server earned it, and it was
+`Count and Location` minus one clause besides — so the shelf's earned count was
+inflated by a badge that rewarded nothing new and described something that had
+not happened.
+
+It shipped that way because `badge.ts` **had no test file at all**. It has one
+now, and two assertions in it are the ones that would have caught this:
+
+- no badge's name or blurb may promise a fact outside this journal — *synced,
+  leaderboard, rank, other players* are a pinned regex
+- no two badges may fire identically across a spread of journals, **and** every
+  badge must be earned by at least one of them
+
+The second failed three times while being written — Five Species vs Three
+Grounds, Fifteen Species vs The Whole Campus, Fifteen Species vs Rare Catch —
+every time because the fixture was too thin, never because the badges were
+actually the same. Each needed a journal that pulls the pair apart. That is the
+test working: it refuses a shelf whose distinctions are untested.
+
+Replaced by **Return Visit** — the same ground walked again on a different day.
+A journal fact, not a duplicate of anything, and the behaviour the project
+actually wants, since monitoring is repeat looking.
+
+### Two things fixed on the way in, from the PC's uncommitted work
+
+The gamification layer did not typecheck as written, which is why it was still
+uncommitted:
+
+- `badge.ts` called `sectorAt(s)` with a `Sighting` whose `lat` is nullable. An
+  unlocated find belongs to no ground, so it took the explicit null guard
+  `seenSector` already uses.
+- `sync.ts` accepted a `summary` of stage and level and never sent it. The
+  server stores both **on the player row**, so every walker in the world list
+  would have read back as a level-1 egg.
+
+### Still open, and stated
+
+| Item | Blocker or measurement |
+|---|---|
+| Species per sector | The AIS inventory. 6 of 68 walkable sectors name anything to find |
+| Real walkable path graph | The ADMUNAV graph has not been shared |
+| **Native bias is inert** | Only **9 of 1,098** pool entries carry an origin (6 Native, 3 Exotic); the sweep never asked for `establishment_means`, so `habitatWeight`'s 1.5× native multiplier reaches 0.8% of the world. `spawn.test.ts` holds the number so improving it breaks the test loudly instead of the world quietly staying flat |
+| PWA install on a real handset | Still never tested on an actual phone |
+| Any Output 2 usage number | We measure none of them. The concept note says so rather than inventing one |
+| Landmark tree oral history | Still an interview or a dated photo away |
+
+### Noted while working
+
+Storage keys were **not** renamed with the product. `field-guide.sighting`,
+`field-guide.walk`, `field-guide.player`, the `field-guide/…` GeoJSON feature
+ids and the `field-guide-tile-v1` cache all keep their names: they are what a
+device's journal and warmed campus are stored under, and renaming them four
+days before the showcase would have orphaned real data to buy a matching
+string.

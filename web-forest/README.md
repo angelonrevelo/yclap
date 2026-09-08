@@ -1,7 +1,14 @@
-# Field Guide — web-forest
+# Magisphere — web-forest
 
 The campus-forest PWA for Ateneo Loyola Heights. Four surfaces: `/` `/map`
 `/journal` `/plan`.
+
+Named by the group on 2026-09-08. The directory, the storage keys
+(`field-guide.sighting`, `field-guide.walk`, `field-guide.player`), the
+`field-guide/…` GeoJSON feature ids and the `field-guide-tile-v1` cache all keep
+their old names deliberately — they are what a device's journal and warmed
+campus are stored under, and renaming them would orphan real data to buy a
+matching string.
 
 ## The unit of play
 
@@ -42,8 +49,45 @@ character's four stages at the `CHARACTER_MODEL_SLOT` paths. Provenance,
 method, and the AIS-supersession rule live in
 [`../docs/spec/species-model-pack.md`](../docs/spec/species-model-pack.md).
 View them all at `/model-gallery.html` (dev server), regenerate with
-`node script/build-species-model.mjs`. The pack is served on demand and is
-not precached; it is not wired into the app bundle yet (that is spec T4.1).
+`node script/build-species-model.mjs`. The 83 MB of `.glb` is served on demand
+and deliberately **not** precached — but its 422 kB manifest
+`species-model.json` **is**, because it is the only input to the rotating world
+and without it offline the "Out right now" strip renders nothing at all.
+
+The character's four stages render through a self-hosted `<model-viewer>`
+(`src/character-model.tsx`, lazy-loaded) and their `.glb` files are precached,
+which is spec T4.1 and closes the "3D character offline" blocker.
+
+## What is out right now
+
+The play layer, wired in `src/live.tsx`:
+
+- **`spawn.ts`** — a deterministic world per 30-minute window, seeded from
+  `sector_code:window_index`, so two phones side by side see the same finds.
+  Rarity is the species' **real iNaturalist campus observation count**; how
+  often each band appears (55/25/15/5) is the one invented number and the card
+  says so. A find within 40 m opens the camera; further away the map goes to it
+  and says walk, because a find logged where you are not standing records
+  nothing useful.
+- **`badge.ts`** — 13 badges, every one a pure function of this device's
+  journal. `badge.test.ts` enforces two rules: no badge may name or describe a
+  fact outside the journal (*synced*, *leaderboard*, *rank* are a pinned
+  regex), and no two badges may fire identically while every badge stays
+  reachable.
+- **`kind.ts` / `kind-mark.tsx`** — only 25 of 1,098 species have curated
+  artwork, so the rest say what taxon group they are, as one of eleven
+  schematic shapes shared by the list row and the map marker. Nothing pretends
+  to be a species portrait.
+- **`sync.ts` + `server/sync-server.mjs`** — optional LAN-only shared world on
+  `node:sqlite`. Photos and notes never leave the device; only species, count
+  and location go up. There is no leaderboard table and no field to build one
+  from. With no server reachable the world strip renders nothing rather than an
+  unmeasured zero.
+
+**Measured limit:** only 9 of the 1,098 pool entries carry an origin, because
+the iNaturalist sweep never requested `establishment_means`. The intended 1.5×
+bias toward native species therefore reaches 0.8% of the world today.
+`spawn.test.ts` holds that number so improving it fails loudly.
 
 ## Two map views
 

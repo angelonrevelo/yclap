@@ -199,8 +199,16 @@ export function habitatWeight(sector_kind: string, entry: SpawnPoolEntry): numbe
     else if (arch === "tree") w = 0.8;
     else w = 1;
   }
-  /* The app exists to send eyes to native species. A gentle constant bias,
-     stated here rather than hidden in the shuffle. */
+  /* The app exists to send eyes to native species, so a gentle constant bias —
+     stated here rather than hidden in the shuffle.
+
+     MEASURED LIMIT, 2026-09-08: only 9 of the 1,098 pool entries carry an
+     origin at all (6 Native, 3 Exotic); the other 1,089 are null, because the
+     iNat sweep did not capture establishment means. So this multiplier is
+     currently inert for 99.2% of the world. It is left in place rather than
+     deleted because the fix is a data fix — re-run the sweep asking for
+     `establishment_means` — and `spawn.test.ts` pins the coverage so this
+     cannot quietly stay broken. Do NOT read the bias as active in the demo. */
   if (entry.origin === "Native") w *= 1.5;
   return w;
 }

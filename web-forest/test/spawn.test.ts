@@ -138,6 +138,23 @@ describe("the real campus pool", () => {
     assert.ok(pool.every((e) => e.file.startsWith("species/")));
   });
 
+  it("says out loud how far the native bias can actually reach", () => {
+    /* `habitatWeight` multiplies a Native entry by 1.5, because the app exists
+       to send eyes to native species. On 2026-09-08 the pool carried an origin
+       for 9 of 1,098 — the iNat sweep never asked for establishment means — so
+       that bias reaches almost nothing.
+
+       This does not assert the gap is acceptable. It holds the NUMBER, so that
+       re-running the sweep with `establishment_means` breaks this test and
+       says so, instead of the world quietly staying flat forever. */
+    const with_origin = pool.filter((e) => e.origin === "Native" || e.origin === "Exotic").length;
+    assert.equal(
+      with_origin,
+      9,
+      `origin coverage moved to ${with_origin}/${pool.length} — good news. Update this number AND the measured-limit note in spawn.ts.`,
+    );
+  });
+
   it("draws a populated, rarity-stratified world", () => {
     const world = spawnForWindow(pool, Date.UTC(2026, 8, 9, 1, 7, 0));
     assert.ok(world.length >= 40, `world too empty: ${world.length}`);
