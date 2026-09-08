@@ -153,6 +153,17 @@ const server = createServer(
     /* SPA fallback — /map and /journal are client routes with no file. */
     if (!existsSync(file)) file = join(DIST, "index.html");
 
+    /* One line per request, because the whole point of this server is a test
+       happening on a device nobody can see the console of. A phone that fails
+       silently is the failure mode; this makes it describable. Records the
+       device family and whether the service worker is the one asking. */
+    const ua = String(req.headers["user-agent"] ?? "");
+    const device = /iPhone|iPad/.test(ua) ? "iOS" : /Android/.test(ua) ? "Android" : /Mac|Windows|Linux/.test(ua) ? "desktop" : "?";
+    const via_sw = req.headers["service-worker"] === "script" ? " [sw-register]" : "";
+    if (device !== "desktop") {
+      console.log(`  ${device}  ${req.method} ${url.pathname}${via_sw}`);
+    }
+
     const type = TYPE[extname(file)] ?? "application/octet-stream";
     /* The service worker must never be served from cache while iterating, or
        you spend an evening testing yesterday's build on the phone. */
@@ -179,6 +190,9 @@ const server = createServer(
  */
 const CERT_PORT = PORT + 1;
 createHttpServer((req, res) => {
+  const ua = String(req.headers["user-agent"] ?? "");
+  const device = /iPhone|iPad/.test(ua) ? "iOS" : /Android/.test(ua) ? "Android" : "desktop";
+  if (device !== "desktop") console.log(`  ${device}  GET ${req.url} (certificate)`);
   if (!req.url || !req.url.startsWith("/ca.crt")) {
     res.writeHead(404, { "Content-Type": "text/plain" });
     res.end("this port serves ca.crt and nothing else\n");
