@@ -56,10 +56,13 @@ cd web-forest
 npm run handset          # builds, generates a local CA, serves HTTPS on :4179
 ```
 
-It prints every address it is reachable on and the phone instructions. Then, on
-the phone, **once**:
+It prints every address it is reachable on. Then, on the phone, **once**:
 
-1. AirDrop (or email) `web-forest/script/cert/ca.crt` to the device.
+1. Open **`http://<mac-lan-ip>:4180/ca.crt`** in the phone's browser.
+   Plain HTTP on purpose — the phone cannot fetch the certificate over a TLS
+   server it does not trust yet, which is the chicken-and-egg this sidecar
+   exists to break. That port serves exactly one file, a public certificate,
+   and refuses every other path.
 2. **iOS:** Settings → *Profile Downloaded* → Install. Then
    **Settings → General → About → Certificate Trust Settings** and switch on
    *Magisphere local CA*. **This second step is the one everybody misses** — the
@@ -69,6 +72,10 @@ the phone, **once**:
 
 Open `https://<mac-lan-ip>:4179/` and everything works: service worker, install
 to home screen, geolocation, camera.
+
+(AirDrop of `script/cert/ca.crt` also works and is fine if the phone is a Mac's
+paired iPhone. The HTTP route exists because a step is where a two-minute task
+goes to die.)
 
 ### Why this and not a tunnel
 

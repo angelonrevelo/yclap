@@ -29,6 +29,7 @@
  * the service worker refuses to register under `vite dev` by design.
  */
 import { createServer } from "node:https";
+import { createServer as createHttpServer } from "node:http";
 import { execFileSync } from "node:child_process";
 import { createReadStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { networkInterfaces } from "node:os";
@@ -164,11 +165,40 @@ const server = createServer(
   },
 );
 
+/**
+ * A plain-HTTP sidecar whose only job is to hand out `ca.crt`.
+ *
+ * Chicken-and-egg otherwise: the phone cannot fetch the certificate over the
+ * TLS server, because it does not trust that server until it HAS the
+ * certificate. AirDrop works but is a step, and a step is where a two-minute
+ * task goes to die. This serves exactly one file, over HTTP, on its own port —
+ * a public certificate, which is meant to be public.
+ *
+ * It refuses every other path, so it cannot become a second static server by
+ * accident, and it never sees the private key.
+ */
+const CERT_PORT = PORT + 1;
+createHttpServer((req, res) => {
+  if (!req.url || !req.url.startsWith("/ca.crt")) {
+    res.writeHead(404, { "Content-Type": "text/plain" });
+    res.end("this port serves ca.crt and nothing else\n");
+    return;
+  }
+  res.writeHead(200, {
+    /* The iOS mime type that triggers "Profile Downloaded" rather than a
+       text preview. Android accepts it too. */
+    "Content-Type": "application/x-x509-ca-cert",
+    "Content-Disposition": 'attachment; filename="magisphere-ca.crt"',
+  });
+  res.end(readFileSync(join(CERT_DIR, "ca.crt")));
+}).listen(CERT_PORT, "0.0.0.0");
+
 server.listen(PORT, "0.0.0.0", () => {
   console.log("Magisphere — LAN HTTPS (nothing is published)\n");
   for (const a of localAddress()) console.log(`  https://${a}:${PORT}/`);
   console.log(`\n  On the phone, ONCE:`);
-  console.log(`    1. AirDrop or email script/cert/ca.crt to the device`);
+  console.log(`    1. Open http://${localAddress()[0]}:${CERT_PORT}/ca.crt  (plain http, on purpose —`);
+  console.log(`       the phone cannot fetch the cert over TLS it does not trust yet)`);
   console.log(`    2. iOS: Settings > Profile Downloaded > Install`);
   console.log(`       then Settings > General > About > Certificate Trust Settings`);
   console.log(`       and switch ON "Magisphere local CA"  <- this step is the one people miss`);
