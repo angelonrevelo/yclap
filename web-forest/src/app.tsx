@@ -51,7 +51,7 @@ import { LAYER_ORDER, nextLayer, prefetchCampus, SOURCE, type Layer, type View }
 import { useGeo } from "./use-geo";
 import { biomePresenceAt, rankEncounter, sectorResident, type BiomePresence } from "./nearby";
 import { cosmeticForStage } from "./cosmetic";
-import { BadgeShelf, loadSpawnPool, RarityPill, reachableSpawn, SpawnStrip, useSpawnWorld, WorldStrip } from "./live";
+import { BadgeShelf, loadSpawnPool, RarityPill, reachableSpawn, SpawnStrip, useSpawnWorld, WildShelf, WorldStrip } from "./live";
 import { KindThumb } from "./kind-mark";
 import { displayName, kindOf } from "./kind";
 import type { Rarity, Spawn, SpawnPoolEntry } from "./spawn";
@@ -1888,12 +1888,15 @@ function JournalScreen({
   seen,
   is_desktop,
   pool_count,
+  pool,
 }: {
   sighting: Sighting[];
   seen: Set<string>;
   is_desktop: boolean;
   /** species_code -> real campus observation count, for the rarity badges. */
   pool_count: ReadonlyMap<string, number>;
+  /** The full sweep, for the shelf of finds the guide never drew. */
+  pool: SpawnPoolEntry[];
 }) {
   const summary = summarize(sighting);
   const seen_of_total = `${summary.species_count} of ${summary.species_total} species seen`;
@@ -1984,6 +1987,9 @@ function JournalScreen({
         <p style={{ fontSize: 12, color: "rgba(31,32,34,0.55)", marginTop: 14 }}>
           A starter list — not the 1,809. Your own count only; nobody else&rsquo;s journal is in this number.
         </p>
+        <div style={{ marginTop: 26 }}>
+          <WildShelf sighting={sighting} pool={pool} curated={picker_order} is_desktop={is_desktop} />
+        </div>
         <div style={{ marginTop: 26 }}>
           <BadgeShelf sighting={sighting} pool_count={pool_count} is_desktop={is_desktop} />
         </div>
@@ -3456,7 +3462,7 @@ export default function App() {
               </aside>
             </div>
           )}
-          {route === "/journal" && <JournalScreen sighting={sighting} seen={seen} is_desktop pool_count={spawn_world.pool_count} />}
+          {route === "/journal" && <JournalScreen sighting={sighting} seen={seen} is_desktop pool_count={spawn_world.pool_count} pool={spawn_world.pool} />}
           {route === "/plan" && <PlanScreen is_desktop />}
           </div>
           {is_camera_open && (
@@ -3503,7 +3509,7 @@ export default function App() {
             />
           )}
           {route === "/map" && (map_mode === "play" ? playBody : mapBody)}
-          {route === "/journal" && <JournalScreen sighting={sighting} seen={seen} is_desktop={false} pool_count={spawn_world.pool_count} />}
+          {route === "/journal" && <JournalScreen sighting={sighting} seen={seen} is_desktop={false} pool_count={spawn_world.pool_count} pool={spawn_world.pool} />}
           {route === "/plan" && <PlanScreen is_desktop={false} />}
           {is_camera_open && (
             <CameraSheet

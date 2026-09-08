@@ -5,6 +5,8 @@ import { isBadge, type Sighting } from "./journal";
 import { species } from "./data";
 import { biome_sector, sectorByCode } from "./sector";
 import { displayName, kindOf } from "./kind";
+import { KIND_LABEL, type Kind } from "./kind";
+import { wildCollection, type WildFind } from "./collection";
 import { KindThumb } from "./kind-mark";
 import {
   poolFromFile,
@@ -61,6 +63,8 @@ export function loadSpawnPool(): Promise<SpawnPoolEntry[]> {
 
 export interface SpawnWorld {
   spawn: Spawn[];
+  /** The pool as loaded — the wider collection shelf reads names off it. */
+  pool: SpawnPoolEntry[];
   /** species_code → real campus observation count, for the rarity badges. */
   pool_count: ReadonlyMap<string, number>;
   /** ISO instant this window closes — the countdown reads off it. */
@@ -70,6 +74,7 @@ export interface SpawnWorld {
 
 const EMPTY_WORLD: SpawnWorld = {
   spawn: [],
+  pool: [],
   pool_count: new Map(),
   ends_at: new Date(0).toISOString(),
   is_ready: false,
@@ -110,6 +115,7 @@ export function useSpawnWorld(): SpawnWorld {
     const { ends_at } = spawnWindow(now_ms);
     return {
       spawn: spawnForWindow(pool, now_ms),
+      pool,
       pool_count: new Map(pool.map((e) => [e.species_code, e.count])),
       ends_at,
       is_ready: true,
@@ -361,6 +367,141 @@ export function BadgeShelf({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/* ── the wider collection ───────────────────────────────────────────────── */
+
+function WildTile({ find }: { find: WildFind }) {
+  return (
+    <div
+      title={`${find.campus_count} campus observation${find.campus_count === 1 ? "" : "s"} on iNaturalist`}
+      className="flex items-center gap-3"
+      style={{
+        padding: 10,
+        borderRadius: RADIUS.tile,
+        border: "1.5px solid #E4E7E8",
+        background: "#fff",
+        minWidth: 0,
+      }}
+    >
+      <KindThumb kind={find.kind} size={40} />
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div
+          style={{
+            fontWeight: 800,
+            fontSize: 13,
+            lineHeight: 1.2,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {find.common_name}
+        </div>
+        <div
+          style={{
+            fontStyle: "italic",
+            fontSize: 10.5,
+            color: "rgba(31,32,34,0.55)",
+            marginTop: 1,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {find.scientific_name}
+        </div>
+        <div style={{ fontSize: 10, color: "rgba(31,32,34,0.45)", marginTop: 3 }}>
+          {new Date(find.first_at).toLocaleDateString()}
+          {find.times > 1 && ` · seen ${find.times}×`}
+        </div>
+      </div>
+      <RarityPill rarity={find.rarity} count={find.campus_count} />
+    </div>
+  );
+}
+
+/**
+ * Everything you have found that the guide never drew.
+ *
+ * The journal grid is the curated nine — a list you can set out to complete.
+ * This is the other 1,073, which you can only meet by walking into them, so it
+ * is a history rather than a checklist and it is ordered rarest-first.
+ *
+ * Renders nothing at all when you have found none. An empty "0 of 1,098" is a
+ * scoreboard, and the one thing this app will not do is put a number on a
+ * student that reads as a mark.
+ */
+export function WildShelf({
+  sighting,
+  pool,
+  curated,
+  is_desktop,
+}: {
+  sighting: Sighting[];
+  pool: SpawnPoolEntry[];
+  curated: Iterable<string>;
+  is_desktop: boolean;
+}) {
+  const collection = useMemo(
+    () => wildCollection(sighting, pool, curated),
+    [sighting, pool, curated],
+  );
+  if (collection.found_count === 0) return null;
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3">
+        <Eyebrow>BEYOND THE GUIDE</Eyebrow>
+        <span
+          style={{
+            fontSize: 12.5,
+            fontWeight: 700,
+            color: "var(--ui-accent)",
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {collection.found_count} of {collection.pool_total.toLocaleString()} known here
+        </span>
+      </div>
+      <p style={{ fontSize: 11.5, color: "rgba(31,32,34,0.55)", marginTop: 6, lineHeight: 1.45 }}>
+        Species you met by walking into them — the campus sweep knows{" "}
+        {collection.pool_total.toLocaleString()} and the guide has cards for nine.
+        {collection.best === "mythic" && " One of yours has been recorded here once."}
+      </p>
+      {collection.group.map((g) => (
+        <div key={g.kind} style={{ marginTop: 14 }}>
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: "rgba(31,32,34,0.5)",
+              letterSpacing: "0.06em",
+            }}
+          >
+            {KIND_LABEL[g.kind as Kind].toUpperCase()} · {g.row.length}
+          </div>
+          <div
+            style={{
+              marginTop: 8,
+              display: "grid",
+              gap: 8,
+              gridTemplateColumns: is_desktop ? "repeat(2, minmax(0,1fr))" : "1fr",
+            }}
+          >
+            {g.row.map((f) => (
+              <WildTile key={f.species_code} find={f} />
+            ))}
+          </div>
+        </div>
+      ))}
+      <p style={{ fontSize: 10.5, color: "rgba(31,32,34,0.45)", marginTop: 12, lineHeight: 1.4 }}>
+        Rarity is the species&rsquo; real iNaturalist observation count inside the campus box. This
+        shelf is your own finds only — nobody else&rsquo;s collection is in this number, and there
+        is nothing here to compare.
+      </p>
     </div>
   );
 }
