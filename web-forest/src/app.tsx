@@ -10,6 +10,7 @@ const CharacterModel = lazy(() => import("./character-model"));
 import { biome_sector, sectorAt, sectorByCode, sector as sector_row, type Sector } from "./sector";
 import Viewfinder, { type Shot } from "./camera";
 import {
+  aisDueNote,
   AIS_GAP_NOTE,
   AT_TREE_RADIUS_M,
   consult,
@@ -721,7 +722,7 @@ function BiomeCard({
         <Eyebrow>SPECIES TO FIND {row.species_code.length > 0 ? `· ${row.species_code.length}` : ""}</Eyebrow>
         {row.species_code.length === 0 ? (
           <p style={{ fontSize: 13, color: "rgba(31,32,34,0.6)", marginTop: 8, lineHeight: 1.45 }}>
-            No species assigned to this area yet — the AIS inventory (due 09-09) will fill it in.
+            No species assigned to this area yet — the AIS inventory ({aisDueNote()}) will fill it in.
           </p>
         ) : (
           <div style={{ marginTop: 4 }}>
@@ -2084,7 +2085,7 @@ function PlanContent() {
         <p style={{ fontSize: 13, lineHeight: 1.5, marginTop: 8, color: "rgba(31,32,34,0.7)" }}>
           How green each one is was <strong style={{ fontWeight: 700 }}>measured off satellite imagery</strong>, not
           guessed from the absence of a building — which is what used to paint car parks as lawn. Species lists stay
-          provisional until the AIS inventory lands (Wed 09-09).
+          provisional until the AIS inventory lands ({aisDueNote()}).
         </p>
         <div style={{ marginTop: 10 }}>
           {[...sector_row]
@@ -2515,7 +2516,7 @@ function SectorCard({
         </div>
       ) : (
         <p style={{ fontSize: 13, lineHeight: 1.5, color: "rgba(31,32,34,0.6)", margin: 0 }}>
-          Nothing is on the walk list here yet — the AIS inventory (due 09-09) is the source that will name what grows in
+          Nothing is on the walk list here yet — the AIS inventory ({aisDueNote()}) is the source that will name what grows in
           this sector. Log whatever you actually see.
         </p>
       )}
@@ -2563,7 +2564,7 @@ function SectorCard({
             : "No imagery covered this ring, so greenness here is inferred from building cover rather than measured."}
           {row.is_named_by_us ? " The NAME is ours — OSM has none for this ground." : ""}
           {row.species_code.length > 0
-            ? " Species here are provisional demo-map positions, superseded by the AIS inventory (due 2026-09-09). Not a survey."
+            ? ` Species here are provisional demo-map positions, superseded by the AIS inventory (${aisDueNote()}). Not a survey.`
             : ""}
         </p>
       )}

@@ -10,6 +10,7 @@ import {
 } from "../src/spawn.ts";
 import { CAMPUS_CENTER, distanceMeter } from "../src/geo.ts";
 import { displayName, kindOf, KIND_LABEL } from "../src/kind.ts";
+import { aisDueNote } from "../src/data.ts";
 
 /**
  * The live layer's contract.
@@ -122,4 +123,20 @@ test("display casing fixes the first word and never touches a proper one after i
   /* Must NOT become "Philippine Hanging-parrot". */
   assert.equal(displayName("Philippine Hanging-Parrot"), "Philippine Hanging-Parrot");
   assert.equal(displayName(""), "");
+});
+
+test("the AIS date note stops claiming a future that has passed", () => {
+  /* Four user-visible strings hard-coded "due 09-09". On Saturday the app
+     would have told judges an inventory was still forthcoming three days after
+     it was expected — stale at best, a quiet overclaim at worst. The phrasing
+     is derived now, so it corrects itself on stage. */
+  const before = aisDueNote(new Date("2026-09-08T10:00:00+08:00"));
+  const on_the_day = aisDueNote(new Date("2026-09-09T18:00:00+08:00"));
+  const after = aisDueNote(new Date("2026-09-12T09:00:00+08:00"));
+
+  assert.equal(before, "due 09-09");
+  assert.equal(on_the_day, "due 09-09", "it is still due on the day itself");
+  assert.equal(after, "expected 09-09, not yet received");
+  /* The failure this refuses: the word "due" surviving past the date. */
+  assert.ok(!after.includes("due "));
 });

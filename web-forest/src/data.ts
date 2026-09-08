@@ -474,5 +474,29 @@ export const landmark: Landmark[] = [
 export const AIS_GAP_NOTE =
   "AIS keeps a species database for the campus. Whether it also holds a count and a location for every tree is exactly what we are asking them — if that point file exists we surface it, and if it does not, a walk like this is one way to start one.";
 
+/**
+ * When the AIS species-per-sector inventory was expected.
+ *
+ * Four user-visible strings used to hard-code "due 09-09". That date is now
+ * today, and on Saturday the app would have been telling judges an inventory
+ * was still forthcoming three days after it was expected — which is either
+ * stale or a quiet overclaim, and this app's whole posture is that it does not
+ * make either.
+ *
+ * So the phrasing is derived instead of written. Before the date it reads as a
+ * date we are waiting on; after it, it says plainly that it has not arrived.
+ * It corrects itself on stage without anybody remembering to.
+ */
+export const AIS_DUE_ISO = "2026-09-09";
+
+/** "due 09-09" before that date; "expected 09-09, not yet received" after it. */
+export function aisDueNote(now: Date = new Date()): string {
+  const due = new Date(`${AIS_DUE_ISO}T23:59:59+08:00`);
+  const short = "09-09";
+  return now.getTime() <= due.getTime()
+    ? `due ${short}`
+    : `expected ${short}, not yet received`;
+}
+
 export const WILD_NOTE =
   "Ateneo Wild keeps an Instagram catalogue of campus birds and trees, run by a faculty member. Not consulted yet.";
