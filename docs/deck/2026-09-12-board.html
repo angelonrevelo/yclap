@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Magisphere — sintra boards (2 × A4 + 1 × A3)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+/*
+ * The three sintra boards Ms. Shenina asked for on 2026-09-08:
+ * "3 pubmats … 2 A4 size, 1 na katulad sa photo sent here" → corrected to A3.
+ * She asked for the PNG the morning of 09-09 to reach Intermatrix.
+ *
+ * THE NAME IS ONE VARIABLE. `--product-name` below is the only place it is
+ * written. The group's poll closed 09-08 21:32 on "magisphere", 56 minutes
+ * after the working pubmat that says "eComon" was posted, and print is the one
+ * surface that cannot be re-deployed on Friday. So this file renders EITHER
+ * name from a one-word edit rather than forcing a redesign once someone
+ * decides. See docs/showcase/vault-intel-2026-09-09.md.
+ *
+ * THE QR IS A PLACEHOLDER AND MUST BE REPLACED. Ms. Shenina, 09-08 21:24:
+ * "yung QR code na gamitin is yung 'a' or eagle. https://go.ateneo.edu/QRcode"
+ * A generic QR is not acceptable. Generate it there, export PNG, and drop it
+ * into the marked slot.
+ *
+ * Palette is the committee kit sampled off the sheet: bark #704E2E,
+ * leaf #ADE25D, ultramarine #1F01B1.
+ *
+ * Boards are laid out at 300 dpi in real pixels (A4 = 2480x3508,
+ * A3 = 3508x4961) so a screenshot at that viewport IS the print file.
+ * Render with script/board.sh, or screenshot each .board at its own size.
+ */
+:root{
+  /* ── THE ONLY LINE TO EDIT WHEN THE NAME IS DECIDED ────────────────── */
+  --product-name: "Magisphere";
+
+  --bark:#704e2e; --leaf:#ade25d; --deep:#1f01b1;
+  --ink:#1f2022; --paper:#f9f9f9; --grid:#e4e7e8; --mute:#5b6165;
+}
+*{ box-sizing:border-box; margin:0; padding:0; }
+body{ font-family:Montserrat,"Century Gothic",sans-serif; color:var(--ink); background:#3a3c3e; }
+.board{
+  position:relative; background:#fff; margin:0 auto 60px; overflow:hidden;
+  display:flex; flex-direction:column;
+}
+/* 300 dpi. A screenshot at these exact pixel sizes is a print-ready file. */
+.a4{ width:2480px; height:3508px; padding:170px 150px 140px; }
+.a3{ width:3508px; height:4961px; padding:240px 210px 200px; }
+
+.name::before{ content:var(--product-name); }
+
+.bar{ height:22px; border-radius:999px; background:linear-gradient(115deg,#704e2e,#ade25d 62%,#1f01b1); }
+.a3 .bar{ height:30px; }
+
+h1{ font-weight:800; letter-spacing:-.025em; line-height:1.02; }
+.a4 h1{ font-size:150px; }
+.a3 h1{ font-size:215px; }
+h2{ font-weight:800; letter-spacing:-.015em; line-height:1.08; }
+.a4 h2{ font-size:70px; }
+.a3 h2{ font-size:100px; }
+.eyebrow{ font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--bark); }
+.a4 .eyebrow{ font-size:30px; }
+.a3 .eyebrow{ font-size:42px; }
+p{ line-height:1.45; }
+.a4 p{ font-size:40px; }
+.a3 p{ font-size:56px; }
+.mute{ color:var(--mute); }
+
+.stat{ border:4px solid var(--grid); border-radius:44px; padding:44px 44px 36px; flex:1; }
+.a3 .stat{ border-radius:60px; padding:60px; }
+.stat .n{ font-weight:800; letter-spacing:-.035em; color:var(--bark); line-height:1; }
+.a4 .stat .n{ font-size:110px; }
+.a3 .stat .n{ font-size:150px; }
+.stat .l{ font-weight:700; margin-top:22px; }
+.a4 .stat .l{ font-size:34px; }
+.a3 .stat .l{ font-size:46px; }
+.stat .s{ color:#8b9195; margin-top:12px; }
+.a4 .stat .s{ font-size:24px; }
+.a3 .stat .s{ font-size:32px; }
+
+.row{ display:flex; gap:40px; }
+.a3 .row{ gap:56px; }
+.spacer{ flex:1; }
+
+.qr{
+  border:6px dashed var(--deep); border-radius:36px; display:grid; place-items:center;
+  text-align:center; color:var(--deep); font-weight:700; padding:30px;
+}
+.a4 .qr{ width:520px; height:520px; font-size:26px; }
+.a3 .qr{ width:760px; height:760px; font-size:36px; }
+
+.foot{ display:flex; justify-content:space-between; align-items:flex-end; gap:40px; }
+.foot .who{ font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:#9aa0a4; }
+.a4 .foot .who{ font-size:26px; }
+.a3 .foot .who{ font-size:34px; }
+
+.shot{ border:4px solid var(--grid); border-radius:44px; overflow:hidden; }
+.shot img{ display:block; width:100%; }
+
+ul{ list-style:none; }
+li{ position:relative; padding-left:56px; margin-bottom:26px; line-height:1.4; }
+.a4 li{ font-size:40px; }
+.a3 li{ font-size:54px; }
+li::before{
+  content:""; position:absolute; left:0; top:.45em; width:28px; height:28px;
+  border-radius:999px; background:var(--leaf); border:5px solid var(--bark);
+}
+.tag{
+  display:inline-block; font-weight:700; border-radius:999px; border:4px solid;
+  color:var(--bark); border-color:rgba(112,78,46,.4); background:rgba(112,78,46,.07);
+}
+.a4 .tag{ font-size:28px; padding:14px 28px; }
+.a3 .tag{ font-size:38px; padding:20px 38px; }
+</style>
+</head>
+<body>
+
+<!-- ══ BOARD 1 · A3 · the hero ══════════════════════════════════════════ -->
+<section class="board a3">
+  <div class="bar" style="width:520px"></div>
+  <div class="eyebrow" style="margin-top:80px">Youth CLAP 2026 · Ateneo CCC · Innovation Showcase</div>
+  <h1 class="name" style="margin-top:40px; color:var(--bark)"></h1>
+  <h2 style="margin-top:60px; max-width:2400px">
+    Two-thirds of this campus is green.<br>Most of us cannot name what we are walking under.
+  </h2>
+  <p class="mute" style="margin-top:56px; max-width:2300px">
+    A campus-forest field guide you play by walking. A world of finds rotates across Ateneo
+    every thirty minutes — walk to one, photograph it, and it enters your journal.
+  </p>
+
+  <div class="row" style="margin-top:90px">
+    <div class="stat"><div class="n">1,098</div><div class="l">species modelled in 3D</div><div class="s">iNaturalist campus sweep, 2026-09-03</div></div>
+    <div class="stat"><div class="n">68</div><div class="l">walkable sectors</div><div class="s">cut from OpenStreetMap, measured against imagery</div></div>
+    <div class="stat"><div class="n">1,809</div><div class="l">trees inventoried</div><div class="s">AIS · SY 2025–2026</div></div>
+  </div>
+
+  <div class="row" style="margin-top:100px; align-items:flex-start">
+    <div class="shot" style="width:1000px"><img src="2026-09-12-asset/home-spawn-390.png" alt=""></div>
+    <div class="shot" style="width:1000px"><img src="2026-09-12-asset/play-spawn-390.png" alt=""></div>
+    <div style="flex:1; padding-left:40px">
+      <div class="eyebrow">Try it now</div>
+      <div class="qr" style="margin-top:36px">
+        REPLACE THIS<br><br>
+        Generate at<br>go.ateneo.edu/QRcode<br><br>
+        in the “a” / eagle style<br>
+        <span style="font-weight:400">(Ms. Shenina, 09-08)</span>
+      </div>
+      <p class="mute" style="margin-top:40px; font-size:42px">
+        No account.<br>No app store.<br>Works offline.
+      </p>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+
+  <!-- The bottom third was empty white. On a board people read standing up,
+       that space should carry the four rules the project is actually built on. -->
+  <div style="border-top:6px solid var(--grid); padding-top:80px">
+    <div class="eyebrow">How it plays</div>
+    <div class="row" style="margin-top:50px">
+      <div style="flex:1">
+        <h2 style="font-size:62px; color:var(--bark)">Walk to it</h2>
+        <p class="mute" style="margin-top:22px; font-size:44px">A find within 40 metres opens the camera. You cannot log one from across campus.</p>
+      </div>
+      <div style="flex:1">
+        <h2 style="font-size:62px; color:var(--bark)">Rarity is data</h2>
+        <p class="mute" style="margin-top:22px; font-size:44px">From the species’ real iNaturalist count here. Seen once reads “Once on campus”.</p>
+      </div>
+      <div style="flex:1">
+        <h2 style="font-size:62px; color:var(--bark)">One world</h2>
+        <p class="mute" style="margin-top:22px; font-size:44px">Every phone on campus in the same half-hour sees the same finds.</p>
+      </div>
+      <div style="flex:1">
+        <h2 style="font-size:62px; color:var(--bark)">No leaderboard</h2>
+        <p class="mute" style="margin-top:22px; font-size:44px">Thirteen badges, all earned by doing the thing the app is for. Nothing purchasable.</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:80px"></div>
+  <div class="foot">
+    <div class="who">Ateneo de Manila University · Loyola Heights · 12 September 2026</div>
+    <div class="who">Student prototype · not an official AIS product</div>
+  </div>
+</section>
+
+<!-- ══ BOARD 2 · A4 · vision + mission ═════════════════════════════════ -->
+<section class="board a4">
+  <div class="bar" style="width:360px"></div>
+  <div class="eyebrow" style="margin-top:60px">What <span class="name"></span> is for</div>
+  <h2 style="margin-top:36px">Naming is the lever.</h2>
+
+  <p class="mute" style="margin-top:44px">
+    Climate stress on Ateneo’s urban forest has three roots: infrastructure taking growing
+    space, policy in which biodiversity loses to other priorities, and the one students can
+    actually act on — <strong>awareness</strong>.
+  </p>
+  <p style="margin-top:36px">
+    A community that cannot name its forest is not a constituency for that forest when a car
+    park is proposed over it.
+  </p>
+
+  <div class="eyebrow" style="margin-top:80px">Vision</div>
+  <p style="margin-top:24px">
+    An Ateneo where every student can name what they walk under, and where the campus forest
+    has a constituency that shows up for it.
+  </p>
+
+  <div class="eyebrow" style="margin-top:60px">Mission</div>
+  <ul style="margin-top:28px">
+    <li>Make noticing a habit, not a poster — by making the walk itself the activity.</li>
+    <li>Produce what the campus inventory does not have: a species, a count and a coordinate,
+      contributed by the people who walk past the tree.</li>
+    <li>Keep every number honest — rarity comes from real observation data, and where a
+      figure is ours, the app says so.</li>
+  </ul>
+
+  <div class="spacer"></div>
+
+  <!-- The middle of this board was empty. The problem tree branch is the
+       argument the whole project rests on, so it belongs here rather than
+       nowhere. Drawn as a chain, not as the full tree, which does not read at
+       board distance. -->
+  <div style="border:5px solid var(--grid); border-radius:48px; padding:60px">
+    <div class="eyebrow">The branch we are acting on</div>
+    <div style="margin-top:44px">
+      <div style="font-size:30px; font-weight:700; letter-spacing:.14em; color:#9aa0a4">ROOT</div>
+      <div style="font-size:56px; font-weight:800; margin-top:10px">Awareness and knowledge</div>
+      <div style="width:5px; height:44px; background:var(--leaf); margin:22px 0 22px 26px"></div>
+      <div style="font-size:30px; font-weight:700; letter-spacing:.14em; color:#9aa0a4">CONSEQUENCE</div>
+      <div style="font-size:56px; font-weight:800; margin-top:10px">A community that cannot name its forest</div>
+      <div style="width:5px; height:44px; background:var(--leaf); margin:22px 0 22px 26px"></div>
+      <div style="font-size:30px; font-weight:700; letter-spacing:.14em; color:#9aa0a4">THEREFORE</div>
+      <div style="font-size:56px; font-weight:800; margin-top:10px; color:var(--bark)">
+        It is not a constituency for that forest when a car park is proposed
+      </div>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:56px">
+    <div class="stat"><div class="n">~⅔</div><div class="l">of 89 ha is green</div><div class="s">AIS, Loyola Heights</div></div>
+    <div class="stat"><div class="n">101</div><div class="l">threatened trees</div><div class="s">AIS arboretum</div></div>
+  </div>
+
+  <div class="spacer"></div>
+  <div style="border-top:4px solid var(--grid); padding-top:44px">
+    <div class="eyebrow">What this is not</div>
+    <div style="margin-top:28px; display:flex; gap:20px; flex-wrap:wrap">
+      <span class="tag">Not a planting drive</span>
+      <span class="tag">Not a carbon-credit product</span>
+      <span class="tag">Not a replacement for the AIS inventory</span>
+      <span class="tag">No leaderboard</span>
+    </div>
+  </div>
+  <div class="foot" style="margin-top:60px">
+    <div class="who">Youth CLAP 2026 · Ateneo CCC</div>
+    <div class="who">2 of 3</div>
+  </div>
+</section>
+
+<!-- ══ BOARD 3 · A4 · how it plays + who we are ════════════════════════ -->
+<section class="board a4">
+  <div class="bar" style="width:360px"></div>
+  <div class="eyebrow" style="margin-top:60px">How it plays</div>
+  <h2 style="margin-top:36px">Walk to it. Photograph it. Keep it.</h2>
+
+  <ul style="margin-top:48px">
+    <li><strong>Finds are placed, not conjured.</strong> Every phone on campus in the same
+      half-hour sees the same world.</li>
+    <li><strong>Rarity is data.</strong> How rare a species is comes from its real
+      iNaturalist observation count on this campus. Seen once reads
+      <em>“Once on campus”</em>.</li>
+    <li><strong>You must be there.</strong> A find within 40 metres opens the camera. You
+      cannot log one from across campus.</li>
+    <li><strong>Nothing ranks anyone.</strong> Thirteen badges, all earned by doing the thing
+      the app is for. No currency, nothing purchasable, no leaderboard.</li>
+  </ul>
+
+  <div class="shot" style="margin-top:56px">
+    <img src="2026-09-12-asset/badge-desktop.png" alt="">
+  </div>
+
+  <div class="row" style="margin-top:48px; align-items:flex-start">
+    <div class="shot" style="width:640px"><img src="2026-09-12-asset/badge-390.png" alt=""></div>
+    <div style="flex:1">
+      <div class="eyebrow">What a walk produces</div>
+      <p class="mute" style="margin-top:26px; font-size:38px">
+        Every logged find carries a <strong>species, a count, a coordinate, an accuracy and a
+        time</strong> — exportable as CSV and GeoJSON. That pair, a count and a location, is
+        exactly what the existing campus inventory does not have.
+      </p>
+      <p class="mute" style="margin-top:26px; font-size:38px">
+        Photos and notes never leave the phone.
+      </p>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="eyebrow">Who we are</div>
+  <!-- DRAFT — check spelling and add anyone missing before this goes to print. -->
+  <p style="margin-top:24px; font-size:36px">
+    Ivan · Katherine · Sophia · Aleij Jill · Charisse · Clariz · Alfonso · Angelo
+  </p>
+  <p class="mute" style="margin-top:20px; font-size:30px">
+    Youth CLAP 2026 cohort, Ateneo de Manila University
+  </p>
+
+  <div class="foot" style="margin-top:56px">
+    <div class="who">Gamification follows Rodrigo, Favis &amp; Cuyegkeng (2021) — RECIPE</div>
+    <div class="who">3 of 3</div>
+  </div>
+</section>
+
+</body>
+</html>
