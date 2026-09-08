@@ -167,7 +167,10 @@ function MobileNav({ route, onRoute }: { route: Route; onRoute: (r: Route) => vo
                 width: 46,
                 height: 28,
                 borderRadius: RADIUS.pill,
-                background: is_active ? "rgba(0,134,83,0.12)" : "transparent",
+                /* Chrome, not ecology. The label above is --ui-accent since the
+                   palette split, and a bark label on a green wash was the one
+                   place the two roles visibly disagreed. */
+                background: is_active ? "rgba(112,78,46,0.12)" : "transparent",
                 transition: "background .18s ease",
               }}
             >
@@ -1064,7 +1067,7 @@ function CameraSheet({
             <div
               style={{
                 padding: "12px 14px",
-                background: "rgba(0,134,83,0.08)",
+                background: "rgba(112,78,46,0.08)",
                 borderBottom: "1px solid #E4E7E8",
               }}
             >
@@ -1094,7 +1097,10 @@ function CameraSheet({
                 className="w-full flex items-center justify-between"
                 style={{
                   padding: "12px 14px",
-                  background: is_active ? "rgba(0,134,83,0.08)" : "transparent",
+                  /* Selection is a chrome state. The species' own ecology colour
+                     is carried by its pill and its thumb ring, which is where it
+                     means something. */
+                  background: is_active ? "rgba(112,78,46,0.08)" : "transparent",
                   borderTop: i === 0 ? "none" : "1px solid #E4E7E8",
                   textAlign: "left",
                 }}
@@ -1292,25 +1298,44 @@ function JournalGrid({ seen, is_desktop }: { seen: Set<string>; is_desktop: bool
   );
 }
 
-function SummaryStrip({ sighting }: { sighting: Sighting[] }) {
+function SummaryStrip({ sighting, pool }: { sighting: Sighting[]; pool: SpawnPoolEntry[] }) {
   const summary = useMemo(() => summarize(sighting), [sighting]);
   const top_species = summary.by_species.slice(0, 4);
+  /* Same resolver the walk receipt uses. Without it this list printed raw
+     slugs — "firecracker-flower", "lasippa-illigera" — for every find outside
+     the curated nine, which is most of them once the world is walkable. */
+  const curated_name = useMemo(
+    () => new Map(Object.entries(species).map(([code, sp]) => [code, sp.common_name])),
+    [],
+  );
+  const resolved = useMemo(
+    () => receiptHighlight(top_species.map((r) => r.key), pool, curated_name),
+    [top_species, pool, curated_name],
+  );
+  const name_of = (code: string) => resolved.row.find((r) => r.species_code === code)?.name ?? code;
   return (
     <Card>
       <div className="flex gap-2">
         <StatTile big={String(summary.sighting_count)} line="sightings" source="this device" />
-        <StatTile big={String(summary.species_count)} line="species" source="your journal" />
+        <StatTile
+          big={String(summary.species_count + summary.wild_species_count)}
+          line="species"
+          source={
+            summary.wild_species_count > 0
+              ? `${summary.species_count} on the guide · ${summary.wild_species_count} beyond it`
+              : "your journal"
+          }
+        />
         <StatTile big={String(summary.located_count)} line="located" source="GPS or demo walk" />
       </div>
       <div style={{ marginTop: 16 }}><Eyebrow>BY SPECIES</Eyebrow></div>
       <div style={{ marginTop: 8 }}>
         {top_species.map((row) => {
-          const sp = species[row.key];
           const width = (row.count / top_species[0].count) * 100;
           return (
             <div key={row.key} style={{ marginTop: 8 }}>
               <div className="flex items-center justify-between" style={{ fontSize: 13 }}>
-                <span style={{ fontWeight: 700 }}>{sp?.common_name ?? row.key}</span>
+                <span style={{ fontWeight: 700 }}>{name_of(row.key)}</span>
                 <span style={{ color: "rgba(31,32,34,0.6)" }}>{row.count}</span>
               </div>
               <div style={{ height: 6, borderRadius: 999, background: "#EEF1F0", marginTop: 4 }}>
@@ -1985,7 +2010,7 @@ function JournalScreen({
           <ProgressCard sighting={sighting} is_desktop={is_desktop} />
         </div>
         <div style={{ marginTop: 16 }}>
-          <SummaryStrip sighting={sighting} />
+          <SummaryStrip sighting={sighting} pool={pool} />
         </div>
         <div className="flex items-baseline justify-between gap-3" style={{ marginTop: 24 }}>
           <Eyebrow>YOUR COLLECTION</Eyebrow>
@@ -2234,7 +2259,7 @@ function DesktopRail({
                 fontWeight: 700,
                 fontSize: 14.5,
                 color: is_active ? "var(--ui-accent)" : "rgba(31,32,34,0.72)",
-                background: is_active ? "rgba(0,134,83,0.12)" : "transparent",
+                background: is_active ? "rgba(112,78,46,0.12)" : "transparent",
                 borderRadius: 14,
                 padding: "10px 12px",
                 textAlign: "left",
