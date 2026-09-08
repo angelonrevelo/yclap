@@ -1,5 +1,7 @@
 # Magisphere — the seven slides
 
+**Tagline, as printed on the boards: *Rediscovering home.***
+
 **Innovation Showcase, 12 September 2026 · Youth CLAP Ateneo CCC**
 **Constraint from the 2026-09-05 brief: seven slides, no more.**
 **Version:** 0.1 · 2026-09-08 · pairs with [`concept-note.md`](concept-note.md), which carries the same information in document form.
@@ -135,9 +137,14 @@ Close on the contradiction from slide 1, then the mission line:
   09-08 and asked for the PNG **the morning of 09-09** to reach Intermatrix.
 - **The QR on the boards must come from `go.ateneo.edu/QRcode`** in the "a" or eagle
   style — Ms. Shenina, 09-08 21:24. Not a generic QR.
-- **Unresolved and time-critical: the boards say "eComon", the app says "Magisphere".**
-  The name poll closed 56 minutes after that pubmat was posted. Print cannot be
-  re-deployed on Friday. See `../showcase/vault-intel-2026-09-09.md`.
+- **RESOLVED 09-09: the boards say Magisphere.** The Canva export
+  (`[ADMU YCLAP] Publication Material and QR.zip`) carries the final material and
+  it is branded Magisphere / *Rediscovering home.* throughout. Board 9 in that
+  zip is the old "ecomon" kit sheet and is superseded — do not send it.
+- **Still to fix before print: the boards and deck slide 9 both say
+  "points … and leaderboards".** The app has neither, by design, with a test
+  enforcing it. Suggested replacement wording is in
+  `../showcase/concept-note.md` §5.
 - Brand palette is the committee kit (bark #704E2E, leaf #ADE25D, ultramarine #1F01B1),
   which is the same identity ramp now in the app.
 

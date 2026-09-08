@@ -217,7 +217,7 @@ export function SpawnStrip({
                 padding: 10,
                 borderRadius: RADIUS.tile,
                 border: `1.5px solid ${is_reachable ? "var(--ui-accent)" : "#E4E7E8"}`,
-                background: is_reachable ? "rgba(112,78,46,0.05)" : "#fff",
+                background: is_reachable ? "rgba(21,77,48,0.05)" : "#fff",
               }}
             >
               {/* Curated artwork where we drew it; the taxon group where we did
@@ -285,8 +285,8 @@ function BadgeTile({ award }: { award: BadgeAward }) {
       style={{
         padding: 12,
         borderRadius: RADIUS.tile,
-        border: `1.5px solid ${is_earned ? "rgba(112,78,46,0.35)" : "#E4E7E8"}`,
-        background: is_earned ? "rgba(112,78,46,0.06)" : "#fff",
+        border: `1.5px solid ${is_earned ? "rgba(21,77,48,0.35)" : "#E4E7E8"}`,
+        background: is_earned ? "rgba(21,77,48,0.06)" : "#fff",
         opacity: is_earned ? 1 : 0.72,
       }}
     >

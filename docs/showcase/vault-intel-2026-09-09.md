@@ -19,6 +19,36 @@ says so.
 
 **So: 2 × A4 + 1 × A3, design due to Ms. Shenina as a PNG this morning (Sep 9).**
 
+### RESOLVED, 09-09 — the boards say Magisphere
+
+The Canva export (`~/Downloads/[ADMU YCLAP] Publication Material and QR.zip`,
+nine A4 SVGs) carries the final material and it is branded **Magisphere /
+*Rediscovering home.*** throughout. The name question below is closed; it is
+kept for the record because it explains why the app was briefly repainted from
+the wrong palette.
+
+**Two things to carry forward from that export:**
+
+- **Board 9 is the old "ecomon" kit sheet** — booth mockup, bark/lime/
+  ultramarine swatches, the ecomon wordmark, Garet. It is superseded. Do not
+  send it to Intermatrix with the others.
+- **Board 6 is an empty ecomon template.** Also superseded.
+- The live boards are **2, 3, 5, 8** (hero, hero variant, the content board,
+  and the content board in the alternate layout) plus **4**, the booth
+  identification activity with the START→FINISH path.
+
+**The real palette, sampled off the export rather than eyeballed:**
+
+| | |
+|---|---|
+| forest | `#154D30` — the wordmark |
+| green | `#3E9A5E` — section pills |
+| blue | `#3463B5` — the secondary pill colour |
+| mist | `#EBFDEF` — the ground the content cards sit on |
+
+The app has been repainted to this. It had been running on bark/lime/
+ultramarine since 09-08, taken from what turned out to be the superseded sheet.
+
 ### The problem with that
 
 The working pubmat Katherine sent at 20:36 reads **"eComon"**.
@@ -44,6 +74,35 @@ Saturday is not.
 The QR on the boards must be generated through the Ateneo generator, in the "a" or eagle
 style — not a generic QR. If the boards were already exported with a plain QR, they need
 re-exporting.
+
+---
+
+## 1b · The one thing that still needs fixing before print
+
+Both the publication material (boards 5 and 8) and **deck slide 9** describe
+the gamified features as:
+
+> "species badges, **points**, challenges, and **leaderboards** inspired by
+> location-based exploration games"
+
+**The app has badges. It has no points and no leaderboard.** That is not an
+omission — it is a design decision with a test enforcing it: there is no field
+in the data model a rank could be built from, and `badge.test.ts` fails any
+badge whose name or blurb mentions ranking. The reason is in the group's own
+material — personal progression, not public rank, following Ateneo's published
+work on meaningful gamification (Rodrigo, Favis & Cuyegkeng 2021, RECIPE),
+which the app cites on screen.
+
+A judge who reads the board and then opens the app finds the app does not do
+what the board says. Suggested replacement, which is a stronger claim than the
+original:
+
+> "…gamified features such as species badges, collections, and challenges
+> inspired by location-based exploration games — **personal progression rather
+> than public ranking.**"
+
+Refusing a leaderboard on published pedagogy is a decision worth defending in
+front of judges. Claiming one you do not have is not.
 
 ---
 

@@ -170,7 +170,7 @@ function MobileNav({ route, onRoute }: { route: Route; onRoute: (r: Route) => vo
                 /* Chrome, not ecology. The label above is --ui-accent since the
                    palette split, and a bark label on a green wash was the one
                    place the two roles visibly disagreed. */
-                background: is_active ? "rgba(112,78,46,0.12)" : "transparent",
+                background: is_active ? "rgba(21,77,48,0.12)" : "transparent",
                 transition: "background .18s ease",
               }}
             >
@@ -1067,7 +1067,7 @@ function CameraSheet({
             <div
               style={{
                 padding: "12px 14px",
-                background: "rgba(112,78,46,0.08)",
+                background: "rgba(21,77,48,0.08)",
                 borderBottom: "1px solid #E4E7E8",
               }}
             >
@@ -1100,7 +1100,7 @@ function CameraSheet({
                   /* Selection is a chrome state. The species' own ecology colour
                      is carried by its pill and its thumb ring, which is where it
                      means something. */
-                  background: is_active ? "rgba(112,78,46,0.08)" : "transparent",
+                  background: is_active ? "rgba(21,77,48,0.08)" : "transparent",
                   borderTop: i === 0 ? "none" : "1px solid #E4E7E8",
                   textAlign: "left",
                 }}
@@ -2259,7 +2259,7 @@ function DesktopRail({
                 fontWeight: 700,
                 fontSize: 14.5,
                 color: is_active ? "var(--ui-accent)" : "rgba(31,32,34,0.72)",
-                background: is_active ? "rgba(112,78,46,0.12)" : "transparent",
+                background: is_active ? "rgba(21,77,48,0.12)" : "transparent",
                 borderRadius: 14,
                 padding: "10px 12px",
                 textAlign: "left",

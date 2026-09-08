@@ -1,5 +1,6 @@
 # Magisphere — concept note
 
+**Magisphere — *Rediscovering home.***
 **Ateneo de Manila University · Youth CLAP 2026 · Innovation Showcase, 12 September 2026**
 **Two pages, per the 2026-09-05 brief (Katherine): the same information as the deck, in document form.**
 **Version:** 0.1 · 2026-09-08 · every figure below is either measured in this repo or labelled as not.
@@ -72,12 +73,16 @@ blind-box economics.
 
 ## 3 · How it serves the objectives in Output 2
 
-| Committee objective | What Magisphere contributes | Honest status |
+Objectives below are the ones in the **ADMU deck as submitted** (`ADMU.pptx`,
+slide 3), not the earlier Output 2 draft — those said 500 students and a Q2
+map, and they have been superseded.
+
+| Objective, as submitted | What Magisphere contributes | Honest status |
 |---|---|---|
-| Interactive biodiversity map by Q2 AY 2026–27, 100% of identified campus tree species | Map ships now, with 1,098 species modelled and 68 sectors walkable | The **species-per-sector** assignment needs the AIS inventory; 6 of 68 sectors name anything to find today |
-| Reach 500 students in the first academic year | PWA installs from a QR at the booth; no account, no app store | Not yet measured — we have no analytics in the build and will not claim a number we did not count |
-| Engage 200 students in monitoring activity | Every logged find carries species, count, coordinate and accuracy, exportable as CSV and GeoJSON | Working. Photos and notes never leave the device |
-| One annual biodiversity monitoring report from community data | The GeoJSON export is the report's input; "Return Visit" is the badge that rewards re-observing the same ground | Depends on adoption, which depends on the pilot |
+| Consult **≥20 students and Ateneo stakeholders** by Q3 AY 2026–27 to identify needed features | Nothing yet — this is a people task, not a build task | Not started. The app is currently ahead of its own consultation, which is worth saying out loud rather than hiding |
+| Document and map **≥80% of identified trees in a selected campus area** by Q3 AY 2026–27, with species, location and native/non-native | 68 walkable sectors cut from OSM and measured against imagery; 1,098 species modelled | Blocked on the AIS inventory for the species-per-sector assignment. **Native/non-native is the weak one: 9 of 1,098 pool entries carry an origin label**, because the iNaturalist sweep never requested establishment means |
+| Develop and pilot the website + map by **Q4** AY 2026–27 | Already built and demoable, two quarters early | Done ahead of schedule. The pilot — real students, real walks — has not happened |
+| Engage **≥100 students** by end of AY 2026–27 | PWA installs from a QR; no account, no app store | Not measured. There is no analytics in the build and we will not quote a number we did not count |
 
 ---
 
@@ -99,7 +104,45 @@ Stated plainly, because a showcase is the wrong place to discover them:
 
 ---
 
-## 5 · The ask
+## 5 · Vision and mission, as printed
+
+Taken verbatim from the publication material so the note, the boards and the
+deck say the same thing.
+
+> **Vision.** A climate-resilient Ateneo where students actively value,
+> understand, and help protect diverse native species and green spaces,
+> contributing to a more biodiverse and sustainable campus.
+
+> **Mission.** To make Ateneo's biodiversity more visible, accessible, and
+> engaging by empowering students and the wider community to explore, learn,
+> and participate in monitoring the campus's trees and other species through an
+> interactive digital platform that encourages environmental awareness and
+> stewardship.
+
+### One correction the boards need before they print
+
+The publication material and deck slide 9 both describe the gamified features
+as "species badges, **points**, challenges, and **leaderboards**".
+
+**The app has badges. It has no points and no leaderboard, and that is a design
+decision with a test enforcing it** — there is no field in the data model from
+which a rank could be built, and `badge.test.ts` fails any badge whose name or
+blurb mentions ranking. The reason is on the record in the group's own
+material: personal progression, not public rank, following Ateneo's published
+work on meaningful gamification (Rodrigo, Favis & Cuyegkeng 2021, RECIPE).
+
+A judge who reads the board and then opens the app will find the app does not
+do what the board says. Two ways to close it, and the first is much stronger:
+
+1. **Change the sentence.** "…gamified features such as species badges,
+   collections, and challenges inspired by location-based exploration games —
+   personal progression rather than public ranking." It is a better claim,
+   because refusing a leaderboard on published pedagogy is a decision worth
+   defending, not a gap to hide.
+2. Add points and a leaderboard to the app, which contradicts the standing rule
+   the group set for itself and would need the tests changed to allow it.
+
+## 6 · The ask
 
 1. **The AIS inventory**, or a decision that it will not be shared, so we can plan around it.
 2. **One faculty or office sponsor** willing to own an annual monitoring report built on
