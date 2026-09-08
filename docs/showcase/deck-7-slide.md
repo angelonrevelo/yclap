@@ -68,7 +68,13 @@ Live on the phone, mirrored to the projector. Rehearse this exact path:
 | 0:52 | Journal → badge shelf. "First Find", "Three Grounds", earned with dates |
 
 **If the wifi dies:** the offline build is the fallback and the demo path above does not
-touch the network. Ivan's mini projector, hub and HDMI are the AV plan.
+touch the network.
+
+**AV, corrected 09-09 from the CCC chat:** the TV at NGF Conference Room is for
+**Wednesday only** — Ivan asked Ms. Shenina directly and she confirmed "For Wednesday".
+**Nobody has confirmed a display for Saturday.** Ivan's mini projector, hub and HDMI are
+therefore not a backup, they are currently the only known display for the showcase itself.
+Test them on Wednesday against this deck and the actual demo phone.
 
 ---
 
@@ -125,8 +131,15 @@ Close on the contradiction from slide 1, then the mission line:
 - Run the offline build at the booth; do not depend on venue wifi.
 - The greyscale test matters at a booth under bad light: pin shape and the rarity tick
   count both read without colour. Say so if a judge asks about accessibility.
-- Sintra board deadline was Tuesday — brand palette is the committee kit (bark #704E2E,
-  leaf #ADE25D, ultramarine #1F01B1), which is the same identity ramp now in the app.
+- **Boards: 2 x A4 + 1 x A3**, three pubmats. Ms. Shenina corrected the third to A3 on
+  09-08 and asked for the PNG **the morning of 09-09** to reach Intermatrix.
+- **The QR on the boards must come from `go.ateneo.edu/QRcode`** in the "a" or eagle
+  style — Ms. Shenina, 09-08 21:24. Not a generic QR.
+- **Unresolved and time-critical: the boards say "eComon", the app says "Magisphere".**
+  The name poll closed 56 minutes after that pubmat was posted. Print cannot be
+  re-deployed on Friday. See `../showcase/vault-intel-2026-09-09.md`.
+- Brand palette is the committee kit (bark #704E2E, leaf #ADE25D, ultramarine #1F01B1),
+  which is the same identity ramp now in the app.
 
 ## AV checklist
 
