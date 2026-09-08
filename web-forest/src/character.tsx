@@ -26,9 +26,10 @@
  * 3D, and it costs no bundle.
  *
  * `CHARACTER_MODEL_SLOT` names the authored `.glb` files (built by
- * `script/build-character-model.mjs`, viewable in the model gallery); wiring
- * them into a self-hosted `<model-viewer>` is spec task T4.1, and the budget
- * line in the spec (hard ceiling, texture cap, precache policy) applies then.
+ * `script/build-character-model.mjs`, viewable in the model gallery). T4.1 has
+ * landed: `src/character-model.tsx` renders them through a self-hosted
+ * `<model-viewer>` (lazy chunk), and this SVG stays as its Suspense fallback
+ * and as the map billboard.
  */
 
 export const CHARACTER_MODEL_SLOT =

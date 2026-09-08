@@ -24,7 +24,7 @@
  *
  * Bump CACHE_VERSION whenever the shell needs to be re-fetched.
  */
-const CACHE_VERSION = "field-guide-v4";
+const CACHE_VERSION = "field-guide-v5";
 const TILE_CACHE = "field-guide-tile-v1";
 
 /**
@@ -47,7 +47,18 @@ const TILE_HOST = [
 /* Two full campus layers at z17–19 is ~450 tiles; the cap leaves room for a
    pan on top without evicting what "Save offline" just banked. */
 const TILE_LIMIT = 1400;
-const SHELL = ["/", "/index.html", "/manifest.webmanifest", "/brand/icon-192.png", "/brand/icon-512.png"];
+/* The four stage models the 3D character renders (`src/character-model.tsx`).
+   Without them in the shell the character is a blank box exactly when it
+   matters — offline on the hall projector. ~165 KB total. The 80 MB species
+   pack under /model/species/ is deliberately NOT listed: it loads on demand
+   and precaching it would blow the device budget. */
+const CHARACTER_MODELS = [
+  "/model/character-egg.glb",
+  "/model/character-seedling.glb",
+  "/model/character-sapling.glb",
+  "/model/character-tree.glb",
+];
+const SHELL = ["/", "/index.html", "/manifest.webmanifest", "/brand/icon-192.png", "/brand/icon-512.png", ...CHARACTER_MODELS];
 
 /** Content-hashed build output. The only thing safe to serve cache-first. */
 function isImmutable(url) {

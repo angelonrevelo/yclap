@@ -1,0 +1,460 @@
+❤️ Output 1
+ADMU Problem Tree
+
+Problem: Increasing climate stress on Ateneo’s extensive urban forest and its ability to remain resilient (Climate Stress on Ateneo’s Urban Forest)
+Roots: 
+	•	Increasing Infrastructure: Campus buildings, roads, and other structures can reduce available soil and growing space for trees.
+	•	Policy: Climate resilience and native biodiversity as Ateneo’s platforms sometimes cannot compete with other priorities in long-term campus landscaping and development (i.e., prioritizing a car park over protecting the landscape).
+	•	Awareness and Knowledge: Limited understanding of how tree diversity and native species can strengthen ecosystem resilience. Limited awareness of how increasing heat, drought, and extreme weather can stress urban forests.
+
+Consequences:
+	•	Comfortability: Less comfortable outdoor spaces for students and staff → higher stress, weaker communities, less productivity.
+	•	Decreased Biodiversity: Native trees struggle to regenerate in areas dominated by Mahogany. Loss of habitat for birds, insects, and other wildlife. Reduced ecosystem resilience to heat, drought, and extreme weather.
+	•	Socioeconomic Loss: Increased costs for tree maintenance and restoration. Fewer resources for climate-resilient landscaping and water-management technologies.
+	•	Environmental Stress: With roughly ⅔ of the campus being green, Ateneo contributes significantly to urban green spaces in Manila. Reducing this further can worsen other climate risks and biodiversity loss in the country.
+
+
+Solution:
+	•	Improving student awareness of how significant green spaces are on campus.
+	•	Strengthened involvement of student or environmental sectors in policy/decision-making
+	•	Greater need to integrate climate resilience into campus development and landscaping policies.
+
+
+
+😁 Output 2
+ADMU
+
+Slide 1
+
+Targeted State
+Effect
+Solutions
+
+
+Slide 2
+Change: Increase student awareness, engagement, and participation in conserving and expanding Ateneo's native tree biodiversity.
+Goal:  Greater area of green spaces with diverse native species in ADMU.
+
+Objectives
+	•	To develop and launch an interactive Ateneo biodiversity map by Q2 of AY 2026-2027, featuring 100% of identified campus tree species and priority green spaces documented through the project's baseline assessment. 
+	•	To reach at least 500 Ateneo students within the first academic year through the platform's biodiversity content, interactive map, and educational activities, measured through website analytics and activity participation. 
+	•	To engage at least 200 unique Ateneo students in biodiversity monitoring activities within the first academic year, including tree/species identification, photo submissions, biodiversity challenges, or campus observations. 
+	•	To produce at least one annual biodiversity monitoring report by the end of AY 2026-2027 using community-generated data to identify priority areas for native-tree conservation, planting, or maintenance in coordination with relevant Ateneo offices. 
+
+
+
+Slide 3
+
+Outcomes: Cultivate a continuous, active student body that utilizes and advocates for green spaces.
+
+Prioritization:
+	•	Guide on how to identify different tree and animal species in the campus (with pictures)
+	•	Dashboard of collected data of different tree species and animals of forests in campus with 
+	•	Reward System: Leaderboard Gamify: Pokemon Go | Collect Trees | Journal | Gamify (Citizen Science)
+	•	Planned projects with timelines and goals to address biodiversity issues on campus (School and AIS)
+	•	Directory of orgs and initiatives someone can join related to biodiversity 
+
+
+Preperation of The Campaign 
+Preperation of the Website
+
+Output 1- Thursday Night
+Slide Deck- Saturday
+Next week- Preparation for the website and the booth something
+
+
+
+
+Assumptions: 
+-AIS will partner with the YCLAP team, adapt the project, and be part of AIS’ priorities.
+- ADMU has its updated maps and other biodiversity-relevant information and is accessible to the YCLAP team.
+- Ateneo students and staff have "time" in their schedule or routine to actively use the website.
+- Ateneo students and staff are concerned enough to acknowledge the relevance of the green spaces; that should translate to action
+
+M&E: 
+	•	To develop and launch an interactive Ateneo biodiversity map by Q2 of AY 2026-2027, featuring 100% of identified campus tree species and priority green spaces documented through the project's baseline assessment. 
+	•	To reach at least 500 Ateneo students within the first academic year through the platform's biodiversity content, interactive map, and educational activities, measured through website analytics and activity participation. 
+	•	To engage at least 200 unique Ateneo students in biodiversity monitoring activities within the first academic year, including tree/species identification, photo submissions, biodiversity challenges, or campus observations. 
+	•	To produce at least one annual biodiversity monitoring report by the end of AY 2026-2027 using community-generated data to identify priority areas for native-tree conservation, planting, or maintenance in coordination with relevant Ateneo offices. 
+
+
+Slide 4
+
+
+What we already have
+What we still need
+Physical
+	•	Direct access to Ateneo campus for site visits, field observations, data collection, and hosting potential climate awareness events or initiatives.
+	•	Web development tools such as a laptop with coding applications.
+	•	Specific fieldwork or monitoring tools for data collection. 
+	•	Proper entry clearance and permit for the group to conduct research on restricted and off-limits green spaces.
+Intellectual
+	•	Internet access and Ateneo library resources (such as journals, books, and other materials) to gather necessary information on biodiversity.
+	•	Collaboration with the Ateneo Institute of Sustainability (AIS) for peer-review checking on the accuracy of our proposed content of the report.
+	•	Detailed mapping data and coverage regarding Ateneo’s tree species and green spaces.
+	•	Potential collaboration with other key persons and offices involved such as researchers and relevant experts to validate data gathering methods and analytical frameworks.
+Human
+	•	Purpose-driven group members dedicated to managing project planning, operations, and execution, with one of them specializing on web development.
+	•	Initial backing and reach through affiliated Ateneo student organizations for promotional awareness.
+	•	Coordination and support with relevant Ateneo offices.
+Financial
+	•	In-kind support from Ateneo offices such as facilities, equipment, and tools.
+	•	Funding for platform development and maintenance.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Innovation Output (Conceptualization) 
+
+Consultation - Creation of Website/Map (Goal: Tree monitoring, holistic formation raising empowerment among students about biodiversity, raising awareness)
+	•	Technicalities: (Will finalized this friday)
+
+
+
+Gelo ideas Lets make a map -> species -> building/nature ratio -> gamify feature - what if students can “earn points” when taking picture of species/trees/animals/bird watching - leaderboard muwahaha (competition enabled)
+- can be community led (students/faculty/teachers/jesuits/visitors)
+- yk yung cybersecurity challenge every week (can be a sponsored by AIS)
+- kariz: we can brand it na similar sa Pokemon Go
+This is cute!!!??? Hala tas pwede rin magpicture ng birds oa na  - a lot of the forests/areas are off limits to students so THIS MIGHT BE A LIMITATION - who will monitor the trees? / employees? /leafblowers? /experts? —-- SCOPE - what will the website feature? (map, leaderboard, profiles, settings, AI? (to monitor), etc.) - we can collaborate with EXISTING thesis? Especially mga BS ENVIRONMENTAL SCIENCE MAJORS orrrrr professors doing research already (limited scope)  - KPISsssssss (whats the SMART goals? And metrics we want to achieve by 1-2 years after its implemented with AIS)
+
+
+Ivan Ideas
+	•	Map with a monitoring function, some data graphs about the species, significance of the green area spaces, both community and in urban, news about climate change opportunities
+	•	Interactive games or questions for the monitoring. 
+🩷 v1
+Purpose
+Change: Increase the representation and diversity of native tree species on campus to strengthen Ateneo's ecosystem-based climate resilience.
+
+Goal: Establish a collaborative Native Tree Climate Resilience Program that integrates native tree species into Ateneo's long-term biodiversity and sustainable landscaping practices.
+
+Objectives
+	•	To conduct a campus-wide baseline assessment of native and non-native tree species by Q3 of AY 2026-2027, identifying their population, location, biodiversity gaps, and potential invasive species.
+	•	To conduct a stakeholder consultation with at least 20 representatives from relevant Ateneo offices, researchers, students, and campus partners by Q3 of AY 2026-2027 to identify priorities and feasible strategies for increasing native tree representation on campus.
+	•	To develop a Native Tree Climate Resilience Plan by Q4 of AY 2026-2027 identifying priority planting areas, suitable native species, potential suppliers, planting and maintenance guidelines, invasive species management, and monitoring mechanisms.
+	•	To establish a native tree monitoring system by Q4 of AY 2026-2027 to track the campus native tree population, new plantings, tree survival, and changes in species diversity. 
+Aleij suggestion
+Purpose
+Change: Increase student awareness, engagement, and participation in campus biodiversity conservation through accessible tree monitoring and educational resources.
+
+Goal: Develop and launch a student-oriented interactive website featuring a campus tree map that enables tree monitoring, promotes awareness of campus biodiversity, and empowers students to actively participate in campus biodiversity initiatives by the end of AY 2026-2027. 
+
+Objectives
+	•	To develop and launch an interactive Ateneo biodiversity map by Q2 of AY 2026-2027, featuring 100% of identified campus tree species and priority green spaces documented through the project's baseline assessment. 
+	•	To reach at least 500 Ateneo students within the first academic year through the platform's biodiversity content, interactive map, and educational activities, measured through website analytics and activity participation. 
+	•	To engage at least 200 unique Ateneo students in biodiversity monitoring activities within the first academic year, including tree/species identification, photo submissions, biodiversity challenges, or campus observations. 
+
+What if like this To engage at least 500 unique Ateneo students within the first academic year through the platform’s biodiversity content, interactive map, and monitoring activities, measured through website analytics, biodiversity submissions, and participation in educational challenges and campus observations.
+	•	To produce at least one annual biodiversity monitoring report by the end of AY 2026-2027 using community-generated data to identify priority areas for native-tree conservation, planting, or maintenance in coordination with relevant Ateneo offices. 
+
+Objectives:
+	•	To conduct consultations with at least 20 students and relevant Ateneo stakeholders by Q3 of AY 2026-2027 to identify key information, features, and student needs for the proposed tree monitoring website and map.
+	•	To document and map at least 80% of identified trees within the selected campus area by Q3 of AY 2026-2027, including available information such as tree species, location, and native or non-native classification.
+	•	To develop and pilot an interactive tree monitoring website and campus map by Q4 of AY 2026-2027, incorporating biodiversity information, tree locations, educational resources, and a system for reporting or updating tree observations.
+	•	To engage at least 100 students in using the website and map during its initial implementation by the end of AY 2026-2027, with the aim of increasing student awareness of campus biodiversity and encouraging participation in tree monitoring and conservation activities.   Consultation- Map- Monitor- Reach people
+
+Gelo suggestion  Purpose 
+Change: Form students to notice, name, and commit to the campus forest they already walk through, so biodiversity on this campus is a shared habit rather than scenery. 
+Goal: Launch a student-led Field Guide website: walkable campus map, personal tree journal, and an honest plan page, that students can use on a Loyola Heights path by the end of AY 2026–2027, with a demoable slice at the 12 Sep 2026 Youth CLAP showcase.
+
+Objectives
+1. Consult for features, not a fake program. By Q3 AY 2026–2027, run a short consult with students plus named campus partners we still need (AIS, Manila Observatory, CFMO/TAW, student orgs). Record who answered and who did not. Do not claim “20 representatives consulted” until that number is real. 
+2. Map the walkable forest, not a second inventory. By Q3 AY 2026–2027, put walkable-path trees on the map for the selected campus area, using AIS (and any shared geo file) as the source: common name, scientific name, location, native/exotic. Caption every inventory figure as AIS, not “our survey.” Restricted groves stay hatched with no fake pins. Target: cover the selected walk, not 80% of 1,809 trees this team cannot re-census. 
+3. Pilot the Field Guide, not a planting campaign. By Q4 AY 2026–2027, ship Home · Map · Journal · Plan: species on the path, canopy-vs-built as a layer, educational copy (native vs exotic, off-limits groves), a way to log or update an observation on-device, and no public leaderboard. Identification stays with the student or Seek, not in-app AI (unless we can?) 
+4. Measure habit, not vanity rank. By end of AY 2026–2027, have at least 100 students open the map or save a journal entry, with a simple pre/post on whether they can name a tree they walk under. Showcase gate (12 Sep 2026): a projector demo with Demo-campus on so the walk works off Katipunan.
+
+♥️ Output 3
+Output 3
+Guides: Campaign Canvas People and Place
+Slides: ADMU
+
+Group 1: Influences/ Partners
+Group 2: Story/ Asks 
+Group 3 Risks/ Activities
+
+Influences
+	•	Climate stress: Increasing heat and changing rainfall affect Ateneo’s campus native trees.
+	•	Campus development: Construction and landscaping affect tree cover and native species.
+	•	Existing initiatives: AIS (Ateneo Institute of Sustainability) , researchers, and student groups, and campus offices already work on biodiversity, but coordination can be strengthened.
+	•	Student population: Ateneo’s large student population offers strong potential for citizen science, although sustained participation depends on awareness and interest.
+	•	Campus management: CFMO (Central Facilities Management Office) decisions influence tree planting, maintenance, removal, landscaping, and access to green spaces.
+	•	Biodiversity data: Existing maps, inventories, and research can support the platform but require consolidation, validation, and regular updating.
+	•	Digital engagement: The growing use of websites, mobile devices, and interactive platforms makes biodiversity information more accessible and can encourage wider student participation
+	•	Environmental awareness: Growing concern about climate change and biodiversity can increase support for campus conservation efforts.
+
+Story
+
+https://www.scribd.com/document/983418313/Exer-3-Group1-SFI-107
+Esmena, et al. (2025). “Assessment of urban green spaces per capita in a megacity of the Philippines: implications for sustainable cities and urban health management: A Journal Critique (Olfato-Parojinog et al., 2024)”. 
+
+Human activities in NCR cause a severe historic deficit of urban green spaces along NCR, accounting for a 40% overall drop (Esmena et al., 2025). This resulted in further extreme heat hazards for people and disaster vulnerability. 
+
+While most people have knowledge of the benefits of having access to green spaces, they’re not empowered to maintain or act upon them. With the proposal of a user-driven website, the The Ateneo community, including students, faculty, and staff, can learn to value the importance of biodiversity and engage them in monitoring the species.
+
+
+Risks
+	•	If game incentives rely solely on intrinsic environmental awareness, user turnout will remain minimal outside of already environmentally inclined student groups (such as environmental science majors and climate advocates). Without broad-based incentives and frequent promotional campaigns, this may lead to a quick drop in active users after launch.
+	•	The group may face financial constraints in maintaining and improving the website as they expand the map.
+	•	Because the scope of this project is within Ateneo campus, given that there is a limited initial set of featured trees, players may quickly explore all designated routes, scan every available species, and complete the main content in a short timeframe. Once players collect all available badges and exhaust the campus map, gameplay will stall, leading to high post-launch churn and loss of sustained user interest.
+	•	Dead spots in cellular signals or unstable Wi-Fi in some of the forested/green areas within the campus may disrupt the students’ exploration and experience with the website.
+	•	Users may experience technical difficulties since the website relies on location-based triggers and image scanning, leading to confusion due to possible inaccurate location tracking, slow loading, or failed scans.
+	•	User-submitted data may contain inaccurate species identifications or observations, which could affect the reliability of the biodiversity database.
+	•	Access restrictions to certain green spaces may limit the areas that can be mapped and included in the website’s exploration features.
+	•	The website may become difficult to sustain after the project ends if there is no designated Ateneo office or organization responsible for its maintenance and updates.
+
+
+Partners
+
+Ateneo Offices:
+	•	Ateneo Institute of Sustainability (AIS)
+	•	Manila Observatory
+	•	Office of Student Acitivities
+	•	Office of the Assistant Vice President for Social and Environmental Engagement for Development and Sustainability
+	•	Central Facilities Management Office
+
+
+Other Relevant Organization/Groups:
+	•	Faculty Researchers
+	•	Ateneo Wild/Agila
+	•	Other Student Organizations
+
+Asks
+
+	•	AIS: Data related to the campus map and biodiversity. 
+	•	Manila Observatory: Data related to mapping urban heat and land-cover framing
+	•	Central Facilities Management Office: Determine the area prohibited to students. 
+	•	Other Offices: consult and help with the implementation and other resources of the website. 
+  
+	•	The Ateneo Wild and other student organizations: Partnering with them on the initiative through promotion and other related data. 
+	•	Faculty Researchers: To consult and collaborate with them on the website.  
+
+
+
+
+Activities - Key activities and tasks that we need to do to support these people to take action
+	•	Collect a database of the plants in Ateneo De Manila University: 
+	•	For the pilot website, it will focus on a group of representative trees per area of the school. (E.g., narra is found in SEC walk, monkey pod tree is found near Moro Field, etc.)
+	•	Create the prototype website of a Pokémon GO-inspired game, specifically with the following features: 
+	•	Biodiversity education → Users will be tasked with finding the representative trees when they enter the ‘route’ or area where they are usually found. They can scan the trees, and they will be able to collect badges and points. 
+	•	Citizen science and biodiversity management → There will be a separate tab wherein they can report flora they find in certain areas and receive extra points. This data can help monitor the presence of flora in Ateneo, and it can help the development of future updates of the app to include less recognized species, such as fungi and shrubs.
+	•	Engagement → The badges and points can accumulate to help them level up, climb the leaderboard, and unlock character customization.
+	•	Develop a Website-Based Challenge & Events System - Website can host recurring challenges like Species of the Week, Biodiversity Photo Challenge, Native Tree Month, Biodiversity Route Challenge.
+	•	Pilot test the game with a sample of Atenean students, Ateneo Institute of Sustainability/Ateneo Institute of Environmental Science/Department of Biology, and game development students to evaluate the effectiveness of the game in reaching the goal.
+	•	Refine the application; Collaborate with artists and developers to refine the app.
+	•	Campaign the activity; Design an introductory campaign timeline, collaborate with Atenean organizations and institutions to help promote the activity and join the campaign, and create social media websites for game development updates or events.
+	•	Launch a “Biodiversity Week” (campus activation)
+	•	Biodiversity Hunt - Students form teams. They will receive a campus biodiversity challenge. They will use the website/map to find selected species. Completing challenges earns points/badges.
+	•	Biodiversity Art/Storytelling - Students create illustrations, posters, poems, photography, or short videos about campus biodiversity. Selected works are integrated into the website.
+	•	Sustain the app to be played for free by the campus community; Pitch to concerned research institutes of Ateneo and write, review, and revise grant proposals for financial aid, and continue to innovate events and updates to ensure sustained interest.
+	•	Generate Biodiversity Insights and Annual Report - At the end of the academic year, use the website's data to produce Ateneo Campus Biodiversity Monitoring Report The report could summarize species documented, native species representation, biodiversity observations, areas with high/low observations, student participation, potential biodiversity concerns, recommended areas for further monitoring/conservation
+
+
+
+Summarized Version:
+
+	•	Database Creation: Document representative trees across distinct Ateneo campus zones to establish the pilot app's core database.
+	•	App Prototype Development: Build an interactive mobile app featuring campus routes, tree scanning, flora reporting for citizen science, and a gamified badge-and-leaderboard system.
+	•	Website-Based Challenges & Events: Develop recurring website-based challenges such as Species of the Week, Biodiversity Photo Challenge, Native Tree Month, and Biodiversity Route Challenge.
+	•	Pilot Testing & Evaluation: Test the prototype with Ateneo students, biology/sustainability institutes, and game developers to assess educational impact and usability.
+	•	App Refinement & Art Design: Collaborate with artists and developers to polish the user interface, graphics, and gameplay features based on pilot feedback.
+	•	Campaign & Promotion Launch: Execute an introductory campaign with student organizations and social media updates to drive campus-wide adoption.
+	•	Long-Term Sustainability & Funding: Secure institutional grants and plan regular content updates to keep the app free and engaging for the campus community.
+	•	Biodiversity Insights & Annual Report: Use website-generated data to produce an annual Ateneo Campus Biodiversity Monitoring Report summarizing species documented, student participation, biodiversity observations, and potential conservation priorities.
+
+
+
+Brainstorm on timeline:
+Activities to make people act (in this case, the students and others):
+	•	Presentation Pitch to Ateneo Offices and Student Organizations (First Sem)
+	•	Campaign and Promotion Launch (Second Sem)
+	•	Activation Activities: Such as an event dedicated to the campaign (Next school year)
+
+
+
+
+
+
+♥️ Pitch Slide
+Pitch Deck
+
+Group 1: Background and Goal
+Group 2: Activities and Monitoring
+Group 3: Resources and Contact
+
+
+Concept Note:[ADMU] Youth CLAP_Concept Note.docx
+Slides: [ADMU] Youth CLAP Pitch Deck
+Past slides: ADMU
+
+Group Growth Task: Pitch Deck and Concept Note
+On September 12, all of you will be presenting your climate action innovation proposals. The final template for your presentation can be found here (click "Make a copy"). This was updated on 2 September 2026, so if you have downloaded the previous version, please disregard and make sure you have the version with 7 slides. This is actually shorter and simpler, so yey  
+
+This template has the Youth CLAP branding, but if you wish to make your own branding or use another platform like Canva, feel free to do so -- just make sure you answer the key questions and follow a similar structure. The basis for the answers will be your outputs from the past few weeks. The CCC is requesting for the following:
+	•	Limit number of slides to 7
+	•	A two-paged concept note (template attached) that will contain the same information, just in document format
+Deadline for the final pitch deck and concept note is on 10 September. These will be shared with the judges.
+
+Other reminders:
+	•	The CCC will send more information on the innovation schedule and the booth setup in the coming days.
+	•	If you have any photos/videos from meetings prior to the innovation showcase (even screenshots of meetings on Zoom), you may send this to the CCC as well.
+For any other questions, you can also use our Telegram group. Thank you and see you online this week! 
+
+
+🧷 Plans for this Week
+[ADMU] Youth CLAP Pitch Deck
+
+Task Distribution
+
+Website → Gelo, Sophie, Ivan, Sophia, Alfonso
+Category:
+Description:
+Members:
+Detailed Materials and Process:
+
+Finalizing the prototype version of the website
+Ideating Data:
+
+Gelo
+Sophie
+Sophia Ivan
+Alfons
+
+
+Gathering the info needed from different offices:
+(will input the details)
+MO- Charisse, Clarize
+
+AIS- Clariz
+ Organizations- Sophie
+
+CFMO- Ivan 
+
+
+Booth → Kathy, Clariz, Aleij, Charisse, Sophia
+Booth
+Designs from BOX, Aess
+
+AESS - Clariz
+BOx - Sophie
+
+
+QR Code → Leads to website
+Aleij
+
+
+
+
+Laptop
+Charisse
+
+
+Easels (3)
+Sophie, Charisse
+
+
+Pubmat 
+Kathy, Aleij, Sophia
+
+
+Table cloth
+Clariz/Sophie
+
+
+Printing
+Charisse
+
+Presentation- Everyone (based on assignment)
+
+Finalized Slides and Scripts
+Slide 2- Kath and Clariz
+
+S3- Charise
+S4- Aleij
+S5- Alfonso
+S6- Sophie
+S7- Gelo
+
+
+
+Scriptreading
+Facilitate: Everyone
+
+
+
+
+Timeline
+Saturday-Sunday
+Finish the slides and any revisions
+Monday
+Focus on doing committee tasks
+Tuesday
+Realignment in the morning
+Wednesday
+Onsite consultation and opportunities for the works of Booth and Scriptreading
+
+Deadline: 
+	•	Draft of Scriptwriting
+	•	Slides
+Thursday-Friday
+Finishing the tasks and preparation. Friday there will be a final scriptreading.
+
+🎨 Booth Timelne
+
+Booth → Kathy, Clariz, Aleij, Charisse, Sophia
+Booth
+Designs from BOX, Aess
+
+AESS - Clariz
+BOx - Sophie
+
+
+QR Code → Leads to website
+Aleij
+
+
+
+
+Laptop
+Charisse
+
+
+Easels (3)
+Sophie, Charisse
+
+
+Pubmat 
+Kathy, Aleij, Sophia
+
+
+Table cloth
+Clariz/Sophie
+
+
+Printing
+Charisse
+
+
+
+
+Sunday
+Monday
+Tues
+Wed
+Thurs
+	•	Deadline for publication materials template and QR Code ℅ Kathy, Aleij, Sophia
+	•	Inquire on: (1)3 easels (2) cloth   (3) org booth designs ℅ Clariz, Sophie
+	•	Publication materials submitted for printing ℅ Charisse
+
+
+	•	Deadline for procurement date for booth materials ℅ Clariz, Sophie
+
+FRIDAY: ALL MATERIALS MUST BE COMPLETE

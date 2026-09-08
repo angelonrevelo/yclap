@@ -105,3 +105,59 @@ button {
     opacity: 0;
   }
 }
+
+/* ── Blind-box reveal (build spec T4.5) ───────────────────────────────────
+ *
+ * Sequence: shake → crack → burst → the character scales in.
+ * The anticipation beat matters more than the fidelity, so the shake runs
+ * longer than the burst. All four phases are CSS/keyframes — no second engine.
+ */
+@keyframes yc-box-shake {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  10% { transform: translateX(-4px) rotate(-2deg); }
+  20% { transform: translateX(4px) rotate(2deg); }
+  30% { transform: translateX(-5px) rotate(-2.5deg); }
+  40% { transform: translateX(5px) rotate(2.5deg); }
+  50% { transform: translateX(-4px) rotate(-2deg); }
+  60% { transform: translateX(4px) rotate(2deg); }
+  70% { transform: translateX(-6px) rotate(-3deg); }
+  80% { transform: translateX(6px) rotate(3deg); }
+  90% { transform: translateX(-3px) rotate(-1.5deg); }
+}
+
+@keyframes yc-crack {
+  0%, 60% { opacity: 0; stroke-dashoffset: 40; }
+  70% { opacity: 1; stroke-dashoffset: 40; }
+  100% { opacity: 1; stroke-dashoffset: 0; }
+}
+
+@keyframes yc-burst {
+  0% { transform: scale(1); opacity: 1; }
+  40% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+@keyframes yc-reveal-in {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes yc-shard {
+  0% { transform: translate(0, 0) rotate(0); opacity: 1; }
+  100% {
+    transform: translate(var(--shard-x, 60px), var(--shard-y, -40px))
+      rotate(var(--shard-r, 120deg));
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .yc-box-shake,
+  .yc-crack-line,
+  .yc-burst-out,
+  .yc-shard-piece,
+  .yc-reveal-in {
+    animation: none !important;
+  }
+}

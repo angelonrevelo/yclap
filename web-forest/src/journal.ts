@@ -2,6 +2,7 @@ import { picker_order } from "./data.ts";
 import { biomeContains, biome as biome_row, type Biome } from "./biome.ts";
 import { sectorAt, sectorContains, sector as sector_list, type Sector } from "./sector.ts";
 import { distanceMeter, formatLatLon, type Fix, type LatLon } from "./geo.ts";
+import { stageFor, toNextStage, type Stage } from "./stage.ts";
 
 export interface Sighting {
   sighting_id: string;
@@ -339,6 +340,51 @@ export function isNotSeenLately(row: Sighting[], species_code: string, now: numb
   if (!last) return true; // never seen here — the gap the walk should point at
   const age_ms = now - new Date(last).getTime();
   return age_ms > NOT_SEEN_LATELY_DAYS * 24 * 60 * 60 * 1000;
+}
+
+/* ── progress bundle (build spec T2, 2026-09-06) ──────────────────────────
+ *
+ * One object a screen can read to show the walker's own growth — level, stage,
+ * the two earn counters, how many sectors they have walked into, and how far
+ * the next stage is. Every field is derived from THIS journal only. The rule
+ * the test guards (option b): per-user progression is allowed; cross-user
+ * comparison — `leaderboard`, `rank`, `percentile`, any field naming another
+ * user — is not. `progressOf` is the single surface for that bundle so the
+ * guard has one shape to check, not a scatter of loose functions.
+ */
+export interface Progress {
+  level: number;
+  stage: Stage;
+  progress: number;
+  /** Distinct species photographed (badges only). */
+  seen_count: number;
+  badge_count: number;
+  contribution_count: number;
+  /** Sectors this journal has a located badge inside. */
+  sector_seen_count: number;
+  /** Biomes unlocked by level — the same number `unlockedBiomeCount` returns. */
+  biome_unlocked: number;
+  next_stage: { stage: Stage; remaining: number } | null;
+  /** 0..1. Leaf vitality; 1 is full canopy, never a stage loss. */
+  vigor: number;
+}
+
+export function progressOf(row: Sighting[], now: number = Date.now()): Progress {
+  const badge_row = row.filter(isBadge);
+  const sector_seen = seenSector(badge_row);
+  const sector_seen_count = sector_seen.size;
+  return {
+    level: levelOf(row),
+    stage: stageFor(sector_seen_count),
+    progress: progressPointsOf(row),
+    seen_count: seenCode(badge_row).size,
+    badge_count: badge_row.length,
+    contribution_count: row.filter(isContribution).length,
+    sector_seen_count,
+    biome_unlocked: unlockedBiomeCount(row),
+    next_stage: toNextStage(sector_seen_count),
+    vigor: vigorOf(row, now),
+  };
 }
 
 /* ── walk session ───────────────────────────────────────────────────────── */

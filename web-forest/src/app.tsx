@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import CampusMap from "./campus-map";
 import PlayMap from "./play-map";
 import { pinKindOf, type PinKind } from "./pin";
-import Character, { stageFor, STAGE_LABEL, toNextStage } from "./character";
+import Character, { stageFor, STAGE_LABEL, toNextStage, type Stage } from "./character";
+/* The 3D character (T4.1) — lazy so the model-viewer chunk is fetched only
+   where the 3D character renders. The SVG `Character` stays as the Suspense
+   fallback and on the map, whose billboard must cost no bundle. */
+const CharacterModel = lazy(() => import("./character-model"));
 import { biome_sector, sectorAt, sectorByCode, sector as sector_row, type Sector } from "./sector";
 import Viewfinder, { type Shot } from "./camera";
 import {
@@ -26,6 +30,7 @@ import {
   addSighting,
   downloadText,
   endWalk,
+  progressOf,
   readSighting,
   readWalk,
   seenCode,
@@ -45,6 +50,7 @@ import { CAMPUS_CENTER, formatLatLon, formatMeter, formatWalkMinute, WALK_PACE_M
 import { LAYER_ORDER, nextLayer, prefetchCampus, SOURCE, type Layer, type View } from "./tile-map";
 import { useGeo } from "./use-geo";
 import { biomePresenceAt, rankEncounter, sectorResident, type BiomePresence } from "./nearby";
+import { cosmeticForStage } from "./cosmetic";
 
 import {
   campusCodeForScientific,
@@ -199,7 +205,7 @@ function HomeScreen({ is_desktop, onWalk, onPlan }: { is_desktop: boolean; onWal
               </button>
             </div>
             <p style={{ fontSize: 13, color: "rgba(31,32,34,0.6)", marginTop: 28, lineHeight: 1.4 }}>
-              Not a planting drive. Not a leaderboard. Not our tree inventory — AIS already counted.
+              Not a planting drive. Personal progression, not a public rank. Not our tree inventory — AIS already counted.
             </p>
             <p style={{ fontSize: 12.5, color: "rgba(31,32,34,0.55)", marginTop: 10, lineHeight: 1.45, maxWidth: 560 }}>
               {AIS_GAP_NOTE}
@@ -290,7 +296,7 @@ function HomeScreen({ is_desktop, onWalk, onPlan }: { is_desktop: boolean; onWal
         </button>
       </div>
       <p style={{ fontSize: 12, color: "rgba(31,32,34,0.6)", padding: "14px 20px 0", lineHeight: 1.4 }}>
-        Not a planting drive. Not a leaderboard. Not our tree inventory — AIS already counted.
+        Not a planting drive. Personal progression, not a public rank. Not our tree inventory — AIS already counted.
       </p>
       <p style={{ fontSize: 11.5, color: "rgba(31,32,34,0.55)", padding: "8px 20px 0", lineHeight: 1.4 }}>
         {AIS_GAP_NOTE}
@@ -1521,6 +1527,283 @@ function WalkReceiptSheet({
   );
 }
 
+/**
+ * The blind-box reveal (build spec T4.5, 2026-09-06).
+ *
+ * Fires the moment a stage advance is detected on save. Sequence: shake →
+ * crack → burst → the character scales in with the cosmetic it earned. The
+ * anticipation beat matters more than the fidelity — the shake runs longer
+ * than the burst. All CSS/keyframes, no second engine.
+ *
+ * Nothing here is random: the cosmetic shown is the one `cosmeticForStage`
+ * returns for the stage just reached, and that function is a pure lookup. No
+ * odds, no currency, no scarcity. Respects `prefers-reduced-motion` — under
+ * reduced motion the box is skipped and the character appears at once.
+ */
+function BlindBoxReveal({ stage, onDismiss }: { stage: Stage; onDismiss: () => void }) {
+  const cosmetic = cosmeticForStage(stage);
+  const prefers_reduced = useMemo(
+    () => (typeof window !== "undefined" && window.matchMedia
+      ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      : false),
+    [],
+  );
+  const [phase, setPhase] = useState<"shake" | "crack" | "burst" | "done">(
+    prefers_reduced ? "done" : "shake",
+  );
+
+  useEffect(() => {
+    if (prefers_reduced) return;
+    const timers = [
+      window.setTimeout(() => setPhase("crack"), 900),
+      window.setTimeout(() => setPhase("burst"), 1400),
+      window.setTimeout(() => setPhase("done"), 1900),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, [prefers_reduced]);
+
+  const show_box = phase !== "done";
+  const show_character = phase === "done";
+
+  return (
+    <div
+      className="absolute inset-0"
+      style={{ zIndex: 80, display: "grid", placeItems: "center" }}
+      onClick={onDismiss}
+    >
+      <div className="absolute inset-0" style={{ background: "rgba(20,26,22,0.5)" }} />
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ position: "relative", textAlign: "center", padding: 20 }}
+      >
+        {show_box && (
+          <div
+            className={phase === "burst" ? "yc-burst-out" : "yc-box-shake"}
+            style={{
+              width: 140,
+              height: 140,
+              borderRadius: 20,
+              background: "linear-gradient(145deg, #FDF6E3, #EBDCBB)",
+              border: "3px solid #C9B489",
+              display: "grid",
+              placeItems: "center",
+              position: "relative",
+              animation: phase === "burst"
+                ? "yc-burst 0.5s ease-out forwards"
+                : "yc-box-shake 0.8s ease-in-out infinite",
+            }}
+          >
+            {phase !== "burst" && (
+              <svg viewBox="0 0 100 100" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+                <ellipse cx="50" cy="54" rx="22" ry="26" fill="url(#yc-shell)" opacity="0.9" />
+                {phase === "crack" && (
+                  <path
+                    d="M50 8 L55 35 L44 52 L58 72 L46 92"
+                    stroke="#7A5433"
+                    strokeWidth="3"
+                    fill="none"
+                    strokeLinecap="round"
+                    className="yc-crack-line"
+                    style={{ strokeDasharray: 50, animation: "yc-crack 0.5s ease-out forwards" }}
+                  />
+                )}
+              </svg>
+            )}
+            {phase === "burst" && (
+              <svg viewBox="0 0 100 100" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+                {[0, 60, 120, 180, 240, 300].map((deg) => {
+                  const rad = (deg * Math.PI) / 180;
+                  return (
+                    <line
+                      key={deg}
+                      x1="50"
+                      y1="50"
+                      x2={50 + Math.cos(rad) * 50}
+                      y2={50 + Math.sin(rad) * 50}
+                      stroke="#C9B489"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      style={{
+                        transformOrigin: "50px 50px",
+                        animation: `yc-burst 0.5s ease-out forwards`,
+                      }}
+                    />
+                  );
+                })}
+              </svg>
+            )}
+          </div>
+        )}
+        {show_character && (
+          <div
+            className={prefers_reduced ? "" : "yc-reveal-in"}
+            style={{
+              animation: prefers_reduced ? undefined : "yc-reveal-in 0.6s ease-out forwards",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <Suspense fallback={<Character stage={stage} vigor={1} size={120} is_idle_animated />}>
+              <CharacterModel stage={stage} size={120} />
+            </Suspense>
+            {cosmetic && (
+              <>
+                <div style={{ marginTop: 4, fontWeight: 800, fontSize: 18, color: "#1F2022" }}>
+                  {cosmetic.name}
+                </div>
+                <div style={{ fontSize: 13, color: "rgba(31,32,34,0.6)", maxWidth: 260, lineHeight: 1.4 }}>
+                  {cosmetic.blurb}
+                </div>
+              </>
+            )}
+            <button
+              onClick={onDismiss}
+              style={{
+                marginTop: 10,
+                height: 40,
+                padding: "0 24px",
+                borderRadius: 999,
+                background: "var(--grad-forest)",
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: 14,
+              }}
+            >
+              Continue
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The walker's own growth — egg → sprout → sapling → tree, keyed to the
+ * sectors they have actually walked into (not the photos they took, which
+ * would reward standing still under one tree). Every figure is per-user and
+ * derived from this device's journal; the build-spec option (b) rule is that
+ * counting is fine, comparing is not, so this card never names another student.
+ *
+ * This is the personal "account" — a local identity for progression, not a
+ * social profile. There is no server and no cross-user field anywhere in it.
+ */
+function ProgressCard({ sighting, is_desktop }: { sighting: Sighting[]; is_desktop: boolean }) {
+  const p = progressOf(sighting);
+  const stage_label = STAGE_LABEL[p.stage];
+  const next = p.next_stage;
+  /* The denominator for the bar is the next stage's sector threshold, read off
+     the stage table so the bar never invents a number the rules do not have. */
+  const next_total = next ? p.sector_seen_count + next.remaining : null;
+  const ratio = next_total ? Math.min(1, p.sector_seen_count / next_total) : 1;
+  return (
+    <Card style={{ display: "flex", gap: is_desktop ? 22 : 16, alignItems: "stretch" }}>
+      <div
+        style={{
+          flexShrink: 0,
+          display: "grid",
+          placeItems: "center",
+          borderRadius: RADIUS.tile,
+          background: "rgba(0,134,83,0.06)",
+          border: "1px solid rgba(0,134,83,0.18)",
+          padding: is_desktop ? "14px 20px" : "12px 16px",
+        }}
+      >
+        <Suspense
+          fallback={<Character stage={p.stage} vigor={p.vigor} size={is_desktop ? 108 : 92} is_idle_animated />}
+        >
+          <CharacterModel stage={p.stage} size={is_desktop ? 108 : 92} />
+        </Suspense>
+      </div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div className="flex items-baseline gap-2">
+          <Eyebrow>YOUR GROWTH</Eyebrow>
+          <span style={{ fontSize: 11, color: "rgba(31,32,34,0.45)", marginLeft: "auto" }}>
+            level {p.level}
+          </span>
+        </div>
+        <div className="flex items-baseline gap-2" style={{ marginTop: 4 }}>
+          <div style={{ fontWeight: 800, fontSize: is_desktop ? 24 : 20 }}>{stage_label}</div>
+          {p.sector_seen_count > 0 && (
+            <span style={{ fontSize: 12.5, color: "rgba(31,32,34,0.6)" }}>
+              · {p.sector_seen_count} {p.sector_seen_count === 1 ? "area" : "areas"} walked
+            </span>
+          )}
+        </div>
+
+        <div className="flex gap-2" style={{ marginTop: 12 }}>
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              borderRadius: RADIUS.tile,
+              border: "1.5px solid rgba(0,134,83,0.3)",
+              background: "rgba(0,134,83,0.06)",
+              padding: "9px 11px",
+            }}
+          >
+            <div style={{ fontSize: 9.5, fontWeight: 800, color: "#008653", letterSpacing: "0.02em" }}>
+              BADGES
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 800, marginTop: 2 }}>{p.badge_count}</div>
+            <div style={{ fontSize: 10, color: "rgba(31,32,34,0.5)", marginTop: 1 }}>
+              {p.seen_count} species photographed
+            </div>
+          </div>
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              borderRadius: RADIUS.tile,
+              border: "1.5px solid rgba(5,140,214,0.28)",
+              background: "rgba(5,140,214,0.06)",
+              padding: "9px 11px",
+            }}
+          >
+            <div style={{ fontSize: 9.5, fontWeight: 800, color: "#075D89", letterSpacing: "0.02em" }}>
+              CONTRIBUTIONS
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 800, marginTop: 2 }}>{p.contribution_count}</div>
+            <div style={{ fontSize: 10, color: "rgba(31,32,34,0.5)", marginTop: 1 }}>
+              reports AIS does not have
+            </div>
+          </div>
+        </div>
+
+        {/* Two counters, never one score: the two ways to earn stay side by
+            side, so a student can see how they grew without reading it as a
+            rank against anyone else. */}
+        <div style={{ marginTop: 12 }}>
+          <div className="flex items-center justify-between" style={{ fontSize: 12.5 }}>
+            <span style={{ fontWeight: 700, color: "rgba(31,32,34,0.78)" }}>
+              {next ? `To ${STAGE_LABEL[next.stage]}` : "Fully grown"}
+            </span>
+            <span style={{ color: "rgba(31,32,34,0.6)", fontVariantNumeric: "tabular-nums" }}>
+              {next ? `${p.sector_seen_count}/${next_total}` : "—"}
+            </span>
+          </div>
+          <div style={{ height: 6, borderRadius: 999, background: "#EEF1F0", marginTop: 5 }}>
+            <div
+              style={{
+                width: `${ratio * 100}%`,
+                height: "100%",
+                borderRadius: 999,
+                background: "var(--grad-forest)",
+                transition: "width .3s ease",
+              }}
+            />
+          </div>
+        </div>
+        <p style={{ fontSize: 11, color: "rgba(31,32,34,0.5)", marginTop: 10, lineHeight: 1.4 }}>
+          Personal progression — no public rank. We gamified engagement, not competition.
+        </p>
+      </div>
+    </Card>
+  );
+}
+
 function JournalScreen({
   sighting,
   seen,
@@ -1577,6 +1860,9 @@ function JournalScreen({
           Reflection, not a race. Ateneo already designed an SDG game that way (Rodrigo, Favis, Cuyegkeng 2021 — RECIPE /
           Meaningful Gamification).
         </p>
+        <div style={{ marginTop: 16 }}>
+          <ProgressCard sighting={sighting} is_desktop={is_desktop} />
+        </div>
         <div style={{ marginTop: 16 }}>
           <SummaryStrip sighting={sighting} />
         </div>
@@ -2415,6 +2701,9 @@ export default function App() {
   const [inat, setInat] = useState<InatNearbyState>({ status: "idle" });
   const [walk, setWalk] = useState<Walk | null>(() => readWalk());
   const [receipt, setReceipt] = useState<WalkReceipt | null>(null);
+  /** The stage reached on this save, when that save advanced the stage. The
+   *  blind-box reveal (T4.5) shows for this; null when there is no reveal. */
+  const [reveal, setReveal] = useState<Stage | null>(null);
   /**
    * Which finds to draw. Empty means all of them — an explicit "off" state, so
    * a student who taps every chip off sees the whole map back rather than an
@@ -2563,6 +2852,8 @@ export default function App() {
 
   const saveSighting = ({ photo_data, inat: id, note, entry_kind, reported_name }: SaveInput) => {
     const is_report = entry_kind === "contribution";
+    /* Stage before save — compared after to detect an advance (T4.5 trigger). */
+    const prev_stage = stageFor(seenSector(sighting).size);
     addSighting({
       species_code: pick_code,
       photo_data,
@@ -2576,8 +2867,15 @@ export default function App() {
       entry_kind,
       reported_name,
     });
-    setSighting(readSighting());
+    const next_sighting = readSighting();
+    setSighting(next_sighting);
     setCameraOpen(false);
+    /* The blind-box reveal fires when a located badge in a new sector advances
+       the stage. Deterministic: same journal state → same stage → same cosmetic. */
+    const next_stage = stageFor(seenSector(next_sighting).size);
+    if (next_stage !== prev_stage && next_stage !== "egg") {
+      setReveal(next_stage);
+    }
     go("/journal");
     showToast(
       is_report
@@ -3023,6 +3321,9 @@ export default function App() {
               onDismiss={() => setReceipt(null)}
             />
           )}
+          {reveal && (
+            <BlindBoxReveal stage={reveal} onDismiss={() => setReveal(null)} />
+          )}
           {toast && <Toast msg={toast} />}
         </div>
       ) : (
@@ -3052,6 +3353,9 @@ export default function App() {
               }}
               onDismiss={() => setReceipt(null)}
             />
+          )}
+          {reveal && (
+            <BlindBoxReveal stage={reveal} onDismiss={() => setReveal(null)} />
           )}
           {toast && <Toast msg={toast} />}
         </div>

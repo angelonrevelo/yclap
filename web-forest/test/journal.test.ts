@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  progressOf,
   summarize,
   toCsv,
   toGeoJson,
@@ -15,6 +16,40 @@ import {
 import { sector } from "../src/sector.ts";
 import { picker_order, journal_order } from "../src/data.ts";
 import { distanceMeter } from "../src/geo.ts";
+
+/* ── the rule this file guards (build spec T2, 2026-09-06, option b) ─────────
+ *
+ * Per-user progression is allowed; cross-user comparison is not. The forbidden
+ * axis is comparison between students — `leaderboard`, `rank`, `percentile`,
+ * any aggregate over other people's data, and the vanity metrics (`score`,
+ * `points`, `streak`, `xp`) that read as one. Allowed on a per-user object:
+ * `level`, `stage`, `progress`, `seen_count`, `vigor`. `summarize` stays a
+ * counts-and-groupings object; `progressOf` is where the per-user bundle lives.
+ * Source: `docs/spec/biome-3d-build-spec.md` §3, decision (b); the 09-02 pulong
+ * softened the original objection without lifting the no-comparison rule.
+ */
+const CROSS_USER_KEYS = [
+  "leaderboard",
+  "rank",
+  "percentile",
+  "score",
+  "points",
+  "streak",
+  "xp",
+  "other_user",
+  "user_rank",
+];
+
+/** Walk every key at every depth; collect any forbidden field name. */
+function crossUserKeysIn(value, path = "") {
+  const found = [];
+  if (!value || typeof value !== "object") return found;
+  for (const [key, child] of Object.entries(value)) {
+    if (CROSS_USER_KEYS.includes(key)) found.push(path + "." + key);
+    found.push(...crossUserKeysIn(child, path + "." + key));
+  }
+  return found;
+}
 
 function make(over: Partial<Sighting>): Sighting {
   return {
@@ -71,11 +106,9 @@ describe("summarize", () => {
     assert.equal(s.last_at, "2026-09-03T02:00:00.000Z");
   });
 
-  it("exposes no rank, score, streak or points field", () => {
-    const key = Object.keys(summarize(row));
-    for (const banned of ["rank", "score", "point", "points", "streak", "level", "xp"]) {
-      assert.equal(key.includes(banned), false, `summary must not carry a ${banned}`);
-    }
+  it("carries no cross-user field — leaderboard, rank or percentile", () => {
+    const found = crossUserKeysIn(summarize(row), "summary");
+    assert.deepEqual(found, [], `summary carried a forbidden field: ${found.join(", ")}`);
   });
 
   it("handles an empty journal", () => {
@@ -249,27 +282,16 @@ describe("walkReceipt", () => {
     assert.equal(got.elapsed_minute, 37);
   });
 
-  it("carries no rank, score, streak, points, level or xp — at any depth", () => {
+  it("carries no cross-user field — at any depth", () => {
     const got = walkReceipt(
       walkOf({ track: [fixAt(14.6386, 121.0785, 1)] }),
       [make({ walk_id: "walk-1" })],
     );
-    /* Deliberately deeper and stricter than the shallow key check above: this
-       walks the whole serialized object, so a nested `{ rank: 3 }` cannot slip
-       past the way it could through Object.keys on the top level alone. */
-    const banned = ["rank", "score", "point", "points", "streak", "level", "xp", "leaderboard"];
-    const walkKey = (value: unknown, path: string): void => {
-      if (!value || typeof value !== "object") return;
-      for (const [key, child] of Object.entries(value)) {
-        assert.equal(
-          banned.includes(key),
-          false,
-          `walk receipt must not carry a ${key} (at ${path}.${key})`,
-        );
-        walkKey(child, `${path}.${key}`);
-      }
-    };
-    walkKey(got, "receipt");
+    /* Option (b): per-user fields like `level`/`stage` are allowed; the
+       forbidden axis is comparison. This walks the whole serialized object so
+       a nested `{ rank: 3 }` or `{ leaderboard: [...] }` cannot slip past. */
+    const found = crossUserKeysIn(got, "receipt");
+    assert.deepEqual(found, [], `walk receipt carried a forbidden field: ${found.join(", ")}`);
   });
 });
 
@@ -289,11 +311,60 @@ describe("seen of total", () => {
     assert.equal(`${got.species_count} of ${got.species_total} species seen`, "1 of 9 species seen");
   });
 
-  it("still exposes no rank, score, streak or points field", () => {
-    const key = Object.keys(summarize([make({})]));
-    for (const banned of ["rank", "score", "point", "points", "streak", "level", "xp"]) {
-      assert.equal(key.includes(banned), false, `summary must not carry a ${banned}`);
-    }
+  it("still carries no cross-user field at any depth", () => {
+    const found = crossUserKeysIn(summarize([make({})]), "summary");
+    assert.deepEqual(found, [], `summary carried a forbidden field: ${found.join(", ")}`);
+  });
+});
+
+describe("progressOf — the per-user bundle (option b)", () => {
+  it("exposes level, stage, progress and seen_count from this journal only", () => {
+    const p = progressOf(row);
+    assert.equal(typeof p.level, "number");
+    assert.equal(typeof p.stage, "string");
+    assert.equal(typeof p.progress, "number");
+    assert.equal(typeof p.seen_count, "number");
+    /* level is per-user and derived from this journal alone — option (b) lets
+       it ship. The forbidden axis is comparison, not progression. */
+    assert.ok(p.level >= 1);
+    assert.ok(p.seen_count >= 1);
+  });
+
+  it("keeps the two earn counters separate, never summed into a score", () => {
+    const local = [
+      make({ sighting_id: "b1", species_code: "narra", entry_kind: "badge" }),
+      make({ sighting_id: "c1", species_code: "narra", entry_kind: "contribution", reported_name: "unknown" }),
+    ];
+    const p = progressOf(local);
+    assert.equal(p.badge_count, 1);
+    assert.equal(p.contribution_count, 1);
+    assert.ok(!Object.keys(p).includes("score"), "progress must not sum the counters into a score");
+  });
+
+  it("carries no cross-user field at any depth", () => {
+    const p = progressOf(row);
+    const found = crossUserKeysIn(p, "progress");
+    assert.deepEqual(found, [], `progress carried a forbidden field: ${found.join(", ")}`);
+  });
+
+  it("the guard fails on a planted leaderboard field", () => {
+    const planted = {
+      ...progressOf(row),
+      leaderboard: [{ user: "someone else", rank: 1 }],
+    };
+    const found = crossUserKeysIn(planted, "planted");
+    assert.ok(found.includes("planted.leaderboard"), "guard must catch a planted leaderboard");
+  });
+
+  it("a sector-seen count advances the stage; absence never removes it", () => {
+    const empty = progressOf([]);
+    assert.equal(empty.stage, "egg");
+    /* One located badge inside a real biome sector sprouts the character. */
+    const [a_lat, a_lon] = a_sector.label_point;
+    const one_sector: Sighting[] = [
+      make({ sighting_id: "s1", species_code: "narra", lat: a_lat, lon: a_lon, fix_source: "gps" }),
+    ];
+    assert.equal(progressOf(one_sector).stage, "sprout");
   });
 });
 
