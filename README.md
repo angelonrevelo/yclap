@@ -12,7 +12,15 @@ Ateneo desk for the **Youth Climate Leadership Accelerator Project (Youth CLAP)*
 | **Gargar pilot** | `~/Codex/gargar` | `cd ~/Codex/gargar && npm run dev` |
 | **EcoWaste intel** | `~/Antigravity/ecowaste` | `npm run dev` there |
 
-Landing includes: **Youth CLAP design-system brand** (tokens + four-person mark), goals, legal grounds, journey, project rack (Gargar · EcoWaste · options), multi-lane cohort map, SEEDS/experts. Brand assets live in `web/public/brand/` and `web/src/brand/`.
+Landing includes: **Youth CLAP design-system brand** (tokens + four-person mark), goals, legal grounds, journey, multi-lane cohort map, SEEDS/experts. Brand assets live in `web/public/brand/` and `web/src/brand/`.
+
+> **Correction, 2026-09-09.** This line used to claim the landing renders a
+> "project rack (Gargar · EcoWaste · options)". It does not. `web/src/data/project.js`
+> and `web/src/data/pilot.js` are **orphaned** — nothing imports either, and the only
+> `Gargar` string in the built bundle comes from a lane task in `cohort.js`. Verified by
+> grepping `web/dist/`. The data files are kept and have been brought current
+> (Magisphere now leads `project.js`), so wiring the rack is an afternoon whenever
+> someone wants it — but the README will not claim it until it renders.
 
 ## Docs
 

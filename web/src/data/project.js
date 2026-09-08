@@ -1,6 +1,37 @@
-/** Showcase projects ,  live builds + accelerator-ready options */
+/**
+ * Showcase projects — live builds + accelerator-ready options.
+ *
+ * NOT RENDERED YET. Nothing imports this file, and nothing imports
+ * `pilot.js` either: the README claimed the landing shows a "project rack"
+ * and it does not — the only Gargar string in the built bundle comes from a
+ * lane task in `cohort.js`. Checked 2026-09-09 by grepping `dist/`.
+ *
+ * It is kept, and kept CURRENT, because the data is right and the rack is a
+ * afternoon's work whenever someone wants it. What is not acceptable is a data
+ * file quietly describing last month's flagship, so `magisphere` leads it now.
+ */
 
 export const project = [
+  {
+    project_code: "magisphere",
+    project_status: "live_pilot",
+    project_name: "Magisphere",
+    project_tagline: "Two-thirds of this campus is green. Now you can name it.",
+    project_blurb:
+      "Ateneo campus-forest PWA and the Sep 12 showcase piece. A world of finds rotates across 68 walkable sectors every thirty minutes; walk to one, photograph it, and it enters your journal with a species, a count and a coordinate — the pair the AIS inventory does not have. 1,098 species modelled in 3D from a real iNaturalist campus sweep. Works offline. No leaderboard, and no field in the data model one could be built from.",
+    sdg_code: ["15", "13", "11"],
+    lane_code: ["build", "science", "story"],
+    stack_label: "React · Vite · OSM · iNaturalist · 1,098 .glb",
+    repo_path: "web-forest/",
+    can_demo: true,
+    rack_span: "hero",
+    metric_label: ["1,098 species", "68 sectors", "208 tests green"],
+    improvement: [
+      "AIS species-per-sector inventory — 6 of 68 sectors name anything today",
+      "Origin data: 9 of 1,098 species carry a native/exotic label",
+      "Never yet installed on a physical handset",
+    ],
+  },
   {
     project_code: "gargar",
     project_status: "live_pilot",
@@ -13,7 +44,7 @@ export const project = [
     stack_label: "React · Vite · EcoWaste rates",
     repo_path: "~/Codex/gargar",
     can_demo: true,
-    rack_span: "hero",
+    rack_span: "tall",
     metric_label: ["Rates frozen", "6 collectors", "Target ≥100 kg"],
     improvement: [
       "Field-verify PET + Al cans at ≥2 Pasig shops",
