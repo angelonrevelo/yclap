@@ -55,6 +55,7 @@ import { BadgeShelf, loadSpawnPool, RarityPill, reachableSpawn, SpawnStrip, useS
 import { KindThumb } from "./kind-mark";
 import { displayName, kindOf } from "./kind";
 import type { Rarity, Spawn, SpawnPoolEntry } from "./spawn";
+import { receiptHighlight } from "./collection";
 
 import {
   campusCodeForScientific,
@@ -1469,16 +1470,27 @@ function WalkReceiptSheet({
   is_desktop,
   onJournal,
   onDismiss,
+  pool,
 }: {
   receipt: WalkReceipt;
   is_desktop: boolean;
   onJournal: () => void;
   onDismiss: () => void;
+  /** The sweep, so a find outside the guide's nine reads as a name. */
+  pool: SpawnPoolEntry[];
 }) {
   const sector_name = receipt.sector_code
     .map((code) => sectorByCode(code)?.name)
     .filter(Boolean)
     .slice(0, 4);
+  const curated_name = useMemo(
+    () => new Map(Object.entries(species).map(([code, sp]) => [code, sp.common_name])),
+    [],
+  );
+  const highlight = useMemo(
+    () => receiptHighlight(receipt.new_species_code, pool, curated_name),
+    [receipt.new_species_code, pool, curated_name],
+  );
   return (
     <div
       style={{
@@ -1539,11 +1551,27 @@ function WalkReceiptSheet({
         {receipt.new_species_count > 0 && (
           <div style={{ marginTop: 16 }}>
             <Eyebrow>NEW TO YOUR JOURNAL</Eyebrow>
+            {/* The payoff line. A walk that met a species recorded once on this
+                campus should say so here rather than reporting "1 species" and
+                leaving the moment flat. Only when the walk actually earned it. */}
+            {(highlight.best === "mythic" || highlight.best === "rare") && (
+              <p style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ui-accent)", marginTop: 6 }}>
+                {highlight.best === "mythic"
+                  ? "One of these has been recorded on this campus once."
+                  : "One of these is rarely recorded here."}
+              </p>
+            )}
             <div className="flex flex-wrap gap-1.5" style={{ marginTop: 8 }}>
-              {receipt.new_species_code.map((code) => (
-                <Pill key={code} tone="native">
-                  {species[code]?.common_name ?? code}
-                </Pill>
+              {/* Resolved off the sweep, not off the curated nine — otherwise an
+                  off-guide find printed its raw slug at the last thing a walker
+                  reads, which says the app does not know what they just found. */}
+              {highlight.row.map((r) => (
+                <span key={r.species_code} className="inline-flex items-center gap-1.5">
+                  <Pill tone="native">{r.name}</Pill>
+                  {r.rarity && r.rarity !== "common" && (
+                    <RarityPill rarity={r.rarity} count={r.campus_count ?? undefined} />
+                  )}
+                </span>
               ))}
             </div>
           </div>
@@ -3483,6 +3511,7 @@ export default function App() {
           {receipt && (
             <WalkReceiptSheet
               receipt={receipt}
+              pool={spawn_world.pool}
               is_desktop={is_desktop}
               onJournal={() => {
                 setReceipt(null);
@@ -3530,6 +3559,7 @@ export default function App() {
           {receipt && (
             <WalkReceiptSheet
               receipt={receipt}
+              pool={spawn_world.pool}
               is_desktop={is_desktop}
               onJournal={() => {
                 setReceipt(null);

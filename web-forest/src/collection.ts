@@ -131,3 +131,61 @@ export function wildCollection(
 
   return { group, found_count: find.length, pool_total: pool.length, best };
 }
+
+
+export interface ReceiptSpecies {
+  species_code: string;
+  /** Curated name where the guide has one, else the sweep's, else the code. */
+  name: string;
+  rarity: Rarity | null;
+  campus_count: number | null;
+}
+
+export interface ReceiptHighlight {
+  row: ReceiptSpecies[];
+  /** Rarest band the walk actually produced, or null. The line worth leading with. */
+  best: Rarity | null;
+}
+
+/**
+ * The species a walk was the first sighting of, resolved for the receipt.
+ *
+ * Two things the receipt could not do before the world existed:
+ *
+ *   It printed `species[code]?.common_name ?? code`, so a find outside the
+ *   curated nine came out as a raw slug — "crossandra-infundibuliformis"
+ *   rather than "Firecracker-flower". A receipt is the last thing a walker
+ *   reads, and reading a slug there says the app does not know what they just
+ *   found.
+ *
+ *   It said nothing about rarity. Walking into a species recorded once on this
+ *   campus and being told only "1 species" is the payoff moment landing flat.
+ *
+ * `curated_name` is passed in rather than imported so this stays a pure
+ * function the test runner can load.
+ */
+export function receiptHighlight(
+  new_species_code: string[],
+  pool: SpawnPoolEntry[],
+  curated_name: ReadonlyMap<string, string>,
+): ReceiptHighlight {
+  const by_code = new Map(pool.map((e) => [e.species_code, e]));
+  const row: ReceiptSpecies[] = new_species_code.map((species_code) => {
+    const entry = by_code.get(species_code);
+    return {
+      species_code,
+      name:
+        curated_name.get(species_code) ??
+        (entry ? displayName(entry.common_name) : species_code),
+      rarity: entry ? rarityFor(entry.count) : null,
+      campus_count: entry ? entry.count : null,
+    };
+  });
+
+  let best: Rarity | null = null;
+  for (const r of row) {
+    if (r.rarity === null) continue;
+    if (best === null || RANK[r.rarity] < RANK[best]) best = r.rarity;
+  }
+  return { row, best };
+}

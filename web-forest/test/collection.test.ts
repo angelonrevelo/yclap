@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { readFileSync } from "node:fs";
-import { wildCollection } from "../src/collection.ts";
+import { receiptHighlight, wildCollection } from "../src/collection.ts";
 import { poolFromFile, type SpawnPoolEntry } from "../src/spawn.ts";
 import { picker_order } from "../src/data.ts";
 import type { Sighting } from "../src/journal.ts";
@@ -176,5 +176,58 @@ describe("the wider collection", () => {
       assert.ok(f.common_name.length > 0);
       assert.ok(f.scientific_name.length > 0);
     }
+  });
+});
+
+describe("the walk receipt's species line", () => {
+  const pool = [
+    entry("crossandra-infundibuliformis", { common_name: "Firecracker-flower", count: 7 }),
+    entry("rivina-humilis", { common_name: "pigeonberry", count: 218 }),
+    entry("once-here", { common_name: "Something Rare", count: 1 }),
+  ];
+  const curated = new Map([["narra", "Narra"]]);
+
+  it("resolves an off-guide find to its name, never to a raw slug", () => {
+    /* The bug: the receipt printed `species[code] ?? code`, so a walk that met
+       a pool species ended by showing "crossandra-infundibuliformis" — the last
+       thing a walker reads, telling them the app does not know what they found. */
+    const h = receiptHighlight(["crossandra-infundibuliformis"], pool, curated);
+    assert.equal(h.row[0].name, "Firecracker-flower");
+    assert.notEqual(h.row[0].name, h.row[0].species_code);
+  });
+
+  it("prefers the guide's name where the guide has one", () => {
+    const h = receiptHighlight(["narra"], pool, curated);
+    assert.equal(h.row[0].name, "Narra");
+  });
+
+  it("falls back to the code only when nothing knows the species", () => {
+    const h = receiptHighlight(["ghost-species"], pool, curated);
+    assert.equal(h.row[0].name, "ghost-species");
+    assert.equal(h.row[0].rarity, null, "an unknown species gets no rarity claim");
+    assert.equal(h.row[0].campus_count, null, "and no count we did not measure");
+  });
+
+  it("cases the first word of a sweep name", () => {
+    const h = receiptHighlight(["rivina-humilis"], pool, curated);
+    assert.equal(h.row[0].name, "Pigeonberry");
+  });
+
+  it("reports the rarest band the walk actually produced", () => {
+    const h = receiptHighlight(["rivina-humilis", "once-here", "crossandra-infundibuliformis"], pool, curated);
+    assert.equal(h.best, "mythic");
+    /* And the order the walk recorded them in is preserved — a receipt is a
+       record of what happened, not a ranking of it. */
+    assert.deepEqual(h.row.map((r) => r.species_code), ["rivina-humilis", "once-here", "crossandra-infundibuliformis"]);
+  });
+
+  it("claims no rarity at all when nothing on the walk is in the pool", () => {
+    assert.equal(receiptHighlight(["ghost-a", "ghost-b"], pool, curated).best, null);
+  });
+
+  it("returns nothing for a walk that logged nothing new", () => {
+    const h = receiptHighlight([], pool, curated);
+    assert.deepEqual(h.row, []);
+    assert.equal(h.best, null);
   });
 });
