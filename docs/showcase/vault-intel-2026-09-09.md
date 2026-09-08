@@ -159,9 +159,23 @@ later, which is exactly what the mentor praised on the 09-08 recording:
 > — mentor video, transcribed from `yclap-magisphere-video-2410fb3e.mp4`
 
 **That recording cuts off at "So there are a few suggestions."** The suggestions
-themselves are not in the vault. If anyone has the rest of that recording, it is the most
-valuable unread thing we have — it is literal judge-adjacent feedback on this exact
-project, and we are acting without it.
+themselves are not in the vault.
+
+I went looking for a longer copy and there is not one. Searched every video and audio
+attachment in `~/polkadoc` touched since 2026-09-01, found three recordings longer than
+the 39-second clip, and checked all three: two (`62153a90`, `e5ecb017`, 97 s and 149 s)
+carry **no audio stream at all** — they are the silent video halves of a DASH pair — and
+the one that does (`67622642`, 97 s) transcribes to unrelated Facebook media, not the
+consultation. The 39-second clip in the group chat is the whole of what was posted.
+
+Two ways to get the rest, both needing a person:
+
+- **Ask whoever recorded it** for the full file. It is judge-adjacent feedback on this
+  exact project and we are pitching on Saturday without it.
+- **Re-scrape the group chat.** The vault's last pass ran 2026-09-08 23:13 and the video
+  was the final item in it, so anything posted after midnight is simply not here yet. The
+  `plaud` MCP server is also failing to start on this machine (`ENOENT … npx`), so the
+  refresh has to be run by hand.
 
 ---
 
