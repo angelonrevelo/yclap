@@ -809,7 +809,7 @@ uncommitted:
 | Species per sector | The AIS inventory. 6 of 68 walkable sectors name anything to find |
 | Real walkable path graph | The ADMUNAV graph has not been shared |
 | **Native bias is inert** | Only **9 of 1,098** pool entries carry an origin (6 Native, 3 Exotic); the sweep never asked for `establishment_means`, so `habitatWeight`'s 1.5× native multiplier reaches 0.8% of the world. `spawn.test.ts` holds the number so improving it breaks the test loudly instead of the world quietly staying flat |
-| PWA install on a real handset | Still never tested on an actual phone |
+| PWA install on a real handset | Still never tested on an actual phone. Runbook now exists (`web-forest/script/handset.md`) and the LAN path is verified serving; the FULL test needs HTTPS, because the service worker, geolocation and camera are all secure-context-only. Tailscale would have given tailnet-private HTTPS but the App Store build's CLI is sandboxed and `serve`/`cert` fail with `CLIError error 3` — recorded so nobody re-tries it. Remaining options both publish: a cloudflared quick tunnel, or the linked Vercel project |
 | Any Output 2 usage number | We measure none of them. The concept note says so rather than inventing one |
 | Landmark tree oral history | Still an interview or a dated photo away |
 
