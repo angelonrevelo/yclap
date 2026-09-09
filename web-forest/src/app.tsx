@@ -48,6 +48,20 @@ import {
   type Walk,
   type WalkReceipt,
 } from "./journal";
+import {
+  POINT_LABEL,
+  POINT_VALUE,
+  VERIFIED_RULE_NOTE,
+  LOCAL_OBS_STATUS_LABEL,
+  LOCAL_OBS_STATUS_NOTE,
+  gamifySnapshot,
+  localObsStatus,
+  observeAwardKind,
+  persistAward,
+  readPointEvents,
+  type GamifySnapshot,
+  type PointEvent,
+} from "./gamify";
 import { CAMPUS_CENTER, formatLatLon, formatMeter, formatWalkMinute, WALK_PACE_MS } from "./geo";
 import { LAYER_ORDER, nextLayer, prefetchCampus, SOURCE, type Layer, type View } from "./tile-map";
 import { useGeo } from "./use-geo";
@@ -201,11 +215,147 @@ function BrandLockup({ mark_size = 28, title_size = 20 }: { mark_size?: number; 
   );
 }
 
+
+function PointsStreakCard({ snap, is_desktop }: { snap: GamifySnapshot; is_desktop: boolean }) {
+  return (
+    <Card style={{ padding: is_desktop ? 18 : 14 }}>
+      <Eyebrow>POINTS + WEEKLY STREAK</Eyebrow>
+      <div className="flex gap-2" style={{ marginTop: 10 }}>
+        <div
+          style={{
+            flex: 1,
+            borderRadius: RADIUS.tile,
+            border: "1.5px solid rgba(0,134,83,0.28)",
+            background: "rgba(0,134,83,0.06)",
+            padding: "10px 12px",
+          }}
+        >
+          <div style={{ fontSize: 10, fontWeight: 800, color: "var(--ui-accent)", letterSpacing: "0.04em" }}>POINTS</div>
+          <div style={{ fontSize: is_desktop ? 28 : 24, fontWeight: 800, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
+            {snap.total_points}
+          </div>
+          <div style={{ fontSize: 11, color: "rgba(31,32,34,0.55)", marginTop: 2 }}>
+            Explore {POINT_VALUE.explore} · Learn {POINT_VALUE.learn} · Observe {POINT_VALUE.observe} · Local verified {POINT_VALUE.verified_discovery}
+          </div>
+        </div>
+        <div
+          style={{
+            flex: 1,
+            borderRadius: RADIUS.tile,
+            border: "1.5px solid rgba(246,178,45,0.45)",
+            background: "rgba(246,178,45,0.10)",
+            padding: "10px 12px",
+          }}
+        >
+          <div style={{ fontSize: 10, fontWeight: 800, color: "#8a5d00", letterSpacing: "0.04em" }}>WEEKLY STREAK</div>
+          <div style={{ fontSize: is_desktop ? 28 : 24, fontWeight: 800, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
+            {snap.streak_weeks}
+            <span style={{ fontSize: 13, fontWeight: 700, marginLeft: 4 }}>wk</span>
+          </div>
+          <div style={{ fontSize: 11, color: "rgba(31,32,34,0.55)", marginTop: 2 }}>
+            {snap.participated_this_week ? "Active this week" : "No activity yet this week"} · not a daily streak
+          </div>
+        </div>
+      </div>
+      <p style={{ fontSize: 11, color: "rgba(31,32,34,0.5)", marginTop: 10, lineHeight: 1.4 }}>
+        {VERIFIED_RULE_NOTE}
+      </p>
+    </Card>
+  );
+}
+
+function LocalLeaderboardCard({ snap, is_desktop }: { snap: GamifySnapshot; is_desktop: boolean }) {
+  return (
+    <Card style={{ padding: is_desktop ? 18 : 14 }}>
+      <Eyebrow>LOCAL DEMO LEADERBOARD</Eyebrow>
+      <p style={{ fontSize: 12, color: "rgba(31,32,34,0.62)", marginTop: 6, lineHeight: 1.4 }}>
+        Seeded demo cohort on this device plus you. Not an official AIS rank.
+      </p>
+      <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+        {snap.leaderboard.slice(0, 6).map((row, i) => (
+          <div
+            key={row.player_id}
+            className="flex items-center gap-2"
+            style={{
+              padding: "8px 10px",
+              borderRadius: 12,
+              background: row.is_you ? "rgba(0,134,83,0.10)" : "rgba(31,32,34,0.03)",
+              border: row.is_you ? "1.5px solid rgba(0,134,83,0.28)" : "1px solid rgba(31,32,34,0.06)",
+            }}
+          >
+            <span style={{ width: 22, fontWeight: 800, fontVariantNumeric: "tabular-nums", color: "rgba(31,32,34,0.55)" }}>
+              {i + 1}
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 13.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {row.name}
+                {row.is_you ? " · you" : ""}
+                {row.is_seed ? " · demo" : ""}
+              </div>
+              <div style={{ fontSize: 11, color: "rgba(31,32,34,0.5)" }}>{row.streak_weeks} wk streak</div>
+            </div>
+            <span style={{ fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{row.points}</span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function ChallengesCard({ snap }: { snap: GamifySnapshot }) {
+  return (
+    <Card style={{ padding: 14 }}>
+      <Eyebrow>CHALLENGES</Eyebrow>
+      <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+        {snap.challenges.map((c) => {
+          const ratio = c.target ? Math.min(1, c.current / c.target) : 0;
+          return (
+            <div key={c.challenge_id}>
+              <div className="flex items-center justify-between" style={{ fontSize: 13 }}>
+                <span style={{ fontWeight: 700 }}>{c.title}</span>
+                <span style={{ fontVariantNumeric: "tabular-nums", color: "rgba(31,32,34,0.6)" }}>
+                  {c.current}/{c.target}
+                  {c.done ? " · done" : ""}
+                </span>
+              </div>
+              <div style={{ height: 6, borderRadius: 999, background: "#EEF1F0", marginTop: 5 }}>
+                <div
+                  style={{
+                    width: `${ratio * 100}%`,
+                    height: "100%",
+                    borderRadius: 999,
+                    background: c.done ? "var(--grad-forest)" : "var(--ui-accent)",
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function BuddyLine({ snap }: { snap: GamifySnapshot }) {
+  const next = snap.buddy.next;
+  const next_label = next ? next.stage.replace(/_/g, " ") : "";
+  return (
+    <p style={{ fontSize: 12, color: "rgba(31,32,34,0.62)", marginTop: 8, lineHeight: 1.4 }}>
+      Biodiversity Buddy: <strong>{snap.buddy.label}</strong>
+      {next
+        ? ` · ${next.remaining} more week${next.remaining === 1 ? "" : "s"} toward ${next_label}`
+        : " · fully grown"}
+      . Grows with weekly participation.
+    </p>
+  );
+}
+
 function HomeScreen({
   is_desktop,
   onWalk,
   onPlan,
   live,
+  gamify,
 }: {
   is_desktop: boolean;
   onWalk: () => void;
@@ -213,6 +363,7 @@ function HomeScreen({
   /* The spawn strip, passed in rather than built here: home should not have to
      know how the world is loaded to be able to show it. */
   live?: React.ReactNode;
+  gamify: GamifySnapshot;
 }) {
   if (is_desktop) {
     return (
@@ -246,7 +397,7 @@ function HomeScreen({
               </button>
             </div>
             <p style={{ fontSize: 13, color: "rgba(31,32,34,0.6)", marginTop: 28, lineHeight: 1.4 }}>
-              Not a planting drive. Personal progression, not a public rank. Not our tree inventory — AIS already counted.
+              Not a planting drive. Points and a local demo leaderboard live on this device — not an official AIS rank. Not our tree inventory — AIS already counted.
             </p>
             <p style={{ fontSize: 12.5, color: "rgba(31,32,34,0.55)", marginTop: 10, lineHeight: 1.45, maxWidth: 560 }}>
               {AIS_GAP_NOTE}
@@ -254,6 +405,12 @@ function HomeScreen({
             {live && <div style={{ marginTop: 22, maxWidth: 560 }}>{live}</div>}
             <div style={{ marginTop: 22, maxWidth: 560 }}>
               <LandmarkCard is_desktop />
+            </div>
+            <div style={{ marginTop: 16, maxWidth: 560 }}>
+              <PointsStreakCard snap={gamify} is_desktop />
+            </div>
+            <div style={{ marginTop: 12, maxWidth: 560 }}>
+              <LocalLeaderboardCard snap={gamify} is_desktop />
             </div>
             <div style={{ marginTop: 16, fontSize: 11, color: "rgba(31,32,34,0.45)", fontWeight: 700, letterSpacing: "0.04em" }}>
               YOUTH CLAP 2026 · ATENEO CCC
@@ -332,7 +489,7 @@ function HomeScreen({
         </button>
       </div>
       <p style={{ fontSize: 12, color: "rgba(31,32,34,0.6)", padding: "14px 20px 0", lineHeight: 1.4 }}>
-        Not a planting drive. Personal progression, not a public rank. Not our tree inventory — AIS already counted.
+        Not a planting drive. Points and a local demo leaderboard live on this device — not an official AIS rank. Not our tree inventory — AIS already counted.
       </p>
       <p style={{ fontSize: 11.5, color: "rgba(31,32,34,0.55)", padding: "8px 20px 0", lineHeight: 1.4 }}>
         {AIS_GAP_NOTE}
@@ -340,6 +497,12 @@ function HomeScreen({
       {live && <div style={{ padding: "18px 20px 0" }}>{live}</div>}
       <div style={{ padding: "18px 20px 0" }}>
         <LandmarkCard is_desktop={false} />
+      </div>
+      <div style={{ padding: "14px 20px 0" }}>
+        <PointsStreakCard snap={gamify} is_desktop={false} />
+      </div>
+      <div style={{ padding: "12px 20px 0" }}>
+        <LocalLeaderboardCard snap={gamify} is_desktop={false} />
       </div>
       <div style={{ padding: "22px 20px 0" }}>
         <span style={{ fontSize: 10.5, color: "rgba(31,32,34,0.45)", fontWeight: 700, letterSpacing: "0.04em" }}>
@@ -1438,12 +1601,28 @@ function ExportRow({ sighting }: { sighting: Sighting[] }) {
 
 function SightingLog({ sighting }: { sighting: Sighting[] }) {
   const row = [...sighting].reverse().slice(0, 12);
+  const prior_count = (code: string, before_id: string) => {
+    const self = sighting.find((y) => y.sighting_id === before_id);
+    if (!self) return 0;
+    return sighting.filter(
+      (x) =>
+        x.species_code === code &&
+        x.sighting_id !== before_id &&
+        x.created_at < self.created_at,
+    ).length;
+  };
   return (
     <div style={{ marginTop: 16 }}>
       <Eyebrow>WHAT YOU LOGGED</Eyebrow>
+      <p style={{ fontSize: 11, color: "rgba(31,32,34,0.5)", marginTop: 6, lineHeight: 1.4 }}>{LOCAL_OBS_STATUS_NOTE}</p>
       <div style={{ marginTop: 8, border: "1.5px solid #E4E7E8", borderRadius: 20, overflow: "hidden", background: "#fff" }}>
         {row.map((s, i) => {
           const sp = species[s.species_code];
+          const status = localObsStatus({
+            photo_data: s.photo_data,
+            species_code: s.species_code,
+            prior_same_species: prior_count(s.species_code, s.sighting_id),
+          });
           return (
             <div
               key={s.sighting_id}
@@ -1452,7 +1631,7 @@ function SightingLog({ sighting }: { sighting: Sighting[] }) {
             >
               <TaxonThumb species_code={s.species_code} size={52} photo_data={s.photo_data} />
               <div style={{ minWidth: 0 }}>
-                <div className="flex items-baseline gap-2">
+                <div className="flex items-baseline gap-2" style={{ flexWrap: "wrap" }}>
                   {/* A report is not a species badge and must not read as one. */}
                   <div style={{ fontWeight: 700, fontSize: 14.5 }}>
                     {s.entry_kind === "contribution"
@@ -1460,6 +1639,9 @@ function SightingLog({ sighting }: { sighting: Sighting[] }) {
                       : (sp?.common_name ?? s.species_code)}
                   </div>
                   {s.entry_kind === "contribution" && <Pill tone="info">Report</Pill>}
+                  <Pill tone={status === "verified" ? "native" : status === "duplicate" ? "threatened" : "info"}>
+                    {LOCAL_OBS_STATUS_LABEL[status]}
+                  </Pill>
                   {/* The catalogue number is assigned once and never reissued, so
                       an entry a student cites today is the same one tomorrow. */}
                   <span
@@ -1838,7 +2020,7 @@ function BlindBoxReveal({ stage, onDismiss }: { stage: Stage; onDismiss: () => v
  * This is the personal "account" — a local identity for progression, not a
  * social profile. There is no server and no cross-user field anywhere in it.
  */
-function ProgressCard({ sighting, is_desktop }: { sighting: Sighting[]; is_desktop: boolean }) {
+function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; is_desktop: boolean; gamify: GamifySnapshot }) {
   const p = progressOf(sighting);
   const stage_label = STAGE_LABEL[p.stage];
   const next = p.next_stage;
@@ -1867,9 +2049,9 @@ function ProgressCard({ sighting, is_desktop }: { sighting: Sighting[]; is_deskt
       </div>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div className="flex items-baseline gap-2">
-          <Eyebrow>YOUR GROWTH</Eyebrow>
+          <Eyebrow>YOUR GROWTH · BIODIVERSITY BUDDY</Eyebrow>
           <span style={{ fontSize: 11, color: "rgba(31,32,34,0.45)", marginLeft: "auto" }}>
-            level {p.level}
+            {gamify.total_points} pts · {gamify.streak_weeks} wk
           </span>
         </div>
         <div className="flex items-baseline gap-2" style={{ marginTop: 4 }}>
@@ -1944,8 +2126,9 @@ function ProgressCard({ sighting, is_desktop }: { sighting: Sighting[]; is_deskt
             />
           </div>
         </div>
+        <BuddyLine snap={gamify} />
         <p style={{ fontSize: 11, color: "rgba(31,32,34,0.5)", marginTop: 10, lineHeight: 1.4 }}>
-          Personal progression — no public rank. We gamified engagement, not competition.
+          Personal progression on this device. Local demo leaderboard is seeded for the showcase — not an official AIS rank.
         </p>
       </div>
     </Card>
@@ -1959,6 +2142,7 @@ function JournalScreen({
   pool_count,
   pool,
   is_seeded = false,
+  gamify,
 }: {
   sighting: Sighting[];
   seen: Set<string>;
@@ -1969,6 +2153,7 @@ function JournalScreen({
   pool: SpawnPoolEntry[];
   /** True when every row came from `?seed=demo`. Says so on screen. */
   is_seeded?: boolean;
+  gamify: GamifySnapshot;
 }) {
   const summary = summarize(sighting);
   const seen_of_total = `${summary.species_count} of ${summary.species_total} species seen`;
@@ -1988,8 +2173,11 @@ function JournalScreen({
           overflowY: "auto",
           background: "var(--brand-mist)",
           padding: is_desktop ? "40px 72px" : "20px 20px 80px",
-          display: "grid",
-          placeItems: "center",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "flex-start",
+          paddingTop: is_desktop ? 48 : 28,
         }}
       >
         <div
@@ -2025,6 +2213,15 @@ function JournalScreen({
           <p style={{ fontSize: 11.5, color: "rgba(31,32,34,0.5)", marginTop: 14, lineHeight: 1.45 }}>
             Ateneo already designed an SDG game that way (Rodrigo, Favis, Cuyegkeng 2021 — RECIPE / Meaningful Gamification).
           </p>
+        </div>
+        <div style={{ width: "100%", maxWidth: 420, marginTop: 18 }}>
+          <PointsStreakCard snap={gamify} is_desktop={is_desktop} />
+        </div>
+        <div style={{ width: "100%", maxWidth: 420, marginTop: 12 }}>
+          <ChallengesCard snap={gamify} />
+        </div>
+        <div style={{ width: "100%", maxWidth: 420, marginTop: 12 }}>
+          <LocalLeaderboardCard snap={gamify} is_desktop={is_desktop} />
         </div>
       </div>
     );
@@ -2071,7 +2268,16 @@ function JournalScreen({
           Meaningful Gamification).
         </p>
         <div style={{ marginTop: 16 }}>
-          <ProgressCard sighting={sighting} is_desktop={is_desktop} />
+          <ProgressCard sighting={sighting} is_desktop={is_desktop} gamify={gamify} />
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <PointsStreakCard snap={gamify} is_desktop={is_desktop} />
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <ChallengesCard snap={gamify} />
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <LocalLeaderboardCard snap={gamify} is_desktop={is_desktop} />
         </div>
         <div style={{ marginTop: 16 }}>
           <SummaryStrip sighting={sighting} pool={pool} />
@@ -2927,6 +3133,7 @@ export default function App() {
    *  route into it — we only claim a rarity for a find we placed. */
   const [camera_rarity, setCameraRarity] = useState<Rarity | null>(null);
   const [sighting, setSighting] = useState<Sighting[]>(() => readSighting());
+  const [point_events, setPointEvents] = useState<PointEvent[]>(() => readPointEvents());
   const [is_demo, setDemo] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [inat, setInat] = useState<InatNearbyState>({ status: "idle" });
@@ -2970,6 +3177,7 @@ export default function App() {
      by a stale flag or forgotten after a real find is added. */
   const is_seeded = useMemo(() => isSeededJournal(sighting), [sighting]);
   const seen = seenCode(sighting);
+  const gamify = useMemo(() => gamifySnapshot(point_events), [point_events]);
   const seen_sector = useMemo(() => seenSector(sighting), [sighting]);
   const stage = stageFor(seen_sector.size);
   const vigor = useMemo(() => vigorOf(sighting), [sighting]);
@@ -3089,6 +3297,19 @@ export default function App() {
     window.setTimeout(() => setToast(null), 2000);
   };
 
+  const noteAward = (
+    kind: Parameters<typeof persistAward>[0],
+    subject_key: string,
+    toast_line?: string,
+  ) => {
+    const result = persistAward(kind, subject_key);
+    if (result.awarded && result.event) {
+      setPointEvents(result.events);
+      showToast(toast_line ?? `+${result.event.points} ${POINT_LABEL[kind]}`);
+    }
+    return result;
+  };
+
   const selected_id = pinned_id ?? nearest?.row.encounter_id ?? encounter[0].encounter_id;
   const sel = encounter.find((e) => e.encounter_id === selected_id) ?? encounter[0];
   const sel_sp = species[sel.species_code];
@@ -3099,6 +3320,13 @@ export default function App() {
   useEffect(() => {
     if (at_id) setPinnedId(at_id);
   }, [at_id]);
+
+  const openLearnSheet = (species_code?: string) => {
+    setSheetOpen(true);
+    if (species_code) {
+      noteAward("learn", `species:${species_code}`);
+    }
+  };
 
   const openCamera = (species_code: string, where?: string, rarity: Rarity | null = null) => {
     setPickCode(species_code);
@@ -3134,7 +3362,7 @@ export default function App() {
     const is_report = entry_kind === "contribution";
     /* Stage before save — compared after to detect an advance (T4.5 trigger). */
     const prev_stage = stageFor(seenSector(sighting).size);
-    addSighting({
+    const saved = addSighting({
       species_code: pick_code,
       photo_data,
       inat_scientific_name: id.scientific_name,
@@ -3149,6 +3377,14 @@ export default function App() {
     });
     const next_sighting = readSighting();
     setSighting(next_sighting);
+    const award_kind = observeAwardKind({ photo_data, species_code: pick_code });
+    noteAward(
+      award_kind,
+      `sighting:${pick_code}/${saved.sighting_id}`,
+      award_kind === "verified_discovery"
+        ? `+${POINT_VALUE.verified_discovery} Local verified discovery`
+        : `+${POINT_VALUE.observe} Observe`,
+    );
     setCameraOpen(false);
     setCameraRarity(null);
     /* The blind-box reveal fires when a located badge in a new sector advances
@@ -3182,8 +3418,19 @@ export default function App() {
   useEffect(() => {
     if (!walk || !geo.fix) return;
     const moved = trackWalk(geo.fix, walk);
-    if (moved) setWalk(moved);
+    if (moved) {
+      setWalk(moved);
+      const sector = sectorAt(geo.fix);
+      if (sector) noteAward("explore", `sector:${sector.sector_code}`);
+    }
   }, [walk?.walk_id, geo.fix?.lat, geo.fix?.lon]);
+
+  /* Explore points also fire when the walker enters a new sector on the map,
+     even before Start Walk — area arrival is the Working Doc explore action. */
+  useEffect(() => {
+    if (route !== "/map" || !here_sector) return;
+    noteAward("explore", `sector:${here_sector.sector_code}`);
+  }, [route, here_sector?.sector_code]);
 
   const walk_count = walk ? sighting.filter((row) => row.walk_id === walk.walk_id).length : 0;
 
@@ -3396,7 +3643,8 @@ export default function App() {
         selected_id={selected_id}
         onSelect={(encounter_id) => {
           setPinnedId(encounter_id);
-          setSheetOpen(true);
+          const row = encounter.find((e) => e.encounter_id === encounter_id);
+          openLearnSheet(row?.species_code);
           setRestricted(true);
         }}
         view={view}
@@ -3455,7 +3703,7 @@ export default function App() {
       )}
       {!is_desktop && !is_sheet_open && (
         showing_biome && presence ? (
-          <BiomeBar presence={presence} onExpand={() => setSheetOpen(true)} />
+          <BiomeBar presence={presence} onExpand={() => openLearnSheet(presence.resident[0]?.row.species_code)} />
         ) : (
           <NearbyBar
             sp={sel_sp}
@@ -3463,7 +3711,7 @@ export default function App() {
             distance_line={selected_distance}
             is_pinned={pinned_id !== null}
             onUnpin={() => setPinnedId(null)}
-            onExpand={() => setSheetOpen(true)}
+            onExpand={() => openLearnSheet(sel_sp.species_code)}
           />
         )
       )}
@@ -3509,6 +3757,7 @@ export default function App() {
               is_desktop
               onWalk={() => go("/map")}
               onPlan={() => go("/plan")}
+              gamify={gamify}
               live={
                 <SpawnStrip
                   world={spawn_world}
@@ -3537,7 +3786,7 @@ export default function App() {
                     </div>
                     <p style={{ fontSize: 12, color: "rgba(31,32,34,0.55)", marginTop: 8, lineHeight: 1.4 }}>{AIS_GAP_NOTE}</p>
                     <div style={{ fontSize: 13, color: "rgba(31,32,34,0.5)", marginTop: 8, fontStyle: "italic" }}>
-                      No public leaderboard. Formation, not a race.
+                      Local demo leaderboard on Home — not an official AIS rank. Formation first.
                     </div>
                   </>
                 ) : (
@@ -3587,7 +3836,7 @@ export default function App() {
                     </div>
                     <p style={{ fontSize: 12, color: "rgba(31,32,34,0.55)", marginTop: 8, lineHeight: 1.4 }}>{AIS_GAP_NOTE}</p>
                     <div style={{ fontSize: 13, color: "rgba(31,32,34,0.5)", marginTop: 8, fontStyle: "italic" }}>
-                      No public leaderboard. Formation, not a race.
+                      Local demo leaderboard on Home — not an official AIS rank. Formation first.
                     </div>
                   </>
                 )}
@@ -3595,7 +3844,7 @@ export default function App() {
               </aside>
             </div>
           )}
-          {route === "/journal" && <JournalScreen sighting={sighting} seen={seen} is_desktop pool_count={spawn_world.pool_count} pool={spawn_world.pool} is_seeded={is_seeded} />}
+          {route === "/journal" && <JournalScreen sighting={sighting} seen={seen} is_desktop pool_count={spawn_world.pool_count} pool={spawn_world.pool} is_seeded={is_seeded} gamify={gamify} />}
           {route === "/plan" && <PlanScreen is_desktop />}
           </div>
           {is_camera_open && (
@@ -3637,13 +3886,14 @@ export default function App() {
               is_desktop={false}
               onWalk={() => go("/map")}
               onPlan={() => go("/plan")}
+              gamify={gamify}
               live={
                 <SpawnStrip world={spawn_world} fix={geo.fix} seen_species={seen} onPick={walkToSpawn} />
               }
             />
           )}
           {route === "/map" && (map_mode === "play" ? playBody : mapBody)}
-          {route === "/journal" && <JournalScreen sighting={sighting} seen={seen} is_desktop={false} pool_count={spawn_world.pool_count} pool={spawn_world.pool} is_seeded={is_seeded} />}
+          {route === "/journal" && <JournalScreen sighting={sighting} seen={seen} is_desktop={false} pool_count={spawn_world.pool_count} pool={spawn_world.pool} is_seeded={is_seeded} gamify={gamify} />}
           {route === "/plan" && <PlanScreen is_desktop={false} />}
           {is_camera_open && (
             <CameraSheet
