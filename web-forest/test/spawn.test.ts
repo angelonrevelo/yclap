@@ -39,7 +39,35 @@ describe("rarity — real observation gaps, not a made-up clock", () => {
     assert.equal(rarityFor(9), "rare");
     assert.equal(rarityFor(2), "rare");
     assert.equal(rarityFor(1), "mythic");
-    assert.equal(rarityFor(0), "mythic");
+  });
+
+  it("makes NO claim when the sweep has no count", () => {
+    /* This assertion used to read `rarityFor(0) === "mythic"` — the test
+       encoded the bug. Four of the 1,098 manifest entries carry `count: null`,
+       and `poolFromFile` coerced that to 0, so the app told anyone who found a
+       MAHOGANY that it had been "recorded on this campus once". Mahogany is
+       the tree this project's own problem tree says dominates the campus, and
+       it is one of the nine species with a drawn card, so it is precisely what
+       a judge would recognise.
+
+       No observation record is an absence of data, not the rarest possible
+       reading of it. */
+    assert.equal(rarityFor(null), null);
+    assert.equal(rarityFor(undefined), null);
+    assert.equal(rarityFor(0), null);
+  });
+
+  it("keeps a missing count as null all the way through the pool", () => {
+    const pool = poolFromFile({
+      model: [
+        { species_code: "counted", file: "species/a.glb", count: 12 },
+        { species_code: "uncounted", file: "species/b.glb", count: null },
+        { species_code: "absent", file: "species/c.glb" },
+      ],
+    });
+    assert.equal(pool.find((e) => e.species_code === "counted")?.count, 12);
+    assert.equal(pool.find((e) => e.species_code === "uncounted")?.count, null);
+    assert.equal(pool.find((e) => e.species_code === "absent")?.count, null);
   });
 });
 
@@ -136,6 +164,17 @@ describe("the real campus pool", () => {
   it("loads over a thousand species with real counts", () => {
     assert.ok(pool.length >= 1000, `pool came back thin: ${pool.length}`);
     assert.ok(pool.every((e) => e.file.startsWith("species/")));
+  });
+
+  it("does not band the four species the sweep never counted", () => {
+    /* mahogany, katmon, balete and lagundi. All four are curated species with
+       drawn cards — the ones a visitor is most likely to look up. */
+    const uncounted = pool.filter((e) => e.count === null);
+    assert.equal(uncounted.length, 4, `uncounted set moved: ${uncounted.map((e) => e.species_code).join(", ")}`);
+    assert.ok(uncounted.some((e) => e.species_code === "mahogany"));
+    for (const e of uncounted) {
+      assert.equal(rarityFor(e.count), null, `${e.species_code} was given a rarity it has no data for`);
+    }
   });
 
   it("says out loud how far the native bias can actually reach", () => {

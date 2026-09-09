@@ -947,7 +947,7 @@ function CameraSheet({
   /** Set only when the camera was opened by walking into a find in the world.
    *  Null for an ordinary log, where there is no rarity claim to make. */
   rarity?: Rarity | null;
-  pool_count?: ReadonlyMap<string, number>;
+  pool_count?: ReadonlyMap<string, number | null>;
 }) {
   const [shot, setShot] = useState<Shot | null>(null);
   const [note, setNote] = useState("");
@@ -1948,7 +1948,7 @@ function JournalScreen({
   seen: Set<string>;
   is_desktop: boolean;
   /** species_code -> real campus observation count, for the rarity badges. */
-  pool_count: ReadonlyMap<string, number>;
+  pool_count: ReadonlyMap<string, number | null>;
   /** The full sweep, for the shelf of finds the guide never drew. */
   pool: SpawnPoolEntry[];
 }) {

@@ -31,9 +31,10 @@ export interface WildFind {
   common_name: string;
   scientific_name: string;
   kind: Kind;
-  rarity: Rarity;
-  /** Real iNaturalist campus observation count — what the rarity derives from. */
-  campus_count: number;
+  /** Null when the sweep has no count — the tile then shows no band. */
+  rarity: Rarity | null;
+  /** Real iNaturalist campus observation count, or null when unrecorded. */
+  campus_count: number | null;
   /** ISO instant this species was FIRST logged. A collection is a history. */
   first_at: string;
   /** How many times it has been logged. Never summed into a score. */
@@ -59,6 +60,8 @@ export interface WildCollection {
    a history, and the thing you are proudest of should not sink because you
    found it on a Tuesday. */
 const RANK: Record<Rarity, number> = { mythic: 0, rare: 1, uncommon: 2, common: 3 };
+/* Unknown sorts last: an absence of data must not outrank a measured mythic. */
+const rankOf = (r: Rarity | null) => (r === null ? 99 : RANK[r]);
 
 const KIND_ORDER: Kind[] = [
   "tree", "plant", "fungus", "bracket", "bird", "butterfly", "insect",
@@ -120,12 +123,13 @@ export function wildCollection(
   for (const kind of KIND_ORDER) {
     const of_kind = find
       .filter((f) => f.kind === kind)
-      .sort((a, b) => RANK[a.rarity] - RANK[b.rarity] || a.first_at.localeCompare(b.first_at));
+      .sort((a, b) => rankOf(a.rarity) - rankOf(b.rarity) || a.first_at.localeCompare(b.first_at));
     if (of_kind.length > 0) group.push({ kind, row: of_kind });
   }
 
   let best: Rarity | null = null;
   for (const f of find) {
+    if (f.rarity === null) continue;
     if (best === null || RANK[f.rarity] < RANK[best]) best = f.rarity;
   }
 

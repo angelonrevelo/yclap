@@ -586,13 +586,15 @@ export default function PlayMap({
               const p = project(row);
               const kind = kindOf(row.iconic_taxon_name, row.archetype);
               const tone = KIND_TONE[kind];
-              const tick = RARITY_ORDER.indexOf(row.rarity) + 1;
+              /* Zero ticks when the sweep never counted the species — the stem
+                 makes no claim rather than drawing the rarest reading. */
+              const tick = row.rarity ? RARITY_ORDER.indexOf(row.rarity) + 1 : 0;
               const is_logged = seen_species.has(row.species_code);
               return (
                 <div
                   key={row.spawn_id}
                   onClick={onSelectSpawn ? () => onSelectSpawn(row) : undefined}
-                  title={`${row.common_name} — ${row.rarity}, out until ${new Date(row.ends_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`}
+                  title={`${row.common_name}${row.rarity ? ` — ${row.rarity}` : ""}, out until ${new Date(row.ends_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`}
                   style={{
                     position: "absolute",
                     left: p.x,
@@ -604,7 +606,7 @@ export default function PlayMap({
                     zIndex: 3,
                   }}
                 >
-                  <svg width="38" height="50" viewBox="0 0 38 50" aria-label={`${row.common_name} — ${kind}, ${row.rarity}`}>
+                  <svg width="38" height="50" viewBox="0 0 38 50" aria-label={`${row.common_name} — ${kind}${row.rarity ? `, ${row.rarity}` : ""}`}>
                     <ellipse cx="19" cy="47" rx="9" ry="3.4" fill="rgba(28,74,34,0.22)" />
                     <line x1="19" y1="44" x2="19" y2="30" stroke={tone} strokeWidth="1.4" strokeDasharray="2 2" opacity="0.85" />
                     {/* Rarity rides on the STEM as a tick count, so the disc is

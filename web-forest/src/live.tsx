@@ -65,8 +65,9 @@ export interface SpawnWorld {
   spawn: Spawn[];
   /** The pool as loaded — the wider collection shelf reads names off it. */
   pool: SpawnPoolEntry[];
-  /** species_code → real campus observation count, for the rarity badges. */
-  pool_count: ReadonlyMap<string, number>;
+  /** species_code → real campus observation count. Null where the sweep
+   *  has none, so a caller cannot mistake "unrecorded" for zero. */
+  pool_count: ReadonlyMap<string, number | null>;
   /** ISO instant this window closes — the countdown reads off it. */
   ends_at: string;
   is_ready: boolean;
@@ -136,13 +137,13 @@ const RARITY_TONE: Record<Rarity, { fg: string; bg: string; bd: string }> = {
  * The rarity chip. It carries a shape as well as a colour — one to four dots —
  * so it survives the same greyscale test the map pins were held to.
  */
-export function RarityPill({ rarity, count }: { rarity: Rarity; count?: number }) {
+export function RarityPill({ rarity, count }: { rarity: Rarity; count?: number | null }) {
   const tone = RARITY_TONE[rarity];
   const dot = RARITY_ORDER.indexOf(rarity) + 1;
   return (
     <span
       className="inline-flex items-center gap-1.5"
-      title={count === undefined ? undefined : `${count} campus observation${count === 1 ? "" : "s"} on iNaturalist`}
+      title={count === undefined || count === null ? undefined : `${count} campus observation${count === 1 ? "" : "s"} on iNaturalist`}
       style={{
         background: tone.bg,
         color: tone.fg,
@@ -253,7 +254,8 @@ export function SpawnStrip({
                     ` · ${formatMeter(distance_m)}${distance_m >= 50 ? ` · ${formatWalkMinute(distance_m)}` : ""}`}
                 </div>
               </div>
-              <RarityPill rarity={s.rarity} count={world.pool_count.get(s.species_code)} />
+              {/* No band at all when the sweep never counted it. */}
+              {s.rarity && <RarityPill rarity={s.rarity} count={world.pool_count.get(s.species_code)} />}
             </button>
           );
         })}
@@ -323,7 +325,7 @@ export function BadgeShelf({
   is_desktop,
 }: {
   sighting: Sighting[];
-  pool_count: ReadonlyMap<string, number>;
+  pool_count: ReadonlyMap<string, number | null>;
   is_desktop: boolean;
 }) {
   const award = useMemo(
@@ -418,7 +420,7 @@ function WildTile({ find }: { find: WildFind }) {
           {find.times > 1 && ` · seen ${find.times}×`}
         </div>
       </div>
-      <RarityPill rarity={find.rarity} count={find.campus_count} />
+      {find.rarity && <RarityPill rarity={find.rarity} count={find.campus_count} />}
     </div>
   );
 }

@@ -24,7 +24,7 @@ import { biome_sector, sectorAt } from "./sector.ts";
 export interface BadgeContext {
   /** species_code → real iNaturalist campus observation count. Optional:
    *  without it the rarity badge simply waits for data. */
-  pool_count?: ReadonlyMap<string, number>;
+  pool_count?: ReadonlyMap<string, number | null>;
   /** How many biome sectors exist — the "whole campus" denominator. */
   sector_total: number;
 }
@@ -180,7 +180,10 @@ export const BADGE_LIST: BadgeDef[] = [
       if (!counts) return null;
       return firstAt(row, (s) => {
         const c = counts.get(s.species_code);
-        return c !== undefined && c <= 4;
+        /* `null` means the sweep never counted it, not that it is rare. Letting
+           null through would have awarded Rare Catch for photographing a
+           mahogany. */
+        return typeof c === "number" && c <= 4;
       });
     },
   },
