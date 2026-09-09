@@ -64,10 +64,24 @@ Live on the phone, mirrored to the projector. Rehearse this exact path:
 | Beat | On screen |
 |---|---|
 | 0:00 | Home. "Out right now" — four finds, nearest first, each with distance and walk minutes |
-| 0:12 | Tap the nearest. Map moves to it; the marker is a *bird*, not a generic dot |
-| 0:25 | Walk in (demo walk). Inside 40 m the camera opens on that species |
-| 0:40 | Save. Journal count moves; the character advances a stage; the blind-box variant reveals |
-| 0:52 | Journal → badge shelf. "First Find", "Three Grounds", earned with dates |
+| 0:12 | **Wait for a row to read "You are here — tap to log it"**, then tap that one. See the note below; this is the beat that can bite |
+| 0:25 | The camera opens on that species and shows its rarity |
+| 0:40 | Save. Journal count moves; **the character advances Sapling → Tree and the blind-box variant reveals** |
+| 0:52 | Journal → the badge shelf and "Beyond the guide", both already full, with the demo banner visible |
+
+**Set it up with `?seed=demo`.** That fills the journal so nothing is empty on
+stage, lands the character deliberately at **8 of 9 sectors** so the save at
+0:40 is the one that advances the stage, and shows an amber banner saying the
+finds were seeded — the disclosure this checklist used to leave to the
+presenter's memory.
+
+**The beat that can bite.** Rehearsed 2026-09-09: the demo walk swings finds in
+and out of the 40 m reach every few seconds — measured 3 reachable, then 1,
+then 1, then 0, inside half a minute. Tapping a find that is out of reach moves
+the map instead of opening the camera. That is correct behaviour and the wrong
+beat, and on stage it looks like the app ignored you. So wait for the "You are
+here" line rather than tapping the top row on faith; if nothing is reachable,
+keep talking for five seconds and the walk brings one in.
 
 **If the wifi dies:** the offline build is the fallback and the demo path above does not
 touch the network.
@@ -153,4 +167,4 @@ Close on the contradiction from slide 1, then the mission line:
 - [ ] `npm run build && npm run preview` offline backup on the laptop
 - [ ] Screen-record the sixty-second path in case the phone misbehaves
 - [ ] Character stage models precached — open the app once on the demo device beforehand
-- [ ] Journal pre-seeded so the badge shelf is not empty on stage, and *say* it is seeded
+- [ ] Open with `?seed=demo` — journal filled, stage at 8/9, and the banner says it is seeded
