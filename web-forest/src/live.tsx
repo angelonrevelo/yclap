@@ -185,8 +185,53 @@ export function SpawnStrip({
 }) {
   const now_ms = Date.now();
   const row = useMemo(() => rankSpawn(world.spawn, fix ?? null, limit), [world.spawn, fix, limit]);
-  if (!world.is_ready || row.length === 0) return null;
   const left = windowMinuteLeft(world.ends_at, now_ms);
+
+  /* Empty / not-ready used to render nothing — a blank hole on home that read
+     as unfinished. Same Card chrome, softer copy: inviting, not a scoreboard. */
+  if (!world.is_ready || row.length === 0) {
+    return (
+      <Card padding={is_desktop ? 18 : 14}>
+        <Eyebrow>OUT RIGHT NOW</Eyebrow>
+        <div
+          style={{
+            marginTop: 12,
+            borderRadius: RADIUS.tile,
+            background: "var(--brand-mist)",
+            border: "1.5px dashed rgba(21,77,48,0.22)",
+            padding: is_desktop ? "18px 16px" : "14px 12px",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 999,
+              margin: "0 auto",
+              background: "rgba(62,154,94,0.16)",
+              display: "grid",
+              placeItems: "center",
+              color: "var(--brand-forest)",
+              fontWeight: 800,
+              fontSize: 22,
+              lineHeight: 1,
+            }}
+            aria-hidden
+          >
+            ?
+          </div>
+          <p style={{ fontWeight: 800, fontSize: 15, marginTop: 10, color: "var(--brand-forest)", lineHeight: 1.3 }}>
+            {!world.is_ready ? "Looking for what is out right now…" : "Nothing along the path in this window."}
+          </p>
+          <p style={{ fontSize: 12.5, color: "rgba(31,32,34,0.65)", marginTop: 8, lineHeight: 1.45 }}>
+            Finds rotate every 30 minutes across campus. Take a walk — the path is the guide. Rediscovering home starts
+            with noticing what is already here.
+          </p>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card padding={is_desktop ? 18 : 14}>

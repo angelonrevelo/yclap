@@ -120,15 +120,16 @@ function StatTile({ big, line, source }: { big: string; line: string; source: st
     <div
       className="flex-1"
       style={{
-        background: "#F9F9F9",
-        border: "1.5px solid #E4E7E8",
+        background: "var(--brand-mist)",
+        border: "1.5px solid rgba(21,77,48,0.12)",
         borderRadius: TILE_RADIUS,
         padding: "12px 10px",
         display: "flex",
         flexDirection: "column",
+        boxShadow: "0 6px 16px rgba(21,77,48,0.05)",
       }}
     >
-      <div style={{ fontWeight: 800, fontSize: 20, color: "#1F2022", lineHeight: 1.05 }}>{big}</div>
+      <div style={{ fontWeight: 800, fontSize: 20, color: "var(--brand-forest)", lineHeight: 1.05 }}>{big}</div>
       <div style={{ fontSize: 11.5, color: "rgba(31,32,34,0.78)", marginTop: 4, lineHeight: 1.35 }}>{line}</div>
       <div style={{ fontSize: 10, color: "rgba(31,32,34,0.45)", marginTop: "auto", paddingTop: 4 }}>{source}</div>
     </div>
@@ -147,8 +148,8 @@ function MobileNav({ route, onRoute }: { route: Route; onRoute: (r: Route) => vo
       className="absolute inset-x-0 bottom-0 flex items-stretch"
       style={{
         height: 64,
-        background: "rgba(249,249,249,0.96)",
-        borderTop: "1.5px solid #E4E7E8",
+        background: "rgba(247,250,246,0.96)",
+        borderTop: "1.5px solid rgba(21,77,48,0.10)",
         backdropFilter: "blur(8px)",
         zIndex: 40,
       }}
@@ -186,6 +187,20 @@ function MobileNav({ route, onRoute }: { route: Route; onRoute: (r: Route) => vo
   );
 }
 
+
+/** Magisphere wordmark + Canva tagline. Shared by phone header and desktop rail. */
+function BrandLockup({ mark_size = 28, title_size = 20 }: { mark_size?: number; title_size?: number }) {
+  return (
+    <div className="flex items-center gap-2">
+      <PlantMark size={mark_size} />
+      <div>
+        <div style={{ fontWeight: 800, fontSize: title_size, lineHeight: 1, color: "var(--brand-forest)" }}>Magisphere</div>
+        <div style={{ fontSize: 12, color: "var(--brand-green)", fontWeight: 700, marginTop: 3 }}>Rediscovering home.</div>
+      </div>
+    </div>
+  );
+}
+
 function HomeScreen({
   is_desktop,
   onWalk,
@@ -201,11 +216,14 @@ function HomeScreen({
 }) {
   if (is_desktop) {
     return (
-      <div className="flex-1 scroll-soft" style={{ background: "#F9F9F9", overflowY: "auto", overflowX: "hidden", padding: "56px 64px" }}>
+      <div className="flex-1 scroll-soft" style={{ background: "var(--brand-mist)", overflowY: "auto", overflowX: "hidden", padding: "56px 64px" }}>
         <div className="flex gap-14" style={{ alignItems: "flex-start" }}>
           <div style={{ maxWidth: 640 }}>
-            <div style={{ width: 72, height: 5, borderRadius: 999, background: "var(--grad-brand)", marginBottom: 26 }} />
-            <h1 style={{ fontWeight: 800, fontSize: 46, lineHeight: 1.12, letterSpacing: "-0.015em" }}>
+            <div style={{ marginBottom: 22 }}>
+              <BrandLockup mark_size={36} title_size={26} />
+            </div>
+            <div style={{ width: 72, height: 5, borderRadius: 999, background: "var(--grad-brand)", marginBottom: 22 }} />
+            <h1 style={{ fontWeight: 800, fontSize: 46, lineHeight: 1.12, letterSpacing: "-0.015em", color: "var(--brand-forest)" }}>
               Two-thirds of this campus is green. Most of us cannot name what we are walking under.
             </h1>
             <p style={{ fontSize: 18, color: "rgba(31,32,34,0.8)", marginTop: 20, lineHeight: 1.5, maxWidth: 560 }}>
@@ -219,11 +237,11 @@ function HomeScreen({
             <div className="flex items-center gap-4" style={{ marginTop: 28 }}>
               <button
                 onClick={onWalk}
-                style={{ height: 52, padding: "0 30px", borderRadius: 12, background: "var(--ui-accent)", color: "#fff", fontWeight: 700, fontSize: 16 }}
+                style={{ height: 52, padding: "0 30px", borderRadius: RADIUS.pill, background: "var(--ui-accent)", color: "#fff", fontWeight: 700, fontSize: 16, boxShadow: "0 8px 20px rgba(21,77,48,0.22)" }}
               >
                 Walk the campus
               </button>
-              <button onClick={onPlan} style={{ height: 52, color: "#075D89", fontWeight: 700, fontSize: 15 }}>
+              <button onClick={onPlan} style={{ height: 52, color: "var(--brand-blue)", fontWeight: 700, fontSize: 15 }}>
                 Read the plan
               </button>
             </div>
@@ -248,8 +266,8 @@ function HomeScreen({
               flexShrink: 0,
               borderRadius: CARD_RADIUS,
               overflow: "hidden",
-              background: "#fff",
-              border: "1.5px solid #E4E7E8",
+              background: "#fffef9",
+              border: "1.5px solid rgba(21,77,48,0.12)",
               boxShadow: "var(--shadow-card)",
               textAlign: "left",
             }}
@@ -284,19 +302,13 @@ function HomeScreen({
   }
 
   return (
-    <div className="scroll-soft" style={{ height: "100%", overflowY: "auto", overflowX: "hidden", background: "#F9F9F9", paddingBottom: 80 }}>
+    <div className="scroll-soft" style={{ height: "100%", overflowY: "auto", overflowX: "hidden", background: "var(--brand-mist)", paddingBottom: 80 }}>
       <header style={{ padding: 12 }}>
-        <div className="flex items-center gap-2">
-          <PlantMark size={28} />
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 20, lineHeight: 1 }}>Magisphere</div>
-            <div style={{ fontSize: 12, color: "var(--ui-accent)", fontWeight: 700, marginTop: 3 }}>Ateneo Loyola Heights</div>
-          </div>
-        </div>
+        <BrandLockup mark_size={28} title_size={20} />
       </header>
       <div style={{ paddingLeft: 20, paddingRight: 20, marginTop: 14 }}>
         <div style={{ width: 56, height: 4, borderRadius: 999, background: "var(--grad-brand)", marginBottom: 16 }} />
-        <h1 style={{ fontWeight: 800, fontSize: 28, lineHeight: 1.15, letterSpacing: "-0.01em", maxWidth: 330 }}>
+        <h1 style={{ fontWeight: 800, fontSize: 28, lineHeight: 1.15, letterSpacing: "-0.01em", maxWidth: 330, color: "var(--brand-forest)" }}>
           Two-thirds of this campus is green. Most of us cannot name what we are walking under.
         </h1>
         <p style={{ fontSize: 15, color: "rgba(31,32,34,0.8)", marginTop: 14, lineHeight: 1.5 }}>
@@ -311,11 +323,11 @@ function HomeScreen({
       <div style={{ padding: "16px 20px 0" }}>
         <button
           onClick={onWalk}
-          style={{ width: "100%", height: 48, borderRadius: 12, background: "var(--ui-accent)", color: "#fff", fontWeight: 700, fontSize: 15 }}
+          style={{ width: "100%", height: 48, borderRadius: RADIUS.pill, background: "var(--ui-accent)", color: "#fff", fontWeight: 700, fontSize: 15, boxShadow: "0 8px 18px rgba(21,77,48,0.2)" }}
         >
           Walk the campus
         </button>
-        <button onClick={onPlan} style={{ width: "100%", height: 44, color: "#075D89", fontWeight: 700, fontSize: 15, marginTop: 6 }}>
+        <button onClick={onPlan} style={{ width: "100%", height: 44, color: "var(--brand-blue)", fontWeight: 700, fontSize: 15, marginTop: 6 }}>
           Read the plan
         </button>
       </div>
@@ -345,9 +357,10 @@ function LandmarkCard({ is_desktop }: { is_desktop: boolean }) {
   return (
     <div
       style={{
-        background: "#fff",
-        border: "1.5px solid #E4E7E8",
+        background: "#fffef9",
+        border: "1.5px solid rgba(21,77,48,0.12)",
         borderRadius: CARD_RADIUS,
+        boxShadow: "var(--shadow-card)",
         padding: is_desktop ? 20 : 16,
         display: "flex",
         gap: 14,
@@ -1973,18 +1986,44 @@ function JournalScreen({
         style={{
           height: "100%",
           overflowY: "auto",
-          background: "#F9F9F9",
+          background: "var(--brand-mist)",
           padding: is_desktop ? "40px 72px" : "20px 20px 80px",
           display: "grid",
           placeItems: "center",
         }}
       >
-        <div style={{ textAlign: "center" }}>
-          <img src={spot.empty_journal} width={120} height={120} alt="" style={{ margin: "0 auto" }} />
-          <p style={{ fontWeight: 800, fontSize: 18, marginTop: 12 }}>Walk a path. Log what you see.</p>
-          <p style={{ fontSize: 12, color: "rgba(31,32,34,0.55)", marginTop: 10, maxWidth: 320, lineHeight: 1.45 }}>
-            Reflection, not a race. Ateneo already designed an SDG game that way (Rodrigo, Favis, Cuyegkeng 2021 — RECIPE /
-            Meaningful Gamification).
+        <div
+          style={{
+            textAlign: "center",
+            maxWidth: 380,
+            background: "#fffef9",
+            border: "1.5px solid rgba(21,77,48,0.12)",
+            borderRadius: CARD_RADIUS,
+            boxShadow: "var(--shadow-card)",
+            padding: is_desktop ? "36px 40px" : "28px 22px",
+          }}
+        >
+          <div
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: 999,
+              margin: "0 auto",
+              background: "rgba(62,154,94,0.14)",
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
+            <img src={spot.empty_journal} width={52} height={52} alt="" />
+          </div>
+          <p style={{ fontWeight: 800, fontSize: is_desktop ? 22 : 19, marginTop: 16, color: "var(--brand-forest)", lineHeight: 1.25 }}>
+            Your journal is waiting.
+          </p>
+          <p style={{ fontSize: 14, color: "rgba(31,32,34,0.72)", marginTop: 10, lineHeight: 1.5 }}>
+            Walk a path, notice a tree, and log what you see. Magisphere is about rediscovering home — reflection, not a race.
+          </p>
+          <p style={{ fontSize: 11.5, color: "rgba(31,32,34,0.5)", marginTop: 14, lineHeight: 1.45 }}>
+            Ateneo already designed an SDG game that way (Rodrigo, Favis, Cuyegkeng 2021 — RECIPE / Meaningful Gamification).
           </p>
         </div>
       </div>
@@ -1997,14 +2036,14 @@ function JournalScreen({
         height: "100%",
         overflowY: "auto",
         overflowX: "hidden",
-        background: "#F9F9F9",
+        background: "var(--brand-cream, #f7faf6)",
         padding: is_desktop ? "40px 72px 48px" : "18px 20px 80px",
       }}
     >
       <div style={{ maxWidth: is_desktop ? 720 : undefined, margin: is_desktop ? "0 auto" : undefined }}>
         <div className="flex items-center gap-3">
           <img src={spot.success_log} width={56} height={56} alt="" />
-          <h1 style={{ fontWeight: 800, fontSize: is_desktop ? 30 : 24 }}>Your journal</h1>
+          <h1 style={{ fontWeight: 800, fontSize: is_desktop ? 30 : 24, color: "var(--brand-forest)" }}>Your journal</h1>
         </div>
         <p style={{ fontSize: 13, color: "var(--ui-accent)", marginTop: 2 }}>Stays on this phone.</p>
         {/* The deck's own AV checklist says to seed the journal AND say it is
@@ -2252,8 +2291,8 @@ function DesktopRail({
         width: is_wide ? 232 : 196,
         flexShrink: 0,
         height: "100%",
-        background: "#F9F9F9",
-        borderRight: "1.5px solid #E4E7E8",
+        background: "var(--brand-cream, #f7faf6)",
+        borderRight: "1.5px solid rgba(21,77,48,0.10)",
         padding: "22px 16px 18px",
       }}
     >
@@ -2262,13 +2301,7 @@ function DesktopRail({
         className="flex items-center gap-2.5"
         style={{ textAlign: "left", padding: "0 6px" }}
       >
-        <PlantMark size={32} />
-        <span style={{ minWidth: 0 }}>
-          <span style={{ display: "block", fontWeight: 800, fontSize: 17, lineHeight: 1 }}>Magisphere</span>
-          <span style={{ display: "block", fontSize: 11, color: "var(--ui-accent)", fontWeight: 700, marginTop: 2 }}>
-            Ateneo Loyola Heights
-          </span>
-        </span>
+        <BrandLockup mark_size={32} title_size={17} />
       </button>
 
       <div className="flex flex-col" style={{ gap: 4, marginTop: 26 }}>
@@ -3463,7 +3496,7 @@ export default function App() {
   );
 
   return (
-    <div style={{ height: "100%", background: "#F9F9F9", color: "#1F2022", overflowX: "hidden" }}>
+    <div style={{ height: "100%", background: "var(--brand-cream, #f7faf6)", color: "#1F2022", overflowX: "hidden" }}>
       {is_desktop ? (
         /* Rail down the left, everything else in the column beside it. The
            inner column keeps flex-direction column so each route's own

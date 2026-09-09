@@ -10,14 +10,14 @@
   --color-orange: #f6b22d;
   --color-red: #ff3920;
   --color-ink: #1f2022;
-  --color-paper: #f9f9f9;
+  --color-paper: #f7faf6;
   --color-grid: #e4e7e8;
   --color-focus: #073e5f;
   --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
-  --shadow-card: 0 12px 28px rgba(31, 32, 34, 0.12);
+  --shadow-card: 0 10px 28px rgba(21, 77, 48, 0.10);
   --grad-forest: linear-gradient(115deg, #55d334, #008653);
   --grad-lagoon: linear-gradient(115deg, #058cd6, #45c223);
   /* Magisphere brand, sampled off the FINAL Canva publication material
@@ -35,6 +35,7 @@
   --brand-green: #3e9a5e;
   --brand-blue: #3463b5;
   --brand-mist: #ebfdef;
+  --brand-cream: #f7faf6;
   --grad-brand: linear-gradient(115deg, #154d30, #3e9a5e 55%, #3463b5);
   /* The two ROLES the one green used to serve, still separated — that split
      was right and survives the repaint. --ui-accent is chrome: nav, buttons,
@@ -56,7 +57,7 @@ body {
   margin: 0;
   font-family: "Montserrat", ui-sans-serif, system-ui, sans-serif;
   color: #1f2022;
-  background: #f9f9f9;
+  background: #f7faf6;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }

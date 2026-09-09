@@ -15,7 +15,7 @@ import { species, type Origin, type Species } from "./data";
  * and a meta line underneath. Everything else is spacing.
  */
 
-export const RADIUS = { card: 24, tile: 20, pill: 999 } as const;
+export const RADIUS = { card: 28, tile: 22, pill: 999 } as const;
 
 export interface Accent {
   /** Line and text colour. */
@@ -222,7 +222,7 @@ export function Fab({
         placeItems: "center",
         /* The kit glyphs are green on ink. A green disc would swallow them, so
            the disc is paper and the ring carries the brand colour instead. */
-        background: "#F9F9F9",
+        background: "var(--brand-cream, #f7faf6)",
         border: is_leaf ? "4px solid var(--ui-accent)" : "1.5px solid #E4E7E8",
         boxShadow: "0 8px 20px rgba(31,32,34,0.28)",
         flexShrink: 0,
@@ -253,9 +253,10 @@ export function Card({
   return (
     <div
       style={{
-        background: "#fff",
-        border: "1.5px solid #E4E7E8",
+        background: "#fffef9",
+        border: "1.5px solid rgba(21,77,48,0.10)",
         borderRadius: RADIUS.card,
+        boxShadow: "var(--shadow-card)",
         padding,
         ...style,
       }}
@@ -289,7 +290,7 @@ export function Chip({
       onClick={onClick}
       className="flex items-center gap-1.5"
       style={{
-        background: "#F9F9F9",
+        background: "var(--brand-cream, #f7faf6)",
         border: `1.5px solid ${is_on ? tone : "#E4E7E8"}`,
         color: is_on ? tone : "#1F2022",
         borderRadius: RADIUS.pill,
@@ -322,7 +323,7 @@ export function GlyphDisc({ children, size = 28 }: { children: ReactNode; size?:
         height: size,
         flexShrink: 0,
         borderRadius: RADIUS.pill,
-        background: "#F9F9F9",
+        background: "var(--brand-cream, #f7faf6)",
         display: "grid",
         placeItems: "center",
       }}
