@@ -203,7 +203,7 @@ export function fitZoom(width_px: number, height_px: number, pad = 0.9): number 
 }
 
 export const MIN_ZOOM = 15;
-export const MAX_ZOOM = 19;
+export const MAX_ZOOM = 20;
 
 /** Keep the stage demo on campus: a centre may not leave the box by much. */
 export const PAN_MARGIN_DEGREE = 0.004;

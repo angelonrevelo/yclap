@@ -4,7 +4,7 @@ import {
   CAMPUS_BOX,
   clampCenter,
   fromWorld,
-
+  MAX_ZOOM,
   meterPerPixel,
   MIN_ZOOM,
   TILE_SIZE,
@@ -40,7 +40,7 @@ import {
  *
  * `toScreen` and the CSS transform BOTH read this, so the two cannot drift.
  */
-const PLAYER_SCREEN_Y = 0.72;
+const PLAYER_SCREEN_Y = 0.70;
 
 export interface View extends LatLon {
   zoom: number;
@@ -186,7 +186,11 @@ export default function TileMap({
   }, []);
 
   const source = SOURCE[layer];
-  const zoom = Math.round(Math.max(MIN_ZOOM, Math.min(source.max_zoom, view.zoom)));
+  /* Play hides tiles and draws its own ground, so it is not capped by a
+     raster source's max zoom — that is what lets the camera sit closer than
+     OSM's z19 ceiling. Field still respects the active basemap. */
+  const zoom_cap = is_tile_hidden ? MAX_ZOOM : source.max_zoom;
+  const zoom = Math.round(Math.max(MIN_ZOOM, Math.min(zoom_cap, view.zoom)));
   const center_world = toWorld(view, zoom);
   const origin = {
     x: center_world.x - size.width / 2,
@@ -204,7 +208,7 @@ export default function TileMap({
   /* Zoom about the cursor, so the feature under the pointer stays put. */
   const zoomAt = useCallback(
     (step: number, client_x?: number, client_y?: number) => {
-      const next_zoom = Math.max(MIN_ZOOM, Math.min(source.max_zoom, zoom + step));
+      const next_zoom = Math.max(MIN_ZOOM, Math.min(zoom_cap, zoom + step));
       if (next_zoom === zoom) return;
       const rect = box_ref.current?.getBoundingClientRect();
       if (!rect || client_x === undefined || client_y === undefined) {
@@ -225,7 +229,7 @@ export default function TileMap({
       );
       onView({ ...clampCenter(next_center), zoom: next_zoom });
     },
-    [zoom, origin.x, origin.y, size.width, size.height, view, onView, source.max_zoom],
+    [zoom, zoom_cap, origin.x, origin.y, size.width, size.height, view, onView],
   );
 
   useEffect(() => {

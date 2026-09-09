@@ -1,10 +1,11 @@
 import { useMemo, useRef } from "react";
 import campus_shape from "./asset/campus-shape.json" with { type: "json" };
+import Botanical from "./botanical";
 import Character, { type Stage } from "./character";
-import { RESTRICTED_POLYGON, species, type Encounter } from "./data";
+import { AT_TREE_RADIUS_M, RESTRICTED_POLYGON, species, type Encounter } from "./data";
 import { residentBySector } from "./nearby";
-import { pinKindOf, pinRingWidth, type PinKind } from "./pin";
-import type { Fix } from "./geo";
+import { pinKindOf, type PinKind } from "./pin";
+import { distanceMeter, type Fix } from "./geo";
 import {
   biome_sector,
   SECTOR_ATTRIBUTION,
@@ -47,9 +48,9 @@ import { KindPath, KIND_TONE } from "./kind-mark";
  * every line on this screen is OSM geometry and says so.
  */
 
-/* 46, not 52. The steeper rake pushed so much far-field into frame that half
-   the screen was haze, and it got worse the moment the camera could swing. */
-const TILT_DEGREE = 46;
+/* 52° play-view rake. Earlier 46° left the walker feeling small on a flat
+   diagram; sky haze is handled by the gradient overlay rather than by flattening. */
+const TILT_DEGREE = 52;
 const GROUND = "#CFE3BD";
 const MAX_LABEL = 5;
 
@@ -238,14 +239,6 @@ function pickLabel(
     placed.push({ row: s, screen_x: p.x, screen_y: p.y, scale: p.scale });
   }
   return placed;
-}
-
-/* Pin shape vocabulary lives in ./pin.ts — see the note there on why. */
-
-function PinCentre({ kind, fill }: { kind: PinKind; fill: string }) {
-  if (kind === "exotic") return <rect x="13" y="12" width="14" height="14" rx="2" fill={fill} />;
-  if (kind === "threatened") return <path d="M20 11 L28.5 25.5 L11.5 25.5 Z" fill={fill} />;
-  return <circle cx="20" cy="19" r="7.5" fill={fill} />;
 }
 
 export default function PlayMap({
@@ -508,12 +501,38 @@ export default function PlayMap({
                 />
               )}
 
-              {/* 5 · the ground shadow under each find, drawn with the map so it
-                   sits ON the sector. The pin itself billboards above it. */}
+              {/* 5 · soft ground contact under each find (and in-range ripples).
+                   Ripples are diegetic: only when the walker is close enough to log. */}
             {marker.map((e) => {
               const p = project({ lat: e.lat, lon: e.lon });
-              return <ellipse key={`sh-${e.encounter_id}`} cx={p.x} cy={p.y} rx="15" ry="10" fill="rgba(28,74,34,0.20)" />;
+              const pin_kind = pinKindOf(species[e.species_code]);
+              if (pin_filter && pin_filter.size > 0 && !pin_filter.has(pin_kind)) return null;
+              const in_range = fix ? distanceMeter(fix, e) <= AT_TREE_RADIUS_M : false;
+              const px = Math.max(10, AT_TREE_RADIUS_M / Math.max(projection.meter_per_pixel, 0.01));
+              return (
+                <g key={`sh-${e.encounter_id}`}>
+                  <ellipse cx={p.x} cy={p.y} rx="12" ry="7" fill="rgba(28,74,34,0.18)" />
+                  {in_range && (
+                    <>
+                      <ellipse cx={p.x} cy={p.y} rx={px * 0.55} ry={px * 0.32} fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="2" style={{ animation: "fgpulse 1.8s ease-out infinite" }} />
+                      <ellipse cx={p.x} cy={p.y} rx={px * 0.85} ry={px * 0.48} fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" style={{ animation: "fgpulse 1.8s ease-out 0.45s infinite" }} />
+                    </>
+                  )}
+                </g>
+              );
             })}
+
+            {/* Walker interaction radius — quiet white pulse, genre grammar. */}
+            {fix && (() => {
+              const p = project(fix);
+              const r = Math.max(14, AT_TREE_RADIUS_M / Math.max(projection.meter_per_pixel, 0.01));
+              return (
+                <g pointerEvents="none">
+                  <ellipse cx={p.x} cy={p.y} rx={r} ry={r * 0.55} fill="rgba(255,255,255,0.14)" stroke="rgba(255,255,255,0.55)" strokeWidth="1.5" />
+                  <ellipse cx={p.x} cy={p.y} rx={r * 0.72} ry={r * 0.4} fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" style={{ animation: "fgpulse 2.2s ease-out infinite" }} />
+                </g>
+              );
+            })()}
 
             {/* 6 · a walked sector gets a quiet tick. Never a score. */}
               {sector_row
@@ -529,17 +548,15 @@ export default function PlayMap({
                 })}
             </svg>
 
-            {/* The finds, standing up out of the plane like the walker does.
-                A flat dot on the ground reads as a map symbol; a pin standing
-                against raked ground reads as a thing over there worth walking
-                to, which is the loop this view exists for. */}
+            {/* Finds: large botanical model, tiny stem chrome — not a map pin. */}
             {marker.map((e) => {
               const p = project({ lat: e.lat, lon: e.lon });
               const sp = species[e.species_code];
               const is_logged = seen_species.has(e.species_code);
               const pin_kind = pinKindOf(sp);
-              /* No filter set means every kind is drawn. */
               if (pin_filter && pin_filter.size > 0 && !pin_filter.has(pin_kind)) return null;
+              const in_range = fix ? distanceMeter(fix, e) <= AT_TREE_RADIUS_M : false;
+              const model = is_desktop ? 64 : 56;
               return (
                 <div
                   key={`pin-${e.encounter_id}`}
@@ -553,43 +570,44 @@ export default function PlayMap({
                     transformOrigin: "50% 100%",
                     transformStyle: "preserve-3d",
                     cursor: "pointer",
-                    zIndex: 4,
+                    zIndex: in_range ? 6 : 4,
+                    filter: in_range ? "drop-shadow(0 0 10px rgba(255,255,255,0.65))" : undefined,
                   }}
                 >
-                  <svg
-                    width="40"
-                    height="52"
-                    viewBox="0 0 40 52"
-                    aria-label={`${sp?.common_name ?? "A find"} — ${pin_kind}`}
-                  >
-                    <path
-                      d="M20 51 C20 51 4 30 4 19 A16 16 0 0 1 36 19 C36 30 20 51 20 51 Z"
-                      fill={is_logged ? "#2F6B3A" : "#FFFFFF"}
-                      stroke="#2F6B3A"
-                      strokeWidth={pinRingWidth(pin_kind)}
-                      strokeLinejoin="round"
-                    />
-                    <PinCentre kind={pin_kind} fill={is_logged ? "#FFFFFF" : "#2F6B3A"} />
-                  </svg>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: model }}>
+                    <div
+                      style={{
+                        width: model,
+                        height: model,
+                        borderRadius: 999,
+                        background: is_logged ? "rgba(47,107,58,0.14)" : "rgba(255,255,255,0.92)",
+                        border: `2.5px solid ${is_logged ? "#2F6B3A" : "rgba(47,107,58,0.55)"}`,
+                        boxShadow: "0 6px 16px rgba(24,38,20,0.22)",
+                        display: "grid",
+                        placeItems: "center",
+                        overflow: "hidden",
+                      }}
+                      aria-label={`${sp?.common_name ?? "A find"} — ${pin_kind}`}
+                    >
+                      <div style={{ width: "86%" }}>
+                        <Botanical species_code={e.species_code} is_silhouette={is_logged} />
+                      </div>
+                    </div>
+                    <div style={{ width: 3, height: 10, background: "rgba(47,107,58,0.55)", borderRadius: 2, marginTop: 1 }} />
+                    <div style={{ width: 14, height: 4, borderRadius: 999, background: "rgba(28,74,34,0.28)" }} />
+                  </div>
                 </div>
               );
             })}
 
-            {/* The world's finds for this window.
-                They are drawn DIFFERENTLY from the surveyed markers above on
-                purpose. A surveyed encounter is a tree that is really there and
-                gets a solid pin; a spawn is a thing that is out for the next
-                half hour, so it gets a floating disc over a ground ring — the
-                grammar for "temporary" — and the ring's tick count carries the
-                rarity, so it survives greyscale like the pins do. */}
+            {/* Temporary world finds: larger disc, lighter stem, same kind mark. */}
             {spawn.map((row) => {
               const p = project(row);
               const kind = kindOf(row.iconic_taxon_name, row.archetype);
               const tone = KIND_TONE[kind];
-              /* Zero ticks when the sweep never counted the species — the stem
-                 makes no claim rather than drawing the rarest reading. */
               const tick = row.rarity ? RARITY_ORDER.indexOf(row.rarity) + 1 : 0;
               const is_logged = seen_species.has(row.species_code);
+              const in_range = fix ? distanceMeter(fix, row) <= AT_TREE_RADIUS_M : false;
               return (
                 <div
                   key={row.spawn_id}
@@ -603,21 +621,19 @@ export default function PlayMap({
                     transformOrigin: "50% 100%",
                     transformStyle: "preserve-3d",
                     cursor: onSelectSpawn ? "pointer" : undefined,
-                    zIndex: 3,
+                    zIndex: in_range ? 5 : 3,
+                    filter: in_range ? "drop-shadow(0 0 8px rgba(255,255,255,0.55))" : undefined,
                   }}
                 >
-                  <svg width="38" height="50" viewBox="0 0 38 50" aria-label={`${row.common_name} — ${kind}${row.rarity ? `, ${row.rarity}` : ""}`}>
-                    <ellipse cx="19" cy="47" rx="9" ry="3.4" fill="rgba(28,74,34,0.22)" />
-                    <line x1="19" y1="44" x2="19" y2="30" stroke={tone} strokeWidth="1.4" strokeDasharray="2 2" opacity="0.85" />
-                    {/* Rarity rides on the STEM as a tick count, so the disc is
-                        free to say what kind of thing this is. Both survive
-                        greyscale: one is a count, one is a shape. */}
+                  <svg width="48" height="58" viewBox="0 0 48 58" aria-label={`${row.common_name} — ${kind}${row.rarity ? `, ${row.rarity}` : ""}`}>
+                    <ellipse cx="24" cy="54" rx="10" ry="3.6" fill="rgba(28,74,34,0.22)" />
+                    <line x1="24" y1="50" x2="24" y2="34" stroke={tone} strokeWidth="1.3" strokeDasharray="2 2" opacity="0.8" />
                     {Array.from({ length: tick }, (_, i) => (
-                      <circle key={i} cx="19" cy={43 - i * 3.4} r="1.5" fill={tone} />
+                      <circle key={i} cx="24" cy={49 - i * 3.4} r="1.5" fill={tone} />
                     ))}
-                    <circle cx="19" cy="15" r="13" fill={is_logged ? tone : "#FFFFFF"} stroke={tone} strokeWidth="2.2" />
+                    <circle cx="24" cy="18" r="16" fill={is_logged ? tone : "#FFFFFF"} stroke={tone} strokeWidth="2" />
                     <g
-                      transform="translate(7 3) scale(1)"
+                      transform="translate(10 4) scale(1.15)"
                       fill="none"
                       stroke={is_logged ? "#FFFFFF" : tone}
                       strokeWidth="1.9"
@@ -631,7 +647,7 @@ export default function PlayMap({
               );
             })}
 
-            {/* The walker. Standing up out of the plane. */}
+            {/* The walker. Standing up out of the plane — large in a GO play view. */}
             {fix && (
               <div
                 style={{
@@ -647,7 +663,7 @@ export default function PlayMap({
                 <Character
                   stage={stage}
                   vigor={vigor}
-                  size={is_desktop ? 104 : 86}
+                  size={is_desktop ? 128 : 108}
                   tilt_degree={TILT_DEGREE}
                   bearing_degree={bearing_degree}
                   is_walking={travel.current.is_walking}

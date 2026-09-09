@@ -109,14 +109,13 @@ import {
 /** ~1.2 m per pixel: a walker sees their block, not the whole 89 ha. */
 const WALK_ZOOM = 18;
 /**
- * Play sits one step closer than the field view.
+ * Play sits ~2× closer than field (z18 → z20).
  *
- * At 18 the campus does not fill a raked screen — the ground runs out well
- * before the top and leaves a dead band, because there is no geometry north of
- * the campus ring to draw. 19 puts buildings and paths at the scale you would
- * actually recognise while standing among them.
+ * Vector ground is not capped by OSM's z19 tile ceiling, so the camera can sit
+ * on the walker the way a GO play-view does — buildings and paths at standing
+ * scale, avatar large in frame.
  */
-const PLAY_ZOOM = 19;
+const PLAY_ZOOM = 20;
 const OVERVIEW_ZOOM = 16;
 
 const CARD_RADIUS = RADIUS.card;
@@ -628,24 +627,33 @@ function NearbySheet({
   distance_line,
   onLog,
   onDismiss,
+  is_panel = false,
 }: {
   sp: Species;
   where: string;
   distance_line: string | null;
   onLog: () => void;
   onDismiss: () => void;
+  /** Desktop dock: fill the host card instead of a full-bleed bottom sheet. */
+  is_panel?: boolean;
 }) {
+  /* Tall GO-style species sheet: hero on top, soft pills, airy sections, one CTA. */
   return (
     <div
-      className="absolute inset-x-0 bottom-0"
+      className={is_panel ? undefined : "absolute inset-x-0 bottom-0"}
+      role="dialog"
+      aria-label={sp.common_name}
       style={{
-        height: "56%",
-        background: "#F9F9F9",
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        boxShadow: "0 -12px 28px rgba(31,32,34,0.16)",
+        height: is_panel ? "100%" : "78%",
+        maxHeight: is_panel ? "none" : "min(780px, 92vh)",
+        background: "#FFFFFF",
+        borderTopLeftRadius: is_panel ? 24 : 28,
+        borderTopRightRadius: is_panel ? 24 : 28,
+        borderBottomLeftRadius: is_panel ? 24 : 0,
+        borderBottomRightRadius: is_panel ? 24 : 0,
+        boxShadow: is_panel ? "none" : "0 -16px 40px rgba(31,32,34,0.18)",
         zIndex: 45,
-        padding: "10px 20px 76px",
+        padding: is_panel ? "10px 18px 18px" : "8px 22px 88px",
         display: "flex",
         flexDirection: "column",
         animation: "fgup .32s cubic-bezier(.2,.8,.2,1)",
@@ -654,63 +662,65 @@ function NearbySheet({
       <button
         onClick={onDismiss}
         aria-label="Collapse"
-        style={{ display: "block", width: 40, height: 5, borderRadius: 999, background: "#E4E7E8", margin: "0 auto 12px" }}
+        style={{ display: "block", width: 42, height: 5, borderRadius: 999, background: "#E4E7E8", margin: "4px auto 6px", flexShrink: 0 }}
       />
-      <div className="flex items-center gap-3.5">
-        <TaxonThumb species_code={sp.species_code} size={72} />
-        <TaxonName
-          sp={sp}
-          size={23}
-          eyebrow={`NEARBY · ${where.toUpperCase()}`}
-          meta={
-            distance_line ? (
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: "#075D89" }}>{distance_line}</span>
-            ) : null
-          }
-        />
+
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", paddingTop: 4, flexShrink: 0 }}>
+        <TaxonThumb species_code={sp.species_code} size={132} style={{ boxShadow: "0 10px 28px rgba(24,38,20,0.16)" }} />
+        <div style={{ fontWeight: 800, fontSize: 26, lineHeight: 1.15, marginTop: 14, letterSpacing: "-0.02em" }}>{sp.common_name}</div>
+        <div style={{ fontStyle: "italic", fontSize: 14, color: "rgba(31,32,34,0.55)", marginTop: 4 }}>{sp.scientific_name}</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 12 }}>
+          <SpeciesPill sp={sp} limit={3} />
+        </div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(31,32,34,0.45)", letterSpacing: "0.06em", marginTop: 10 }}>
+          {where.toUpperCase()}
+          {distance_line ? ` · ${distance_line}` : ""}
+        </div>
       </div>
-      {/* A minute count with no pace behind it cannot be checked by anyone, so
-          the assumption rides next to the number rather than in a footnote. */}
+
       {distance_line?.includes("min walk") ? (
-        <p style={{ fontSize: 11, color: "rgba(31,32,34,0.5)", marginTop: 8 }}>
+        <p style={{ fontSize: 11, color: "rgba(31,32,34,0.45)", marginTop: 10, textAlign: "center", flexShrink: 0 }}>
           Minutes assume a walking pace of {WALK_PACE_MS} m/s. The metre figure is the measured one.
         </p>
       ) : null}
-      <div style={{ marginTop: 12 }}>
-        <SpeciesPill sp={sp} />
-      </div>
-      <div style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
-        <p style={{ fontSize: 14, lineHeight: 1.45, marginTop: 12, color: "#1F2022" }}>{sp.note}</p>
-        {sp.caption && <div style={{ fontSize: 11, color: "rgba(31,32,34,0.5)", marginTop: 8 }}>{sp.caption}</div>}
+
+      <div style={{ overflowY: "auto", flex: 1, minHeight: 0, marginTop: 18 }}>
+        <p style={{ fontSize: 15, lineHeight: 1.5, color: "#1F2022", margin: 0 }}>{sp.note}</p>
+        {sp.caption && (
+          <div style={{ fontSize: 11.5, color: "rgba(31,32,34,0.48)", marginTop: 10, lineHeight: 1.4 }}>{sp.caption}</div>
+        )}
+        <div style={{ height: 18 }} />
         <SpeciesBack sp={sp} />
+        <p style={{ fontSize: 12, color: "rgba(31,32,34,0.55)", marginTop: 18, lineHeight: 1.45 }}>
+          Need a second opinion?{" "}
+          <a href={SEEK_URL} target="_blank" rel="noreferrer" style={{ color: "#058CD6", fontWeight: 700, textDecoration: "underline" }}>
+            Open Seek
+          </a>
+          . Identification stays with iNaturalist — not this app.
+        </p>
       </div>
-      <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
-        <button
-          onClick={onLog}
-          className="flex items-center justify-center gap-2"
-          style={{ flex: 1, height: 48, borderRadius: 12, background: "var(--ui-accent)", color: "#fff", fontWeight: 700, fontSize: 15 }}
-        >
-          <GlyphDisc size={28}>
-            <CameraIcon size={19} />
-          </GlyphDisc>
-          Log this sighting
-        </button>
-        <button
-          onClick={onDismiss}
-          style={{
-            height: 48,
-            padding: "0 18px",
-            borderRadius: 12,
-            background: "transparent",
-            border: "1.5px solid #E4E7E8",
-            color: "#1F2022",
-            fontWeight: 700,
-            fontSize: 14,
-          }}
-        >
-          Not this tree
-        </button>
-      </div>
+
+      <button
+        onClick={onLog}
+        className="flex items-center justify-center gap-2"
+        style={{
+          width: "100%",
+          height: 52,
+          borderRadius: 16,
+          background: "var(--ui-accent)",
+          color: "#fff",
+          fontWeight: 800,
+          fontSize: 16,
+          marginTop: 16,
+          flexShrink: 0,
+          boxShadow: "0 6px 18px rgba(47,107,58,0.32)",
+        }}
+      >
+        <GlyphDisc size={28}>
+          <CameraIcon size={19} />
+        </GlyphDisc>
+        Log this sighting
+      </button>
     </div>
   );
 }
@@ -3539,6 +3549,17 @@ export default function App() {
    * asked for on 09-03.
    */
   const play_progress = toNextStage(seen_sector.size);
+  const play_nearby = ranked.slice(0, 3);
+  const play_sheet_sp = species[pick_code] ?? sel_sp;
+  const play_sheet_where = camera_where ?? (here_sector?.name ?? "Campus");
+  const play_sheet_distance = (() => {
+    if (!geo.fix) return null;
+    const hit = ranked.find((n) => n.row.species_code === play_sheet_sp.species_code);
+    if (!hit) return null;
+    return hit.distance_m <= AT_TREE_RADIUS_M
+      ? `In range · ${formatMeter(hit.distance_m)} away`
+      : `${formatMeter(hit.distance_m)} ${hit.compass} of you · ${formatWalkMinute(hit.distance_m)}`;
+  })();
   const playBody = (
     <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
       <PlayMap
@@ -3551,15 +3572,19 @@ export default function App() {
         vigor={vigor}
         is_desktop={is_desktop}
         is_restricted_on={is_restricted}
-        onSelectSector={(row) => setPickedSector(row)}
+        onSelectSector={(row) => {
+          setSheetOpen(false);
+          setPickedSector(row);
+        }}
         seen_species={seen}
         pin_filter={pin_filter}
         onSelectEncounter={(e) => {
-          /* Tapping a marker is an explicit intent to log THAT species, so it
-             opens the camera on it rather than on whatever sector card the
-             walker happens to be standing in. */
+          /* Open the tall species sheet first — Log is the one primary CTA. */
           setPickedSector(null);
-          openCamera(e.species_code, e.where);
+          setPickCode(e.species_code);
+          setCameraWhere(e.where);
+          setSheetOpen(true);
+          noteAward("learn", `species:${e.species_code}`);
         }}
         bearing_degree={bearing}
         onBearing={setBearing}
@@ -3567,13 +3592,28 @@ export default function App() {
         onSelectSpawn={walkToSpawn}
       />
 
+      {/* Quiet HUD: corners only. No dense dashboard while walking. */}
       <MapChrome
         is_desktop={is_desktop}
         context={
-          <ContextCard
-            label={here_sector ? "You are in" : "Walking"}
-            value={here_sector ? here_sector.name : "Between sectors"}
-          />
+          <div
+            style={{
+              background: "rgba(255,255,255,0.9)",
+              backdropFilter: "blur(8px)",
+              border: "1.5px solid rgba(228,231,232,0.9)",
+              borderRadius: 999,
+              padding: "7px 12px",
+              boxShadow: "0 3px 12px rgba(24,38,20,0.12)",
+              maxWidth: is_desktop ? 280 : 168,
+            }}
+          >
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.6, color: "rgba(31,32,34,0.42)", textTransform: "uppercase" }}>
+              {here_sector ? "Here" : "Walking"}
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 1 }}>
+              {here_sector ? here_sector.name : "Between sectors"}
+            </div>
+          </div>
         }
         control={
           <>
@@ -3583,44 +3623,121 @@ export default function App() {
         }
       />
 
-      {/* The character's own progress, personal and un-comparable. */}
+      {/* Bottom-left profile chip: points + streak only — gamification stays, chrome does not. */}
       <div
         className="absolute"
         style={{
-          left: 14,
-          bottom: is_desktop ? 22 : 112,
+          left: 12,
+          bottom: is_desktop ? 22 : (is_sheet_open ? 22 : 112),
           zIndex: 30,
           display: "flex",
           alignItems: "center",
-          gap: 10,
+          gap: 8,
           background: "rgba(255,255,255,0.92)",
           backdropFilter: "blur(8px)",
           border: "1.5px solid rgba(228,231,232,0.9)",
-          borderRadius: 18,
-          padding: "8px 14px 8px 8px",
+          borderRadius: 999,
+          padding: "5px 12px 5px 5px",
           boxShadow: "0 4px 14px rgba(24,38,20,0.13)",
         }}
       >
-        <Character stage={stage} vigor={vigor} size={38} is_idle_animated={false} />
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 800 }}>{STAGE_LABEL[stage]}</div>
-          <div style={{ fontSize: 11, color: "rgba(31,32,34,0.6)" }}>
-            {play_progress
-              ? `${play_progress.remaining} more sector${play_progress.remaining === 1 ? "" : "s"} → ${STAGE_LABEL[play_progress.stage]}`
-              : `${seen_sector.size} sectors walked`}
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 999,
+            overflow: "hidden",
+            background: "var(--brand-mist)",
+            display: "grid",
+            placeItems: "center",
+            flexShrink: 0,
+          }}
+        >
+          <Character stage={stage} vigor={vigor} size={32} is_idle_animated={false} />
+        </div>
+        <div style={{ lineHeight: 1.15, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{gamify.total_points} pts</div>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(31,32,34,0.55)" }}>
+            {gamify.streak_weeks} wk · {STAGE_LABEL[stage]}
+            {play_progress ? ` · ${play_progress.remaining}→` : ""}
           </div>
         </div>
       </div>
 
-      {!is_desktop && (
+      {/* Bottom-right nearby finds affordance — one clear tray, not a dashboard. */}
+      {!is_sheet_open && play_nearby.length > 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            const top = play_nearby[0];
+            setPickedSector(null);
+            setPickCode(top.row.species_code);
+            setCameraWhere(top.row.where);
+            setSheetOpen(true);
+            noteAward("learn", `species:${top.row.species_code}`);
+          }}
+          aria-label="Nearby finds"
+          className="absolute"
+          style={{
+            right: is_desktop ? 18 : 88,
+            bottom: is_desktop ? 22 : 112,
+            zIndex: 30,
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            background: "rgba(255,255,255,0.92)",
+            backdropFilter: "blur(8px)",
+            border: "1.5px solid rgba(228,231,232,0.9)",
+            borderRadius: 16,
+            padding: "6px 8px",
+            boxShadow: "0 4px 14px rgba(24,38,20,0.13)",
+            cursor: "pointer",
+          }}
+        >
+          {play_nearby.map((n) => (
+            <TaxonThumb key={n.row.encounter_id} species_code={n.row.species_code} size={28} />
+          ))}
+        </button>
+      )}
+
+      {!is_desktop && !is_sheet_open && (
         <Fab
           label="Log a sighting"
           onClick={() => openCamera(here_sector?.species_code[0] ?? pick_code, here_sector?.name)}
-          size={68}
-          style={{ position: "absolute", right: 16, bottom: 104, zIndex: 46 }}
+          size={64}
+          style={{ position: "absolute", right: 14, bottom: 104, zIndex: 46 }}
         >
-          <ShutterIcon size={46} />
+          <ShutterIcon size={44} />
         </Fab>
+      )}
+
+      {is_sheet_open && !picked_sector && (
+        is_desktop ? (
+          <div style={{ position: "absolute", left: 18, bottom: 84, width: 380, zIndex: 48, maxHeight: "78%", overflow: "hidden", borderRadius: 24, boxShadow: "0 -8px 34px rgba(24,38,20,0.20)" }}>
+            <NearbySheet
+              sp={play_sheet_sp}
+              where={play_sheet_where}
+              distance_line={play_sheet_distance}
+              is_panel
+              onLog={() => {
+                setSheetOpen(false);
+                openCamera(play_sheet_sp.species_code, play_sheet_where);
+              }}
+              onDismiss={() => setSheetOpen(false)}
+            />
+          </div>
+        ) : (
+          <NearbySheet
+            sp={play_sheet_sp}
+            where={play_sheet_where}
+            distance_line={play_sheet_distance}
+            onLog={() => {
+              setSheetOpen(false);
+              openCamera(play_sheet_sp.species_code, play_sheet_where);
+            }}
+            onDismiss={() => setSheetOpen(false)}
+          />
+        )
       )}
 
       {picked_sector && (

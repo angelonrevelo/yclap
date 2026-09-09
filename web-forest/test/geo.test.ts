@@ -199,7 +199,7 @@ describe("formatting", () => {
 
 describe("web mercator", () => {
   it("round-trips lat/lon through world pixels at every campus zoom", () => {
-    for (const zoom of [15, 16, 17, 18, 19]) {
+    for (const zoom of [15, 16, 17, 18, 19, 20]) {
       for (const point of [CAMPUS_CENTER, percentToLatLon(0, 0), percentToLatLon(100, 100)]) {
         const back = fromWorld(toWorld(point, zoom), zoom);
         assert.ok(Math.abs(back.lat - point.lat) < 1e-9, `lat drift at z${zoom}`);
