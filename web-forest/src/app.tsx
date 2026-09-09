@@ -33,6 +33,7 @@ import {
   endWalk,
   progressOf,
   readSighting,
+  writeSighting,
   readWalk,
   seenCode,
   seenSector,
@@ -57,6 +58,7 @@ import { KindThumb } from "./kind-mark";
 import { displayName, kindOf } from "./kind";
 import type { Rarity, Spawn, SpawnPoolEntry } from "./spawn";
 import { receiptHighlight } from "./collection";
+import { demoJournal, isSeededJournal } from "./demo-seed";
 
 import {
   campusCodeForScientific,
@@ -1943,6 +1945,7 @@ function JournalScreen({
   is_desktop,
   pool_count,
   pool,
+  is_seeded = false,
 }: {
   sighting: Sighting[];
   seen: Set<string>;
@@ -1951,6 +1954,8 @@ function JournalScreen({
   pool_count: ReadonlyMap<string, number | null>;
   /** The full sweep, for the shelf of finds the guide never drew. */
   pool: SpawnPoolEntry[];
+  /** True when every row came from `?seed=demo`. Says so on screen. */
+  is_seeded?: boolean;
 }) {
   const summary = summarize(sighting);
   const seen_of_total = `${summary.species_count} of ${summary.species_total} species seen`;
@@ -2002,6 +2007,26 @@ function JournalScreen({
           <h1 style={{ fontWeight: 800, fontSize: is_desktop ? 30 : 24 }}>Your journal</h1>
         </div>
         <p style={{ fontSize: 13, color: "var(--ui-accent)", marginTop: 2 }}>Stays on this phone.</p>
+        {/* The deck's own AV checklist says to seed the journal AND say it is
+            seeded. Saying it in a banner beats relying on a nervous presenter
+            remembering the sentence at 9am. */}
+        {is_seeded && (
+          <p
+            style={{
+              fontSize: 12,
+              lineHeight: 1.45,
+              marginTop: 10,
+              padding: "10px 12px",
+              borderRadius: 14,
+              background: "#FFF6E5",
+              color: "#7A5A12",
+              fontWeight: 700,
+            }}
+          >
+            Demonstration journal. These finds were seeded for the showcase — nobody walked them.
+            Open the app without <code>?seed=demo</code> for an empty journal.
+          </p>
+        )}
         <p style={{ fontSize: 12, color: "rgba(31,32,34,0.55)", marginTop: 8, lineHeight: 1.45 }}>
           Reflection, not a race. Ateneo already designed an SDG game that way (Rodrigo, Favis, Cuyegkeng 2021 — RECIPE /
           Meaningful Gamification).
@@ -2890,6 +2915,27 @@ export default function App() {
   /* The rotating world. One fetch of the real sweep, recomputed when the
      30-minute window rolls — see `live.tsx`. */
   const spawn_world = useSpawnWorld();
+
+  /**
+   * `?seed=demo` fills the journal so the badge shelf and the collection are
+   * not empty on a stage. It waits for the pool, because the seed picks
+   * species by real rarity band rather than by a hard-coded list.
+   *
+   * It only ever writes over an EMPTY journal. Someone opening the demo link
+   * on a phone that has real walks on it must not lose them.
+   */
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("seed") !== "demo") return;
+    if (spawn_world.pool.length === 0) return;
+    if (readSighting().length > 0) return;
+    const seeded = demoJournal(spawn_world.pool, picker_order);
+    writeSighting(seeded);
+    setSighting(readSighting());
+  }, [spawn_world.pool]);
+
+  /* Drives the banner. Keyed off the rows themselves, so it cannot be left on
+     by a stale flag or forgotten after a real find is added. */
+  const is_seeded = useMemo(() => isSeededJournal(sighting), [sighting]);
   const seen = seenCode(sighting);
   const seen_sector = useMemo(() => seenSector(sighting), [sighting]);
   const stage = stageFor(seen_sector.size);
@@ -3516,7 +3562,7 @@ export default function App() {
               </aside>
             </div>
           )}
-          {route === "/journal" && <JournalScreen sighting={sighting} seen={seen} is_desktop pool_count={spawn_world.pool_count} pool={spawn_world.pool} />}
+          {route === "/journal" && <JournalScreen sighting={sighting} seen={seen} is_desktop pool_count={spawn_world.pool_count} pool={spawn_world.pool} is_seeded={is_seeded} />}
           {route === "/plan" && <PlanScreen is_desktop />}
           </div>
           {is_camera_open && (
@@ -3564,7 +3610,7 @@ export default function App() {
             />
           )}
           {route === "/map" && (map_mode === "play" ? playBody : mapBody)}
-          {route === "/journal" && <JournalScreen sighting={sighting} seen={seen} is_desktop={false} pool_count={spawn_world.pool_count} pool={spawn_world.pool} />}
+          {route === "/journal" && <JournalScreen sighting={sighting} seen={seen} is_desktop={false} pool_count={spawn_world.pool_count} pool={spawn_world.pool} is_seeded={is_seeded} />}
           {route === "/plan" && <PlanScreen is_desktop={false} />}
           {is_camera_open && (
             <CameraSheet

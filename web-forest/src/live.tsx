@@ -198,7 +198,7 @@ export function SpawnStrip({
       </div>
       <p style={{ fontSize: 11.5, color: "rgba(31,32,34,0.55)", marginTop: 6, lineHeight: 1.45 }}>
         {fix
-          ? "Nearest to you. The world rotates every 30 minutes and every phone on campus sees the same one."
+          ? "Nearest to you. A highlighted find is within reach — tap it and the camera opens. The world rotates every 30 minutes and every phone on campus sees the same one."
           : "Rarest out this window — turn on location and this becomes what is nearest to you."}
       </p>
       <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
@@ -253,6 +253,24 @@ export function SpawnStrip({
                   {distance_m !== null &&
                     ` · ${formatMeter(distance_m)}${distance_m >= 50 ? ` · ${formatWalkMinute(distance_m)}` : ""}`}
                 </div>
+                {/* Reachability was carried by the border colour alone, which is
+                    too quiet to steer by — a rehearsal found the tap is a coin
+                    flip between "camera opens" and "map moves", because the
+                    walk swings finds in and out of the 40 m radius every few
+                    seconds. It now says which one it is, in words. */}
+                {is_reachable && (
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: "var(--ui-accent)",
+                      marginTop: 4,
+                      letterSpacing: "0.02em",
+                    }}
+                  >
+                    You are here — tap to log it
+                  </div>
+                )}
               </div>
               {/* No band at all when the sweep never counted it. */}
               {s.rarity && <RarityPill rarity={s.rarity} count={world.pool_count.get(s.species_code)} />}
