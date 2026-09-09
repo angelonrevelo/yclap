@@ -27,6 +27,8 @@ nine A4 SVGs) carries the final material and it is branded **Magisphere /
 kept for the record because it explains why the app was briefly repainted from
 the wrong palette.
 
+> **LOCKED (Angelo, 09-09):** Magisphere stays — match Canva boards for Saturday. Supersedes the brief eComon preference; product UI reverted to Magisphere.
+
 **Two things to carry forward from that export:**
 
 - **Board 9 is the old "ecomon" kit sheet** — booth mockup, bark/lime/

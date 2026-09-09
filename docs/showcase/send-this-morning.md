@@ -1,3 +1,5 @@
+**LOCKED: Magisphere** (Angelo, 09-09) — Saturday showcase matches Canva boards. Supersedes the earlier eComon preference; app/manifest/deck stay Magisphere.
+
 # Two messages to send this morning
 
 The only things standing between the boards and the printer are one group
