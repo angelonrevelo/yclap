@@ -44,7 +44,7 @@ export const lane = [
         is_lead: true,
         is_assumed: false,
         task: [
-          "Own the eComon build and this landing page",
+          "Own the Magisphere build and this landing page",
           "Ship the Sep 12 showcase demo: live app, offline-capable",
           "Technical architecture for any idea the room chooses",
         ],

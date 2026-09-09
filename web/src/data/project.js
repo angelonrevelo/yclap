@@ -8,14 +8,14 @@
  *
  * It is kept, and kept CURRENT, because the data is right and the rack is a
  * afternoon's work whenever someone wants it. What is not acceptable is a data
- * file quietly describing last month's flagship, so `ecomon` leads it now.
+ * file quietly describing last month's flagship, so `magisphere` leads it now.
  */
 
 export const project = [
   {
-    project_code: "ecomon",
+    project_code: "magisphere",
     project_status: "live_pilot",
-    project_name: "eComon",
+    project_name: "Magisphere",
     project_tagline: "Two-thirds of this campus is green. Now you can name it.",
     project_blurb:
       "Ateneo campus-forest PWA and the Sep 12 showcase piece. A world of finds rotates across 68 walkable sectors every thirty minutes; walk to one, photograph it, and it enters your journal with a species, a count and a coordinate — the pair the AIS inventory does not have. 1,098 species modelled in 3D from a real iNaturalist campus sweep. Works offline. No leaderboard, and no field in the data model one could be built from.",
@@ -47,7 +47,7 @@ export const project = [
     rack_span: "tall",
     metric_label: ["Rates frozen", "6 collectors", "Target ≥100 kg"],
     improvement: [
-      "No longer the showcase piece — eComon took Sep 12",
+      "No longer the showcase piece — Magisphere took Sep 12",
       "Field-verify PET + Al cans at ≥2 Pasig shops",
       "Mark is_verified only after contact",
     ],
@@ -103,7 +103,7 @@ export const project = [
     rack_span: "tile",
     metric_label: ["Walk audit", "Shade gaps"],
     improvement: [
-      "Closest sibling to eComon — same campus, heat instead of species",
+      "Closest sibling to Magisphere — same campus, heat instead of species",
       "The ADMU deck already asks Manila Observatory for urban-heat and land-cover data; this is what that data would be for",
       "Unstarted since August — needs an owner",
     ],

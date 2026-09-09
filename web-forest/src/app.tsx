@@ -289,7 +289,7 @@ function HomeScreen({
         <div className="flex items-center gap-2">
           <PlantMark size={28} />
           <div>
-            <div style={{ fontWeight: 800, fontSize: 20, lineHeight: 1 }}>eComon</div>
+            <div style={{ fontWeight: 800, fontSize: 20, lineHeight: 1 }}>Magisphere</div>
             <div style={{ fontSize: 12, color: "var(--ui-accent)", fontWeight: 700, marginTop: 3 }}>Ateneo Loyola Heights</div>
           </div>
         </div>
@@ -2264,7 +2264,7 @@ function DesktopRail({
       >
         <PlantMark size={32} />
         <span style={{ minWidth: 0 }}>
-          <span style={{ display: "block", fontWeight: 800, fontSize: 17, lineHeight: 1 }}>eComon</span>
+          <span style={{ display: "block", fontWeight: 800, fontSize: 17, lineHeight: 1 }}>Magisphere</span>
           <span style={{ display: "block", fontSize: 11, color: "var(--ui-accent)", fontWeight: 700, marginTop: 2 }}>
             Ateneo Loyola Heights
           </span>

@@ -87,16 +87,16 @@ function makeCert() {
      that sits trusted on a phone for a year is a liability nobody remembers. */
   openssl(["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "30",
     "-keyout", join(CERT_DIR, "ca.key"), "-out", join(CERT_DIR, "ca.crt"),
-    "-subj", "/CN=eComon local CA/O=Youth CLAP Ateneo CCC"]);
+    "-subj", "/CN=Magisphere local CA/O=Youth CLAP Ateneo CCC"]);
 
   openssl(["req", "-newkey", "rsa:2048", "-nodes",
     "-keyout", join(CERT_DIR, "server.key"), "-out", join(CERT_DIR, "server.csr"),
-    "-subj", "/CN=eComon local server"]);
+    "-subj", "/CN=Magisphere local server"]);
 
   /* The extensions go through a real FILE, not `-extfile /dev/stdin`.
      The stdin form silently produced a certificate with NO subjectAltName at
      all, and openssl reported success: `curl` then failed with "certificate
-     subject name 'eComon local server' does not match target host name".
+     subject name 'Magisphere local server' does not match target host name".
      A cert with no SAN is exactly the failure this whole function exists to
      avoid, so it is worth the temp file. */
   const ext = join(CERT_DIR, "san.cnf");
@@ -202,20 +202,20 @@ createHttpServer((req, res) => {
     /* The iOS mime type that triggers "Profile Downloaded" rather than a
        text preview. Android accepts it too. */
     "Content-Type": "application/x-x509-ca-cert",
-    "Content-Disposition": 'attachment; filename="ecomon-ca.crt"',
+    "Content-Disposition": 'attachment; filename="magisphere-ca.crt"',
   });
   res.end(readFileSync(join(CERT_DIR, "ca.crt")));
 }).listen(CERT_PORT, "0.0.0.0");
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log("eComon — LAN HTTPS (nothing is published)\n");
+  console.log("Magisphere — LAN HTTPS (nothing is published)\n");
   for (const a of localAddress()) console.log(`  https://${a}:${PORT}/`);
   console.log(`\n  On the phone, ONCE:`);
   console.log(`    1. Open http://${localAddress()[0]}:${CERT_PORT}/ca.crt  (plain http, on purpose —`);
   console.log(`       the phone cannot fetch the cert over TLS it does not trust yet)`);
   console.log(`    2. iOS: Settings > Profile Downloaded > Install`);
   console.log(`       then Settings > General > About > Certificate Trust Settings`);
-  console.log(`       and switch ON "eComon local CA"  <- this step is the one people miss`);
+  console.log(`       and switch ON "Magisphere local CA"  <- this step is the one people miss`);
   console.log(`    3. Android: Settings > Security > Encryption > Install from storage > CA cert`);
   console.log(`\n  Then open the URL above. Service worker, GPS and camera all work.`);
   console.log(`  Cert expires in 30 days; re-run with --regenerate after that.\n`);

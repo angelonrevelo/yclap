@@ -27,8 +27,6 @@ nine A4 SVGs) carries the final material and it is branded **Magisphere /
 kept for the record because it explains why the app was briefly repainted from
 the wrong palette.
 
-> **Note (Angelo, 09-09 later):** chose **eComon** for the Saturday showcase. App/deck/HTML now say eComon; Canva PNGs still say Magisphere and need a manual Canva edit.
-
 **Two things to carry forward from that export:**
 
 - **Board 9 is the old "ecomon" kit sheet** — booth mockup, bark/lime/
