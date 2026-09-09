@@ -803,6 +803,9 @@ export default function App() {
             <p className="section_side_note">
               {project.filter((p) => p.can_demo).length} demoable now
               <br />
+              {/* Not "ready to build" — three of these have been ready since
+                  August. What they are short of is a person, and a status
+                  board should say the true thing. */}
               <span className="text_alert">
                 {project.filter((p) => p.project_status === "ready_to_build").length} waiting on an owner
               </span>

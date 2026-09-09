@@ -47,9 +47,9 @@ export const project = [
     rack_span: "tall",
     metric_label: ["Rates frozen", "6 collectors", "Target ≥100 kg"],
     improvement: [
+      "No longer the showcase piece — Magisphere took Sep 12",
       "Field-verify PET + Al cans at ≥2 Pasig shops",
       "Mark is_verified only after contact",
-      "Real diversion log toward 100 kg",
     ],
   },
   {
@@ -67,8 +67,7 @@ export const project = [
     rack_span: "tall",
     metric_label: ["NCR scrapes", "EPR watch", "Policy intel"],
     improvement: [
-      "Cite as evidence layer, not the 3-min hero",
-      "Pull top rates/collectors into Gargar",
+      "Evidence layer, never the pitch itself",
       "Policy one-pagers for mentors",
     ],
   },
@@ -85,7 +84,10 @@ export const project = [
     can_demo: false,
     rack_span: "wide",
     metric_label: ["Map + brief", "LGU-ready"],
-    improvement: ["One street / one org pilot", "Tabletop drill video"],
+    improvement: [
+      "Unstarted since August — needs an owner, not a spec",
+      "One street / one org pilot",
+    ],
   },
   {
     project_code: "heat_route",
@@ -100,7 +102,11 @@ export const project = [
     can_demo: false,
     rack_span: "tile",
     metric_label: ["Walk audit", "Shade gaps"],
-    improvement: ["10 hot / 10 cool spots", "Before-after comfort survey"],
+    improvement: [
+      "Closest sibling to Magisphere — same campus, heat instead of species",
+      "The ADMU deck already asks Manila Observatory for urban-heat and land-cover data; this is what that data would be for",
+      "Unstarted since August — needs an owner",
+    ],
   },
   {
     project_code: "organics",
@@ -108,14 +114,17 @@ export const project = [
     project_name: "Organics → Methane",
     project_tagline: "Food waste is a climate sector.",
     project_blurb:
-      "Canteen micro-compost with kg diverted + honest methane co-benefit narrative. Optional add-on to Gargar, not a credit product.",
+      "Canteen micro-compost with kg diverted and an honest methane co-benefit narrative. Not a credit product, and not dependent on any other project shipping first.",
     sdg_code: ["12", "13"],
     lane_code: ["science", "mobilize", "build"],
     stack_label: "Ops pilot · weigh-ins · chemistry QA",
     can_demo: false,
     rack_span: "tile",
     metric_label: ["Kg log", "Ops plan"],
-    improvement: ["3-week canteen pilot", "Pest/smell ops plan"],
+    improvement: [
+      "Unstarted since August — needs an owner",
+      "3-week canteen pilot",
+    ],
   },
   {
     project_code: "any_idea",
