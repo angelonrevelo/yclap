@@ -15,8 +15,17 @@ import {
   program,
   session,
 } from "./data/program";
+import { project } from "./data/project";
 import "./App.css";
 import "./clean.css";
+
+/* Reads as a state, not a grade. "open" is an invitation, not a failure. */
+const STATUS_LABEL = {
+  live_pilot: "Live pilot",
+  live_research: "Live research",
+  ready_to_build: "Ready to build",
+  open: "Open slot",
+};
 
 function LogoMark({ size = 40 }) {
   return (
@@ -649,6 +658,7 @@ export default function App() {
         </a>
         <nav className="clean_nav" aria-label="Primary">
           <a href="#grounds">Grounds</a>
+          <a href="#projects">Projects</a>
           <a href="#journey">Journey</a>
           <a href="#seats">Seats</a>
           <a href="#lanes">Lanes</a>
@@ -776,6 +786,70 @@ export default function App() {
               ))}
             </ul>
           </div>
+        </section>
+
+        {/* Project rack — what the desk is actually building.
+            `data/project.js` shipped unrendered for weeks while the README
+            claimed a rack existed. This is the rack. */}
+        <section
+          className="section section_paper section_rack"
+          id="projects"
+          aria-labelledby="projects_title"
+        >
+          <div className="section_head_row">
+            <div>
+              <h2 id="projects_title">What the desk is building.</h2>
+            </div>
+            <p className="section_side_note">
+              {project.filter((p) => p.can_demo).length} demoable now
+              <br />
+              <span className="text_alert">
+                {project.filter((p) => p.project_status === "ready_to_build").length} waiting on an owner
+              </span>
+            </p>
+          </div>
+
+          <ul className="rack_grid">
+            {project.map((row) => (
+              <li key={row.project_code} className={`rack_card rack_${row.rack_span}`}>
+                <div className="rack_card_head">
+                  <h3>{row.project_name}</h3>
+                  <span className={`rack_status rack_status_${row.project_status}`}>
+                    {STATUS_LABEL[row.project_status] ?? row.project_status}
+                  </span>
+                </div>
+                <p className="rack_tagline">{row.project_tagline}</p>
+                <p className="rack_blurb">{row.project_blurb}</p>
+
+                {row.metric_label?.length ? (
+                  <ul className="rack_metric">
+                    {row.metric_label.map((m) => (
+                      <li key={m}>{m}</li>
+                    ))}
+                  </ul>
+                ) : null}
+
+                <div className="rack_foot">
+                  <span className="rack_stack">{row.stack_label}</span>
+                  <span className="rack_sdg">
+                    {row.sdg_code.map((n) => (
+                      <span key={n}>SDG {n}</span>
+                    ))}
+                  </span>
+                </div>
+
+                {/* The honest half. Every row says what it still needs, because
+                    a rack of green ticks is a brochure, not a status board. */}
+                {row.improvement?.length ? (
+                  <ul className="rack_gap">
+                    {row.improvement.map((g) => (
+                      <li key={g}>{g}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </li>
+            ))}
+          </ul>
         </section>
 
         {/* Journey */}

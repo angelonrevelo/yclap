@@ -1802,151 +1802,13 @@ button.session_node {
   opacity: 0.8;
 }
 
-/* —— Project rack bento —— */
-.rack_bento {
-  max-width: 1120px;
-  margin: 0 auto 1.25rem;
-  display: grid;
-  gap: 0.75rem;
-  grid-template-columns: 1fr;
-}
-
-.rack_tile {
-  text-align: left;
-  border-radius: var(--r-lg);
-  padding: 1.15rem 1.2rem;
-  border: 1px solid var(--desk-line);
-  background: #fff;
-  display: grid;
-  gap: 0.35rem;
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
-  min-height: 8rem;
-}
-
-.rack_tile:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-card);
-}
-
-.rack_tile[data-active="true"] {
-  box-shadow: 0 0 0 3px rgba(20, 121, 201, 0.25);
-}
-
-.rack_tile strong {
-  font-size: 1.35rem;
-  font-weight: 800;
-  letter-spacing: -0.035em;
-}
-
-.rack_tagline {
-  color: var(--ink-soft);
-  font-size: 0.92rem;
-}
-
-.rack_metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.5rem;
-}
-
-.rack_metrics span {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 0.25rem 0.5rem;
-  border-radius: 6px;
-  background: rgba(18, 33, 28, 0.05);
-  color: var(--desk-muted);
-}
-
-.rack_hero {
-  background: var(--desk-forest);
-  color: #fff;
-  border-color: transparent;
-  min-height: 14rem;
-  background-image: radial-gradient(
-    circle at 90% 10%,
-    rgba(239, 169, 44, 0.25),
-    transparent 45%
-  );
-}
-
-.rack_hero .rack_tagline {
-  color: var(--desk-gold);
-  font-weight: 600;
-}
-
-.rack_hero .rack_metrics span {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.rack_tall {
-  background: var(--desk-ink);
-  color: #fff;
-  border-color: transparent;
-}
-
-.rack_tall .rack_tagline {
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.rack_cta {
-  background: var(--grad-deep);
-  color: #fff;
-  border-color: transparent;
-}
-
-.rack_cta .rack_tagline {
-  color: var(--desk-gold);
-  font-weight: 700;
-}
-
-.status_pill {
-  justify-self: start;
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 0.3rem 0.55rem;
-  border-radius: 7px;
-  background: #e7f1fa;
-  color: var(--desk-blue-deep);
-}
-
-.status_pill[data-status="live_pilot"] {
-  background: #eaf4ec;
-  color: var(--desk-green);
-}
-
-.status_pill[data-status="live_research"] {
-  background: rgba(143, 209, 242, 0.2);
-  color: #8fd1f2;
-}
-
-.rack_hero .status_pill[data-status="live_pilot"],
-.rack_tall .status_pill[data-status="live_research"] {
-  background: var(--desk-green-soft);
-  color: var(--desk-forest);
-}
-
-.rack_tall .status_pill[data-status="live_research"] {
-  background: rgba(143, 209, 242, 0.18);
-  color: #8fd1f2;
-}
-
-.status_pill[data-status="ready_to_build"] {
-  background: #fdf3e1;
-  color: #c4741a;
-}
-
-.status_pill[data-status="open"] {
-  background: #fdeae7;
-  color: var(--desk-red);
-}
+/* The 146 lines that were here styled a project rack whose JSX was removed
+   long ago — `.rack_bento`, `.rack_metrics`, `.status_pill[data-status]`,
+   none of them referenced by any component. They were not merely dead: they
+   COLLIDED with the rack rebuilt at the bottom of this file, which is why
+   its first render came out white-on-white and its taglines came out in the
+   wrong colour entirely. Removed 2026-09-09; the live rack is under
+   "project rack" at the end of this stylesheet. */
 
 .project_detail {
   max-width: 1120px;
@@ -4327,4 +4189,200 @@ button.session_node {
   .site_footer_meta {
     grid-column: 1 / -1;
   }
+}
+
+/* ── project rack ─────────────────────────────────────────────────────────
+ * `data/project.js` shipped for weeks with nothing importing it, while the
+ * README claimed the landing rendered a rack. This is that rack.
+ *
+ * TOKENS: this page loads `brand/desk.css`, NOT `brand/token.css`. The first
+ * cut of this block used --color-* names from the OTHER stylesheet, so every
+ * one of them was undefined; an undefined custom property makes the whole
+ * declaration invalid at computed-value time, which means `color` silently
+ * fell back to the INHERITED ink. That is why the taglines came out the same
+ * colour as body copy no matter how much specificity was thrown at them.
+ * Everything here uses --desk-* names, which this page actually defines.
+ *
+ * The layout is driven by each row's own `rack_span`, so the data decides how
+ * much room a project gets rather than the CSS guessing. Hero is the current
+ * flagship and takes the full width; the open slot is a dashed invitation
+ * rather than a card, because it is not a project yet.
+ */
+.rack_grid {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+}
+.rack_card {
+  grid-column: span 3;
+  background: #fff;
+  color: var(--desk-ink);
+  border: 1.5px solid var(--desk-line);
+  border-radius: 20px;
+  padding: 20px 22px 18px;
+  display: flex;
+  flex-direction: column;
+}
+.rack_hero { grid-column: span 6; }
+.rack_tall { grid-column: span 3; }
+.rack_wide { grid-column: span 4; }
+.rack_tile { grid-column: span 2; }
+.rack_cta {
+  grid-column: span 6;
+  background: transparent;
+  border-style: dashed;
+  border-width: 2px;
+}
+
+.rack_card_head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rack_card_head h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  /* Explicit. Something upstream in this stylesheet leaves an inherited
+     `color: #fff` on headings inside a paper section, so the first render of
+     this rack was white-on-white: the names were in the DOM, measurable, and
+     invisible. Every text colour in this block is stated rather than
+     inherited for the same reason. */
+  color: var(--desk-ink);
+}
+.rack_hero .rack_card_head h3 { font-size: 27px; }
+
+.rack_status {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 5px 11px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+/* Live reads green, ready-to-build reads amber, an open slot reads blue —
+   a state, never a grade. */
+.rack_status_live_pilot,
+.rack_status_live_research {
+  color: var(--desk-green);
+  border-color: rgba(0, 134, 83, 0.3);
+  background: rgba(0, 134, 83, 0.09);
+}
+.rack_status_ready_to_build {
+  color: #8a5d00;
+  border-color: rgba(246, 178, 45, 0.45);
+  background: rgba(246, 178, 45, 0.14);
+}
+.rack_status_open {
+  color: var(--desk-blue-deep);
+  border-color: rgba(5, 140, 214, 0.3);
+  background: rgba(5, 140, 214, 0.09);
+}
+
+/* Element+class, because a bare `.rack_tagline` still loses to a section-level
+   paragraph rule elsewhere in this file. Specificity stated once here rather
+   than fought in four places. */
+.rack_card p.rack_tagline {
+  margin: 8px 0 0;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--desk-green);
+}
+.rack_card p.rack_blurb { color: rgba(31, 32, 34, 0.75); }
+.rack_card .rack_sdg span { color: var(--desk-blue-deep); }
+.rack_card .rack_stack { color: rgba(31, 32, 34, 0.55); }
+.rack_card .rack_gap li { color: rgba(31, 32, 34, 0.6); }
+.rack_blurb {
+  margin: 10px 0 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: rgba(31, 32, 34, 0.75);
+}
+.rack_hero .rack_blurb { font-size: 15px; max-width: 62ch; }
+
+.rack_metric {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.rack_metric li {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--desk-ink);
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: #eef1f0;
+  border: 1px solid var(--desk-line);
+}
+
+.rack_foot {
+  margin-top: auto;
+  padding-top: 14px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.rack_stack {
+  font-size: 11.5px;
+  color: rgba(31, 32, 34, 0.55);
+}
+.rack_sdg { display: flex; gap: 6px; }
+.rack_sdg span {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--desk-blue-deep);
+  border: 1px solid rgba(5, 140, 214, 0.28);
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+
+/* The honest half: what each project still needs. A rack of green ticks is a
+   brochure; this is meant to be a status board. */
+.rack_gap {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--desk-line);
+}
+.rack_gap li {
+  position: relative;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(31, 32, 34, 0.6);
+  margin-bottom: 5px;
+}
+.rack_gap li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.5em;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(246, 178, 45, 0.75);
+}
+
+@media (max-width: 900px) {
+  .rack_grid { grid-template-columns: 1fr; }
+  .rack_card,
+  .rack_hero,
+  .rack_tall,
+  .rack_wide,
+  .rack_tile,
+  .rack_cta { grid-column: span 1; }
+  .rack_hero .rack_card_head h3 { font-size: 23px; }
 }

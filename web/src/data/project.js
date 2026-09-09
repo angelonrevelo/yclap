@@ -25,7 +25,7 @@ export const project = [
     repo_path: "web-forest/",
     can_demo: true,
     rack_span: "hero",
-    metric_label: ["1,098 species", "68 sectors", "208 tests green"],
+    metric_label: ["1,098 species", "68 sectors", "240 tests green"],
     improvement: [
       "AIS species-per-sector inventory — 6 of 68 sectors name anything today",
       "Origin data: 9 of 1,098 species carry a native/exotic label",
