@@ -24,9 +24,9 @@
  *
  * Bump CACHE_VERSION whenever the shell needs to be re-fetched.
  */
-const CACHE_VERSION = "magisphere-v6";
+const CACHE_VERSION = "ecomon-v7";
 /* Deliberately NOT renamed with the shell. The cache key is what a device's
-   warmed campus is stored under; renaming it on the Magisphere rename would
+   warmed campus is stored under; renaming it on the eComon rename would
    have thrown away every tile banked by "Save offline" on the eve of the
    showcase, to buy nothing but a matching string. */
 const TILE_CACHE = "field-guide-tile-v1";

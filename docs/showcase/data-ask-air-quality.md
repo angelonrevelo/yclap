@@ -2,7 +2,7 @@
 
 **For:** Charisse, who offered on 2026-09-08 (21:15) to source "specific air quality data or
 climate chuchu" tonight.
-**From:** the Magisphere build. Written so nobody spends an evening finding data the app
+**From:** the eComon build. Written so nobody spends an evening finding data the app
 cannot honestly show.
 **Version:** 0.1 · 2026-09-08
 

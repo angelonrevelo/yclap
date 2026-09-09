@@ -1,6 +1,6 @@
-# Magisphere — concept note
+# eComon — concept note
 
-**Magisphere — *Rediscovering home.***
+**eComon — *Rediscovering home.***
 **Ateneo de Manila University · Youth CLAP 2026 · Innovation Showcase, 12 September 2026**
 **Two pages, per the 2026-09-05 brief (Katherine): the same information as the deck, in document form.**
 **Version:** 0.1 · 2026-09-08 · every figure below is either measured in this repo or labelled as not.
@@ -31,7 +31,7 @@ and their numbers are cited as theirs throughout the app.
 
 ## 2 · What we built
 
-**Magisphere** is a progressive web app for the campus forest: open it on a phone, walk,
+**eComon** is a progressive web app for the campus forest: open it on a phone, walk,
 and find out what is around you.
 
 | | Measured, 2026-09-08 |
@@ -77,7 +77,7 @@ Objectives below are the ones in the **ADMU deck as submitted** (`ADMU.pptx`,
 slide 3), not the earlier Output 2 draft — those said 500 students and a Q2
 map, and they have been superseded.
 
-| Objective, as submitted | What Magisphere contributes | Honest status |
+| Objective, as submitted | What eComon contributes | Honest status |
 |---|---|---|
 | Consult **≥20 students and Ateneo stakeholders** by Q3 AY 2026–27 to identify needed features | Nothing yet — this is a people task, not a build task | Not started. The app is currently ahead of its own consultation, which is worth saying out loud rather than hiding |
 | Document and map **≥80% of identified trees in a selected campus area** by Q3 AY 2026–27, with species, location and native/non-native | 68 walkable sectors cut from OSM and measured against imagery; 1,098 species modelled | Blocked on the AIS inventory for the species-per-sector assignment. **Native/non-native is the weak one: 9 of 1,098 pool entries carry an origin label**, because the iNaturalist sweep never requested establishment means |

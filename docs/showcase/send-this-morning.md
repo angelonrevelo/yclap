@@ -1,3 +1,5 @@
+**RESOLVED: eComon** (Angelo, 09-09) — app, manifest, deck, and `--product-name` flipped to eComon. Canva PNGs still need a manual edit.
+
 # Two messages to send this morning
 
 The only things standing between the boards and the printer are one group

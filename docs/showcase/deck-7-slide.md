@@ -1,4 +1,4 @@
-# Magisphere — the seven slides
+# eComon — the seven slides
 
 **Tagline, as printed on the boards: *Rediscovering home.***
 
@@ -42,7 +42,7 @@ product · not a replacement for the AIS inventory.
 
 ---
 
-## 3 · Magisphere
+## 3 · eComon
 
 One screenshot: the phone, home, with **Out right now** showing.
 
@@ -151,7 +151,7 @@ Close on the contradiction from slide 1, then the mission line:
   09-08 and asked for the PNG **the morning of 09-09** to reach Intermatrix.
 - **The QR on the boards must come from `go.ateneo.edu/QRcode`** in the "a" or eagle
   style — Ms. Shenina, 09-08 21:24. Not a generic QR.
-- **RESOLVED 09-09: the boards say Magisphere.** The Canva export
+- **RESOLVED 09-09 (later): Angelo chose eComon.** The Canva export still says Magisphere and needs a manual edit; the app/deck/boards HTML now say eComon. Earlier note: the Canva export
   (`[ADMU YCLAP] Publication Material and QR.zip`) carries the final material and
   it is branded Magisphere / *Rediscovering home.* throughout. Board 9 in that
   zip is the old "ecomon" kit sheet and is superseded — do not send it.

@@ -1,4 +1,4 @@
-# Magisphere — web-forest
+# eComon — web-forest
 
 The campus-forest PWA for Ateneo Loyola Heights. Four surfaces: `/` `/map`
 `/journal` `/plan`.

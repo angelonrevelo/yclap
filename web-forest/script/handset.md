@@ -1,4 +1,4 @@
-# Testing Magisphere on a real phone
+# Testing eComon on a real phone
 
 The one blocker the deck admits: **the PWA has never run on a physical handset.**
 This is the runbook, with what was actually tried on 2026-09-08 and what worked.
@@ -28,18 +28,18 @@ offline claim, the walk, or the catch. Know which one you are running.
 ```
 cd web-forest
 npm run build
-MAGISPHERE_HOST=0.0.0.0 npm run preview      # port 4178
+ECOMON_HOST=0.0.0.0 npm run preview      # port 4178
 ```
 
 Then open `http://<your-mac-lan-ip>:4178/` on the phone, same wifi.
 Find the IP with `ipconfig getifaddr en0`.
 
-`MAGISPHERE_HOST` is **opt-in on purpose**. The default stays on loopback,
+`ECOMON_HOST` is **opt-in on purpose** (`MAGISPHERE_HOST` still works as an alias). The default stays on loopback,
 because binding a dev server to every interface by default is how a laptop
 ends up serving a half-built app to a conference wifi.
 
 Verified working 2026-09-08: `curl http://192.168.1.25:4178/manifest.webmanifest`
-returned the Magisphere manifest, so the serving half is real.
+returned the eComon manifest, so the serving half is real.
 
 **What you can check on Path A:** every layout at true device pixel ratio, tap
 target sizes, the map's raked camera on a real GPU, scroll performance with
@@ -65,7 +65,7 @@ It prints every address it is reachable on. Then, on the phone, **once**:
    and refuses every other path.
 2. **iOS:** Settings → *Profile Downloaded* → Install. Then
    **Settings → General → About → Certificate Trust Settings** and switch on
-   *Magisphere local CA*. **This second step is the one everybody misses** — the
+   *eComon local CA*. **This second step is the one everybody misses** — the
    profile installs fine without it and the certificate is still not trusted.
 3. **Android:** Settings → Security → Encryption & credentials → Install a
    certificate → CA certificate.
@@ -95,7 +95,7 @@ Over `https://192.168.1.25:4179` with `curl --cacert script/cert/ca.crt`:
 |---|---|
 | TLS validates against the generated CA | pass |
 | `subjectAltName` covers the LAN IP and the tailnet IP | pass — an IP only in the CN is rejected outright by iOS, and this is the usual cause of "works on the laptop, fails on the phone" |
-| `/manifest.webmanifest` | serves, reads `Magisphere` |
+| `/manifest.webmanifest` | serves, reads `eComon` |
 | `/journal` (a client-side route with no file) | 200 via SPA fallback |
 | `/model/species-model.json` | 200, 431,651 bytes — the world data is reachable |
 | `sw.js` sent `Cache-Control: no-cache` | pass — otherwise you spend an evening testing yesterday's build |
