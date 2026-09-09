@@ -16,18 +16,19 @@
  * checklist are docs/showcase/deck-7-slide.md. This file is the projectable
  * artefact and it says nothing those two do not.
  *
- * Palette is the committee brand kit sampled off the sheet, not eyeballed:
- * bark #704E2E, leaf #ADE25D, ultramarine #1F01B1. Forest green stays for
- * anything that carries an ECOLOGY meaning, because those readings have to
- * survive greyscale and the brand ramp was not drawn against that test.
+ * Palette sampled off the FINAL Canva publication material (2026-09-09), not
+ * the earlier "ecomon" kit sheet — that sheet ships as board 9 of the same
+ * export and is superseded. Forest #154D30 is the wordmark colour, green
+ * #3E9A5E the section pills, blue #3463B5 the secondary. Ecology greens are
+ * untouched: native/exotic/threatened have to survive greyscale.
  *
  * Print: Chrome → Print → landscape, A4, background graphics on, margins none.
  */
 :root{
-  --bark:#704e2e; --leaf:#ade25d; --deep:#1f01b1;
+  --bark:#154d30; --leaf:#3e9a5e; --deep:#3463b5;
   --green-deep:#008653; --green:#45c223;
   --ink:#1f2022; --paper:#f9f9f9; --grid:#e4e7e8; --mute:#5b6165;
-  --brand:linear-gradient(115deg,#704e2e 0%,#ade25d 62%,#1f01b1 100%);
+  --brand:linear-gradient(115deg,#154d30 0%,#3e9a5e 58%,#3463b5 100%);
 }
 /* Slide geometry: 254 x 142.9mm — true 16:9, and small enough to sit inside
    the content area of a Letter OR A4 landscape sheet.
@@ -120,10 +121,10 @@ td.t{ width:22mm; font-weight:700; color:var(--bark); font-variant-numeric:tabul
    which are the two DARK ends of the same kit, and the lime returns as a solid
    accent rule where it has ink behind it. Same palette, legible at 20 m. */
 .cover{
-  background:linear-gradient(118deg,#5b3f25 0%,#704e2e 34%,#2a1a6b 72%,#1f01b1 100%);
+  background:linear-gradient(118deg,#0d3a22 0%,#154d30 34%,#1f4a8a 72%,#3463b5 100%);
   color:#fff;
 }
-.cover .accent{ width:26mm; height:1.8mm; border-radius:999px; background:var(--leaf); margin-bottom:6mm; }
+.cover .accent{ width:26mm; height:1.8mm; border-radius:999px; background:#8fd6a3; margin-bottom:6mm; }
 .cover::before{ display:none; }
 .cover h1{ font-size:30pt; max-width:168mm; }
 .cover .eyebrow{ color:rgba(255,255,255,.85); }
@@ -327,9 +328,8 @@ td.t{ width:22mm; font-weight:700; color:var(--bark); font-variant-numeric:tabul
       <p class="small"><b>What it produces</b></p>
       <p class="small" style="margin-top:2mm">
         Every logged find carries <b>species, count, coordinate, accuracy and time</b>,
-        exportable as CSV and GeoJSON. That pair — a count and a location — is exactly what
-        the existing inventory does not have, and it is the input to an annual monitoring
-        report.
+        exportable as CSV and GeoJSON. That pair is exactly what the existing inventory does
+        not have, and it is the input to an annual monitoring report.
       </p>
       <p class="small" style="margin-top:3mm">
         <b>Photos and notes never leave the device.</b> Only species, count and location are
@@ -338,9 +338,20 @@ td.t{ width:22mm; font-weight:700; color:var(--bark); font-variant-numeric:tabul
       <div class="rule"></div>
       <p class="small"><b>Built to be checked</b></p>
       <p class="small" style="margin-top:2mm">
-        208 automated tests, typecheck and lint green. Several exist specifically to stop the
+        240 automated tests, typecheck and lint green. Several exist specifically to stop the
         app claiming more than it measured.
       </p>
+    </div>
+    <div class="col">
+      <p class="small"><b>The risks our own deck named, and where they stand</b></p>
+      <table style="margin-top:2mm; font-size:8pt">
+        <tr><th>Risk we named</th><th>Where it stands</th></tr>
+        <tr><td><b>Connectivity</b></td><td><b>Answered</b> — works offline, verified with the network cut</td></tr>
+        <tr><td><b>Limited content</b></td><td><b>Answered</b> — 1,098 species, 68 sectors, rotating every 30 min</td></tr>
+        <tr><td><b>Technical</b></td><td><b>Partly</b> — reach is a measured 40 m; an unlocated find reports no distance rather than a false one</td></tr>
+        <tr><td><b>Low engagement</b></td><td><b>Open</b> — no usage measured yet</td></tr>
+        <tr><td><b>Financial</b></td><td><b>Open</b> — static hosting; the ask is a sponsor, not a budget</td></tr>
+      </table>
     </div>
     <div class="col">
       <p class="small"><b>What we do not have yet</b></p>
