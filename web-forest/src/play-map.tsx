@@ -52,6 +52,8 @@ import { KindPath, KIND_TONE } from "./kind-mark";
    diagram; sky haze is handled by the gradient overlay rather than by flattening. */
 const TILT_DEGREE = 52;
 const GROUND = "#CFE3BD";
+/** Closest play camera. Exported so the app's default play zoom cannot outrun it. */
+export const PLAY_MAX_ZOOM = 22;
 const MAX_LABEL = 5;
 
 interface ShapeFile {
@@ -296,6 +298,11 @@ export default function PlayMap({
       is_tile_hidden
       ground={GROUND}
       overlay_attribution={`${SECTOR_ATTRIBUTION} · basemap © OpenStreetMap contributors`}
+      /* ODbL credit has to stay readable: sit it just above the game dock (156 px). */
+      credit_offset={158}
+      /* Pokémon GO scale: at z22 a 390 px screen spans ~14 m, so a street is the
+         width of the view and the walker's egg reads at about human height. */
+      max_zoom={PLAY_MAX_ZOOM}
       is_chrome_hidden
       overlay={(projection) => {
         /* Only real biomes speak. A car park does not get a pill. */

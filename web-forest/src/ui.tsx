@@ -15,7 +15,7 @@ import { species, type Origin, type Species } from "./data";
  * and a meta line underneath. Everything else is spacing.
  */
 
-export const RADIUS = { card: 28, tile: 22, pill: 999 } as const;
+export const RADIUS = { card: 10, tile: 8, pill: 999 } as const;
 
 export interface Accent {
   /** Line and text colour. */
@@ -27,10 +27,10 @@ export interface Accent {
 }
 
 const ACCENT: Record<Origin | "unknown" | "threatened", Accent> = {
-  Native: { ink: "#008653", wash: "rgba(0,134,83,0.09)", ring: "rgba(0,134,83,0.34)" },
-  Exotic: { ink: "#8a5d00", wash: "rgba(246,178,45,0.14)", ring: "rgba(246,178,45,0.5)" },
-  threatened: { ink: "#c22a17", wash: "rgba(255,57,32,0.09)", ring: "rgba(255,57,32,0.32)" },
-  unknown: { ink: "#6c7276", wash: "rgba(31,32,34,0.055)", ring: "rgba(31,32,34,0.2)" },
+  Native: { ink: "#b2e068", wash: "rgba(129,182,76,0.12)", ring: "rgba(129,182,76,0.4)" },
+  Exotic: { ink: "#f7c631", wash: "rgba(247,198,49,0.12)", ring: "rgba(247,198,49,0.4)" },
+  threatened: { ink: "#ff8a7a", wash: "rgba(250,65,45,0.12)", ring: "rgba(250,65,45,0.4)" },
+  unknown: { ink: "rgba(255,255,255,0.5)", wash: "rgba(255,255,255,0.06)", ring: "rgba(255,255,255,0.16)" },
 };
 
 /** Threatened outranks origin — it is the fact a field guide should lead with. */
@@ -48,11 +48,11 @@ export function Pill({
   tone?: "neutral" | "native" | "exotic" | "threatened" | "info";
 }) {
   const map = {
-    neutral: { bg: "#eef1f0", fg: "#1F2022", bd: "#E4E7E8" },
-    native: { bg: "rgba(0,134,83,0.12)", fg: "#008653", bd: "rgba(0,134,83,0.3)" },
-    exotic: { bg: "rgba(246,178,45,0.16)", fg: "#8a5d00", bd: "rgba(246,178,45,0.45)" },
-    threatened: { bg: "rgba(255,57,32,0.1)", fg: "#c22a17", bd: "rgba(255,57,32,0.3)" },
-    info: { bg: "rgba(5,140,214,0.1)", fg: "#075D89", bd: "rgba(5,140,214,0.28)" },
+    neutral: { bg: "rgba(255,255,255,0.08)", fg: "rgba(255,255,255,0.85)", bd: "rgba(255,255,255,0.1)" },
+    native: { bg: "rgba(129,182,76,0.12)", fg: "#b2e068", bd: "rgba(129,182,76,0.4)" },
+    exotic: { bg: "rgba(247,198,49,0.12)", fg: "#f7c631", bd: "rgba(247,198,49,0.4)" },
+    threatened: { bg: "rgba(250,65,45,0.12)", fg: "#ff8a7a", bd: "rgba(250,65,45,0.4)" },
+    info: { bg: "rgba(0,159,217,0.12)", fg: "#4dc3ea", bd: "rgba(0,159,217,0.4)" },
   }[tone];
   return (
     <span
@@ -134,7 +134,7 @@ export function TaxonThumb({
         height: size,
         flexShrink: 0,
         borderRadius: RADIUS.pill,
-        background: accent.wash,
+        background: "rgba(255,255,255,0.92)",
         border: `2px solid ${accent.ring}`,
         display: "grid",
         placeItems: "center",
@@ -172,7 +172,7 @@ export function TaxonName({
           style={{
             fontSize: 10,
             fontWeight: 700,
-            color: "var(--ui-accent)",
+            color: "#b2e068",
             letterSpacing: "0.07em",
             whiteSpace: "nowrap",
             overflow: "hidden",
@@ -182,10 +182,10 @@ export function TaxonName({
           {eyebrow}
         </div>
       )}
-      <div style={{ fontWeight: 800, fontSize: size, lineHeight: 1.15, marginTop: eyebrow ? 3 : 0 }}>
+      <div style={{ fontWeight: 800, fontSize: size, lineHeight: 1.15, color: "#ffffff", marginTop: eyebrow ? 3 : 0 }}>
         {sp.common_name}
       </div>
-      <div style={{ fontStyle: "italic", fontSize: size * 0.72, color: "rgba(31,32,34,0.6)", marginTop: 1 }}>
+      <div style={{ fontStyle: "italic", fontSize: size * 0.72, color: "rgba(255,255,255,0.72)", marginTop: 1 }}>
         {sp.scientific_name}
       </div>
       {meta && <div style={{ marginTop: 4 }}>{meta}</div>}
@@ -222,9 +222,9 @@ export function Fab({
         placeItems: "center",
         /* The kit glyphs are green on ink. A green disc would swallow them, so
            the disc is paper and the ring carries the brand colour instead. */
-        background: "var(--brand-cream, #f7faf6)",
-        border: is_leaf ? "4px solid var(--ui-accent)" : "1.5px solid #E4E7E8",
-        boxShadow: "0 8px 20px rgba(31,32,34,0.28)",
+        background: "rgba(255,255,255,0.92)",
+        border: is_leaf ? "4px solid #81b64c" : "1.5px solid rgba(255,255,255,0.1)",
+        boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
         flexShrink: 0,
         ...style,
       }}
@@ -235,7 +235,7 @@ export function Fab({
 }
 
 /** Section heading used across `/journal` and `/plan`. */
-export function Eyebrow({ children, tone = "var(--ui-accent)" }: { children: ReactNode; tone?: string }) {
+export function Eyebrow({ children, tone = "#81b64c" }: { children: ReactNode; tone?: string }) {
   return (
     <div style={{ fontSize: 11, fontWeight: 700, color: tone, letterSpacing: "0.06em" }}>{children}</div>
   );
@@ -253,10 +253,11 @@ export function Card({
   return (
     <div
       style={{
-        background: "#fffef9",
-        border: "1.5px solid rgba(21,77,48,0.10)",
+        background: "#262421",
+        color: "rgba(255,255,255,0.85)",
+        border: "1px solid rgba(255,255,255,0.1)",
         borderRadius: RADIUS.card,
-        boxShadow: "var(--shadow-card)",
+        boxShadow: "var(--cc-shadow-sm)",
         padding,
         ...style,
       }}
@@ -274,7 +275,7 @@ export function Card({
  */
 export function Chip({
   is_on = false,
-  tone = "var(--ui-accent)",
+  tone = "#81b64c",
   onClick,
   children,
   style,
@@ -290,14 +291,14 @@ export function Chip({
       onClick={onClick}
       className="flex items-center gap-1.5"
       style={{
-        background: "var(--brand-cream, #f7faf6)",
-        border: `1.5px solid ${is_on ? tone : "#E4E7E8"}`,
-        color: is_on ? tone : "#1F2022",
+        background: "rgba(38,36,33,0.94)",
+        border: `1.5px solid ${is_on ? tone : "rgba(255,255,255,0.1)"}`,
+        color: is_on ? tone : "rgba(255,255,255,0.85)",
         borderRadius: RADIUS.pill,
         padding: "7px 12px",
         fontSize: 12,
         fontWeight: 700,
-        boxShadow: "var(--shadow-card)",
+        boxShadow: "var(--cc-shadow-sm)",
         whiteSpace: "nowrap",
         ...style,
       }}
@@ -323,7 +324,7 @@ export function GlyphDisc({ children, size = 28 }: { children: ReactNode; size?:
         height: size,
         flexShrink: 0,
         borderRadius: RADIUS.pill,
-        background: "var(--brand-cream, #f7faf6)",
+        background: "rgba(255,255,255,0.92)",
         display: "grid",
         placeItems: "center",
       }}

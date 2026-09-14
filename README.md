@@ -48,7 +48,7 @@ Landing includes: **Youth CLAP design-system brand** (tokens + four-person mark)
 Named by the group on 2026-09-08; the GC is `yclap magisphere 🌏🦅`.
 **Mission line:** *Two-thirds of this campus is green. Now you can name it.*
 **Evidence:** 1,098 species modelled from a real iNaturalist campus sweep; 68 walkable
-sectors cut from OSM and measured against imagery; 206 tests in the gate.
+sectors cut from OSM and measured against imagery; 278 tests in the gate.
 **Earlier flagship:** Gargar pilot (scrap-to-value + diversion log), with EcoWaste intel
 as evidence — still live in its own repo, no longer the showcase piece.
 **Team model:** multi-lane (Build · Science · Mobilize · Story)

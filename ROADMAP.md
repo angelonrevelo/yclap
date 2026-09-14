@@ -16,7 +16,7 @@ For older rejected ideas (carbon product, second recycling app, and similar), se
 
 | Tab | What it does |
 |-----|----------------|
-| **Home** | Brand, short walk intro, sourced campus snapshot, landmark teaser, points + weekly streak, local demo leaderboard, start walking CTA |
+| **Home** | The play map at street level (z22): player card (level, points, weekly streak), daily-hunt quest card, bottom tab bar with a raised Go. The trainer sheet holds challenges and the local demo leaderboard |
 | **Map** | Explore nearby finds / spawns, Demo campus for off-site demos, species cards with 3D, optional camera log, Open in Seek |
 | **Journal** | Personal finds on this device, points + streak + challenges + Biodiversity Buddy, optional photos, collection / badge shelf. Local observation statuses. Private device journal |
 | **Plan** | What the site is for, who we still hope to consult (AIS, MO, CFMO/TAW, orgs), how another campus could copy the four surfaces |
@@ -69,6 +69,9 @@ Suggested Ma'am walkthrough: Home (points + local leaderboard), then Map with De
 | Local leaderboard (P0) | Seeded demo cohort + device user; explicit demo/local labelling |
 | Challenges + Buddy (P1) | Optional goals with progress; Buddy stages from weekly participation |
 | Local obs statuses (P2 scaffold) | Verified / Needs ID / Duplicate as journal labels only |
+| Game UI | chess.com design system across every surface (dark charcoal, green primary, Nunito); trainer level shown from points; Dex as numbered collectible cards. See `web-forest/README.md` § Look and feel |
+| Illustrated icon set | 26 full-colour game icons (Go, Dex, Nearby, Plan, streak, trophy, points, quest, lock, and every kit icon), generated and keyed to RGBA. Regeneration in `web-forest/script/icon/` |
+| Street-level play camera | Play map opens at z22, so a street fills the phone screen |
 
 Older cohort desk work (canvas, rubrics, worksheets) remains in `docs/`. It is program support, not Magisphere app features.
 

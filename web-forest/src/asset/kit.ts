@@ -27,6 +27,16 @@ import raintree from "./species/raintree.png";
 import teak from "./species/teak.png";
 import balete from "./species/balete.png";
 import silhouette from "./species/silhouette.png";
+import game_dex from "./icon/game/dex.png";
+import game_go from "./icon/game/go.png";
+import game_nearby from "./icon/game/nearby.png";
+import game_level from "./icon/game/level.png";
+import game_lock from "./icon/game/lock.png";
+import game_plan from "./icon/game/plan.png";
+import game_points from "./icon/game/points.png";
+import game_quest from "./icon/game/quest.png";
+import game_streak from "./icon/game/streak.png";
+import game_trophy from "./icon/game/trophy.png";
 import empty_journal from "./spot/empty_journal.png";
 import success_log from "./spot/success_log.png";
 import log_sighting from "./spot/log_sighting.png";
@@ -63,6 +73,24 @@ export const icon = {
   go_camera,
   /* `export` is a reserved word — the key is what the UI reads. */
   export: export_,
+};
+
+/**
+ * Game icons — chess.com-style illustrated set generated with `codex` (gpt-image-2)
+ * on a magenta key, keyed to RGBA with soft edges (09-14). Full colour on purpose:
+ * these sit on the dark chess.com surfaces, not on paper like the kit glyphs above.
+ */
+export const game_icon = {
+  dex: game_dex,
+  go: game_go,
+  level: game_level,
+  lock: game_lock,
+  nearby: game_nearby,
+  plan: game_plan,
+  points: game_points,
+  quest: game_quest,
+  streak: game_streak,
+  trophy: game_trophy,
 };
 
 export const mark = {

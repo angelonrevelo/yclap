@@ -138,6 +138,11 @@ interface Props {
    * the nav ends rather than the credit being dropped.
    */
   credit_offset?: number;
+  /**
+   * Closest zoom allowed when tiles are hidden. Defaults to `MAX_ZOOM`; the play
+   * view raises it to a Pokémon GO camera, where one street fills the screen.
+   */
+  max_zoom?: number;
   /** Chrome the map draws in SCREEN space, above the tilted plane. */
   overlay?: (projection: Projection) => ReactNode;
   is_chrome_hidden?: boolean;
@@ -166,6 +171,7 @@ export default function TileMap({
   is_tile_hidden = false,
   ground,
   credit_offset = 0,
+  max_zoom = MAX_ZOOM,
   overlay,
   is_chrome_hidden = false,
   children,
@@ -189,7 +195,7 @@ export default function TileMap({
   /* Play hides tiles and draws its own ground, so it is not capped by a
      raster source's max zoom — that is what lets the camera sit closer than
      OSM's z19 ceiling. Field still respects the active basemap. */
-  const zoom_cap = is_tile_hidden ? MAX_ZOOM : source.max_zoom;
+  const zoom_cap = is_tile_hidden ? max_zoom : source.max_zoom;
   const zoom = Math.round(Math.max(MIN_ZOOM, Math.min(zoom_cap, view.zoom)));
   const center_world = toWorld(view, zoom);
   const origin = {

@@ -140,10 +140,10 @@ export function useSpawnWorld(explored_sector?: ReadonlySet<string>): SpawnWorld
 /* ── rarity ─────────────────────────────────────────────────────────────── */
 
 const RARITY_TONE: Record<Rarity, { fg: string; bg: string; bd: string }> = {
-  common: { fg: "#4a5a4e", bg: "rgba(31,32,34,0.05)", bd: "rgba(31,32,34,0.16)" },
-  uncommon: { fg: "#008653", bg: "rgba(0,134,83,0.1)", bd: "rgba(0,134,83,0.3)" },
-  rare: { fg: "#075D89", bg: "rgba(5,140,214,0.1)", bd: "rgba(5,140,214,0.32)" },
-  mythic: { fg: "#8a5d00", bg: "rgba(246,178,45,0.18)", bd: "rgba(246,178,45,0.55)" },
+  common: { fg: "rgba(255,255,255,0.72)", bg: "rgba(255,255,255,0.06)", bd: "rgba(255,255,255,0.14)" },
+  uncommon: { fg: "#b2e068", bg: "rgba(129,182,76,0.12)", bd: "rgba(129,182,76,0.4)" },
+  rare: { fg: "#4dc3ea", bg: "rgba(0,159,217,0.12)", bd: "rgba(0,159,217,0.4)" },
+  mythic: { fg: "#f7c631", bg: "rgba(247,198,49,0.12)", bd: "rgba(247,198,49,0.4)" },
 };
 
 /**
@@ -210,8 +210,8 @@ export function SpawnStrip({
           style={{
             marginTop: 12,
             borderRadius: RADIUS.tile,
-            background: "var(--brand-mist)",
-            border: "1.5px dashed rgba(21,77,48,0.22)",
+            background: "rgba(255,255,255,0.06)",
+            border: "1.5px dashed rgba(255,255,255,0.16)",
             padding: is_desktop ? "18px 16px" : "14px 12px",
             textAlign: "center",
           }}
@@ -222,10 +222,10 @@ export function SpawnStrip({
               height: 44,
               borderRadius: 999,
               margin: "0 auto",
-              background: "rgba(62,154,94,0.16)",
+              background: "rgba(129,182,76,0.12)",
               display: "grid",
               placeItems: "center",
-              color: "var(--brand-forest)",
+              color: "#ffffff",
               fontWeight: 800,
               fontSize: 22,
               lineHeight: 1,
@@ -234,10 +234,10 @@ export function SpawnStrip({
           >
             ?
           </div>
-          <p style={{ fontWeight: 800, fontSize: 15, marginTop: 10, color: "var(--brand-forest)", lineHeight: 1.3 }}>
+          <p style={{ fontWeight: 800, fontSize: 15, marginTop: 10, color: "#ffffff", lineHeight: 1.3 }}>
             {!world.is_ready ? "Looking for what is out right now…" : "Nothing along the path in this window."}
           </p>
-          <p style={{ fontSize: 12.5, color: "rgba(31,32,34,0.65)", marginTop: 8, lineHeight: 1.45 }}>
+          <p style={{ fontSize: 12.5, color: "rgba(255,255,255,0.72)", marginTop: 8, lineHeight: 1.45 }}>
             Walk. Finds rotate every 30 min.
           </p>
         </div>
@@ -249,11 +249,11 @@ export function SpawnStrip({
     <Card padding={is_desktop ? 18 : 14}>
       <div className="flex items-baseline justify-between gap-3">
         <Eyebrow>OUT RIGHT NOW</Eyebrow>
-        <span style={{ fontSize: 11.5, fontWeight: 700, color: "rgba(31,32,34,0.5)", fontVariantNumeric: "tabular-nums" }}>
+        <span style={{ fontSize: 11.5, fontWeight: 700, color: "rgba(255,255,255,0.5)", fontVariantNumeric: "tabular-nums" }}>
           {left} min left
         </span>
       </div>
-      <p style={{ fontSize: 11.5, color: "rgba(31,32,34,0.55)", marginTop: 6, lineHeight: 1.45 }}>
+      <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.72)", marginTop: 6, lineHeight: 1.45 }}>
         {fix ? "Nearest. Highlighted = log it." : "Rarest out now."}
       </p>
       <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
@@ -272,8 +272,8 @@ export function SpawnStrip({
                 width: "100%",
                 padding: 10,
                 borderRadius: RADIUS.tile,
-                border: `1.5px solid ${is_reachable ? "var(--ui-accent)" : "#E4E7E8"}`,
-                background: is_reachable ? "rgba(21,77,48,0.05)" : "#fff",
+                border: `1.5px solid ${is_reachable ? "#81b64c" : "rgba(255,255,255,0.1)"}`,
+                background: is_reachable ? "rgba(129,182,76,0.12)" : "rgba(255,255,255,0.06)",
               }}
             >
               {/* Curated artwork where we drew it; the taxon group where we did
@@ -299,7 +299,7 @@ export function SpawnStrip({
                   </span>
                   {is_logged && <Pill tone="native">In journal</Pill>}
                 </div>
-                <div style={{ fontSize: 11.5, color: "rgba(31,32,34,0.6)", marginTop: 3 }}>
+                <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.72)", marginTop: 3 }}>
                   {sector?.name ?? s.sector_code}
                   {/* Walk minutes are for a distance worth pacing. Printing
                       "≈1 min walk" beside "3 m" reads as filler, not help. */}
@@ -316,7 +316,7 @@ export function SpawnStrip({
                     style={{
                       fontSize: 11,
                       fontWeight: 800,
-                      color: "var(--ui-accent)",
+                      color: "#b2e068",
                       marginTop: 4,
                       letterSpacing: "0.02em",
                     }}
@@ -331,7 +331,7 @@ export function SpawnStrip({
           );
         })}
       </div>
-      <p style={{ fontSize: 10.5, color: "rgba(31,32,34,0.45)", marginTop: 10, lineHeight: 1.4 }}>
+      <p style={{ fontSize: 10.5, color: "rgba(255,255,255,0.5)", marginTop: 10, lineHeight: 1.4 }}>
         Rarity = campus iNat count. Slots 55 / 25 / 15 / 5.
       </p>
     </Card>
@@ -357,8 +357,8 @@ function BadgeTile({ award }: { award: BadgeAward }) {
       style={{
         padding: 12,
         borderRadius: RADIUS.tile,
-        border: `1.5px solid ${is_earned ? "rgba(21,77,48,0.35)" : "#E4E7E8"}`,
-        background: is_earned ? "rgba(21,77,48,0.06)" : "#fff",
+        border: `1.5px solid ${is_earned ? "rgba(129,182,76,0.4)" : "rgba(255,255,255,0.1)"}`,
+        background: is_earned ? "rgba(129,182,76,0.12)" : "rgba(255,255,255,0.06)",
         opacity: is_earned ? 1 : 0.72,
       }}
     >
@@ -369,8 +369,8 @@ function BadgeTile({ award }: { award: BadgeAward }) {
           borderRadius: 999,
           display: "grid",
           placeItems: "center",
-          background: is_earned ? "var(--ui-accent)" : "rgba(31,32,34,0.08)",
-          color: is_earned ? "#fff" : "rgba(31,32,34,0.4)",
+          background: is_earned ? "#81b64c" : "rgba(255,255,255,0.1)",
+          color: is_earned ? "#fff" : "rgba(255,255,255,0.4)",
           fontWeight: 800,
           fontSize: 14,
         }}
@@ -379,9 +379,9 @@ function BadgeTile({ award }: { award: BadgeAward }) {
         {is_earned ? "✓" : "·"}
       </div>
       <div style={{ fontWeight: 800, fontSize: 13, marginTop: 8, lineHeight: 1.2 }}>{award.def.name}</div>
-      <div style={{ fontSize: 11, color: "rgba(31,32,34,0.6)", marginTop: 4, lineHeight: 1.35 }}>{award.def.blurb}</div>
+      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.72)", marginTop: 4, lineHeight: 1.35 }}>{award.def.blurb}</div>
       {is_earned && (
-        <div style={{ fontSize: 10.5, color: "var(--ui-accent)", fontWeight: 700, marginTop: 6 }}>
+        <div style={{ fontSize: 10.5, color: "#b2e068", fontWeight: 700, marginTop: 6 }}>
           Earned {new Date(award.earned_at as string).toLocaleDateString()}
         </div>
       )}
@@ -408,11 +408,11 @@ export function BadgeShelf({
     <div>
       <div className="flex items-baseline justify-between gap-3">
         <Eyebrow>YOUR BADGES</Eyebrow>
-        <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ui-accent)", fontVariantNumeric: "tabular-nums" }}>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: "#b2e068", fontVariantNumeric: "tabular-nums" }}>
           {earned_count} of {award.length} earned
         </span>
       </div>
-      <p style={{ fontSize: 11.5, color: "rgba(31,32,34,0.55)", marginTop: 6, lineHeight: 1.45 }}>
+      <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.72)", marginTop: 6, lineHeight: 1.45 }}>
         Every badge is earned by doing the thing the app is for. Nothing is purchasable, nothing expires, and no badge
         compares you to anybody else.
       </p>
@@ -421,7 +421,7 @@ export function BadgeShelf({
         if (row.length === 0) return null;
         return (
           <div key={group} style={{ marginTop: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(31,32,34,0.5)", letterSpacing: "0.06em" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.5)", letterSpacing: "0.06em" }}>
               {(GROUP_LABEL[group] ?? group).toUpperCase()}
             </div>
             <div
@@ -453,8 +453,8 @@ function WildTile({ find }: { find: WildFind }) {
       style={{
         padding: 10,
         borderRadius: RADIUS.tile,
-        border: "1.5px solid #E4E7E8",
-        background: "#fff",
+        border: "1.5px solid rgba(255,255,255,0.1)",
+        background: "rgba(255,255,255,0.06)",
         minWidth: 0,
       }}
     >
@@ -476,7 +476,7 @@ function WildTile({ find }: { find: WildFind }) {
           style={{
             fontStyle: "italic",
             fontSize: 10.5,
-            color: "rgba(31,32,34,0.55)",
+            color: "rgba(255,255,255,0.72)",
             marginTop: 1,
             whiteSpace: "nowrap",
             overflow: "hidden",
@@ -485,7 +485,7 @@ function WildTile({ find }: { find: WildFind }) {
         >
           {find.scientific_name}
         </div>
-        <div style={{ fontSize: 10, color: "rgba(31,32,34,0.45)", marginTop: 3 }}>
+        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 3 }}>
           {new Date(find.first_at).toLocaleDateString()}
           {find.times > 1 && ` · seen ${find.times}×`}
         </div>
@@ -531,14 +531,14 @@ export function WildShelf({
           style={{
             fontSize: 12.5,
             fontWeight: 700,
-            color: "var(--ui-accent)",
+            color: "#b2e068",
             fontVariantNumeric: "tabular-nums",
           }}
         >
           {collection.found_count} of {collection.pool_total.toLocaleString()} known here
         </span>
       </div>
-      <p style={{ fontSize: 11.5, color: "rgba(31,32,34,0.55)", marginTop: 6, lineHeight: 1.45 }}>
+      <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.72)", marginTop: 6, lineHeight: 1.45 }}>
         Species you met by walking into them — the campus sweep knows{" "}
         {collection.pool_total.toLocaleString()} and the guide has cards for nine.
         {collection.best === "mythic" && " One of yours has been recorded here once."}
@@ -549,7 +549,7 @@ export function WildShelf({
             style={{
               fontSize: 11,
               fontWeight: 700,
-              color: "rgba(31,32,34,0.5)",
+              color: "rgba(255,255,255,0.5)",
               letterSpacing: "0.06em",
             }}
           >
@@ -569,7 +569,7 @@ export function WildShelf({
           </div>
         </div>
       ))}
-      <p style={{ fontSize: 10.5, color: "rgba(31,32,34,0.45)", marginTop: 12, lineHeight: 1.4 }}>
+      <p style={{ fontSize: 10.5, color: "rgba(255,255,255,0.5)", marginTop: 12, lineHeight: 1.4 }}>
         Your finds. Rarity = campus iNat count.
       </p>
     </div>
@@ -652,14 +652,14 @@ export function WorldStrip({ sighting, world: given }: { sighting: Sighting[]; w
     <Card padding={14}>
       <div className="flex items-baseline justify-between gap-3">
         <Eyebrow>THE CAMPUS RIGHT NOW</Eyebrow>
-        <span style={{ fontSize: 11.5, fontWeight: 700, color: "rgba(31,32,34,0.5)" }}>you are {me.name}</span>
+        <span style={{ fontSize: 11.5, fontWeight: 700, color: "rgba(255,255,255,0.5)" }}>you are {me.name}</span>
       </div>
       <div className="flex flex-wrap gap-2" style={{ marginTop: 10 }}>
         <Pill tone="info">{other.length} other walker{other.length === 1 ? "" : "s"} out</Pill>
         <Pill tone="neutral">{world.totals.sighting_count} finds shared</Pill>
         <Pill tone="native">{mine} of them yours</Pill>
       </div>
-      <p style={{ fontSize: 10.5, color: "rgba(31,32,34,0.45)", marginTop: 10, lineHeight: 1.4 }}>
+      <p style={{ fontSize: 10.5, color: "rgba(255,255,255,0.5)", marginTop: 10, lineHeight: 1.4 }}>
         {world.note} Your photos and notes never leave this phone — only species, count and location, which is the part
         the campus inventory does not have.
       </p>

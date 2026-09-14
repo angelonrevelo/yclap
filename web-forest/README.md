@@ -101,12 +101,47 @@ bias toward native species therefore reaches 0.8% of the world today.
 
 - **Play** (default) — raked camera, sector fills on one green ramp, your
   character standing in it, ambient canopy and birds. Draws its own vector
-  ground from `campus-shape.json`, so it needs **no tile server at all**.
+  ground from `campus-shape.json`, so it needs **no tile server at all**. The
+  camera sits at z22 (`PLAY_MAX_ZOOM` in `src/play-map.tsx`): a 390 px phone
+  spans about 14 m, so one street fills the view and the walker reads at about
+  human scale. Field keeps the basemap's own ceiling.
 - **Field** — the same sectors over four real basemaps, with the path network,
   every layer control and every citation. The reference surface.
 
 Two fingers (or shift-drag) swing the camera 360°; the compass returns north.
 `?bearing=62` seeds an angle for a projector demo or a reproducible screenshot.
+
+## Look and feel
+
+The app wears the chess.com design system. Its tokens are lifted from the
+`CelestialBrain/chesscom` recreation (`src/styles.css` there): warm charcoal
+surfaces `#312E2B` / `#262421`, the green `#81B64C` primary with an inset
+top-light and bottom-shade edge, 8–10 px radii, Nunito 800 headings, thin green
+progress bars, and small chips for tags.
+
+- **`src/game.css`** — the tokens and every `gm-` / `cc-` class. Components read
+  these rather than inventing colours.
+- **`src/hud.tsx`** — the play layer's chrome: player card (level, points,
+  weekly streak), daily-hunt quest card, the bottom tab bar (Buddy · Nearby ·
+  Go · Dex · Plan), reward toast, and the Dex cards.
+- **`src/level.ts`** — trainer level is a way of *displaying* points, not a
+  second score: level L starts at 50·L·(L−1) points. Nothing awards "XP".
+
+**Icons.** `src/asset/icon/game/` and the kit icons in `src/asset/icon/*.png`
+are one illustrated set: flat vector, two-tone cel shading, no outlines, full
+colour for dark surfaces. They were generated on a `#FF00FF` key with `codex`
+(`gpt-image-2`) and, after its quota ran out, `grok`, both anchored to the same
+reference, then keyed to RGBA with soft edges and shipped at 160 px. To
+regenerate: the specs and the keyer are in `script/icon/` —
+
+```
+node <codex-skill>/scripts/imagen.mjs script/icon/icon-spec.json --keep-raw
+python3 script/icon/keyer.py <out-dir> <keyed-dir>   # needs Pillow + numpy
+```
+
+The keyer un-premultiplies against the key so edges carry no pink fringe, and
+reports `magenta_residue_px` per icon; it must be 0. The specs hold absolute
+paths from the machine that ran them — edit `out` and `reference` first.
 
 ## Regenerating the map data
 

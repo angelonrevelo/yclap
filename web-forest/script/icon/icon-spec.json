@@ -1,0 +1,52 @@
+{
+  "out": "/Users/angelonrevelo/yclap-icon-work/out",
+  "reference": "/Users/angelonrevelo/yclap-icon-work/ref/puzzles_1770738047292.png",
+  "timeoutSec": 600,
+  "contract": {
+    "width": 512,
+    "height": 512,
+    "palette": [
+      "#FF00FF",
+      "#262421", "#4B4847", "#8B8987", "#DAD8D6", "#FFFFFF",
+      "#D8FA9D", "#B2E068", "#81B64C", "#5D9948", "#45753C",
+      "#FAD541", "#F7C631", "#E3AA24", "#CF8D1B",
+      "#83DEFC", "#009FD9", "#0069AB",
+      "#FFA459", "#FA742C", "#FA412D",
+      "#CA9350", "#9D6C3E", "#26C2A3", "#E3C29C"
+    ],
+    "keyOut": true,
+    "opaque": false,
+    "minInkShare": 0.1,
+    "maxSpeckle": 400
+  },
+  "style": "Flat vector game icon in the chess.com illustration style: chunky rounded friendly forms, bold saturated colour, soft two-tone cel shading with exactly one lit plane and one shadow plane per surface, a small white highlight glint where light hits, and a slight three-quarter top-down view so the object shows a top face and a side face. Premium and playful, like a mobile game reward icon. BANNED: outlines, strokes, black contour lines, gradients, textures, noise, grain, drop shadows, glows, sparkles, confetti, text, letters, numbers, chess pieces, people, faces, hands, background scenery. The colour magenta #FF00FF and any pink or purple must NEVER appear inside the subject.",
+  "framing": "Background: one uniform flat #FF00FF magenta, edge to edge, and it is the ONLY thing behind the subject. Square canvas. One single object, centred, filling about 70 percent of the canvas width with an even margin on every side. Solid filled shapes only, never an outline drawing. Every detail at least one twenty-fourth of the canvas wide so the icon still reads at 40 pixels.",
+  "item": [
+    { "name": "dex", "subject": "a collector's card binder book lying at a slight angle, green cover with a gold leaf emblem on the front, three colourful cards peeking out of the top edge" },
+    { "name": "nearby", "subject": "a round radar compass disc in blue and white, a green location pin standing upright in its centre, a short gold needle" },
+    { "name": "go_camera", "subject": "a chunky green instant camera in three-quarter view, a big round lens with a blue glass disc and a white glint, a small gold leaf badge on the top corner" },
+    { "name": "plan", "subject": "a partly unrolled treasure-map scroll in warm tan, a dashed green path leading to a small gold star marker" },
+    { "name": "streak", "subject": "a bold stylised flame in orange and gold with a lighter yellow core" },
+    { "name": "trophy", "subject": "a gold trophy cup with two handles on a short dark gray base, a green leaf emblem on the cup" },
+    { "name": "points", "subject": "a single thick gold coin standing slightly tilted, embossed with a green leaf" },
+    { "name": "quest", "subject": "a round archery target with red and white rings and a green-fletched arrow in the bullseye" },
+    { "name": "level", "subject": "a gold five-pointed star badge resting on a short green ribbon" },
+    { "name": "lock", "subject": "a chunky gray padlock with a gold keyhole" },
+    { "name": "check", "subject": "a bold green checkmark standing on a round light-green token" },
+    { "name": "close", "subject": "a bold light-gray X mark standing on a round dark-gray token" },
+    { "name": "pin", "subject": "a green map location pin with a round white hole in its head" },
+    { "name": "restricted", "subject": "a round red no-entry sign with a white horizontal bar across the middle" },
+    { "name": "canopy", "subject": "three stacked square map-layer tiles in three-quarter view, the top tile green with a small round tree, the middle tile blue, the bottom tile tan" },
+    { "name": "locate", "subject": "a blue crosshair reticle disc with a white dot in the centre" },
+    { "name": "walk", "subject": "a green hiking boot mid-step with gold laces" },
+    { "name": "export", "subject": "a tan paper sheet with a bold green arrow curving up and out of it to the right" },
+    { "name": "leaf_scan", "subject": "a green leaf framed by four white corner viewfinder brackets" },
+    { "name": "camera", "subject": "a compact green camera in front view with a round blue lens" },
+    { "name": "home", "subject": "a small cosy house with a green roof, warm tan walls and a round glinting window" },
+    { "name": "journal", "subject": "a closed green field notebook with a dark elastic band and a gold ribbon bookmark" },
+    { "name": "map", "subject": "a folded paper map in three panels with a green park area and a blue river" },
+    { "name": "shutter", "subject": "a big round shutter button with a green top face and a lighter green rim" },
+    { "name": "encounter", "subject": "a bright green sprout seedling with two leaves growing from a small round mound of brown soil" },
+    { "name": "player", "subject": "a round blue location dot token with a white centre" }
+  ]
+}

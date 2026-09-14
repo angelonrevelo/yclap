@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./token.css";
+@import "./game.css";
 
 @theme {
   --color-blue: #058cd6;
