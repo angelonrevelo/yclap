@@ -1,7 +1,7 @@
-# Judging rubric — Innovation Showcase (Sep 12, 2026)
+# Judging rubric — Innovation Showcase (Sep 26, 2026; moved from Sep 12)
 
 **Version:** 1.0 · 2026-08-25 · Lane C
-**Scope:** Multi-factor, NBS-aware scorecard for the Sep 12 Youth CLAP Innovation Showcase. Built for judges and for team self-grading before walking on.
+**Scope:** Multi-factor, NBS-aware scorecard for the Sep 26 Youth CLAP Innovation Showcase. Built for judges and for team self-grading before walking on.
 **Evidence base:** `docs/research/wave3-agent/R40-innovation-showcase-judge.md` (scorecard convergence), `R39-3min-pitch-structure.md`, `R36-youth-pitch-winner-pattern.md`, `R42-rodel-lasco-nbs.md`; `docs/plaud/2026-08-15-climate-biodiversity.md` (Lasco multi-factor NBS rule); `docs/pitch-3min.md` (non-claims).
 
 ---
@@ -14,7 +14,7 @@
 | Implementability / doability | 25% | R40 §1 feasibility cluster: "can this team run it in the next 30–90 days?" — R40's YCLAP weighting puts highest score on a working pilot loop; R36 ClimateLaunchpad pillar 2 (implementation feasibility); accelerator ask for "doable, actionable, realizable project" (plaud 2026-08-15, Ask #6). |
 | Community benefit + equity | 20% | R40 §3.2: defined beneficiaries incl. informal collectors/junkshops, stakeholder voice with consent, do-no-harm; R42 §7 + mentor questions: equity/maladaptation check ("does it help or burden the vulnerable?"); plaud Decision: carbon offsetting judged inequitable, justice read as recognition → procedural → distributive. |
 | Measurement honesty (M&E) | 20% | R40 §3.1 evidence ladder (rung A–F) + §3.3 metrics that score vs backfire; R39: mentors punish hiding limits harder than small numbers; plaud Ask #8: community-based monitoring so local people own their data; R42 red flag: claim without survival/monitoring plan. |
-| Sustainability beyond the event | 10% | R40 §1 path-sustainability row + §3.2 afterlife bullet (who owns the pilot after Sep 12 — AIS/SEEDS, org + MRF window); R36 pillar: scalability as "credible next step beyond the room," not national fantasy. |
+| Sustainability beyond the event | 10% | R40 §1 path-sustainability row + §3.2 afterlife bullet (who owns the pilot after the Sep 26 showcase — AIS/SEEDS, org + MRF window); R36 pillar: scalability as "credible next step beyond the room," not national fantasy. |
 | **Total** | **100%** | |
 
 ## 2. Scoring note — carbon tonnage is not a gate
@@ -41,7 +41,7 @@ If a pitch implies any of these, treat it as a measurement-honesty deduction, no
 | Implementability | Slide vision only; no demo; megaproject shape. | Demo claimed but vapor feature (booking without verified collector); no pilot log. | Live happy path runs (or backup video plays); some field contact; next test vague. | Working loop live: rate → collector → log; ≥3 field-verified collector or honestly labeled pending; clear 30–90-day test. | Loop + exportable log with verification label + backup demo ready + specific next milestone (R40 prototype floor met). |
 | Community benefit + equity | Beneficiary = everyone/planet; informal worker erased or tokenized. | Benefit asserted via savior narrative; no consent protocol. | Defined beneficiary incl. collector/junkshop; consent noted. | Named partner; fair-rate language; worker voice with consent; do-no-harm evident. | Justice beat lands: transparency framed as fairer path for informal recovery; replicable by another campus/org; maladaptation check answered (R42 lens). |
 | Measurement honesty | Unfalsifiable planetary claim; blended kg; credit/neutrality implied. | Some number but no method, date, or verification split. | Time-boxed number with basic method; minor blending of verified vs estimated. | Pilot window + place + N user + K kg split by verification level; method card; honest miss disclosed. | Full claim-ladder discipline (rung A–C primary; climate co-benefit order-of-magnitude with uncertainty stated); limits offered unprompted; survives hostile Q&A (R40 §3–4). |
-| Sustainability beyond event | Dies after Sep 12; no owner named. | Vague "we will continue." | Org window or continuity path sketched. | Concrete afterlife: AIS/SEEDS or org + MRF window for 90 day; owner assigned. | Credible next step beyond the room + owner + what lets another node replicate (R36 honest-scalability bar). |
+| Sustainability beyond event | Dies after the Sep 26 showcase; no owner named. | Vague "we will continue." | Org window or continuity path sketched. | Concrete afterlife: AIS/SEEDS or org + MRF window for 90 day; owner assigned. | Credible next step beyond the room + owner + what lets another node replicate (R36 honest-scalability bar). |
 
 ## 5. Judge scoresheet
 

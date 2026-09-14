@@ -2,7 +2,7 @@
 
 **Tagline, as printed on the boards: *Rediscovering home.***
 
-**Innovation Showcase, 12 September 2026 · Youth CLAP Ateneo CCC**
+**Innovation Showcase, 26 September 2026 · Youth CLAP Ateneo CCC**
 **Constraint from the 2026-09-05 brief: seven slides, no more.**
 **Version:** 0.1 · 2026-09-08 · pairs with [`concept-note.md`](concept-note.md), which carries the same information in document form.
 

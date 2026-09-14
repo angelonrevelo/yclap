@@ -2,7 +2,7 @@
 
 Live app: https://yclap-field-guide.marangelonrevelo.workers.dev
 
-This roadmap describes what Magisphere **has today**, what is still needed before Saturday, and what remains out of scope. It tracks Angelo's Working Doc project direction ([YCLAP 2026] Working Doc) as the product plan.
+This roadmap describes what Magisphere **has today**, what is still needed before the showcase (moved to Saturday 26 September), and what remains out of scope. It tracks Angelo's Working Doc project direction ([YCLAP 2026] Working Doc) as the product plan.
 
 For older rejected ideas (carbon product, second recycling app, and similar), see [`docs/roadmap-rejected.md`](docs/roadmap-rejected.md).
 
@@ -41,7 +41,9 @@ For older rejected ideas (carbon product, second recycling app, and similar), se
 
 ## Showcase clock
 
-**Saturday 12 September 2026. PNU Innovation Showcase.**
+**Saturday 26 September 2026. PNU Innovation Showcase** (PNU Gymnasium, Manila).
+
+Moved from 12 September by the CCC for weather (advisory relayed in the Ateneo CCC YCLAP chat, 2026-09-09); the new date is **subject to CCC final confirmation**. Team plan for the two extra weeks: improve the website. Pitch is 8 minutes with 2–3 presenters. Intel: [`docs/showcase/vault-intel-2026-09-14.md`](docs/showcase/vault-intel-2026-09-14.md).
 
 Live link for demos: https://yclap-field-guide.marangelonrevelo.workers.dev
 
@@ -82,15 +84,16 @@ Angelo overruled the prior "NOT DOING gamification" stance for Magisphere. These
 | **Weekly streak** | Shipped on-device (P0) | Week participation, not daily visits |
 | **Home + Journal surfaces** | Shipped (P0) | Points + streak on both; Journal also shows challenges + Buddy |
 | **Local demo leaderboard** | Shipped (P0) | Demo cohort only. Do not present as official AIS ranks |
-| **Challenges** | Shipped basic (P1) | Discover 2 species / Explore 2 areas. More challenge packs later |
+| **Challenges** | Shipped basic (P1) | Discover 2 species / Explore 2 areas. 09-09 wants a **daily hunt** (one tree + sector hint), not just these counters |
 | **Biodiversity Buddy** | Shipped basic (P1) | Seedling → Sprout → Young Tree → Mature Tree from weekly streak. Art can stay simple placeholders |
 | **Local observation statuses** | Scaffold (P2) | Device journal labels only. No human reviewer queue; no "updates AIS dataset" claim |
-| **Group streak** | Not started | Working Doc note; feasibility TBD |
+| **Group streak** | Not started | 09-09 Sophie / Ivan (`1:34:05`). Feasibility TBD |
+| **09-09 play layer (Home HUD, daily hunt, anti-spam)** | Shipped on-device (P0) | GO Home, daily hunt card, Hunt 40 > Observe 25, `observe:${code}:${sector}` anti-spam, quiet-sector spawn bias. Group streak still not started |
 | **Blindbox / cosmetic reveals** | Partial | Stage cosmetics already exist; not the Working Doc blindbox product yet |
 
 ---
 
-## NEXT (before Saturday)
+## NEXT (before 26 September)
 
 Demo-critical work first.
 
@@ -99,6 +102,12 @@ Demo-critical work first.
 | **Handset proof** | PWA has not been proven on a real phone (HTTPS / secure context for SW, geo, camera). Runbook: `web-forest/script/handset.md` | Prove install + Map + one journal save + points toast on a physical handset |
 | **Ateneo eagle QR on Canva** | Boards must use the Ateneo QR generator (`go.ateneo.edu/QRcode`) in the "a" / eagle style, pointing at the live Magisphere URL. Not a generic QR | Confirm Canva / Intermatrix materials |
 | **Ma'am demo script** | Short path: Home (points + local board) → Demo campus Map → Learn card → one log → Journal | One page or slide cue card |
+| **09-09 play layer (P0)** | Showcase demo behaviors from the 09-09 Plaud | Shipped on-device — see **2026-09-12**. Handset / QR still open |
+| **Final deck + concept note to CCC by 23 Sep** | Deadline moved with the showcase (Anna Oposa, Youth CLAP Innovators Telegram GC). Email to partnershipsandcampaign@climate.gov.ph. Follow CCC's six-part elevator-pitch guide | Ivan finishing slides + script workspace |
+| **AIS tree inventory export** | Ms. Shenina (Ateneo CCC YCLAP chat, 09-14): request the export from AIS (campus flora / arboretum pages). Unblocks real geo on the map | Request, then map import |
+| **Reference-link appendix** | Ms. Shenina (09-14): one appendix of every reference link, uploaded to the shared Drive | Anyone; repo sources already cite most links |
+| **Feature list at a glance** | Feeds the pre/post-test GForm, the booth "museum of features" walls, and the 30-second feature video (team chat, 09-09) | Website group |
+| **Heat layer: not from AIS** | AIS has no campus land-surface-temperature layer; it would need QGIS from satellite imagery. Not a showcase blocker | Decide in or out |
 | **Demo-critical fixes only** | Bugs that would break the hall demo (blank 3D, Demo campus off by default, broken journal save, points not awarding). No unrelated feature expansion | Triage ruthlessly |
 
 ---
@@ -114,7 +123,7 @@ These are not missing app features. They wait on people outside the build.
 | Landmark oral history | Interview or dated photo from older batches / Ateneo Wild. Card ships with the gap stated rather than inventing a story |
 | Official verification → campus dataset | Named human reviewer(s) and AIS authority. App statuses stay local until that exists |
 
-Also still hoped for later (not Saturday blockers): CFMO walkable vs restricted clarity, CCC / Manila Observatory climate content where we can source it honestly.
+Also still hoped for later (not showcase blockers): CFMO walkable vs restricted clarity, CCC / Manila Observatory climate content where we can source it honestly.
 
 ---
 
@@ -135,11 +144,48 @@ Other long-standing refusals (carbon product, blue-carbon credits, second recycl
 
 ---
 
+## 2026-09-12 — 09-09 Plaud play layer
+
+Source: [`docs/plaud/2026-09-09-gamified-map-pitch-showcase.md`](docs/plaud/2026-09-09-gamified-map-pitch-showcase.md). Behaviors, not test names. Appended after the 09-09 recording; does not rewrite the Showcase clock or delete handset / QR rows above.
+
+Room decisions that still stand: omit “round opens”; same map for discovery + challenge; open world always on; algorithm prefers under-explored areas; showcase stays public; planting is a **pitch-objective** line only, not a site claim.
+
+### P0 — Showcase demo
+
+| Behavior | Surface | Tier 3 | Status |
+|----------|---------|--------|--------|
+| GO-like Home HUD, minimal copy | `/` | PASS iff Home primary CTA is GO / Walk and the essay hero is gone | Shipped — circular GO; essay hero removed |
+| Daily hunt (one tree + sector hint) | Home + Map | PASS iff a daily card names one species and one area | Shipped — `dailyTaskFor` + Home / Map hunt chip |
+| Challenge weighs more than observe | `POINT_VALUE` | PASS iff `POINT_VALUE.challenge > POINT_VALUE.observe` | Shipped — Hunt 40; awarded when the daily species is logged |
+| Anti-spam: same species + sector does not re-award observe | points events | PASS iff the observe subject key is `observe:${code}:${sector}` | Shipped |
+| Local trainer board on Home | `/` | PASS iff the board is visible and labelled demo / not AIS | Shipped — restyled as BOARD; demo names still tagged |
+| Top-3 finds per sector + under-explored rest bias | Map spawn | PASS iff a sector shows at most 3 finds and rest prefers under-walked ground | Shipped — `spawnInSector` cap + explored rest 0.45 / unvisited 0.10 |
+| Journal empty state one line, not RECIPE citation | `/journal` | PASS iff the empty card is one line and does not cite RECIPE | Shipped — “Nothing logged.” |
+
+### P1
+
+| Behavior | Surface | Tier 3 | Status |
+|----------|---------|--------|--------|
+| Group streak | Journal / Home | PASS iff two or more device-local names share a week key | Not started |
+| Quiet restricted-area treatment | Map | PASS iff restricted ground is gray / black and is not explained in a paragraph | Partial — hatch exists; still obvious as off-limits |
+
+### Triage (do not treat as showcase must-ship)
+
+| Behavior | Surface | Tier 3 | Status |
+|----------|---------|--------|--------|
+| Walk-step points (Speaker 1, `21:31`) | — | Would PASS only if the device actually measures steps | **Rejected** as a fabricated metric unless measured. Same class as the Whistler row in `docs/roadmap-rejected.md` |
+| Ateneo.edu SSO | — | — | **Blocked** on DATES. Showcase stays public |
+| Human reviewer / AIS dataset update | Journal statuses | — | **Blocked** on named reviewers + AIS authority |
+| Official AIS ranks | Leaderboard | — | **Still NOT DOING.** Local / demo cohort only |
+
+---
+
 ## How to read this file
 
 1. **North star** = truth of the live app.
 2. **DONE** = shipped and demoable.
-3. **IN PROGRESS** = Working Doc mechanics landing toward Saturday.
-4. **NEXT** = only what Saturday needs.
+3. **IN PROGRESS** = Working Doc mechanics landing toward the showcase.
+4. **NEXT** = only what the 26 September showcase needs.
 5. **BLOCKED** = partner-gated, not a coding backlog disguised as open features.
 6. **NOT DOING** = still closed (or narrowed). Point people to `docs/roadmap-rejected.md` for the older full list.
+7. **2026-09-12 play layer** = 09-09 Plaud showcase demo rows. They sit under the Showcase clock; they do not replace handset / QR.

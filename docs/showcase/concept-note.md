@@ -1,7 +1,7 @@
 # Magisphere — concept note
 
 **Magisphere — *Rediscovering home.***
-**Ateneo de Manila University · Youth CLAP 2026 · Innovation Showcase, 12 September 2026**
+**Ateneo de Manila University · Youth CLAP 2026 · Innovation Showcase, 26 September 2026**
 **Two pages, per the 2026-09-05 brief (Katherine): the same information as the deck, in document form.**
 **Version:** 0.1 · 2026-09-08 · every figure below is either measured in this repo or labelled as not.
 
