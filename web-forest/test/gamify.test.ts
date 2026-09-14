@@ -7,11 +7,16 @@ import {
   buddyStageFor,
   buddyProgress,
   challengeProgress,
+  dailySubject,
+  dailyTaskFor,
+  dayKey,
   gamifySnapshot,
   isLocalVerified,
+  isTreeEntry,
   localLeaderboard,
   localObsStatus,
   observeAwardKind,
+  observeSubject,
   participatedThisWeek,
   speciesFromSubject,
   totalPoints,
@@ -29,11 +34,13 @@ function ev(over: Partial<PointEvent> & Pick<PointEvent, "kind" | "subject_key" 
 }
 
 describe("point values (Working Doc)", () => {
-  it("matches Explore 10, Learn 10, Observe 25, Verified Discovery 50", () => {
+  it("matches Explore 10, Learn 10, Observe 25, Hunt 40, Verified Discovery 50", () => {
     assert.equal(POINT_VALUE.explore, 10);
     assert.equal(POINT_VALUE.learn, 10);
     assert.equal(POINT_VALUE.observe, 25);
+    assert.equal(POINT_VALUE.challenge, 40);
     assert.equal(POINT_VALUE.verified_discovery, 50);
+    assert.ok(POINT_VALUE.challenge > POINT_VALUE.observe);
   });
 });
 
@@ -180,6 +187,58 @@ describe("local observation status (P2 scaffold)", () => {
     assert.equal(localObsStatus({ photo_data: "x", species_code: "narra" }), "verified");
     assert.equal(localObsStatus({ photo_data: null, species_code: "narra" }), "needs_id");
     assert.equal(localObsStatus({ photo_data: "x", species_code: "narra", prior_same_species: 1 }), "duplicate");
+  });
+});
+
+describe("observe + daily hunt", () => {
+  it("dedupes observe by species+sector, not by sighting id", () => {
+    assert.equal(observeSubject("narra", "bellarmine"), "observe:narra:bellarmine");
+    assert.equal(speciesFromSubject("observe:narra:bellarmine"), "narra");
+    const a = awardPoints([], "observe", observeSubject("narra", "bellarmine"));
+    const b = awardPoints(a.events, "observe", observeSubject("narra", "bellarmine"));
+    assert.equal(a.awarded, true);
+    assert.equal(b.awarded, false);
+  });
+
+  it("picks one tree + biome per player-day and marks done after hunt award", () => {
+    const pool = [
+      {
+        species_code: "narra",
+        common_name: "Narra",
+        scientific_name: "Pterocarpus indicus",
+        count: 20,
+        origin: "Native",
+        iconic_taxon_name: "Plantae",
+        archetype: "tree",
+        file: "species/narra.glb",
+      },
+      {
+        species_code: "weaver",
+        common_name: "Weaver",
+        scientific_name: "Oecophylla",
+        count: 40,
+        origin: "Native",
+        iconic_taxon_name: "Insecta",
+        archetype: "insect",
+        file: "species/weaver.glb",
+      },
+    ];
+    const sector = [
+      { sector_code: "bellarmine", name: "Bellarmine Field", is_biome: true },
+      { sector_code: "asphalt", name: "Car park", is_biome: false },
+    ];
+    const now = new Date("2026-09-12T04:00:00.000Z");
+    const a = dailyTaskFor(pool, sector, now, "player-a", []);
+    const b = dailyTaskFor(pool, sector, now, "player-a", []);
+    assert.ok(a);
+    assert.equal(a?.species_code, b?.species_code);
+    assert.equal(a?.sector_code, "bellarmine");
+    assert.equal(isTreeEntry(pool[0]), true);
+    assert.equal(isTreeEntry(pool[1]), false);
+    assert.equal(a?.is_done, false);
+    const awarded = awardPoints([], "challenge", dailySubject(dayKey(now)));
+    const done = dailyTaskFor(pool, sector, now, "player-a", awarded.events);
+    assert.equal(done?.is_done, true);
   });
 });
 

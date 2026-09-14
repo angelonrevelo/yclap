@@ -9,7 +9,9 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "node --test --experimental-strip-types test/*.test.ts",
-    "handset": "npm run build && node script/serve-https.mjs"
+    "handset": "npm run build && node script/serve-https.mjs",
+    "sync": "node --experimental-strip-types server/sync-server.mjs --port 8788",
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "@google/model-viewer": "^4.3.1",
@@ -24,6 +26,7 @@
     "oxlint": "^1.75.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0",
-    "vite": "^8.2.0"
+    "vite": "^8.2.0",
+    "wrangler": "^4.131.1"
   }
 }

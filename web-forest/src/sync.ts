@@ -1,34 +1,28 @@
 /**
- * Client half of the central sync (owner ask, 2026-09-08: "working multiplayer
- * and centralized database sync").
+ * Client half of the campus world.
  *
- * The division of trust is the whole design:
- *   - The JOURNAL never leaves the device except as the wire rows below — no
- *     photo, no note, no prompt answer. Photos are megabytes and private; the
- *     only part AIS actually lacks is species + count + location (`2:12:12`),
- *     and that is all this sends.
- *   - What comes DOWN is the world: other players' shared finds and a count of
- *     who is out there. Nothing in it ranks anyone against anyone — the
- *     standing rule (Sophie, `20:20`) survives multiplayer by construction:
- *     there is no field to compare.
- *
- * Identity is a random UUID minted on the device plus a generated walker name.
- * No account, no login, no PII — this is a showcase LAN, not a service.
- *
- * Server: `server/sync-server.mjs` (node:sqlite). Reach it via
- * `VITE_SYNC_URL` at build time, or `?sync=http://ip:8788` at runtime for the
- * projector pointing at another machine.
+ * Same-origin in production (the Worker on the PWA host). `?sync=` still
+ * points a projector at a LAN box. Photos and notes never leave the device.
  */
+
+import {
+  joinCodeOf,
+  normalizeJoinCode,
+  type World,
+  type WorldFind,
+  type WorldWalker,
+} from "./campus-world.ts";
+
+export type { World, WorldFind, WorldWalker };
 
 export interface PlayerIdentity {
   player_id: string;
   name: string;
+  join_code: string;
 }
 
 const IDENTITY_KEY = "field-guide.player";
 
-/* Deterministic, friendly, non-identifying. The word list is trees you can
-   actually meet on this campus. */
 const NAME_WORD = [
   "Narra", "Molave", "Katmon", "Dao", "Balete", "Lagundi", "Banaba", "Dita",
   "Kupang", "Amugis", "Palosapis", "Malaruhat", "Salunguguet", "Tibig", "Almaciga",
@@ -43,6 +37,27 @@ function hashOf(text: string): number {
   return h >>> 0;
 }
 
+function mintIdentity(): PlayerIdentity {
+  const uuid =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  const h = hashOf(uuid);
+  return {
+    player_id: uuid,
+    name: `${NAME_WORD[h % NAME_WORD.length]} Walker ${(h >>> 8) % 97}`,
+    join_code: joinCodeOf(uuid),
+  };
+}
+
+function writeIdentity(identity: PlayerIdentity, storage: Storage | null): void {
+  try {
+    storage?.setItem(IDENTITY_KEY, JSON.stringify(identity));
+  } catch {
+    /* private mode */
+  }
+}
+
 /** Read-or-mint the device's walker identity. Stable across reloads. */
 export function readPlayer(storage: Storage | null = safeStorage()): PlayerIdentity {
   try {
@@ -50,27 +65,35 @@ export function readPlayer(storage: Storage | null = safeStorage()): PlayerIdent
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<PlayerIdentity>;
       if (typeof parsed.player_id === "string" && typeof parsed.name === "string") {
-        return { player_id: parsed.player_id, name: parsed.name };
+        const identity: PlayerIdentity = {
+          player_id: parsed.player_id,
+          name: parsed.name,
+          join_code:
+            typeof parsed.join_code === "string" && normalizeJoinCode(parsed.join_code).length === 6
+              ? normalizeJoinCode(parsed.join_code)
+              : joinCodeOf(parsed.player_id),
+        };
+        if (identity.join_code !== parsed.join_code) writeIdentity(identity, storage);
+        return identity;
       }
     }
   } catch {
     /* fall through and mint */
   }
-  const uuid =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-  const h = hashOf(uuid);
-  const identity: PlayerIdentity = {
-    player_id: uuid,
-    name: `${NAME_WORD[h % NAME_WORD.length]} Walker ${(h >>> 8) % 97}`,
-  };
-  try {
-    storage?.setItem(IDENTITY_KEY, JSON.stringify(identity));
-  } catch {
-    /* private mode — identity stays for this session only */
-  }
+  const identity = mintIdentity();
+  writeIdentity(identity, storage);
   return identity;
+}
+
+/** Adopt another device's walker so journal + presence share one player_id. */
+export function writePlayer(identity: PlayerIdentity, storage: Storage | null = safeStorage()): PlayerIdentity {
+  const next: PlayerIdentity = {
+    player_id: identity.player_id.slice(0, 64),
+    name: identity.name.slice(0, 40),
+    join_code: normalizeJoinCode(identity.join_code) || joinCodeOf(identity.player_id),
+  };
+  writeIdentity(next, storage);
+  return next;
 }
 
 function safeStorage(): Storage | null {
@@ -81,9 +104,6 @@ function safeStorage(): Storage | null {
   }
 }
 
-/* ── the wire ─────────────────────────────────────────────────────────────── */
-
-/** What one journal row becomes on the wire. Deliberately narrow. */
 export interface SightingWire {
   sighting_id: string;
   species_code: string;
@@ -94,11 +114,6 @@ export interface SightingWire {
   created_at: string;
 }
 
-/**
- * Journal row → wire row. The allowlist IS the privacy policy: anything not
- * listed here (photo_data, note, accuracy, walk_id…) cannot reach the server
- * because this is the only mapping that builds a request body.
- */
 export function toWire(
   row: {
     sighting_id: string;
@@ -121,41 +136,16 @@ export function toWire(
   };
 }
 
-export interface WorldFind {
-  sighting_id: string;
-  player_id: string;
-  player_name: string;
-  species_code: string;
-  common_name: string;
-  lat: number | null;
-  lon: number | null;
-  entry_kind: string;
-  created_at: string;
-}
-
-export interface WorldWalker {
-  player_id: string;
-  name: string;
-  stage: string;
-  level: number;
-  updated_at: string;
-}
-
-export interface World {
-  server_time: string;
-  find: WorldFind[];
-  walker: WorldWalker[];
-  totals: { player_count: number; sighting_count: number };
-  note: string;
-}
-
 export type SyncState =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "ready"; world: World; at: number }
   | { status: "offline" };
 
-/** Where the server lives. `?sync=` beats the build-time env beats same-host. */
+/**
+ * Where the campus world lives.
+ * `?sync=` · `VITE_SYNC_URL` · same origin (the deployed Worker / vite proxy).
+ */
 export function syncUrl(): string | null {
   try {
     const param = new URLSearchParams(window.location.search).get("sync");
@@ -166,10 +156,17 @@ export function syncUrl(): string | null {
   const env = (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_SYNC_URL;
   if (env?.trim()) return env.trim().replace(/\/$/, "");
   try {
-    return `${window.location.protocol}//${window.location.hostname}:8788`;
+    return window.location.origin;
   } catch {
     return null;
   }
+}
+
+export interface PlayerSummary {
+  stage: string;
+  level: number;
+  total_points: number;
+  streak_weeks: number;
 }
 
 export interface SyncResult {
@@ -177,23 +174,22 @@ export interface SyncResult {
   world: World;
 }
 
-/** Push the journal (mapped through `toWire`) and bring the world back. */
 export async function syncJournal(
   player: PlayerIdentity,
   wire: SightingWire[],
-  summary: { stage: string; level: number },
+  summary: PlayerSummary,
   fetch_impl: typeof fetch = globalThis.fetch,
   base_url: string | null = syncUrl(),
 ): Promise<SyncResult | null> {
-  if (!base_url) return null;
+  if (base_url === null) return null;
   try {
     const res = await fetch_impl(`${base_url}/sync`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      /* The server stores stage + level on the player row, so the summary
-         has to ride WITH the identity — otherwise every walker in the world
-         list reads back as a level-1 egg. */
-      body: JSON.stringify({ player: { ...player, ...summary }, sighting: wire }),
+      body: JSON.stringify({
+        player: { ...player, ...summary },
+        sighting: wire,
+      }),
     });
     if (!res.ok) return null;
     const body = (await res.json()) as SyncResult;
@@ -203,12 +199,11 @@ export async function syncJournal(
   }
 }
 
-/** Just the world — the read the map does every minute. */
 export async function fetchWorld(
   fetch_impl: typeof fetch = globalThis.fetch,
   base_url: string | null = syncUrl(),
 ): Promise<World | null> {
-  if (!base_url) return null;
+  if (base_url === null) return null;
   try {
     const res = await fetch_impl(`${base_url}/world`);
     if (!res.ok) return null;
@@ -217,4 +212,60 @@ export async function fetchWorld(
   } catch {
     return null;
   }
+}
+
+export async function fetchJoin(
+  join_code: string,
+  fetch_impl: typeof fetch = globalThis.fetch,
+  base_url: string | null = syncUrl(),
+): Promise<PlayerIdentity | null> {
+  if (base_url === null) return null;
+  const code = normalizeJoinCode(join_code);
+  if (code.length !== 6) return null;
+  try {
+    const res = await fetch_impl(`${base_url}/join?code=${encodeURIComponent(code)}`);
+    if (!res.ok) return null;
+    const body = (await res.json()) as Partial<PlayerIdentity>;
+    if (typeof body.player_id !== "string" || typeof body.name !== "string") return null;
+    return {
+      player_id: body.player_id,
+      name: body.name,
+      join_code: typeof body.join_code === "string" ? body.join_code : code,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchMine(
+  player_id: string,
+  fetch_impl: typeof fetch = globalThis.fetch,
+  base_url: string | null = syncUrl(),
+): Promise<SightingWire[] | null> {
+  if (base_url === null) return null;
+  try {
+    const res = await fetch_impl(`${base_url}/mine?player_id=${encodeURIComponent(player_id)}`);
+    if (!res.ok) return null;
+    const body = (await res.json()) as { sighting?: SightingWire[] };
+    return Array.isArray(body.sighting) ? body.sighting : null;
+  } catch {
+    return null;
+  }
+}
+
+export function openLiveWorld(
+  onWorld: (world: World) => void,
+  base_url: string | null = syncUrl(),
+): () => void {
+  if (base_url === null || typeof EventSource === "undefined") return () => {};
+  const source = new EventSource(`${base_url}/live`);
+  source.onmessage = (ev) => {
+    try {
+      const body = JSON.parse(ev.data) as World;
+      if (Array.isArray(body?.find)) onWorld(body);
+    } catch {
+      /* ignore a torn frame */
+    }
+  };
+  return () => source.close();
 }

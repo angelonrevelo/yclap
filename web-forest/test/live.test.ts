@@ -26,6 +26,7 @@ function at(offset_m: number, over: Partial<Spawn> = {}): Spawn {
     spawn_id: `s-${offset_m}`,
     species_code: "narra",
     common_name: "Narra",
+    scientific_name: "Pterocarpus indicus",
     lat: CAMPUS_CENTER.lat + offset_m / 111_320,
     lon: CAMPUS_CENTER.lon,
     sector_code: "sec-1",

@@ -5,6 +5,7 @@ import {
   rarityFor,
   SPAWN_WINDOW_MS,
   spawnForWindow,
+  spawnInSector,
   spawnsNear,
   spawnWindow,
   type SpawnPoolEntry,
@@ -132,7 +133,10 @@ describe("where finds may stand", () => {
 
   it("every species picked exists in the pool", () => {
     const codes = new Set(fixture.map((f) => f.species_code));
-    for (const s of world) assert.ok(codes.has(s.species_code), `${s.spawn_id} invented a species`);
+    for (const s of world) {
+      assert.ok(codes.has(s.species_code), `${s.spawn_id} invented a species`);
+      assert.ok(s.scientific_name.length > 0, `${s.spawn_id} dropped scientific_name`);
+    }
   });
 
   it("the world respects the density ceiling", () => {
@@ -202,6 +206,13 @@ describe("the real campus pool", () => {
     const commons = world.filter((s) => s.rarity === "common").length;
     const mythics = world.filter((s) => s.rarity === "mythic").length;
     assert.ok(commons > mythics, "commons must outnumber mythics — that is what the counts say");
+  });
+
+  it("caps one sector at three finds", () => {
+    const world = spawnForWindow(pool, Date.UTC(2026, 8, 9, 1, 7, 0));
+    const code = world[0]?.sector_code;
+    assert.ok(code);
+    assert.ok(spawnInSector(world, code).length <= 3);
   });
 });
 

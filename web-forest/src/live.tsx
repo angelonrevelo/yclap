@@ -8,6 +8,7 @@ import { displayName, kindOf } from "./kind";
 import { KIND_LABEL, type Kind } from "./kind";
 import { wildCollection, type WildFind } from "./collection";
 import { KindThumb } from "./kind-mark";
+import { SpeciesPortrait } from "./portrait.tsx";
 import {
   poolFromFile,
   rankSpawn,
@@ -22,8 +23,17 @@ import {
   type Spawn,
   type SpawnPoolEntry,
 } from "./spawn";
-import { fetchWorld, readPlayer, syncUrl, type World } from "./sync";
-import { Card, Eyebrow, Pill, RADIUS, TaxonThumb } from "./ui";
+import {
+  fetchWorld,
+  openLiveWorld,
+  readPlayer,
+  syncJournal,
+  syncUrl,
+  toWire,
+  type PlayerSummary,
+  type World,
+} from "./sync";
+import { Card, Eyebrow, Pill, RADIUS } from "./ui";
 
 export { rankSpawn, reachableSpawn, REACH_RADIUS_M } from "./spawn";
 
@@ -89,7 +99,7 @@ const EMPTY_WORLD: SpawnWorld = {
  * everyone else's world, and the whole point of a seeded window is that two
  * phones standing next to each other see the same finds.
  */
-export function useSpawnWorld(): SpawnWorld {
+export function useSpawnWorld(explored_sector?: ReadonlySet<string>): SpawnWorld {
   const [pool, setPool] = useState<SpawnPoolEntry[] | null>(null);
   const [now_ms, setNow] = useState(() => Date.now());
 
@@ -111,17 +121,20 @@ export function useSpawnWorld(): SpawnWorld {
     return () => clearTimeout(timer);
   }, [now_ms]);
 
+  const explored_key = explored_sector ? [...explored_sector].sort().join("|") : "";
+
   return useMemo(() => {
     if (!pool || pool.length === 0) return EMPTY_WORLD;
     const { ends_at } = spawnWindow(now_ms);
+    const explored = explored_key ? new Set(explored_key.split("|")) : undefined;
     return {
-      spawn: spawnForWindow(pool, now_ms),
+      spawn: spawnForWindow(pool, now_ms, undefined, { explored_sector: explored }),
       pool,
       pool_count: new Map(pool.map((e) => [e.species_code, e.count])),
       ends_at,
       is_ready: true,
     };
-  }, [pool, now_ms]);
+  }, [pool, now_ms, explored_key]);
 }
 
 /* ── rarity ─────────────────────────────────────────────────────────────── */
@@ -225,8 +238,7 @@ export function SpawnStrip({
             {!world.is_ready ? "Looking for what is out right now…" : "Nothing along the path in this window."}
           </p>
           <p style={{ fontSize: 12.5, color: "rgba(31,32,34,0.65)", marginTop: 8, lineHeight: 1.45 }}>
-            Finds rotate every 30 minutes across campus. Take a walk — the path is the guide. Rediscovering home starts
-            with noticing what is already here.
+            Walk. Finds rotate every 30 min.
           </p>
         </div>
       </Card>
@@ -242,9 +254,7 @@ export function SpawnStrip({
         </span>
       </div>
       <p style={{ fontSize: 11.5, color: "rgba(31,32,34,0.55)", marginTop: 6, lineHeight: 1.45 }}>
-        {fix
-          ? "Nearest to you. A highlighted find is within reach — tap it and the camera opens. The world rotates every 30 minutes and every phone on campus sees the same one."
-          : "Rarest out this window — turn on location and this becomes what is nearest to you."}
+        {fix ? "Nearest. Highlighted = log it." : "Rarest out now."}
       </p>
       <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
         {row.map(({ row: s, distance_m }) => {
@@ -268,14 +278,12 @@ export function SpawnStrip({
             >
               {/* Curated artwork where we drew it; the taxon group where we did
                   not. Never the plant silhouette standing in for a bird. */}
-              {sp ? (
-                /* Not dimmed. The dim state means "not in your collection",
-                   which is the journal grid's job; this strip is about what is
-                   out there, and the "In journal" pill already says which. */
-                <TaxonThumb species_code={s.species_code} size={44} />
-              ) : (
-                <KindThumb kind={kindOf(s.iconic_taxon_name, s.archetype)} size={44} />
-              )}
+              <SpeciesPortrait
+                scientific_name={s.scientific_name}
+                species_code={s.species_code}
+                kind={kindOf(s.iconic_taxon_name, s.archetype)}
+                size={44}
+              />
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div className="flex items-center gap-2" style={{ minWidth: 0 }}>
                   <span
@@ -324,8 +332,7 @@ export function SpawnStrip({
         })}
       </div>
       <p style={{ fontSize: 10.5, color: "rgba(31,32,34,0.45)", marginTop: 10, lineHeight: 1.4 }}>
-        Rarity is the species&rsquo; real iNaturalist observation count inside the campus box (2026-09-03 sweep), not a
-        difficulty we invented. How often each band appears is ours: 55 / 25 / 15 / 5.
+        Rarity = campus iNat count. Slots 55 / 25 / 15 / 5.
       </p>
     </Card>
   );
@@ -563,9 +570,7 @@ export function WildShelf({
         </div>
       ))}
       <p style={{ fontSize: 10.5, color: "rgba(31,32,34,0.45)", marginTop: 12, lineHeight: 1.4 }}>
-        Rarity is the species&rsquo; real iNaturalist observation count inside the campus box. This
-        shelf is your own finds only — nobody else&rsquo;s collection is in this number, and there
-        is nothing here to compare.
+        Your finds. Rarity = campus iNat count.
       </p>
     </div>
   );
@@ -573,18 +578,56 @@ export function WildShelf({
 
 /* ── the world ──────────────────────────────────────────────────────────── */
 
+export function useLiveWorld(input: {
+  sighting: Sighting[];
+  summary: PlayerSummary;
+}): { world: World | null; is_live: boolean } {
+  const [world, setWorld] = useState<World | null>(null);
+  const sighting_key = input.sighting.map((s) => s.sighting_id).join(",");
+  const summary_key = `${input.summary.stage}:${input.summary.level}:${input.summary.total_points}:${input.summary.streak_weeks}`;
+
+  useEffect(() => {
+    if (!syncUrl()) return;
+    let alive = true;
+    const push = () => {
+      const me = readPlayer();
+      const wire = input.sighting.map((s) =>
+        toWire(s, species[s.species_code]?.common_name ?? s.inat_common_name ?? s.species_code),
+      );
+      void syncJournal(me, wire, input.summary).then((result) => {
+        if (alive && result?.world) setWorld(result.world);
+      });
+    };
+    const stop_live = openLiveWorld((next) => {
+      if (alive) setWorld(next);
+    });
+    push();
+    const timer = setInterval(push, 20_000);
+    return () => {
+      alive = false;
+      stop_live();
+      clearInterval(timer);
+    };
+    // sighting_key / summary_key are the actual deps — the arrays are rebuilt every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sighting_key, summary_key]);
+
+  return { world, is_live: world !== null };
+}
+
 /**
  * Who else is out. Renders only when a sync server actually answered — with no
  * server configured this returns null rather than an empty "0 walkers" box,
  * because a zero we never measured is worse than nothing on screen.
- *
- * There is no rank in here and there is no field to build one from: the wire
- * carries a name, a stage and a level, and the strip prints the first two.
  */
-export function WorldStrip({ sighting }: { sighting: Sighting[] }) {
-  const [world, setWorld] = useState<World | null>(null);
+export function WorldStrip({ sighting, world: given }: { sighting: Sighting[]; world?: World | null }) {
+  const [world, setWorld] = useState<World | null>(given ?? null);
 
   useEffect(() => {
+    if (given) {
+      setWorld(given);
+      return;
+    }
     if (!syncUrl()) return;
     let alive = true;
     const tick = () => {
@@ -593,12 +636,12 @@ export function WorldStrip({ sighting }: { sighting: Sighting[] }) {
       });
     };
     tick();
-    const timer = setInterval(tick, 60_000);
+    const timer = setInterval(tick, 15_000);
     return () => {
       alive = false;
       clearInterval(timer);
     };
-  }, []);
+  }, [given]);
 
   if (!world) return null;
   const me = readPlayer();

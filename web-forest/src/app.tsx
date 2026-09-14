@@ -1,8 +1,8 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import CampusMap from "./campus-map";
 import PlayMap from "./play-map";
 import { pinKindOf, type PinKind } from "./pin";
-import Character, { stageFor, STAGE_LABEL, toNextStage, type Stage } from "./character";
+import Character, { stageFor, STAGE_LABEL, type Stage } from "./character";
 /* The 3D character (T4.1) — lazy so the model-viewer chunk is fetched only
    where the 3D character renders. The SVG `Character` stays as the Suspense
    fallback and on the map, whose billboard must cost no bundle. */
@@ -14,10 +14,8 @@ import {
   AIS_GAP_NOTE,
   AT_TREE_RADIUS_M,
   consult,
-  DEMO_PIN,
   encounter,
   journal_order,
-  landmark,
   picker_order,
   SEEK_URL,
   species,
@@ -29,6 +27,7 @@ import {
 } from "./data";
 import {
   addSighting,
+  mergeRemoteSighting,
   downloadText,
   endWalk,
   progressOf,
@@ -51,14 +50,18 @@ import {
 import {
   POINT_LABEL,
   POINT_VALUE,
-  VERIFIED_RULE_NOTE,
   LOCAL_OBS_STATUS_LABEL,
   LOCAL_OBS_STATUS_NOTE,
+  dailySubject,
+  dailyTaskFor,
   gamifySnapshot,
   localObsStatus,
   observeAwardKind,
+  observeSubject,
   persistAward,
   readPointEvents,
+  withLiveWalker,
+  type DailyTask,
   type GamifySnapshot,
   type PointEvent,
 } from "./gamify";
@@ -67,12 +70,14 @@ import { LAYER_ORDER, nextLayer, prefetchCampus, SOURCE, type Layer, type View }
 import { useGeo } from "./use-geo";
 import { biomePresenceAt, rankEncounter, sectorResident, type BiomePresence } from "./nearby";
 import { cosmeticForStage } from "./cosmetic";
-import { BadgeShelf, loadSpawnPool, RarityPill, reachableSpawn, SpawnStrip, useSpawnWorld, WildShelf, WorldStrip } from "./live";
-import { KindThumb } from "./kind-mark";
+import { BadgeShelf, loadSpawnPool, RarityPill, reachableSpawn, useLiveWorld, useSpawnWorld, WildShelf, WorldStrip } from "./live";
 import { displayName, kindOf } from "./kind";
+import { SpeciesPortrait } from "./portrait.tsx";
+import { icon } from "./asset/kit";
 import type { Rarity, Spawn, SpawnPoolEntry } from "./spawn";
 import { receiptHighlight } from "./collection";
 import { demoJournal, isSeededJournal } from "./demo-seed";
+import { fetchJoin, fetchMine, readPlayer, writePlayer, type World } from "./sync";
 
 import {
   campusCodeForScientific,
@@ -85,7 +90,6 @@ import {
   type InatSuggestion,
 } from "./inat";
 import InatStrip from "./inat-strip";
-import { spot } from "./asset/kit";
 import { Card, Chip, Eyebrow, Fab, GlyphDisc, Pill, PrimaryPill, RADIUS, SpeciesPill, TaxonName, TaxonThumb } from "./ui";
 import {
   CameraIcon,
@@ -97,12 +101,9 @@ import {
   WalkIcon,
   CheckIcon,
   CloseIcon,
-  HomeIcon,
   JournalIcon,
   MapIcon,
   PinIcon,
-  PlanIcon,
-  PlantMark,
   RestrictedIcon,
 } from "./icon";
 
@@ -116,7 +117,6 @@ const WALK_ZOOM = 18;
  * scale, avatar large in frame.
  */
 const PLAY_ZOOM = 20;
-const OVERVIEW_ZOOM = 16;
 
 const CARD_RADIUS = RADIUS.card;
 const TILE_RADIUS = RADIUS.tile;
@@ -149,66 +149,319 @@ function StatTile({ big, line, source }: { big: string; line: string; source: st
   );
 }
 
-function MobileNav({ route, onRoute }: { route: Route; onRoute: (r: Route) => void }) {
-  const item: { id: Route; label: string; Icon: typeof HomeIcon }[] = [
-    { id: "/", label: "Home", Icon: HomeIcon },
-    { id: "/map", label: "Map", Icon: MapIcon },
-    { id: "/journal", label: "Journal", Icon: JournalIcon },
-    { id: "/plan", label: "Plan", Icon: PlanIcon },
-  ];
+const HUD_ORB = 64;
+const HUD_CAMERA = 88;
+
+function HudOrb({
+  label,
+  active = false,
+  size = HUD_ORB,
+  onClick,
+  children,
+  style,
+}: {
+  label: string;
+  active?: boolean;
+  size?: number;
+  onClick: () => void;
+  children: ReactNode;
+  style?: CSSProperties;
+}) {
   return (
-    <nav
-      className="absolute inset-x-0 bottom-0 flex items-stretch"
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
       style={{
-        height: 64,
-        background: "rgba(247,250,246,0.96)",
-        borderTop: "1.5px solid rgba(21,77,48,0.10)",
-        backdropFilter: "blur(8px)",
-        zIndex: 40,
+        width: size,
+        height: size,
+        borderRadius: 999,
+        display: "grid",
+        placeItems: "center",
+        background: active ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.88)",
+        boxShadow: "0 6px 18px rgba(12, 28, 16, 0.28)",
+        border: "3px solid rgba(255,255,255,0.95)",
+        overflow: "hidden",
+        pointerEvents: "auto",
+        flexShrink: 0,
+        ...style,
       }}
     >
-      {item.map(({ id, label, Icon }) => {
-        const is_active = route === id;
-        return (
-          <button
-            key={id}
-            onClick={() => onRoute(id)}
-            className="flex-1 flex flex-col items-center justify-center"
-            style={{ color: is_active ? "var(--ui-accent)" : "rgba(31,32,34,0.62)" }}
-          >
-            <span
-              style={{
-                display: "grid",
-                placeItems: "center",
-                width: 46,
-                height: 28,
-                borderRadius: RADIUS.pill,
-                /* Chrome, not ecology. The label above is --ui-accent since the
-                   palette split, and a bark label on a green wash was the one
-                   place the two roles visibly disagreed. */
-                background: is_active ? "rgba(21,77,48,0.12)" : "transparent",
-                transition: "background .18s ease",
-              }}
-            >
-              <Icon size={21} active={is_active} />
-            </span>
-            <span style={{ fontSize: 10.5, fontWeight: 700, marginTop: 3 }}>{label}</span>
-          </button>
-        );
-      })}
+      {children}
+    </button>
+  );
+}
+
+function PlayDock({
+  stage,
+  vigor,
+  is_journal,
+  is_nearby_open,
+  onAvatar,
+  onGo,
+  onNearby,
+  onDex,
+}: {
+  stage: Stage;
+  vigor: number;
+  is_journal: boolean;
+  is_nearby_open: boolean;
+  onAvatar: () => void;
+  onGo: () => void;
+  onNearby: () => void;
+  onDex: () => void;
+}) {
+  return (
+    <nav
+      className="absolute inset-x-0 bottom-0"
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr auto 1fr",
+        alignItems: "end",
+        height: 132,
+        padding: "0 16px 14px",
+        background: "linear-gradient(to top, rgba(12,28,16,0.55) 0%, transparent 100%)",
+        zIndex: 50,
+        pointerEvents: "none",
+      }}
+    >
+      <HudOrb label="Trainer" onClick={onAvatar} style={{ justifySelf: "start" }}>
+        <Character stage={stage} vigor={vigor} size={58} is_idle_animated={false} />
+      </HudOrb>
+      <button
+        type="button"
+        aria-label="Log a sighting"
+        onClick={onGo}
+        style={{
+          pointerEvents: "auto",
+          justifySelf: "center",
+          width: HUD_CAMERA,
+          height: HUD_CAMERA,
+          marginBottom: 4,
+          padding: 0,
+          border: "none",
+          background: "transparent",
+          borderRadius: 999,
+          boxShadow: "0 10px 24px rgba(8,40,12,0.4)",
+        }}
+      >
+        <img
+          src={icon.go_camera}
+          alt=""
+          width={HUD_CAMERA}
+          height={HUD_CAMERA}
+          style={{ display: "block", width: HUD_CAMERA, height: HUD_CAMERA, borderRadius: 999 }}
+        />
+      </button>
+      <div
+        style={{
+          justifySelf: "end",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 8,
+          pointerEvents: "auto",
+        }}
+      >
+        <HudOrb label="Nearby" active={is_nearby_open} onClick={onNearby}>
+          <MapIcon size={22} active={is_nearby_open} />
+        </HudOrb>
+        <HudOrb label="Journal" active={is_journal} onClick={onDex}>
+          <JournalIcon size={22} active={is_journal} />
+        </HudOrb>
+      </div>
     </nav>
   );
 }
 
-
-/** Magisphere wordmark + Canva tagline. Shared by phone header and desktop rail. */
-function BrandLockup({ mark_size = 28, title_size = 20 }: { mark_size?: number; title_size?: number }) {
+function TrainerSheet({
+  snap,
+  daily,
+  stage,
+  vigor,
+  is_demo,
+  join_code,
+  walker_name,
+  is_live,
+  live_count,
+  onDemo,
+  onHunt,
+  onPlan,
+  onJoin,
+  onClose,
+}: {
+  snap: GamifySnapshot;
+  daily: DailyTask | null;
+  stage: Stage;
+  vigor: number;
+  is_demo: boolean;
+  join_code: string;
+  walker_name: string;
+  is_live: boolean;
+  live_count: number;
+  onDemo: () => void;
+  onHunt: () => void;
+  onPlan: () => void;
+  onJoin: (code: string) => void;
+  onClose: () => void;
+}) {
   return (
-    <div className="flex items-center gap-2">
-      <PlantMark size={mark_size} />
-      <div>
-        <div style={{ fontWeight: 800, fontSize: title_size, lineHeight: 1, color: "var(--brand-forest)" }}>Magisphere</div>
-        <div style={{ fontSize: 12, color: "var(--brand-green)", fontWeight: 700, marginTop: 3 }}>Rediscovering home.</div>
+    <div className="absolute inset-0" style={{ zIndex: 60 }} onClick={onClose}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="absolute inset-x-0 bottom-0"
+        style={{
+          maxHeight: "78%",
+          overflowY: "auto",
+          background: "linear-gradient(180deg, #1a3d28 0%, #0f2418 100%)",
+          color: "#f4fff0",
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
+          boxShadow: "0 -12px 40px rgba(0,0,0,0.35)",
+          padding: "18px 18px 28px",
+        }}
+      >
+        <div style={{ width: 42, height: 4, borderRadius: 999, background: "rgba(255,255,255,0.28)", margin: "0 auto 14px" }} />
+        <div className="flex items-center gap-3">
+          <div style={{ width: 72, height: 72, borderRadius: 999, overflow: "hidden", background: "#245c38", border: "3px solid #7dff6a" }}>
+            <Character stage={stage} vigor={vigor} size={68} is_idle_animated />
+          </div>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 28, fontVariantNumeric: "tabular-nums" }}>{snap.total_points}</div>
+            <div style={{ fontSize: 13, opacity: 0.75 }}>{walker_name}</div>
+            <div style={{ fontSize: 12, opacity: 0.7 }}>{snap.streak_weeks} wk · {snap.buddy.label}</div>
+            <div style={{ fontSize: 11, marginTop: 4, letterSpacing: "0.08em", fontWeight: 800 }}>
+              {is_live ? `LIVE · ${live_count} out` : "OFFLINE"} · {join_code}
+            </div>
+          </div>
+        </div>
+        <JoinRow onJoin={onJoin} />
+        <div
+          style={{
+            marginTop: 16,
+            background: "#f4fff0",
+            color: "#1F2022",
+            borderRadius: 20,
+            padding: 12,
+          }}
+        >
+          <PointsStreakCard snap={snap} is_desktop={false} />
+          <div style={{ marginTop: 10 }}>
+            <DailyHuntCard daily={daily} onHunt={onHunt} />
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <ChallengesCard snap={snap} />
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <LocalLeaderboardCard snap={snap} is_desktop={false} />
+          </div>
+        </div>
+        <div className="flex gap-2" style={{ marginTop: 16, paddingBottom: 140 }}>
+          <Chip is_on={is_demo} onClick={onDemo}>
+            Demo
+          </Chip>
+          <button type="button" onClick={onPlan} style={{ fontWeight: 700, fontSize: 13, color: "#9ad4ff" }}>
+            Plan
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function JoinRow({ onJoin }: { onJoin: (code: string) => void }) {
+  const [code, setCode] = useState("");
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (code.trim()) onJoin(code);
+      }}
+      className="flex gap-2"
+      style={{ marginTop: 12 }}
+    >
+      <input
+        value={code}
+        onChange={(e) => setCode(e.target.value.toUpperCase())}
+        placeholder="Other phone's code"
+        aria-label="Walker code"
+        maxLength={6}
+        style={{
+          flex: 1,
+          borderRadius: 12,
+          border: "1.5px solid rgba(255,255,255,0.2)",
+          background: "rgba(0,0,0,0.2)",
+          color: "#f4fff0",
+          padding: "8px 10px",
+          fontWeight: 800,
+          letterSpacing: "0.12em",
+        }}
+      />
+      <button type="submit" style={{ fontWeight: 800, fontSize: 13, color: "#7dff6a" }}>
+        Join
+      </button>
+    </form>
+  );
+}
+
+function NearbySightTray({
+  spawn,
+  seen,
+  onPick,
+  onClose,
+}: {
+  spawn: Spawn[];
+  seen: Set<string>;
+  onPick: (row: Spawn) => void;
+  onClose: () => void;
+}) {
+  const row = spawn.slice(0, 8);
+  return (
+    <div className="absolute inset-x-3" style={{ bottom: 148, zIndex: 48 }} onClick={onClose}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="flex gap-3"
+        style={{
+          overflowX: "auto",
+          padding: "12px 14px",
+          borderRadius: 28,
+          background: "rgba(12,28,16,0.88)",
+          boxShadow: "0 10px 28px rgba(8,20,12,0.45)",
+          border: "2px solid rgba(255,255,255,0.18)",
+        }}
+      >
+        {row.length === 0 ? (
+          <div style={{ fontSize: 12, fontWeight: 700, padding: "8px 6px", color: "rgba(244,255,240,0.55)" }}>None nearby</div>
+        ) : (
+          row.map((s) => (
+            <button
+              key={s.spawn_id}
+              type="button"
+              onClick={() => onPick(s)}
+              style={{ width: 64, flexShrink: 0, textAlign: "center" }}
+            >
+              <SpeciesPortrait
+                scientific_name={s.scientific_name}
+                species_code={s.species_code}
+                kind={kindOf(s.iconic_taxon_name, s.archetype)}
+                size={56}
+              />
+              <div
+                style={{
+                  fontSize: 9,
+                  fontWeight: 800,
+                  marginTop: 4,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  color: seen.has(s.species_code) ? "#7dff6a" : "rgba(244,255,240,0.72)",
+                }}
+              >
+                {s.common_name}
+              </div>
+            </button>
+          ))
+        )}
       </div>
     </div>
   );
@@ -234,7 +487,7 @@ function PointsStreakCard({ snap, is_desktop }: { snap: GamifySnapshot; is_deskt
             {snap.total_points}
           </div>
           <div style={{ fontSize: 11, color: "rgba(31,32,34,0.55)", marginTop: 2 }}>
-            Explore {POINT_VALUE.explore} · Learn {POINT_VALUE.learn} · Observe {POINT_VALUE.observe} · Local verified {POINT_VALUE.verified_discovery}
+            Hunt {POINT_VALUE.challenge} · Log {POINT_VALUE.observe}
           </div>
         </div>
         <div
@@ -252,13 +505,10 @@ function PointsStreakCard({ snap, is_desktop }: { snap: GamifySnapshot; is_deskt
             <span style={{ fontSize: 13, fontWeight: 700, marginLeft: 4 }}>wk</span>
           </div>
           <div style={{ fontSize: 11, color: "rgba(31,32,34,0.55)", marginTop: 2 }}>
-            {snap.participated_this_week ? "Active this week" : "No activity yet this week"} · not a daily streak
+            {snap.participated_this_week ? "This week" : "Idle"}
           </div>
         </div>
       </div>
-      <p style={{ fontSize: 11, color: "rgba(31,32,34,0.5)", marginTop: 10, lineHeight: 1.4 }}>
-        {VERIFIED_RULE_NOTE}
-      </p>
     </Card>
   );
 }
@@ -266,10 +516,7 @@ function PointsStreakCard({ snap, is_desktop }: { snap: GamifySnapshot; is_deskt
 function LocalLeaderboardCard({ snap, is_desktop }: { snap: GamifySnapshot; is_desktop: boolean }) {
   return (
     <Card style={{ padding: is_desktop ? 18 : 14 }}>
-      <Eyebrow>LOCAL DEMO LEADERBOARD</Eyebrow>
-      <p style={{ fontSize: 12, color: "rgba(31,32,34,0.62)", marginTop: 6, lineHeight: 1.4 }}>
-        Seeded demo cohort on this device plus you. Not an official AIS rank.
-      </p>
+      <Eyebrow>BOARD</Eyebrow>
       <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
         {snap.leaderboard.slice(0, 6).map((row, i) => (
           <div
@@ -349,210 +596,32 @@ function BuddyLine({ snap }: { snap: GamifySnapshot }) {
   );
 }
 
-function HomeScreen({
-  is_desktop,
-  onWalk,
-  onPlan,
-  live,
-  gamify,
+function DailyHuntCard({
+  daily,
+  onHunt,
 }: {
-  is_desktop: boolean;
-  onWalk: () => void;
-  onPlan: () => void;
-  /* The spawn strip, passed in rather than built here: home should not have to
-     know how the world is loaded to be able to show it. */
-  live?: React.ReactNode;
-  gamify: GamifySnapshot;
+  daily: DailyTask | null;
+  onHunt: () => void;
 }) {
-  if (is_desktop) {
-    return (
-      <div className="flex-1 scroll-soft" style={{ background: "var(--brand-mist)", overflowY: "auto", overflowX: "hidden", padding: "56px 64px" }}>
-        <div className="flex gap-14" style={{ alignItems: "flex-start" }}>
-          <div style={{ maxWidth: 640 }}>
-            <div style={{ marginBottom: 22 }}>
-              <BrandLockup mark_size={36} title_size={26} />
-            </div>
-            <div style={{ width: 72, height: 5, borderRadius: 999, background: "var(--grad-brand)", marginBottom: 22 }} />
-            <h1 style={{ fontWeight: 800, fontSize: 46, lineHeight: 1.12, letterSpacing: "-0.015em", color: "var(--brand-forest)" }}>
-              Two-thirds of this campus is green. Most of us cannot name what we are walking under.
-            </h1>
-            <p style={{ fontSize: 18, color: "rgba(31,32,34,0.8)", marginTop: 20, lineHeight: 1.5, maxWidth: 560 }}>
-              A student-led field guide for Ateneo&rsquo;s urban forest — so noticing becomes a habit, not a poster.
-            </p>
-            <div className="flex gap-3" style={{ marginTop: 32 }}>
-              <StatTile big="1,809" line="trees inventoried" source="AIS · SY 2025–2026" />
-              <StatTile big="101" line="threatened trees" source="AIS arboretum" />
-              <StatTile big="~⅔" line="of 89 ha green" source="AIS, Loyola Heights" />
-            </div>
-            <div className="flex items-center gap-4" style={{ marginTop: 28 }}>
-              <button
-                onClick={onWalk}
-                style={{ height: 52, padding: "0 30px", borderRadius: RADIUS.pill, background: "var(--ui-accent)", color: "#fff", fontWeight: 700, fontSize: 16, boxShadow: "0 8px 20px rgba(21,77,48,0.22)" }}
-              >
-                Walk the campus
-              </button>
-              <button onClick={onPlan} style={{ height: 52, color: "var(--brand-blue)", fontWeight: 700, fontSize: 15 }}>
-                Read the plan
-              </button>
-            </div>
-            <p style={{ fontSize: 13, color: "rgba(31,32,34,0.6)", marginTop: 28, lineHeight: 1.4 }}>
-              Not a planting drive. Points and a local demo leaderboard live on this device — not an official AIS rank. Not our tree inventory — AIS already counted.
-            </p>
-            <p style={{ fontSize: 12.5, color: "rgba(31,32,34,0.55)", marginTop: 10, lineHeight: 1.45, maxWidth: 560 }}>
-              {AIS_GAP_NOTE}
-            </p>
-            {live && <div style={{ marginTop: 22, maxWidth: 560 }}>{live}</div>}
-            <div style={{ marginTop: 22, maxWidth: 560 }}>
-              <LandmarkCard is_desktop />
-            </div>
-            <div style={{ marginTop: 16, maxWidth: 560 }}>
-              <PointsStreakCard snap={gamify} is_desktop />
-            </div>
-            <div style={{ marginTop: 12, maxWidth: 560 }}>
-              <LocalLeaderboardCard snap={gamify} is_desktop />
-            </div>
-            <div style={{ marginTop: 16, fontSize: 11, color: "rgba(31,32,34,0.45)", fontWeight: 700, letterSpacing: "0.04em" }}>
-              YOUTH CLAP 2026 · ATENEO CCC
-            </div>
-          </div>
-          <button
-            onClick={onWalk}
-            style={{
-              width: 420,
-              flexShrink: 0,
-              borderRadius: CARD_RADIUS,
-              overflow: "hidden",
-              background: "#fffef9",
-              border: "1.5px solid rgba(21,77,48,0.12)",
-              boxShadow: "var(--shadow-card)",
-              textAlign: "left",
-            }}
-          >
-            <div style={{ position: "relative", aspectRatio: "16 / 9" }}>
-              <CampusMap
-                encounter={encounter.slice(0, 5)}
-                selected_id={null}
-                onSelect={() => {}}
-                view={{ ...CAMPUS_CENTER, zoom: OVERVIEW_ZOOM }}
-                onView={() => {}}
-                layer="satellite"
-                is_interactive={false}
-                disc_size={22}
-              />
-            </div>
-            <div className="flex items-center justify-between" style={{ padding: "16px 18px" }}>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 17 }}>Open walk</div>
-                <div style={{ fontSize: 13, color: "rgba(31,32,34,0.6)", marginTop: 2 }}>
-                  Demo campus · {DEMO_PIN.lat}, {DEMO_PIN.lon}
-                </div>
-              </div>
-              <span style={{ width: 40, height: 40, borderRadius: 999, background: "var(--ui-accent)", display: "grid", placeItems: "center", color: "#fff", fontWeight: 800 }}>
-                →
-              </span>
-            </div>
-          </button>
-        </div>
-      </div>
-    );
-  }
-
+  if (!daily) return null;
   return (
-    <div className="scroll-soft" style={{ height: "100%", overflowY: "auto", overflowX: "hidden", background: "var(--brand-mist)", paddingBottom: 80 }}>
-      <header style={{ padding: 12 }}>
-        <BrandLockup mark_size={28} title_size={20} />
-      </header>
-      <div style={{ paddingLeft: 20, paddingRight: 20, marginTop: 14 }}>
-        <div style={{ width: 56, height: 4, borderRadius: 999, background: "var(--grad-brand)", marginBottom: 16 }} />
-        <h1 style={{ fontWeight: 800, fontSize: 28, lineHeight: 1.15, letterSpacing: "-0.01em", maxWidth: 330, color: "var(--brand-forest)" }}>
-          Two-thirds of this campus is green. Most of us cannot name what we are walking under.
-        </h1>
-        <p style={{ fontSize: 15, color: "rgba(31,32,34,0.8)", marginTop: 14, lineHeight: 1.5 }}>
-          A student-led field guide for Ateneo&rsquo;s urban forest — so noticing becomes a habit, not a poster.
-        </p>
-      </div>
-      <div className="flex gap-2" style={{ padding: "18px 20px 4px" }}>
-        <StatTile big="1,809" line="trees inventoried" source="AIS · SY 2025–2026" />
-        <StatTile big="101" line="threatened trees" source="AIS arboretum" />
-        <StatTile big="~⅔" line="of 89 ha green" source="AIS, Loyola Heights" />
-      </div>
-      <div style={{ padding: "16px 20px 0" }}>
-        <button
-          onClick={onWalk}
-          style={{ width: "100%", height: 48, borderRadius: RADIUS.pill, background: "var(--ui-accent)", color: "#fff", fontWeight: 700, fontSize: 15, boxShadow: "0 8px 18px rgba(21,77,48,0.2)" }}
-        >
-          Walk the campus
-        </button>
-        <button onClick={onPlan} style={{ width: "100%", height: 44, color: "var(--brand-blue)", fontWeight: 700, fontSize: 15, marginTop: 6 }}>
-          Read the plan
-        </button>
-      </div>
-      <p style={{ fontSize: 12, color: "rgba(31,32,34,0.6)", padding: "14px 20px 0", lineHeight: 1.4 }}>
-        Not a planting drive. Points and a local demo leaderboard live on this device — not an official AIS rank. Not our tree inventory — AIS already counted.
-      </p>
-      <p style={{ fontSize: 11.5, color: "rgba(31,32,34,0.55)", padding: "8px 20px 0", lineHeight: 1.4 }}>
-        {AIS_GAP_NOTE}
-      </p>
-      {live && <div style={{ padding: "18px 20px 0" }}>{live}</div>}
-      <div style={{ padding: "18px 20px 0" }}>
-        <LandmarkCard is_desktop={false} />
-      </div>
-      <div style={{ padding: "14px 20px 0" }}>
-        <PointsStreakCard snap={gamify} is_desktop={false} />
-      </div>
-      <div style={{ padding: "12px 20px 0" }}>
-        <LocalLeaderboardCard snap={gamify} is_desktop={false} />
-      </div>
-      <div style={{ padding: "22px 20px 0" }}>
-        <span style={{ fontSize: 10.5, color: "rgba(31,32,34,0.45)", fontWeight: 700, letterSpacing: "0.04em" }}>
-          YOUTH CLAP 2026 · ATENEO CCC
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function LandmarkCard({ is_desktop }: { is_desktop: boolean }) {
-  const row = landmark[0];
-  if (!row) return null;
-  const sp = species[row.species_code];
-  return (
-    <div
+    <button
+      onClick={onHunt}
       style={{
-        background: "#fffef9",
-        border: "1.5px solid rgba(21,77,48,0.12)",
-        borderRadius: CARD_RADIUS,
-        boxShadow: "var(--shadow-card)",
-        padding: is_desktop ? 20 : 16,
-        display: "flex",
-        gap: 14,
-        alignItems: "flex-start",
+        width: "100%",
+        textAlign: "left",
+        padding: "12px 14px",
+        borderRadius: RADIUS.tile,
+        border: daily.is_done ? "1.5px solid rgba(0,134,83,0.28)" : "1.5px solid rgba(246,178,45,0.55)",
+        background: daily.is_done ? "rgba(0,134,83,0.08)" : "rgba(246,178,45,0.12)",
       }}
     >
-      <TaxonThumb species_code={row.species_code} size={is_desktop ? 92 : 64} />
-      <div>
-        <Eyebrow>LANDMARK TREE · {row.where.toUpperCase()}</Eyebrow>
-        <div style={{ fontWeight: 800, fontSize: is_desktop ? 20 : 17, marginTop: 5 }}>{row.title}</div>
-        <div style={{ fontStyle: "italic", fontSize: 12.5, color: "rgba(31,32,34,0.6)", marginTop: 2 }}>
-          {sp?.scientific_name}
-        </div>
-        <p style={{ fontSize: 13.5, lineHeight: 1.45, marginTop: 9 }}>{row.documented}</p>
-        <div
-          style={{
-            marginTop: 10,
-            borderRadius: 14,
-            background: "rgba(246,178,45,0.12)",
-            border: "1px solid rgba(246,178,45,0.4)",
-            padding: "10px 12px",
-          }}
-        >
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.06em", color: "#8a5d00" }}>
-            STORY NOT COLLECTED YET
-          </div>
-          <p style={{ fontSize: 12, lineHeight: 1.4, marginTop: 5, color: "rgba(31,32,34,0.78)" }}>{row.open_ask}</p>
-        </div>
+      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.04em", color: daily.is_done ? "var(--ui-accent)" : "#8a5d00" }}>
+        {daily.is_done ? "HUNT DONE" : "TODAY"}
       </div>
-    </div>
+      <div style={{ fontWeight: 800, fontSize: 16, marginTop: 2 }}>{daily.common_name}</div>
+      <div style={{ fontSize: 12, color: "rgba(31,32,34,0.58)", marginTop: 2 }}>{daily.sector_name}</div>
+    </button>
   );
 }
 
@@ -576,7 +645,7 @@ function NearbyBar({
     <div
       className="absolute inset-x-0 flex items-center gap-3"
       style={{
-        bottom: 64,
+        bottom: 100,
         background: "#F9F9F9",
         borderTop: "1.5px solid #E4E7E8",
         borderTopLeftRadius: 20,
@@ -954,7 +1023,7 @@ function BiomeBar({ presence, onExpand }: { presence: BiomePresence; onExpand: (
     <div
       className="absolute inset-x-0 flex items-center gap-3"
       style={{
-        bottom: 64,
+        bottom: 100,
         background: "#F9F9F9",
         borderTop: "1.5px solid #E4E7E8",
         borderTopLeftRadius: 20,
@@ -1063,26 +1132,29 @@ function SuggestionList({
   if (state.status !== "ready" && state.status !== "demo") return null;
   const is_demo = state.status === "demo";
   return (
-    <ul style={{ listStyle: "none", margin: "10px 0 0", padding: 0 }}>
+    <ul style={{ listStyle: "none", margin: "10px 0 0", padding: 0, display: "flex", gap: 10, overflowX: "auto" }}>
       {state.suggestion.slice(0, 3).map((row) => {
         const match = campusCodeForScientific(row.scientific_name);
         return (
-          <li key={`${row.rank}-${row.scientific_name}`} style={{ marginTop: 6 }}>
+          <li key={`${row.rank}-${row.scientific_name}`} style={{ flexShrink: 0, width: 88, textAlign: "center" }}>
             <button
               type="button"
               onClick={() => {
                 if (match) onPick(match);
               }}
-              className="w-full"
-              style={{ textAlign: "left", fontSize: 13 }}
+              style={{ width: "100%" }}
             >
-              <span style={{ fontWeight: 700 }}>{row.common_name}</span>
-              <span style={{ fontStyle: "italic", color: "rgba(31,32,34,0.55)", marginLeft: 6 }}>
-                {row.scientific_name}
+              <SpeciesPortrait
+                scientific_name={row.scientific_name}
+                species_code={match ?? undefined}
+                size={64}
+                style={{ margin: "0 auto" }}
+              />
+              <span style={{ display: "block", fontWeight: 800, fontSize: 11, color: "#f4fff0", marginTop: 6, lineHeight: 1.2 }}>
+                {row.common_name}
               </span>
-              <span style={{ display: "block", fontSize: 11, color: "rgba(31,32,34,0.45)" }}>
-                {is_demo ? "recorded iNaturalist reply" : "iNaturalist"} · score {row.score.toFixed(2)} · #{row.rank}
-                {match ? " · on our walk list" : ""}
+              <span style={{ display: "block", fontSize: 10, color: "rgba(244,255,240,0.5)", marginTop: 2 }}>
+                {is_demo ? "recorded" : `${row.score.toFixed(2)}`}
               </span>
             </button>
           </li>
@@ -1191,23 +1263,25 @@ function CameraSheet({
 
   return (
     <div className="absolute inset-0" style={{ zIndex: 60 }}>
-      <div className="absolute inset-0" style={{ background: "rgba(31,32,34,0.45)" }} onClick={onClose} />
+      <div className="absolute inset-0" style={{ background: "rgba(8,20,12,0.55)" }} onClick={onClose} />
       <div
         className="absolute inset-x-0 bottom-0 scroll-soft"
         style={{
           top: 24,
-          background: "#F9F9F9",
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
+          background: "linear-gradient(180deg, #1a3d28 0%, #0f2418 100%)",
+          color: "#f4fff0",
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
           overflowY: "auto",
-          padding: "16px 20px 24px",
+          padding: "16px 20px 28px",
+          boxShadow: "0 -12px 40px rgba(0,0,0,0.35)",
           animation: "fgup .3s cubic-bezier(.2,.8,.2,1)",
         }}
       >
         <div className="flex items-center justify-between">
           <div>
             <div style={{ fontWeight: 800, fontSize: 18 }}>Log a sighting</div>
-            <div style={{ fontSize: 12, color: "rgba(31,32,34,0.6)", marginTop: 2 }}>{where}</div>
+            <div style={{ fontSize: 12, color: "rgba(244,255,240,0.6)", marginTop: 2 }}>{where}</div>
             {/* Only when you walked into a find in the world. An ordinary log
                 makes no rarity claim, because outside a spawn we do not know
                 that this individual is the species the pill would be about. */}
@@ -1230,105 +1304,105 @@ function CameraSheet({
           <span style={{ flexShrink: 0, marginTop: 1 }}>
             <LeafScanIcon size={16} />
           </span>
-          <div style={{ fontSize: 11, color: "rgba(31,32,34,0.5)", lineHeight: 1.4 }}>{identifyCaption(identify)}</div>
+          <div style={{ fontSize: 11, color: "rgba(244,255,240,0.55)", lineHeight: 1.4 }}>{identifyCaption(identify)}</div>
         </div>
         <SuggestionList state={identify} onPick={onPick} />
         {!hasInatToken() && (
-          <div style={{ fontSize: 11, color: "rgba(31,32,34,0.45)", marginTop: 6 }}>
+          <div style={{ fontSize: 11, color: "rgba(244,255,240,0.4)", marginTop: 6 }}>
             Set <code>VITE_INAT_API_TOKEN</code> before building to run live iNaturalist computer vision instead.
           </div>
         )}
 
-        <div className="flex items-center gap-1.5" style={{ marginTop: 14, fontSize: 12, color: "rgba(31,32,34,0.7)" }}>
+        <div className="flex items-center gap-1.5" style={{ marginTop: 14, fontSize: 12, color: "rgba(244,255,240,0.7)" }}>
           <PinIcon size={16} />
           {fix_line}
         </div>
 
-        <div style={{ marginTop: 18 }}><Eyebrow>WHAT DID YOU SEE?</Eyebrow></div>
-        <div style={{ marginTop: 8, border: "1.5px solid #E4E7E8", borderRadius: 16, overflow: "hidden" }}>
-          {/* You walked to a find that is not on the nine-species guide list.
-              Without this row the sheet showed NOTHING selected while `pick_code`
-              was quietly set to it — so the save was right and the screen did
-              not say so, and one tap on any row below would have logged a
-              different species than the one you walked to. */}
+        <div style={{ marginTop: 18, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", color: "#7dff6a" }}>
+          WHAT DID YOU SEE?
+        </div>
+        <div
+          style={{
+            marginTop: 10,
+            display: "grid",
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gap: 10,
+          }}
+        >
           {wild_pick && (
-            <div
-              style={{
-                padding: "12px 14px",
-                background: "rgba(21,77,48,0.08)",
-                borderBottom: "1px solid #E4E7E8",
-              }}
+            <button
+              type="button"
+              onClick={() => onPick(wild_pick.species_code)}
+              style={{ textAlign: "center" }}
             >
-              <span className="flex items-center gap-3">
-                <KindThumb kind={kindOf(wild_pick.iconic_taxon_name, wild_pick.archetype)} size={44} />
-                <span style={{ minWidth: 0 }}>
-                  <span style={{ display: "block", fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>
-                    {displayName(wild_pick.common_name)}
-                  </span>
-                  <span style={{ display: "block", fontStyle: "italic", fontSize: 11.5, color: "rgba(31,32,34,0.6)" }}>
-                    {wild_pick.scientific_name}
-                  </span>
-                  <span style={{ display: "block", fontSize: 11, color: "var(--ui-accent)", fontWeight: 700, marginTop: 3 }}>
-                    Selected · from the campus sweep, not the guide&rsquo;s nine
-                  </span>
-                </span>
+              <SpeciesPortrait
+                scientific_name={wild_pick.scientific_name}
+                species_code={wild_pick.species_code}
+                kind={kindOf(wild_pick.iconic_taxon_name, wild_pick.archetype)}
+                size={72}
+                style={{
+                  margin: "0 auto",
+                  border: pick_code === wild_pick.species_code ? "3px solid #7dff6a" : "2px solid rgba(255,255,255,0.35)",
+                }}
+              />
+              <span style={{ display: "block", fontWeight: 800, fontSize: 11, marginTop: 6, lineHeight: 1.2 }}>
+                {displayName(wild_pick.common_name)}
               </span>
-            </div>
+              <span style={{ display: "block", fontSize: 10, color: "#7dff6a", marginTop: 2 }}>Sweep</span>
+            </button>
           )}
-          {picker_order.map((species_code, i) => {
+          {picker_order.map((species_code) => {
             const sp = species[species_code];
             const is_active = species_code === pick_code;
             return (
               <button
                 key={species_code}
+                type="button"
                 onClick={() => onPick(species_code)}
-                className="w-full flex items-center justify-between"
-                style={{
-                  padding: "12px 14px",
-                  /* Selection is a chrome state. The species' own ecology colour
-                     is carried by its pill and its thumb ring, which is where it
-                     means something. */
-                  background: is_active ? "rgba(21,77,48,0.08)" : "transparent",
-                  borderTop: i === 0 ? "none" : "1px solid #E4E7E8",
-                  textAlign: "left",
-                }}
+                style={{ textAlign: "center" }}
               >
-                <span className="flex items-center gap-3">
-                  <TaxonThumb species_code={species_code} size={44} />
-                  <span style={{ minWidth: 0 }}>
-                    <span style={{ display: "block", fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>
-                      {sp.common_name}
-                    </span>
-                    <span style={{ display: "block", fontStyle: "italic", fontSize: 11.5, color: "rgba(31,32,34,0.6)" }}>
-                      {sp.scientific_name}
-                    </span>
-                  </span>
+                <SpeciesPortrait
+                  scientific_name={sp.scientific_name}
+                  species_code={species_code}
+                  size={72}
+                  style={{
+                    margin: "0 auto",
+                    border: is_active ? "3px solid #7dff6a" : "2px solid rgba(255,255,255,0.35)",
+                  }}
+                />
+                <span style={{ display: "block", fontWeight: 800, fontSize: 11, marginTop: 6, lineHeight: 1.2 }}>
+                  {sp.common_name}
                 </span>
-                <PrimaryPill sp={sp} />
+                <span style={{ display: "block", fontStyle: "italic", fontSize: 10, color: "rgba(244,255,240,0.5)", marginTop: 2 }}>
+                  {sp.scientific_name}
+                </span>
               </button>
             );
           })}
-          {/* The list is nine species. Campus has far more, and a student who
-              cannot say what they saw currently has nowhere to put it. */}
           <button
+            type="button"
             onClick={() => setReporting((prev) => !prev)}
-            className="w-full flex items-center justify-between"
-            style={{
-              padding: "12px 14px",
-              background: is_reporting ? "rgba(7,93,137,0.08)" : "transparent",
-              borderTop: "1px solid #E4E7E8",
-              textAlign: "left",
-            }}
+            style={{ textAlign: "center" }}
           >
-            <span style={{ minWidth: 0 }}>
-              <span style={{ display: "block", fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>
-                It is not on this list
-              </span>
-              <span style={{ display: "block", fontSize: 11.5, color: "rgba(31,32,34,0.6)", marginTop: 2 }}>
-                Report a tree the guide does not have
-              </span>
+            <span
+              style={{
+                display: "grid",
+                placeItems: "center",
+                width: 72,
+                height: 72,
+                margin: "0 auto",
+                borderRadius: 999,
+                background: is_reporting ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.88)",
+                border: is_reporting ? "3px solid #7dff6a" : "3px solid rgba(255,255,255,0.95)",
+                boxShadow: "0 6px 18px rgba(12, 28, 16, 0.28)",
+                fontWeight: 800,
+                fontSize: 22,
+                color: "#1a3d28",
+              }}
+            >
+              ?
             </span>
-            <Pill tone="info">{is_reporting ? "Reporting" : "Report"}</Pill>
+            <span style={{ display: "block", fontWeight: 800, fontSize: 11, marginTop: 6 }}>Not on list</span>
           </button>
         </div>
 
@@ -1338,15 +1412,15 @@ function CameraSheet({
               marginTop: 12,
               padding: "12px 14px",
               borderRadius: 16,
-              border: "1.5px solid #BBD9EA",
-              background: "#F2F8FC",
+              border: "1.5px solid rgba(255,255,255,0.16)",
+              background: "rgba(0,0,0,0.2)",
             }}
           >
             <label style={{ display: "block" }}>
               <span style={{ fontSize: 13.5, fontWeight: 700, display: "block" }}>
                 What would you call it?
               </span>
-              <span style={{ fontSize: 11.5, color: "rgba(31,32,34,0.55)", display: "block", marginTop: 2 }}>
+              <span style={{ fontSize: 11.5, color: "rgba(244,255,240,0.55)", display: "block", marginTop: 2 }}>
                 A guess is fine. &ldquo;Unknown&rdquo; is fine too — the position is the part AIS does not have.
               </span>
               <input
@@ -1358,15 +1432,16 @@ function CameraSheet({
                   width: "100%",
                   marginTop: 8,
                   borderRadius: 12,
-                  border: "1.5px solid #BBD9EA",
-                  background: "#fff",
+                  border: "1.5px solid rgba(255,255,255,0.16)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "#f4fff0",
                   padding: "10px 12px",
                   fontSize: 14,
                   fontFamily: "inherit",
                 }}
               />
             </label>
-            <p style={{ fontSize: 11, color: "rgba(31,32,34,0.55)", marginTop: 8, lineHeight: 1.4 }}>
+            <p style={{ fontSize: 11, color: "rgba(244,255,240,0.5)", marginTop: 8, lineHeight: 1.4 }}>
               This saves as a report, not as a species badge, and leaves the export tagged that way. It is not
               added to the guide — nobody here is deciding what a tree is.
             </p>
@@ -1374,14 +1449,10 @@ function CameraSheet({
         )}
 
         <label style={{ display: "block", marginTop: 16 }}>
-          {/* Asked as a question rather than labelled as a field: a student who
-              is prompted to look writes something, a student shown an empty box
-              usually does not. It stays optional, and an entry saved without
-              one renders clean. */}
           <span style={{ fontSize: 13.5, fontWeight: 700, display: "block" }}>
             What did you notice?
           </span>
-          <span style={{ fontSize: 11.5, color: "rgba(31,32,34,0.5)", display: "block", marginTop: 2 }}>
+          <span style={{ fontSize: 11.5, color: "rgba(244,255,240,0.5)", display: "block", marginTop: 2 }}>
             Optional — one line is plenty.
           </span>
           <textarea
@@ -1394,8 +1465,9 @@ function CameraSheet({
               width: "100%",
               marginTop: 8,
               borderRadius: 14,
-              border: "1.5px solid #E4E7E8",
-              background: "#fff",
+              border: "1.5px solid rgba(255,255,255,0.16)",
+              background: "rgba(255,255,255,0.06)",
+              color: "#f4fff0",
               padding: "10px 12px",
               fontSize: 14,
               fontFamily: "inherit",
@@ -1404,31 +1476,36 @@ function CameraSheet({
           />
         </label>
 
-        <p style={{ fontSize: 12, color: "rgba(31,32,34,0.65)", marginTop: 14, lineHeight: 1.45 }}>
-          iNaturalist is identifying, not this app. Ateneo already published an invasive-species image classifier (Aliño,
-          Fernandez, Diesmos 2023) — we are not rebuilding that either. For a second opinion, open Seek, or on iPhone Look Up
-          the photo in Photos. The journal stays on this device.{" "}
-          <a href={SEEK_URL} target="_blank" rel="noreferrer" style={{ color: "#058CD6", textDecoration: "underline", fontWeight: 700 }}>
+        <p style={{ fontSize: 12, color: "rgba(244,255,240,0.55)", marginTop: 14, lineHeight: 1.45 }}>
+          iNaturalist is identifying, not this app. The journal stays on this device.{" "}
+          <a href={SEEK_URL} target="_blank" rel="noreferrer" style={{ color: "#9ad4ff", textDecoration: "underline", fontWeight: 700 }}>
             Open Seek
           </a>
         </p>
-        <button
-          onClick={() =>
-            onSave({
-              photo_data: shot?.data_url ?? null,
-              inat: {
-                scientific_name: top?.scientific_name ?? null,
-                common_name: top?.common_name ?? null,
-              },
-              note: note.trim() || null,
-              entry_kind: is_reporting ? "contribution" : "badge",
-              reported_name: is_reporting ? reported_name.trim() || "Unknown" : null,
-            })
-          }
-          style={{ width: "100%", height: 48, borderRadius: 12, background: "var(--ui-accent)", color: "#fff", fontWeight: 700, fontSize: 15, marginTop: 16 }}
-        >
-          {is_reporting ? "Save this report" : "Save to my journal"}
-        </button>
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 18 }}>
+          <HudOrb
+            label={is_reporting ? "Save this report" : "Save to my journal"}
+            onClick={() =>
+              onSave({
+                photo_data: shot?.data_url ?? null,
+                inat: {
+                  scientific_name: top?.scientific_name ?? null,
+                  common_name: top?.common_name ?? null,
+                },
+                note: note.trim() || null,
+                entry_kind: is_reporting ? "contribution" : "badge",
+                reported_name: is_reporting ? reported_name.trim() || "Unknown" : null,
+              })
+            }
+            size={HUD_CAMERA}
+            style={{ background: "#2fbf3a", border: "4px solid #f4fff0" }}
+          >
+            <CheckIcon size={28} />
+          </HudOrb>
+        </div>
+        <div style={{ textAlign: "center", fontSize: 12, fontWeight: 800, marginTop: 8, color: "rgba(244,255,240,0.7)" }}>
+          {is_reporting ? "Save report" : "Save"}
+        </div>
       </div>
     </div>
   );
@@ -1458,25 +1535,22 @@ function JournalGrid({ seen, is_desktop }: { seen: Set<string>; is_desktop: bool
             />
             {is_seen ? (
               <>
-                <div style={{ fontWeight: 800, fontSize: 13, marginTop: 8, lineHeight: 1.2 }}>{sp.common_name}</div>
+                <div style={{ fontWeight: 800, fontSize: 13, marginTop: 8, lineHeight: 1.2, color: "#f4fff0" }}>{sp.common_name}</div>
                 <div
                   style={{
                     fontStyle: "italic",
                     fontSize: 10.5,
-                    color: "rgba(31,32,34,0.55)",
+                    color: "rgba(244,255,240,0.55)",
                     marginTop: 2,
                     lineHeight: 1.25,
                   }}
                 >
                   {sp.scientific_name}
                 </div>
-                <div style={{ marginTop: 6, display: "flex", justifyContent: "center" }}>
-                  <PrimaryPill sp={sp} />
-                </div>
               </>
             ) : (
-              <div style={{ fontSize: 11.5, fontWeight: 700, color: "rgba(31,32,34,0.5)", marginTop: 8 }}>
-                Not yet
+              <div style={{ fontSize: 16, fontWeight: 800, color: "rgba(244,255,240,0.28)", marginTop: 8, letterSpacing: "0.08em" }}>
+                ???
               </div>
             )}
           </div>
@@ -2137,9 +2211,6 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
           </div>
         </div>
         <BuddyLine snap={gamify} />
-        <p style={{ fontSize: 11, color: "rgba(31,32,34,0.5)", marginTop: 10, lineHeight: 1.4 }}>
-          Personal progression on this device. Local demo leaderboard is seeded for the showcase — not an official AIS rank.
-        </p>
       </div>
     </Card>
   );
@@ -2153,6 +2224,7 @@ function JournalScreen({
   pool,
   is_seeded = false,
   gamify,
+  world = null,
 }: {
   sighting: Sighting[];
   seen: Set<string>;
@@ -2164,78 +2236,12 @@ function JournalScreen({
   /** True when every row came from `?seed=demo`. Says so on screen. */
   is_seeded?: boolean;
   gamify: GamifySnapshot;
+  world?: World | null;
 }) {
   const summary = summarize(sighting);
-  const seen_of_total = `${summary.species_count} of ${summary.species_total} species seen`;
-  /* Finds off the guide's nine are counted beside the fraction, never inside
-     it — the two are different universes and folding them together produced
-     "12 of 9". */
+  const seen_of_total = `${summary.species_count} / ${summary.species_total}`;
   const wild_line =
-    summary.wild_species_count > 0
-      ? `+ ${summary.wild_species_count} more from the campus sweep`
-      : null;
-  if (seen.size === 0) {
-    return (
-      <div
-        className="scroll-soft"
-        style={{
-          height: "100%",
-          overflowY: "auto",
-          background: "var(--brand-mist)",
-          padding: is_desktop ? "40px 72px" : "20px 20px 80px",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "flex-start",
-          paddingTop: is_desktop ? 48 : 28,
-        }}
-      >
-        <div
-          style={{
-            textAlign: "center",
-            maxWidth: 380,
-            background: "#fffef9",
-            border: "1.5px solid rgba(21,77,48,0.12)",
-            borderRadius: CARD_RADIUS,
-            boxShadow: "var(--shadow-card)",
-            padding: is_desktop ? "36px 40px" : "28px 22px",
-          }}
-        >
-          <div
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: 999,
-              margin: "0 auto",
-              background: "rgba(62,154,94,0.14)",
-              display: "grid",
-              placeItems: "center",
-            }}
-          >
-            <img src={spot.empty_journal} width={52} height={52} alt="" />
-          </div>
-          <p style={{ fontWeight: 800, fontSize: is_desktop ? 22 : 19, marginTop: 16, color: "var(--brand-forest)", lineHeight: 1.25 }}>
-            Your journal is waiting.
-          </p>
-          <p style={{ fontSize: 14, color: "rgba(31,32,34,0.72)", marginTop: 10, lineHeight: 1.5 }}>
-            Walk a path, notice a tree, and log what you see. Magisphere is about rediscovering home — reflection, not a race.
-          </p>
-          <p style={{ fontSize: 11.5, color: "rgba(31,32,34,0.5)", marginTop: 14, lineHeight: 1.45 }}>
-            Ateneo already designed an SDG game that way (Rodrigo, Favis, Cuyegkeng 2021 — RECIPE / Meaningful Gamification).
-          </p>
-        </div>
-        <div style={{ width: "100%", maxWidth: 420, marginTop: 18 }}>
-          <PointsStreakCard snap={gamify} is_desktop={is_desktop} />
-        </div>
-        <div style={{ width: "100%", maxWidth: 420, marginTop: 12 }}>
-          <ChallengesCard snap={gamify} />
-        </div>
-        <div style={{ width: "100%", maxWidth: 420, marginTop: 12 }}>
-          <LocalLeaderboardCard snap={gamify} is_desktop={is_desktop} />
-        </div>
-      </div>
-    );
-  }
+    summary.wild_species_count > 0 ? `+${summary.wild_species_count}` : null;
   return (
     <div
       className="scroll-soft"
@@ -2243,95 +2249,59 @@ function JournalScreen({
         height: "100%",
         overflowY: "auto",
         overflowX: "hidden",
-        background: "var(--brand-cream, #f7faf6)",
-        padding: is_desktop ? "40px 72px 48px" : "18px 20px 80px",
+        background: "linear-gradient(180deg, #163524 0%, #0c1c14 100%)",
+        color: "#f4fff0",
+        padding: is_desktop ? "28px 56px 120px" : "18px 16px 120px",
       }}
     >
       <div style={{ maxWidth: is_desktop ? 720 : undefined, margin: is_desktop ? "0 auto" : undefined }}>
-        <div className="flex items-center gap-3">
-          <img src={spot.success_log} width={56} height={56} alt="" />
-          <h1 style={{ fontWeight: 800, fontSize: is_desktop ? 30 : 24, color: "var(--brand-forest)" }}>Your journal</h1>
+        <div className="flex items-baseline justify-between">
+          <div style={{ fontWeight: 800, fontSize: 22, letterSpacing: "0.04em" }}>DEX</div>
+          <div style={{ fontWeight: 800, fontVariantNumeric: "tabular-nums", fontSize: 16 }}>
+            {seen_of_total}
+            {wild_line ? <span style={{ marginLeft: 8, opacity: 0.55, fontSize: 13 }}>{wild_line}</span> : null}
+          </div>
         </div>
-        <p style={{ fontSize: 13, color: "var(--ui-accent)", marginTop: 2 }}>Stays on this phone.</p>
-        {/* The deck's own AV checklist says to seed the journal AND say it is
-            seeded. Saying it in a banner beats relying on a nervous presenter
-            remembering the sentence at 9am. */}
         {is_seeded && (
           <p
             style={{
-              fontSize: 12,
-              lineHeight: 1.45,
+              fontSize: 11,
+              lineHeight: 1.4,
               marginTop: 10,
-              padding: "10px 12px",
-              borderRadius: 14,
-              background: "#FFF6E5",
-              color: "#7A5A12",
+              padding: "8px 10px",
+              borderRadius: 12,
+              background: "rgba(255,246,229,0.16)",
+              color: "#f3d48a",
               fontWeight: 700,
             }}
           >
-            Demonstration journal. These finds were seeded for the showcase — nobody walked them.
-            Open the app without <code>?seed=demo</code> for an empty journal.
+            Seeded demo — open without <code>?seed=demo</code> for an empty dex.
           </p>
         )}
-        <p style={{ fontSize: 12, color: "rgba(31,32,34,0.55)", marginTop: 8, lineHeight: 1.45 }}>
-          Reflection, not a race. Ateneo already designed an SDG game that way (Rodrigo, Favis, Cuyegkeng 2021 — RECIPE /
-          Meaningful Gamification).
-        </p>
-        <div style={{ marginTop: 16 }}>
-          <ProgressCard sighting={sighting} is_desktop={is_desktop} gamify={gamify} />
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <PointsStreakCard snap={gamify} is_desktop={is_desktop} />
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <ChallengesCard snap={gamify} />
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <LocalLeaderboardCard snap={gamify} is_desktop={is_desktop} />
-        </div>
-        <div style={{ marginTop: 16 }}>
-          <SummaryStrip sighting={sighting} pool={pool} />
-        </div>
-        <div className="flex items-baseline justify-between gap-3" style={{ marginTop: 24 }}>
-          <Eyebrow>YOUR COLLECTION</Eyebrow>
-          {/* Seen of findable, not seen of grid slots. The denominator is the
-              curated starter list; padded slots have no species behind them. */}
-          <span style={{ textAlign: "right" }}>
-            <span
-              style={{
-                display: "block",
-                fontSize: 12.5,
-                fontWeight: 700,
-                color: "var(--ui-accent)",
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              {seen_of_total}
-            </span>
-            {wild_line && (
-              <span style={{ display: "block", fontSize: 11, color: "rgba(31,32,34,0.55)", marginTop: 2 }}>
-                {wild_line}
-              </span>
-            )}
-          </span>
-        </div>
-        <div style={{ marginTop: 14 }}>
+        <div style={{ marginTop: 18 }}>
           <JournalGrid seen={seen} is_desktop={is_desktop} />
         </div>
-        <p style={{ fontSize: 12, color: "rgba(31,32,34,0.55)", marginTop: 14 }}>
-          A starter list — not the 1,809. Your own count only; nobody else&rsquo;s journal is in this number.
-        </p>
-        <div style={{ marginTop: 26 }}>
-          <WildShelf sighting={sighting} pool={pool} curated={picker_order} is_desktop={is_desktop} />
+        <div style={{ marginTop: 18 }}>
+          <WorldStrip sighting={sighting} world={world} />
         </div>
-        <div style={{ marginTop: 26 }}>
-          <BadgeShelf sighting={sighting} pool_count={pool_count} is_desktop={is_desktop} />
-        </div>
-        <div style={{ marginTop: 20 }}>
-          <WorldStrip sighting={sighting} />
-        </div>
-        <SightingLog sighting={sighting} />
-        <ExportRow sighting={sighting} />
+        {seen.size > 0 && (
+          <>
+            <div style={{ marginTop: 22 }}>
+              <ProgressCard sighting={sighting} is_desktop={is_desktop} gamify={gamify} />
+            </div>
+            <div style={{ marginTop: 22 }}>
+              <SummaryStrip sighting={sighting} pool={pool} />
+            </div>
+            <div style={{ marginTop: 26 }}>
+              <WildShelf sighting={sighting} pool={pool} curated={picker_order} is_desktop={is_desktop} />
+            </div>
+            <div style={{ marginTop: 26 }}>
+              <BadgeShelf sighting={sighting} pool_count={pool_count} is_desktop={is_desktop} />
+            </div>
+            <SightingLog sighting={sighting} />
+            <ExportRow sighting={sighting} />
+          </>
+        )}
       </div>
     </div>
   );
@@ -2343,7 +2313,7 @@ function PlanContent() {
       <h1 style={{ fontWeight: 800, fontSize: 24, lineHeight: 1.15 }}>What happens after the walk</h1>
       <div style={{ width: 48, height: 4, borderRadius: 999, background: "var(--grad-lagoon)", marginTop: 12 }} />
       <section style={{ marginTop: 20, borderRadius: 24, border: "1.5px solid #E4E7E8", padding: 16 }}>
-        <Eyebrow>1 · WHAT THIS WEBSITE IS FOR</Eyebrow>
+        <Eyebrow>1 · WHAT THIS IS FOR</Eyebrow>
         <p style={{ fontSize: 14.5, lineHeight: 1.5, marginTop: 8 }}>
           Formation, first: help students notice and name the trees they walk under every day. And a public map they can
           actually use — not a report that sits in a drawer.
@@ -2457,129 +2427,13 @@ function PlanScreen({ is_desktop }: { is_desktop: boolean }) {
         overflowY: "auto",
         overflowX: "hidden",
         background: "#F9F9F9",
-        padding: is_desktop ? "40px 72px" : "18px 20px 80px",
+        padding: is_desktop ? "28px 56px 120px" : "18px 20px 120px",
       }}
     >
       <div style={{ maxWidth: 720, margin: is_desktop ? "0 auto" : undefined }}>
         <PlanContent />
       </div>
     </div>
-  );
-}
-
-/**
- * The desktop shell: a persistent left rail, the map filling the centre, and
- * the encounter + citations in a right column.
- *
- * This replaces a top bar. The reason is the projector: at 1440 px a
- * horizontal header spends the scarcest axis — vertical — on navigation that
- * never changes, and the map is the thing the room came to see. A rail spends
- * the abundant axis instead. Every control the header carried is still here,
- * in one place, and the phone is untouched: it keeps its bottom nav.
- */
-function DesktopRail({
-  route,
-  onRoute,
-  is_demo,
-  onDemo,
-  seen_count,
-  is_wide,
-}: {
-  route: Route;
-  onRoute: (r: Route) => void;
-  is_demo: boolean;
-  onDemo: () => void;
-  seen_count: number;
-  is_wide: boolean;
-}) {
-  /* Same four glyphs as the phone. A desktop menu of bare words read like a
-     different product, and the kit already had the icons. */
-  const tab: { id: Route; label: string; Icon: typeof HomeIcon }[] = [
-    { id: "/", label: "Home", Icon: HomeIcon },
-    { id: "/map", label: "Map", Icon: MapIcon },
-    { id: "/journal", label: "Journal", Icon: JournalIcon },
-    { id: "/plan", label: "Plan", Icon: PlanIcon },
-  ];
-  return (
-    <nav
-      className="flex flex-col"
-      style={{
-        width: is_wide ? 232 : 196,
-        flexShrink: 0,
-        height: "100%",
-        background: "var(--brand-cream, #f7faf6)",
-        borderRight: "1.5px solid rgba(21,77,48,0.10)",
-        padding: "22px 16px 18px",
-      }}
-    >
-      <button
-        onClick={() => onRoute("/")}
-        className="flex items-center gap-2.5"
-        style={{ textAlign: "left", padding: "0 6px" }}
-      >
-        <BrandLockup mark_size={32} title_size={17} />
-      </button>
-
-      <div className="flex flex-col" style={{ gap: 4, marginTop: 26 }}>
-        {tab.map(({ id, label, Icon }) => {
-          const is_active = route === id;
-          return (
-            <button
-              key={id}
-              onClick={() => onRoute(id)}
-              aria-current={is_active ? "page" : undefined}
-              className="flex items-center gap-2.5"
-              style={{
-                fontWeight: 700,
-                fontSize: 14.5,
-                color: is_active ? "var(--ui-accent)" : "rgba(31,32,34,0.72)",
-                background: is_active ? "rgba(21,77,48,0.12)" : "transparent",
-                borderRadius: 14,
-                padding: "10px 12px",
-                textAlign: "left",
-                width: "100%",
-                transition: "background .18s ease, color .18s ease",
-              }}
-            >
-              <Icon size={19} active={is_active} />
-              {label}
-              {/* Active state is carried by the left bar as well as the wash,
-                  so the current route is readable in greyscale too. */}
-              {is_active && (
-                <span
-                  style={{
-                    marginLeft: "auto",
-                    width: 4,
-                    height: 18,
-                    borderRadius: 999,
-                    background: "var(--ui-accent)",
-                  }}
-                />
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-        {/* A real number from the real journal — never a dead locale switcher. */}
-        <button
-          onClick={() => onRoute("/journal")}
-          className="flex items-center gap-1.5"
-          style={{ fontSize: 12.5, fontWeight: 700, color: "rgba(31,32,34,0.62)", padding: "0 6px" }}
-        >
-          <JournalIcon size={17} active={false} />
-          {seen_count} logged
-        </button>
-        <Chip is_on={is_demo} onClick={onDemo}>
-          <LocateIcon size={15} />
-          Demo campus
-        </Chip>
-        <p style={{ fontSize: 10.5, color: "rgba(31,32,34,0.42)", lineHeight: 1.35, padding: "0 6px" }}>
-          Youth CLAP 2026 · student prototype · not an official AIS product.
-        </p>
-      </div>
-    </nav>
   );
 }
 
@@ -2611,17 +2465,7 @@ function MapNote({ is_desktop, layer }: { is_desktop: boolean; layer: Layer }) {
           <RestrictedIcon size={17} />
         </span>
         <div style={{ fontSize: 11, lineHeight: 1.35 }}>
-          {is_desktop ? (
-            <>
-              <strong style={{ fontWeight: 700 }}>Observed from the path.</strong> That grove is off-limits and nothing
-              spawns inside it. The hatched shape is a placeholder extent — nobody has given us the surveyed boundary.
-            </>
-          ) : (
-            <>
-              <strong style={{ fontWeight: 700 }}>Off-limits grove.</strong> Nothing spawns inside. Hatch is a
-              placeholder, not surveyed.
-            </>
-          )}
+          <strong style={{ fontWeight: 700 }}>Off-limits.</strong> Nothing here.
         </div>
       </div>
       {layer === "satellite" && is_desktop && (
@@ -2635,8 +2479,7 @@ function MapNote({ is_desktop, layer }: { is_desktop: boolean; layer: Layer }) {
             borderTop: "1px solid #E4E7E8",
           }}
         >
-          Canopy here is the imagery itself — we compute no green-cover layer. The urban-canopy and heat claim is
-          Llorin et al. 2024 (Manila Observatory).
+          Imagery, not our canopy layer.
         </div>
       )}
     </div>
@@ -2729,30 +2572,34 @@ function SectorCard({
   const PAD = 18;
 
   return (
-    <div
-      role="dialog"
-      aria-label={row.name}
-      className="absolute"
-      style={{
-        left: is_desktop ? 18 : 0,
-        right: is_desktop ? "auto" : 0,
-        width: is_desktop ? 380 : undefined,
-        bottom: is_desktop ? 84 : 64,
-        zIndex: 48,
-        background: "#FFFFFF",
-        border: "1.5px solid #E7EBE6",
-        borderRadius: is_desktop ? 24 : "24px 24px 0 0",
-        boxShadow: "0 -8px 34px rgba(24,38,20,0.20)",
-        display: "grid",
-        gap: 14,
-        padding: is_desktop ? `${PAD}px` : `10px ${PAD}px ${PAD}px`,
-      }}
-    >
-      {!is_desktop && (
-        <div style={{ justifySelf: "center", width: 40, height: 4, borderRadius: 999, background: "#DCE2D9" }} />
-      )}
+    <>
+      <div
+        className="absolute inset-0"
+        style={{ zIndex: 47, background: "rgba(8,20,12,0.42)" }}
+        onClick={onDismiss}
+      />
+      <div
+        role="dialog"
+        aria-label={row.name}
+        className="absolute"
+        style={{
+          left: is_desktop ? 18 : 0,
+          right: is_desktop ? "auto" : 0,
+          width: is_desktop ? 380 : undefined,
+          bottom: 148,
+          zIndex: 48,
+          background: "linear-gradient(180deg, #1a3d28 0%, #0f2418 100%)",
+          color: "#f4fff0",
+          borderRadius: is_desktop ? 28 : "28px 28px 0 0",
+          boxShadow: "0 -12px 40px rgba(0,0,0,0.35)",
+          display: "grid",
+          gridTemplateColumns: "1fr auto",
+          gap: 14,
+          padding: is_desktop ? `${PAD}px` : `10px ${PAD}px ${PAD}px`,
+        }}
+      >
+        <div style={{ gridColumn: "1 / -1", justifySelf: "center", width: 42, height: 4, borderRadius: 999, background: "rgba(255,255,255,0.28)" }} />
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 12, alignItems: "start" }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 19, fontWeight: 800, lineHeight: 1.2, letterSpacing: -0.2 }}>{row.name}</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
@@ -2760,114 +2607,59 @@ function SectorCard({
             <Tag>{(row.area_m2 / 10000).toFixed(2)} ha</Tag>
             {veg_percent !== null && <Tag tone={veg_percent >= 45 ? "green" : "grey"}>{veg_percent}% green</Tag>}
           </div>
+          {resident.length > 0 ? (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(244,255,240,0.55)" }}>
+                On the walk list here · {progress.seen_count} logged · yours only
+              </div>
+              <div style={{ display: "flex", gap: 10, overflowX: "auto", marginTop: 8 }}>
+                {resident.map((e) => {
+                  const sp = species[e.species_code];
+                  if (!sp) return null;
+                  return (
+                    <button
+                      key={e.encounter_id}
+                      type="button"
+                      onClick={() => onLog(e.species_code)}
+                      style={{ width: 64, flexShrink: 0, textAlign: "center" }}
+                    >
+                      <SpeciesPortrait scientific_name={sp.scientific_name} species_code={sp.species_code} size={56} />
+                      <span style={{ display: "block", fontSize: 10, fontWeight: 800, marginTop: 4 }}>{sp.common_name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <p style={{ fontSize: 13, lineHeight: 1.5, color: "rgba(244,255,240,0.6)", margin: "12px 0 0" }}>
+              Nothing is on the walk list here yet. Log whatever you actually see.
+            </p>
+          )}
+          {is_open && (
+            <p style={{ fontSize: 12, lineHeight: 1.55, color: "rgba(244,255,240,0.55)", margin: "12px 0 0" }}>
+              The edges of this sector are the roads and footpaths around it, from OpenStreetMap (ODbL) — not a boundary we
+              drew.{" "}
+              {veg_percent !== null
+                ? `${veg_percent}% green is measured off Esri satellite imagery (${row.vegetation_sample} sampled points), which is how a car park stops being painted as lawn.`
+                : "No imagery covered this ring, so greenness here is inferred from building cover rather than measured."}
+              {row.is_named_by_us ? " The NAME is ours — OSM has none for this ground." : ""}
+              {row.species_code.length > 0
+                ? ` Species here are provisional demo-map positions, superseded by the AIS inventory (${aisDueNote()}). Not a survey.`
+                : ""}
+            </p>
+          )}
         </div>
-        <button
-          aria-label="Close"
-          onClick={onDismiss}
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: 999,
-            border: "1.5px solid #E7EBE6",
-            background: "#FBFCFA",
-            fontSize: 17,
-            fontWeight: 700,
-            lineHeight: 1,
-            color: "rgba(31,32,34,0.55)",
-            cursor: "pointer",
-          }}
-        >
-          ×
-        </button>
+
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+          <HudOrb label="Log what you see here" onClick={() => onLog(resident[0]?.species_code ?? "narra")} size={HUD_ORB}>
+            <img src={icon.go_camera} alt="" width={HUD_ORB} height={HUD_ORB} style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
+          </HudOrb>
+          <HudOrb label={is_open ? "Hide sources" : "Where does this come from?"} active={is_open} onClick={() => setOpen((o) => !o)} size={HUD_ORB}>
+            <span style={{ fontWeight: 800, fontSize: 22, color: "#1a3d28" }}>i</span>
+          </HudOrb>
+        </div>
       </div>
-
-      {resident.length > 0 ? (
-        <div style={{ display: "grid", gap: 9 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: "rgba(31,32,34,0.55)" }}>
-            On the walk list here · {progress.seen_count} logged · yours only
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {resident.map((e) => {
-              const sp = species[e.species_code];
-              if (!sp) return null;
-              return (
-                <button
-                  key={e.encounter_id}
-                  onClick={() => onLog(e.species_code)}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 7,
-                    background: "#F1F7EF",
-                    border: "1.5px solid #D7E4D2",
-                    borderRadius: 999,
-                    padding: "9px 14px",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
-                >
-                  {sp.common_name}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ) : (
-        <p style={{ fontSize: 13, lineHeight: 1.5, color: "rgba(31,32,34,0.6)", margin: 0 }}>
-          Nothing is on the walk list here yet — the AIS inventory ({aisDueNote()}) is the source that will name what grows in
-          this sector. Log whatever you actually see.
-        </p>
-      )}
-
-      <button
-        onClick={() => onLog(resident[0]?.species_code ?? "narra")}
-        style={{
-          width: "100%",
-          background: "#2F6B3A",
-          color: "#fff",
-          border: "none",
-          borderRadius: 16,
-          padding: "15px 16px",
-          fontSize: 15,
-          fontWeight: 800,
-          cursor: "pointer",
-          boxShadow: "0 4px 14px rgba(47,107,58,0.34)",
-        }}
-      >
-        Log what you see here
-      </button>
-
-      <button
-        onClick={() => setOpen((o) => !o)}
-        style={{
-          justifySelf: "start",
-          fontSize: 12,
-          fontWeight: 700,
-          color: "rgba(31,32,34,0.5)",
-          background: "none",
-          border: "none",
-          padding: 0,
-          textDecoration: "underline",
-          cursor: "pointer",
-        }}
-      >
-        {is_open ? "Hide sources" : "Where does this come from?"}
-      </button>
-      {is_open && (
-        <p style={{ fontSize: 12, lineHeight: 1.55, color: "rgba(31,32,34,0.6)", margin: 0 }}>
-          The edges of this sector are the roads and footpaths around it, from OpenStreetMap (ODbL) — not a boundary we
-          drew.{" "}
-          {veg_percent !== null
-            ? `${veg_percent}% green is measured off Esri satellite imagery (${row.vegetation_sample} sampled points), which is how a car park stops being painted as lawn.`
-            : "No imagery covered this ring, so greenness here is inferred from building cover rather than measured."}
-          {row.is_named_by_us ? " The NAME is ours — OSM has none for this ground." : ""}
-          {row.species_code.length > 0
-            ? ` Species here are provisional demo-map positions, superseded by the AIS inventory (${aisDueNote()}). Not a survey.`
-            : ""}
-        </p>
-      )}
-    </div>
+    </>
   );
 }
 
@@ -3010,58 +2802,31 @@ function ContextCard({ label, value }: { label: string; value: string }) {
 function ModeSwitch({
   mode,
   onMode,
-  is_desktop,
 }: {
   mode: "play" | "field";
   onMode: (m: "play" | "field") => void;
-  is_desktop: boolean;
 }) {
-  const item: { id: "play" | "field"; label: string; hint: string }[] = [
-    { id: "play", label: "Play", hint: "Walk the campus" },
-    { id: "field", label: "Field", hint: "Layers and sources" },
-  ];
+  const is_field = mode === "field";
   return (
-    <div
-      role="tablist"
-      aria-label="Map mode"
+    <button
+      type="button"
+      aria-label={is_field ? "Back to play" : "Field layers"}
+      title={is_field ? "Back to play" : "Field layers"}
+      onClick={() => onMode(is_field ? "play" : "field")}
       style={{
-        display: "inline-flex",
-        background: "#EDF1EA",
-        border: "1.5px solid #DCE4D8",
+        width: 44,
+        height: 44,
         borderRadius: 999,
-        padding: 3,
-        gap: 2,
+        background: is_field ? "#2F6B3A" : "rgba(255,255,255,0.94)",
+        color: is_field ? "#fff" : "rgba(31,32,34,0.72)",
+        boxShadow: "0 4px 14px rgba(24,38,20,0.16)",
+        border: "3px solid #fff",
+        display: "grid",
+        placeItems: "center",
       }}
     >
-      {item.map(({ id, label, hint }) => {
-        const on = mode === id;
-        return (
-          <button
-            key={id}
-            role="tab"
-            aria-selected={on}
-            title={hint}
-            onClick={() => onMode(id)}
-            style={{
-              appearance: "none",
-              border: "none",
-              borderRadius: 999,
-              padding: is_desktop ? "8px 20px" : "7px 16px",
-              fontSize: is_desktop ? 13.5 : 13,
-              fontWeight: 800,
-              lineHeight: 1,
-              cursor: "pointer",
-              background: on ? "#2F6B3A" : "transparent",
-              color: on ? "#FFFFFF" : "rgba(31,32,34,0.62)",
-              boxShadow: on ? "0 2px 8px rgba(47,107,58,0.32)" : "none",
-              transition: "background 120ms, color 120ms",
-            }}
-          >
-            {label}
-          </button>
-        );
-      })}
-    </div>
+      <CanopyIcon size={18} />
+    </button>
   );
 }
 
@@ -3160,11 +2925,14 @@ export default function App() {
    * one thing on the map that is a rule.
    */
   const [pin_filter, setPinFilter] = useState<Set<PinKind>>(() => new Set());
-  const { is_desktop, is_wide } = useDesktop();
+  const [is_trainer_open, setTrainerOpen] = useState(false);
+  const [is_nearby_open, setNearbyOpen] = useState(false);
+  const { is_desktop } = useDesktop();
   const geo = useGeo(is_demo);
+  const seen_sector = useMemo(() => seenSector(sighting), [sighting]);
   /* The rotating world. One fetch of the real sweep, recomputed when the
-     30-minute window rolls — see `live.tsx`. */
-  const spawn_world = useSpawnWorld();
+     30-minute window rolls — see `live.tsx`. Quiet sectors get more finds. */
+  const spawn_world = useSpawnWorld(seen_sector);
 
   /**
    * `?seed=demo` fills the journal so the badge shelf and the collection are
@@ -3188,9 +2956,29 @@ export default function App() {
   const is_seeded = useMemo(() => isSeededJournal(sighting), [sighting]);
   const seen = seenCode(sighting);
   const gamify = useMemo(() => gamifySnapshot(point_events), [point_events]);
-  const seen_sector = useMemo(() => seenSector(sighting), [sighting]);
+  const daily = useMemo(
+    () => dailyTaskFor(spawn_world.pool, biome_sector, new Date(), readPlayer().player_id, point_events),
+    [spawn_world.pool, point_events],
+  );
   const stage = stageFor(seen_sector.size);
   const vigor = useMemo(() => vigorOf(sighting), [sighting]);
+  const live = useLiveWorld({
+    sighting,
+    summary: {
+      stage,
+      level: seen_sector.size + 1,
+      total_points: gamify.total_points,
+      streak_weeks: gamify.streak_weeks,
+    },
+  });
+  const me = readPlayer();
+  const live_snap = useMemo(
+    () => ({
+      ...gamify,
+      leaderboard: withLiveWalker(gamify.leaderboard, live.world?.walker ?? [], me.player_id),
+    }),
+    [gamify, live.world, me.player_id],
+  );
   const here_sector = useMemo(() => (geo.fix ? sectorAt(geo.fix) : null), [geo.fix]);
 
   const ranked = useMemo(() => (geo.fix ? rankEncounter(geo.fix) : []), [geo.fix]);
@@ -3260,6 +3048,8 @@ export default function App() {
       window.history.pushState({}, "", next);
     }
     setRoute(next);
+    setTrainerOpen(false);
+    setNearbyOpen(false);
     setCameraOpen(false);
     setCameraWhere(null);
     setCameraRarity(null);
@@ -3305,6 +3095,21 @@ export default function App() {
   const showToast = (m: string) => {
     setToast(m);
     window.setTimeout(() => setToast(null), 2000);
+  };
+
+  const joinWalker = async (code: string) => {
+    const found = await fetchJoin(code);
+    if (!found) {
+      showToast("No walker with that code yet");
+      return;
+    }
+    writePlayer(found);
+    const mine = await fetchMine(found.player_id);
+    if (mine) {
+      for (const row of mine) mergeRemoteSighting(row);
+      setSighting(readSighting());
+    }
+    showToast(`Joined ${found.name}`);
   };
 
   const noteAward = (
@@ -3372,7 +3177,7 @@ export default function App() {
     const is_report = entry_kind === "contribution";
     /* Stage before save — compared after to detect an advance (T4.5 trigger). */
     const prev_stage = stageFor(seenSector(sighting).size);
-    const saved = addSighting({
+    addSighting({
       species_code: pick_code,
       photo_data,
       inat_scientific_name: id.scientific_name,
@@ -3388,13 +3193,17 @@ export default function App() {
     const next_sighting = readSighting();
     setSighting(next_sighting);
     const award_kind = observeAwardKind({ photo_data, species_code: pick_code });
+    const here = geo.fix ? sectorAt(geo.fix) : null;
     noteAward(
       award_kind,
-      `sighting:${pick_code}/${saved.sighting_id}`,
+      observeSubject(pick_code, here?.sector_code),
       award_kind === "verified_discovery"
-        ? `+${POINT_VALUE.verified_discovery} Local verified discovery`
+        ? `+${POINT_VALUE.verified_discovery} Local verified`
         : `+${POINT_VALUE.observe} Observe`,
     );
+    if (daily && !daily.is_done && daily.species_code === pick_code) {
+      noteAward("challenge", dailySubject(daily.day_key), `+${POINT_VALUE.challenge} Hunt`);
+    }
     setCameraOpen(false);
     setCameraRarity(null);
     /* The blind-box reveal fires when a located badge in a new sector advances
@@ -3548,8 +3357,6 @@ export default function App() {
    * coordinate pill and the layer counter, which is what "less cluttered ui"
    * asked for on 09-03.
    */
-  const play_progress = toNextStage(seen_sector.size);
-  const play_nearby = ranked.slice(0, 3);
   const play_sheet_sp = species[pick_code] ?? sel_sp;
   const play_sheet_where = camera_where ?? (here_sector?.name ?? "Campus");
   const play_sheet_distance = (() => {
@@ -3617,99 +3424,34 @@ export default function App() {
         }
         control={
           <>
-            <ModeSwitch mode={map_mode} onMode={setMode} is_desktop={is_desktop} />
+            <ModeSwitch mode={map_mode} onMode={setMode} />
             <Compass bearing={bearing} onReset={() => setBearing(0)} />
           </>
         }
+        below={
+          daily ? (
+            <button
+              onClick={() => {
+                const place = sectorByCode(daily.sector_code);
+                if (place) setView((prev) => ({ ...prev, lat: place.label_point[0], lon: place.label_point[1], zoom: Math.max(prev.zoom, 17) }));
+              }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: daily.is_done ? "rgba(0,134,83,0.12)" : "rgba(246,178,45,0.18)",
+                border: "1.5px solid rgba(31,32,34,0.08)",
+                borderRadius: 999,
+                padding: "6px 12px",
+                fontWeight: 800,
+                fontSize: 12,
+              }}
+            >
+              {daily.is_done ? "Done" : "Hunt"} · {daily.common_name}
+            </button>
+          ) : null
+        }
       />
-
-      {/* Bottom-left profile chip: points + streak only — gamification stays, chrome does not. */}
-      <div
-        className="absolute"
-        style={{
-          left: 12,
-          bottom: is_desktop ? 22 : (is_sheet_open ? 22 : 112),
-          zIndex: 30,
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          background: "rgba(255,255,255,0.92)",
-          backdropFilter: "blur(8px)",
-          border: "1.5px solid rgba(228,231,232,0.9)",
-          borderRadius: 999,
-          padding: "5px 12px 5px 5px",
-          boxShadow: "0 4px 14px rgba(24,38,20,0.13)",
-        }}
-      >
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 999,
-            overflow: "hidden",
-            background: "var(--brand-mist)",
-            display: "grid",
-            placeItems: "center",
-            flexShrink: 0,
-          }}
-        >
-          <Character stage={stage} vigor={vigor} size={32} is_idle_animated={false} />
-        </div>
-        <div style={{ lineHeight: 1.15, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{gamify.total_points} pts</div>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(31,32,34,0.55)" }}>
-            {gamify.streak_weeks} wk · {STAGE_LABEL[stage]}
-            {play_progress ? ` · ${play_progress.remaining}→` : ""}
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom-right nearby finds affordance — one clear tray, not a dashboard. */}
-      {!is_sheet_open && play_nearby.length > 0 && (
-        <button
-          type="button"
-          onClick={() => {
-            const top = play_nearby[0];
-            setPickedSector(null);
-            setPickCode(top.row.species_code);
-            setCameraWhere(top.row.where);
-            setSheetOpen(true);
-            noteAward("learn", `species:${top.row.species_code}`);
-          }}
-          aria-label="Nearby finds"
-          className="absolute"
-          style={{
-            right: is_desktop ? 18 : 88,
-            bottom: is_desktop ? 22 : 112,
-            zIndex: 30,
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-            background: "rgba(255,255,255,0.92)",
-            backdropFilter: "blur(8px)",
-            border: "1.5px solid rgba(228,231,232,0.9)",
-            borderRadius: 16,
-            padding: "6px 8px",
-            boxShadow: "0 4px 14px rgba(24,38,20,0.13)",
-            cursor: "pointer",
-          }}
-        >
-          {play_nearby.map((n) => (
-            <TaxonThumb key={n.row.encounter_id} species_code={n.row.species_code} size={28} />
-          ))}
-        </button>
-      )}
-
-      {!is_desktop && !is_sheet_open && (
-        <Fab
-          label="Log a sighting"
-          onClick={() => openCamera(here_sector?.species_code[0] ?? pick_code, here_sector?.name)}
-          size={64}
-          style={{ position: "absolute", right: 14, bottom: 104, zIndex: 46 }}
-        >
-          <ShutterIcon size={44} />
-        </Fab>
-      )}
 
       {is_sheet_open && !picked_sector && (
         is_desktop ? (
@@ -3779,7 +3521,7 @@ export default function App() {
         below={geo_chip}
         control={
           <>
-            <ModeSwitch mode={map_mode} onMode={setMode} is_desktop={is_desktop} />
+            <ModeSwitch mode={map_mode} onMode={setMode} />
             {/* The basemap cycler lives under the switch in the same column, so
                 it can never sit on top of it the way it used to. */}
             <button
@@ -3860,192 +3602,149 @@ export default function App() {
     </div>
   );
 
+  const is_on_map = route === "/" || route === "/map";
+  const is_play = is_on_map && map_mode === "play";
+
+  const pressGo = () => {
+    setTrainerOpen(false);
+    setNearbyOpen(false);
+    if (!is_play) {
+      setMode("play");
+      go("/");
+      return;
+    }
+    if (daily && !daily.is_done) {
+      openCamera(daily.species_code, daily.sector_name);
+      return;
+    }
+    const near = spawn_world.spawn[0];
+    if (near) {
+      walkToSpawn(near);
+      return;
+    }
+    openCamera(here_sector?.species_code[0] ?? pick_code, here_sector?.name);
+  };
+
   return (
-    <div style={{ height: "100%", background: "var(--brand-cream, #f7faf6)", color: "#1F2022", overflowX: "hidden" }}>
-      {is_desktop ? (
-        /* Rail down the left, everything else in the column beside it. The
-           inner column keeps flex-direction column so each route's own
-           flex-1 sizing is unchanged from the top-bar shell. */
-        <div style={{ height: "100%", display: "flex" }}>
-          <DesktopRail route={route} onRoute={go} is_demo={is_demo} onDemo={() => setDemo((d) => !d)} seen_count={seen.size} is_wide={is_wide} />
-          <div style={{ flex: 1, minWidth: 0, height: "100%", display: "flex", flexDirection: "column" }}>
-          {route === "/" && (
-            <HomeScreen
-              is_desktop
-              onWalk={() => go("/map")}
-              onPlan={() => go("/plan")}
-              gamify={gamify}
-              live={
-                <SpawnStrip
-                  world={spawn_world}
-                  fix={geo.fix}
-                  seen_species={seen}
-                  onPick={walkToSpawn}
-                  is_desktop
-                />
+    <div style={{ height: "100%", background: "#0c1c14", color: "#1F2022", overflowX: "hidden" }}>
+      <div style={{ position: "relative", height: "100%", overflowX: "hidden" }}>
+        {is_play && playBody}
+        {is_on_map && map_mode === "field" && mapBody}
+        {route === "/journal" && (
+          <JournalScreen
+            sighting={sighting}
+            seen={seen}
+            is_desktop={is_desktop}
+            pool_count={spawn_world.pool_count}
+            pool={spawn_world.pool}
+            is_seeded={is_seeded}
+            gamify={live_snap}
+            world={live.world}
+          />
+        )}
+        {route === "/plan" && <PlanScreen is_desktop={is_desktop} />}
+
+        {is_nearby_open && is_play && (
+          <NearbySightTray
+            spawn={spawn_world.spawn}
+            seen={seen}
+            onPick={(row) => {
+              setNearbyOpen(false);
+              walkToSpawn(row);
+            }}
+            onClose={() => setNearbyOpen(false)}
+          />
+        )}
+
+        {is_trainer_open && (
+          <TrainerSheet
+            snap={live_snap}
+            daily={daily}
+            stage={stage}
+            vigor={vigor}
+            is_demo={is_demo}
+            join_code={me.join_code}
+            walker_name={me.name}
+            is_live={live.is_live}
+            live_count={live.world?.walker.length ?? 0}
+            onJoin={(code) => void joinWalker(code)}
+            onDemo={() => setDemo((d) => !d)}
+            onHunt={() => {
+              setTrainerOpen(false);
+              if (daily) {
+                const place = sectorByCode(daily.sector_code);
+                if (place) setView((prev) => ({ ...prev, lat: place.label_point[0], lon: place.label_point[1], zoom: Math.max(prev.zoom, 17) }));
               }
-            />
-          )}
-          {/* Play goes full-bleed on desktop too — a projector wants the map,
-              not a 38% reading column beside it. Field keeps the column. */}
-          {route === "/map" && map_mode === "play" && (
-            <div className="flex-1" style={{ minHeight: 0, position: "relative" }}>{playBody}</div>
-          )}
-          {route === "/map" && map_mode === "field" && (
-            <div className="flex-1 flex" style={{ minHeight: 0 }}>
-              <div style={{ width: "62%", position: "relative" }}>{mapBody}</div>
-              <aside className="scroll-soft" style={{ width: "38%", background: "#F9F9F9", borderLeft: "1.5px solid #E4E7E8", padding: 32, overflowY: "auto" }}>
-                {showing_biome && presence ? (
-                  <>
-                    <BiomeCard presence={presence} is_desktop onLog={(code) => openCamera(code, presence.row.name)} />
-                    <div style={{ fontSize: 13, color: "rgba(31,32,34,0.65)", marginTop: 18 }}>
-                      {seen.size} species logged on this device{walk ? ` · ${walk_count} on this walk` : ""}
-                    </div>
-                    <p style={{ fontSize: 12, color: "rgba(31,32,34,0.55)", marginTop: 8, lineHeight: 1.4 }}>{AIS_GAP_NOTE}</p>
-                    <div style={{ fontSize: 13, color: "rgba(31,32,34,0.5)", marginTop: 8, fontStyle: "italic" }}>
-                      Local demo leaderboard on Home — not an official AIS rank. Formation first.
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-4">
-                      <TaxonThumb species_code={sel_sp.species_code} size={104} />
-                      <TaxonName
-                        sp={sel_sp}
-                        size={28}
-                        eyebrow={`NEARBY · ${sel.where.toUpperCase()}`}
-                        meta={
-                          selected_distance ? (
-                            <span style={{ fontSize: 14, fontWeight: 700, color: "#075D89" }}>{selected_distance}</span>
-                          ) : null
-                        }
-                      />
-                    </div>
-                    <div style={{ marginTop: 14 }}>
-                      <SpeciesPill sp={sel_sp} />
-                    </div>
-                    <p style={{ fontSize: 16, lineHeight: 1.5, marginTop: 18 }}>{sel_sp.note}</p>
-                    {sel_sp.caption && <div style={{ fontSize: 12, color: "rgba(31,32,34,0.5)", marginTop: 10 }}>{sel_sp.caption}</div>}
-                    <SpeciesBack sp={sel_sp} />
-                    <div className="flex gap-3" style={{ marginTop: 24 }}>
-                      {[
-                        ["1,809", "campus trees · AIS SY 2025–2026"],
-                        ["101", "arboretum · AIS"],
-                      ].map(([big, cap]) => (
-                        <div key={big} style={{ flex: 1, background: "#fff", border: "1.5px solid #E4E7E8", borderRadius: TILE_RADIUS, padding: 16 }}>
-                          <div style={{ fontWeight: 800, fontSize: 22 }}>{big}</div>
-                          <div style={{ fontSize: 12, color: "rgba(31,32,34,0.6)", marginTop: 4, lineHeight: 1.3 }}>{cap}</div>
-                        </div>
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => openCamera(sel.species_code)}
-                      className="flex items-center justify-center gap-2"
-                      style={{ width: "100%", height: 52, borderRadius: 12, background: "var(--ui-accent)", color: "#fff", fontWeight: 700, fontSize: 16, marginTop: 24 }}
-                    >
-                      <GlyphDisc size={32}>
-                        <ShutterIcon size={24} />
-                      </GlyphDisc>
-                      Log this sighting
-                    </button>
-                    <div style={{ fontSize: 13, color: "rgba(31,32,34,0.65)", marginTop: 14 }}>
-                      {seen.size} species logged on this device{walk ? ` · ${walk_count} on this walk` : ""}
-                    </div>
-                    <p style={{ fontSize: 12, color: "rgba(31,32,34,0.55)", marginTop: 8, lineHeight: 1.4 }}>{AIS_GAP_NOTE}</p>
-                    <div style={{ fontSize: 13, color: "rgba(31,32,34,0.5)", marginTop: 8, fontStyle: "italic" }}>
-                      Local demo leaderboard on Home — not an official AIS rank. Formation first.
-                    </div>
-                  </>
-                )}
-                <InatStrip state={inat} />
-              </aside>
-            </div>
-          )}
-          {route === "/journal" && <JournalScreen sighting={sighting} seen={seen} is_desktop pool_count={spawn_world.pool_count} pool={spawn_world.pool} is_seeded={is_seeded} gamify={gamify} />}
-          {route === "/plan" && <PlanScreen is_desktop />}
-          </div>
-          {is_camera_open && (
-            <CameraSheet
-              pick_code={pick_code}
-              where={camera_where ?? sel.where}
-              rarity={camera_rarity}
-              pool_count={spawn_world.pool_count}
-              fix_line={fix_line}
-              onPick={setPickCode}
-              onSave={saveSighting}
-              onClose={() => {
-                setCameraOpen(false);
-                setCameraRarity(null);
-              }}
-            />
-          )}
-          {receipt && (
-            <WalkReceiptSheet
-              receipt={receipt}
-              pool={spawn_world.pool}
-              is_desktop={is_desktop}
-              onJournal={() => {
-                setReceipt(null);
-                go("/journal");
-              }}
-              onDismiss={() => setReceipt(null)}
-            />
-          )}
-          {reveal && (
-            <BlindBoxReveal stage={reveal} onDismiss={() => setReveal(null)} />
-          )}
-          {toast && <Toast msg={toast} />}
-        </div>
-      ) : (
-        <div style={{ position: "relative", height: "100%", overflowX: "hidden" }}>
-          {route === "/" && (
-            <HomeScreen
-              is_desktop={false}
-              onWalk={() => go("/map")}
-              onPlan={() => go("/plan")}
-              gamify={gamify}
-              live={
-                <SpawnStrip world={spawn_world} fix={geo.fix} seen_species={seen} onPick={walkToSpawn} />
+              setMode("play");
+              go("/");
+            }}
+            onPlan={() => {
+              setTrainerOpen(false);
+              go("/plan");
+            }}
+            onClose={() => setTrainerOpen(false)}
+          />
+        )}
+
+        {!is_camera_open && (
+          <PlayDock
+            stage={stage}
+            vigor={vigor}
+            is_journal={route === "/journal"}
+            is_nearby_open={is_nearby_open}
+            onAvatar={() => {
+              setNearbyOpen(false);
+              setTrainerOpen((v) => !v);
+            }}
+            onGo={pressGo}
+            onNearby={() => {
+              setTrainerOpen(false);
+              if (!is_play) {
+                setMode("play");
+                go("/");
+                setNearbyOpen(true);
+                return;
               }
-            />
-          )}
-          {route === "/map" && (map_mode === "play" ? playBody : mapBody)}
-          {route === "/journal" && <JournalScreen sighting={sighting} seen={seen} is_desktop={false} pool_count={spawn_world.pool_count} pool={spawn_world.pool} is_seeded={is_seeded} gamify={gamify} />}
-          {route === "/plan" && <PlanScreen is_desktop={false} />}
-          {is_camera_open && (
-            <CameraSheet
-              pick_code={pick_code}
-              where={camera_where ?? sel.where}
-              rarity={camera_rarity}
-              pool_count={spawn_world.pool_count}
-              fix_line={fix_line}
-              onPick={setPickCode}
-              onSave={saveSighting}
-              onClose={() => {
-                setCameraOpen(false);
-                setCameraRarity(null);
-              }}
-            />
-          )}
-          <MobileNav route={route} onRoute={go} />
-          {receipt && (
-            <WalkReceiptSheet
-              receipt={receipt}
-              pool={spawn_world.pool}
-              is_desktop={is_desktop}
-              onJournal={() => {
-                setReceipt(null);
-                go("/journal");
-              }}
-              onDismiss={() => setReceipt(null)}
-            />
-          )}
-          {reveal && (
-            <BlindBoxReveal stage={reveal} onDismiss={() => setReveal(null)} />
-          )}
-          {toast && <Toast msg={toast} />}
-        </div>
-      )}
+              setNearbyOpen((v) => !v);
+            }}
+            onDex={() => {
+              setTrainerOpen(false);
+              setNearbyOpen(false);
+              go(route === "/journal" ? "/" : "/journal");
+            }}
+          />
+        )}
+
+        {is_camera_open && (
+          <CameraSheet
+            pick_code={pick_code}
+            where={camera_where ?? sel.where}
+            rarity={camera_rarity}
+            pool_count={spawn_world.pool_count}
+            fix_line={fix_line}
+            onPick={setPickCode}
+            onSave={saveSighting}
+            onClose={() => {
+              setCameraOpen(false);
+              setCameraRarity(null);
+            }}
+          />
+        )}
+        {receipt && (
+          <WalkReceiptSheet
+            receipt={receipt}
+            pool={spawn_world.pool}
+            is_desktop={is_desktop}
+            onJournal={() => {
+              setReceipt(null);
+              go("/journal");
+            }}
+            onDismiss={() => setReceipt(null)}
+          />
+        )}
+        {reveal && <BlindBoxReveal stage={reveal} onDismiss={() => setReveal(null)} />}
+        {toast && <Toast msg={toast} />}
+      </div>
     </div>
   );
 }

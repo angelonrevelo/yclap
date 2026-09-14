@@ -31,3 +31,9 @@ Ideas surfaced by the Aug 15 / Aug 22 Plaud recordings that this repo will not p
 | Points or coins awarded per stop on a trail | dribbble `treewatch`: The Arboretum Adventure (`0 b → 100 b`), Folio (`300`) | The ordered-stops mechanic is adopted, the reward currency is not (Sophie `20:20`). Progress within a walk is not a score |
 | Use sisia's recorded GPS traces as the demo walk | `~/Code/sisia-app/apps/campus/scripts/phone-traces.json` (3 traces, 2,226 points) | They are **e-jeep shuttle rides** pulled from the public e-jeep API, not a student walking. Replaying a vehicle loop and calling it a campus walk is the same class of claim this repo bans everywhere else. A real recorded walk would be welcome; nobody has made one |
 | Adopt MapLibre / PMTiles from maphy as this PWA's map engine | `~/Code/maphy` apps/web | `web-forest` is react + react-dom with a hand-written slippy map and service worker, so the offline guarantee is ours to keep. Handing both to a map library nine days before the showcase trades a working demo for a dependency. Maphy and sisia are used as **data** sources instead |
+
+## 2026-09-12 — 09-09 override (local / demo board only)
+
+The 09-09 Working Doc + Angelo's override **supersede the public-leaderboard row above for a LOCAL / demo board only** (seeded cohort + this device, labelled “demo / not AIS”). See [`plaud/2026-09-09-gamified-map-pitch-showcase.md`](plaud/2026-09-09-gamified-map-pitch-showcase.md) A8 / `1:30:04`. **Official AIS ranks remain rejected.** The old row stays as the record of the 08-26 / 08-29 position.
+
+Walk-step / calorie points also stay rejected unless the device actually measures them. Speaker 1 asked for Pokémon GO steps at `21:31`; that is the same class of fabrication as the Whistler row above — triage, not a must-ship number we invent.

@@ -160,6 +160,42 @@ export function addSighting(draft: SightingDraft): Sighting {
   return next;
 }
 
+/**
+ * Pull a shared find onto this device. Photos never come down — only the
+ * species + place the other phone already sent up.
+ */
+export function mergeRemoteSighting(wire: {
+  sighting_id: string;
+  species_code: string;
+  common_name: string;
+  lat: number | null;
+  lon: number | null;
+  entry_kind?: "badge" | "contribution";
+  created_at: string;
+}): boolean {
+  const row = readSighting();
+  if (row.some((s) => s.sighting_id === wire.sighting_id)) return false;
+  const next: Sighting = {
+    sighting_id: wire.sighting_id,
+    species_code: wire.species_code,
+    photo_data: null,
+    created_at: wire.created_at,
+    inat_scientific_name: null,
+    inat_common_name: wire.common_name || null,
+    lat: wire.lat,
+    lon: wire.lon,
+    accuracy_m: null,
+    fix_source: wire.lat !== null ? "gps" : null,
+    note: null,
+    walk_id: null,
+    entry_kind: wire.entry_kind === "contribution" ? "contribution" : "badge",
+    reported_name: null,
+    entry_index: nextEntryIndex(row),
+  };
+  writeSighting([...row, next]);
+  return true;
+}
+
 /** One past the highest number ever handed out, so numbers are never reused. */
 export function nextEntryIndex(row: Sighting[]): number {
   return row.reduce((high, s) => Math.max(high, s.entry_index), 0) + 1;

@@ -9,14 +9,16 @@
  */
 
 import { readPlayer } from "./sync.ts";
+import type { SpawnPoolEntry } from "./spawn.ts";
 
-export type PointKind = "explore" | "learn" | "observe" | "verified_discovery";
+export type PointKind = "explore" | "learn" | "observe" | "challenge" | "verified_discovery";
 
-/** Working Doc suggested values. Final values subject to testing. */
+/** Working Doc values. Challenge (daily hunt) outweighs a plain observe. */
 export const POINT_VALUE: Record<PointKind, number> = {
   explore: 10,
   learn: 10,
   observe: 25,
+  challenge: 40,
   verified_discovery: 50,
 };
 
@@ -24,6 +26,7 @@ export const POINT_LABEL: Record<PointKind, string> = {
   explore: "Explore",
   learn: "Learn",
   observe: "Observe",
+  challenge: "Hunt",
   verified_discovery: "Local verified discovery",
 };
 
@@ -59,7 +62,13 @@ function parseEvents(raw: string | null): PointEvent[] {
       if (!row || typeof row !== "object") return [];
       const r = row as Record<string, unknown>;
       const kind = r.kind;
-      if (kind !== "explore" && kind !== "learn" && kind !== "observe" && kind !== "verified_discovery") {
+      if (
+        kind !== "explore" &&
+        kind !== "learn" &&
+        kind !== "observe" &&
+        kind !== "challenge" &&
+        kind !== "verified_discovery"
+      ) {
         return [];
       }
       if (typeof r.event_id !== "string" || typeof r.subject_key !== "string") return [];
@@ -285,12 +294,92 @@ export interface ChallengeProgress {
  */
 export function speciesFromSubject(subject_key: string): string | null {
   if (subject_key.startsWith("species:")) return subject_key.slice("species:".length) || null;
+  if (subject_key.startsWith("observe:")) {
+    const code = subject_key.slice("observe:".length).split(":")[0]?.trim();
+    return code || null;
+  }
   if (subject_key.startsWith("sighting:")) {
     const rest = subject_key.slice("sighting:".length);
     const code = rest.split("/")[0]?.trim();
     return code || null;
   }
   return null;
+}
+
+/**
+ * Observe awards once per species+sector so the same tree cannot be farmed.
+ * 09-09 `2:06:32` — spam of one tree must not keep paying.
+ */
+export function observeSubject(species_code: string, sector_code?: string | null): string {
+  const code = species_code.trim();
+  const sector = (sector_code ?? "").trim();
+  return sector ? `observe:${code}:${sector}` : `observe:${code}`;
+}
+
+export function dailySubject(day_key: string): string {
+  return `daily:${day_key}`;
+}
+
+/* ── Daily hunt (09-09: omit rounds, one task per local day) ─────────────── */
+
+export interface DailyTask {
+  task_id: string;
+  day_key: string;
+  species_code: string;
+  common_name: string;
+  sector_code: string;
+  sector_name: string;
+  is_done: boolean;
+}
+
+/** UTC calendar day — same stability rule as `weekKey`. */
+export function dayKey(iso: string | Date): string {
+  const d = typeof iso === "string" ? new Date(iso) : iso;
+  if (Number.isNaN(d.getTime())) return "invalid";
+  return d.toISOString().slice(0, 10);
+}
+
+export function isTreeEntry(entry: SpawnPoolEntry): boolean {
+  return entry.archetype === "tree" || entry.archetype === "palm";
+}
+
+function hashText(text: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i += 1) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+/**
+ * One tree + one biome, deterministic for this player on this day.
+ * Challenges stay trees-only (`2:04:17`).
+ */
+export function dailyTaskFor(
+  pool: SpawnPoolEntry[],
+  sector: { sector_code: string; name: string; is_biome: boolean }[],
+  now: Date,
+  player_id: string,
+  events: PointEvent[],
+): DailyTask | null {
+  const day_key = dayKey(now);
+  if (day_key === "invalid") return null;
+  const tree = pool.filter(isTreeEntry);
+  const biome = sector.filter((s) => s.is_biome);
+  if (!tree.length || !biome.length) return null;
+  const seed = hashText(`${day_key}:${player_id}`);
+  const pick = tree[seed % tree.length];
+  const place = biome[Math.floor(seed / 97) % biome.length];
+  return {
+    task_id: `daily:${day_key}`,
+    day_key,
+    species_code: pick.species_code,
+    common_name: pick.common_name,
+    sector_code: place.sector_code,
+    sector_name: place.name,
+    is_done: alreadyAwarded(events, "challenge", dailySubject(day_key)),
+  };
 }
 
 export function challengeProgress(
@@ -365,6 +454,36 @@ export function localLeaderboard(
   ];
   rows.sort((a, b) => b.points - a.points || b.streak_weeks - a.streak_weeks || a.name.localeCompare(b.name));
   return rows;
+}
+
+/** Fold live walkers into the local/demo board. Still not an official AIS rank. */
+export function withLiveWalker(
+  row: LeaderboardRow[],
+  walker: { player_id: string; name: string; total_points: number; streak_weeks: number }[],
+  you_id: string,
+): LeaderboardRow[] {
+  const by_id = new Map(row.map((r) => [r.player_id, { ...r }]));
+  for (const w of walker) {
+    if (w.player_id === you_id) continue;
+    const existing = by_id.get(w.player_id);
+    if (existing) {
+      existing.points = Math.max(existing.points, w.total_points);
+      existing.streak_weeks = Math.max(existing.streak_weeks, w.streak_weeks);
+      existing.name = w.name;
+    } else {
+      by_id.set(w.player_id, {
+        player_id: w.player_id,
+        name: w.name,
+        points: w.total_points,
+        streak_weeks: w.streak_weeks,
+        is_you: false,
+        is_seed: false,
+      });
+    }
+  }
+  return [...by_id.values()].sort(
+    (a, b) => b.points - a.points || b.streak_weeks - a.streak_weeks || a.name.localeCompare(b.name),
+  );
 }
 
 /* ── Observation local status (P2 scaffold) ─────────────────────────────── */

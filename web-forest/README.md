@@ -32,6 +32,7 @@ chose ourselves is flagged `is_named_by_us`.
 ```
 npm install
 npm run dev        # http://127.0.0.1:4177
+npm run sync       # live campus world on :8788 (Vite proxies /sync /live /world)
 npm run build      # tsc --noEmit && vite build
 npm test           # node --test
 npm run lint
@@ -78,11 +79,18 @@ The play layer, wired in `src/live.tsx`:
   artwork, so the rest say what taxon group they are, as one of eleven
   schematic shapes shared by the list row and the map marker. Nothing pretends
   to be a species portrait.
-- **`sync.ts` + `server/sync-server.mjs`** — optional LAN-only shared world on
-  `node:sqlite`. Photos and notes never leave the device; only species, count
-  and location go up. There is no leaderboard table and no field to build one
-  from. With no server reachable the world strip renders nothing rather than an
-  unmeasured zero.
+- **`sync.ts` + `campus-world.ts` + `worker/sync.ts`** — same-origin live
+  campus world. Production hits `/sync` `/world` `/live` on the PWA host
+  (Durable Object). Locally, `npm run sync` on port **8788** and Vite proxies
+  those paths. Photos and notes never leave the device; only species, place,
+  and presence (points / streak as “who is out”, not an official AIS rank).
+  A six-character walker code joins two phones as one player. With no server
+  reachable the world strip renders nothing rather than an unmeasured zero.
+- **`gamify.ts`** — device-local points (Explore 10, Learn 10, Observe 25,
+  Hunt 40, Local verified 50), weekly streak, Biodiversity Buddy, a seeded
+  demo board, and one daily hunt (a tree + a biome, deterministic per
+  player-day). Observe awards once per `species+sector`. Hunt pays when the
+  daily species is logged. The board is never an official AIS rank.
 
 **Measured limit:** only 9 of the 1,098 pool entries carry an origin, because
 the iNaturalist sweep never requested `establishment_means`. The intended 1.5×

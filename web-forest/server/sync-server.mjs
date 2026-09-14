@@ -1,61 +1,51 @@
 /**
- * The central sync server — one SQLite database for the whole showcase.
+ * LAN campus world — same HTTP + SSE contract as worker/sync.ts.
  *
- * Owner ask (2026-09-08): "working multiplayer and centralized database sync".
- * This is deliberately the smallest honest version of that: a single Node
- * process with node:sqlite (no dependencies to install, nothing to containerise
- * the night before a demo) that owns every player's shared finds.
- *
- * What syncs UP: a player's journal rows, merged idempotently by sighting_id.
- * What comes DOWN: the world — other players' recent located finds, and who is
- * out there right now. There is no leaderboard table, no rank, no points
- * comparison: the standing rule survives the multiplayer feature.
- *
- * WHAT THIS IS NOT: an internet service. No auth (anyone on the LAN can post),
- * HTTP only, CORS open for the LAN demo. Fine for a hall; not for a launch.
- *
- * Usage:  node server/sync-server.mjs [--port 8788] [--db server/yclap-sync.db]
- * The DB file is gitignored; deleting it resets the world.
+ * node server/sync-server.mjs [--port 8788] [--db server/yclap-sync.db]
  */
 import { createServer } from "node:http";
-import { DatabaseSync } from "node:sqlite";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { networkInterfaces } from "node:os";
+import { pathToFileURL } from "node:url";
 
 const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`);
   return i > -1 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
 };
 const PORT = Number(arg("port", 8788));
-const DB_PATH = resolve(process.cwd(), arg("db", "server/yclap-sync.db"));
+const DB_PATH = resolve(process.cwd(), arg("db", "server/yclap-sync.json"));
 mkdirSync(dirname(DB_PATH), { recursive: true });
 
-const db = new DatabaseSync(DB_PATH);
-db.exec(`
-  CREATE TABLE IF NOT EXISTS player (
-    player_id  TEXT PRIMARY KEY,
-    name       TEXT NOT NULL,
-    stage      TEXT NOT NULL DEFAULT 'egg',
-    level      INTEGER NOT NULL DEFAULT 1,
-    updated_at TEXT NOT NULL
-  );
-  CREATE TABLE IF NOT EXISTS sighting (
-    remote_id    INTEGER PRIMARY KEY AUTOINCREMENT,
-    sighting_id  TEXT NOT NULL UNIQUE,
-    player_id    TEXT NOT NULL,
-    species_code TEXT NOT NULL,
-    common_name  TEXT NOT NULL DEFAULT '',
-    lat          REAL,
-    lon          REAL,
-    entry_kind   TEXT NOT NULL DEFAULT 'badge',
-    created_at   TEXT NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS sighting_created ON sighting(created_at DESC);
-`);
+const { MemoryCampusStore, mergeSync, sanitizePlayer, sanitizeSighting, worldFrom } = await import(
+  pathToFileURL(resolve(process.cwd(), "src/campus-world.ts")).href
+);
 
-const now = () => new Date().toISOString();
-const PRESENT_WINDOW_MS = 15 * 60 * 1000;
+function loadStore() {
+  try {
+    return MemoryCampusStore.from(JSON.parse(readFileSync(DB_PATH, "utf8")));
+  } catch {
+    return new MemoryCampusStore();
+  }
+}
+
+let store = loadStore();
+const listener = new Set();
+
+function persist() {
+  writeFileSync(DB_PATH, JSON.stringify(store.toJSON()));
+}
+
+function broadcast() {
+  const chunk = `data: ${JSON.stringify(worldFrom(store))}\n\n`;
+  for (const res of listener) {
+    try {
+      res.write(chunk);
+    } catch {
+      listener.delete(res);
+    }
+  }
+}
 
 function readJson(req) {
   return new Promise((resolve_json, reject) => {
@@ -81,37 +71,6 @@ function cors(res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
-/** The world a player sees: recent located finds + who is out there. */
-function worldPayload() {
-  const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
-  const find = db
-    .prepare(
-      `SELECT s.sighting_id, s.player_id, p.name AS player_name, s.species_code, s.common_name,
-              s.lat, s.lon, s.entry_kind, s.created_at
-         FROM sighting s JOIN player p ON p.player_id = s.player_id
-        WHERE s.lat IS NOT NULL AND s.created_at > ?
-        ORDER BY s.created_at DESC LIMIT 80`,
-    )
-    .all(since);
-  const present_cut = new Date(Date.now() - PRESENT_WINDOW_MS).toISOString();
-  const walker = db
-    .prepare(
-      `SELECT player_id, name, stage, level, updated_at FROM player WHERE updated_at > ? ORDER BY updated_at DESC`,
-    )
-    .all(present_cut);
-  const totals = db
-    .prepare(`SELECT COUNT(DISTINCT player_id) AS player_count, COUNT(*) AS sighting_count FROM sighting`)
-    .get();
-  return {
-    server_time: now(),
-    find,
-    walker,
-    totals,
-    /* The honesty line, delivered with the data itself. */
-    note: "Personal journals stay on each device. This server only holds shared finds — no rank, no points, no leaderboard.",
-  };
-}
-
 const server = createServer(async (req, res) => {
   cors(res);
   const url = new URL(req.url, `http://${req.headers.host ?? "localhost"}`);
@@ -123,7 +82,38 @@ const server = createServer(async (req, res) => {
 
   if (req.method === "GET" && (url.pathname === "/health" || url.pathname === "/world")) {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(worldPayload()));
+    res.end(JSON.stringify(worldFrom(store)));
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/join") {
+    const row = store.playerByJoin(url.searchParams.get("code") ?? "");
+    if (!row) {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "unknown join_code" }));
+      return;
+    }
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ player_id: row.player_id, name: row.name, join_code: row.join_code }));
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/mine") {
+    const sighting = store.sightingByPlayer(url.searchParams.get("player_id") ?? "");
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ sighting }));
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/live") {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    });
+    listener.add(res);
+    res.write(`data: ${JSON.stringify(worldFrom(store))}\n\n`);
+    req.on("close", () => listener.delete(res));
     return;
   }
 
@@ -136,61 +126,27 @@ const server = createServer(async (req, res) => {
       res.end(JSON.stringify({ error: "bad json" }));
       return;
     }
-    const { player, sighting: rows } = body ?? {};
-    if (!player?.player_id || !Array.isArray(rows)) {
+    const player = sanitizePlayer(body?.player ?? {});
+    if (!player || !Array.isArray(body.sighting)) {
       res.writeHead(400, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "player.player_id and sighting[] required" }));
       return;
     }
-
-    db.prepare(
-      `INSERT INTO player (player_id, name, stage, level, updated_at) VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT(player_id) DO UPDATE SET name = excluded.name, stage = excluded.stage,
-         level = excluded.level, updated_at = excluded.updated_at`,
-    ).run(
-      String(player.player_id).slice(0, 64),
-      String(player.name ?? "Walker").slice(0, 40),
-      String(player.stage ?? "egg"),
-      Number.isFinite(player.level) ? Math.max(1, Math.trunc(player.level)) : 1,
-      now(),
-    );
-
-    const insert = db.prepare(
-      `INSERT INTO sighting (sighting_id, player_id, species_code, common_name, lat, lon, entry_kind, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(sighting_id) DO NOTHING`,
-    );
-    let merged = 0;
-    const tx = db.prepare("BEGIN");
-    tx.run();
-    try {
-      for (const row of rows.slice(0, 500)) {
-        if (!row?.sighting_id || !row?.species_code) continue;
-        const out = insert.run(
-          String(row.sighting_id).slice(0, 80),
-          String(player.player_id).slice(0, 64),
-          String(row.species_code).slice(0, 64),
-          String(row.common_name ?? "").slice(0, 80),
-          Number.isFinite(row.lat) ? row.lat : null,
-          Number.isFinite(row.lon) ? row.lon : null,
-          row.entry_kind === "contribution" ? "contribution" : "badge",
-          typeof row.created_at === "string" ? row.created_at : now(),
-        );
-        merged += out.changes;
-      }
-      db.prepare("COMMIT").run();
-    } catch (e) {
-      db.prepare("ROLLBACK").run();
-      throw e;
+    const row = [];
+    for (const raw of body.sighting) {
+      const one = sanitizeSighting(raw ?? {}, player.player_id);
+      if (one) row.push(one);
     }
-
+    const { merged } = mergeSync(store, player, row);
+    persist();
+    broadcast();
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ ok: true, merged, world: worldPayload() }));
+    res.end(JSON.stringify({ ok: true, merged, world: worldFrom(store) }));
     return;
   }
 
   res.writeHead(404, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ error: "not found", route: ["GET /world", "GET /health", "POST /sync"] }));
+  res.end(JSON.stringify({ error: "not found", route: ["GET /world", "GET /live", "GET /join", "GET /mine", "POST /sync"] }));
 });
 
 server.listen(PORT, () => {
@@ -202,5 +158,5 @@ server.listen(PORT, () => {
   console.log(`  db      ${DB_PATH}`);
   console.log(`  local   http://localhost:${PORT}`);
   for (const a of addr) console.log(`  lan     ${a}`);
-  console.log(`  world   GET /world · POST /sync`);
+  console.log(`  world   GET /world · GET /live · POST /sync · GET /join · GET /mine`);
 });

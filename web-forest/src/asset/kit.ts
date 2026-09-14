@@ -14,6 +14,7 @@ import leaf_scan from "./icon/leaf_scan.png";
 import locate from "./icon/locate.png";
 import walk from "./icon/walk.png";
 import shutter from "./icon/shutter.png";
+import go_camera from "./icon/go_camera.png";
 import export_ from "./icon/export.png";
 import plant from "./mark/plant.png";
 import narra from "./species/narra.png";
@@ -59,6 +60,7 @@ export const icon = {
   locate,
   walk,
   shutter,
+  go_camera,
   /* `export` is a reserved word — the key is what the UI reads. */
   export: export_,
 };

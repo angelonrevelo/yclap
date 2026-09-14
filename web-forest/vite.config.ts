@@ -15,6 +15,18 @@ const HOST = process.env.MAGISPHERE_HOST ?? "127.0.0.1";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  server: { host: HOST, port: 4177, strictPort: true },
+  server: {
+    host: HOST,
+    port: 4177,
+    strictPort: true,
+    proxy: {
+      "/world": "http://127.0.0.1:8788",
+      "/sync": "http://127.0.0.1:8788",
+      "/live": "http://127.0.0.1:8788",
+      "/health": "http://127.0.0.1:8788",
+      "/join": "http://127.0.0.1:8788",
+      "/mine": "http://127.0.0.1:8788",
+    },
+  },
   preview: { host: HOST, port: 4178, strictPort: true },
 });

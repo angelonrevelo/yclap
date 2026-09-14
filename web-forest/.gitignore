@@ -1,3 +1,5 @@
+server/yclap-sync.json
+server/yclap-sync.db
 .osm-cache/
 script/data/
 a.json

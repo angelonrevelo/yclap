@@ -98,6 +98,7 @@ export interface Spawn {
   spawn_id: string;
   species_code: string;
   common_name: string;
+  scientific_name: string;
   lat: number;
   lon: number;
   sector_code: string;
@@ -227,6 +228,8 @@ export interface SpawnOptions {
   total_max?: number;
   /** Most finds in one sector (by area, bigger can hold more). */
   per_sector_max?: number;
+  /** Sectors this device has already walked — rest more often so quiet ground opens (`1:43:56`). */
+  explored_sector?: ReadonlySet<string>;
 }
 
 const SPAWN_DEFAULTS = { total_max: 90, per_sector_max: 3 };
@@ -258,9 +261,12 @@ export function spawnForWindow(
     if (out.length >= total_max) break;
     const rng = mulberry32(fnv(`${s.sector_code}:${index}`));
 
-    /* Roughly a quarter of biomes rest for a window — a world where every
-       block always holds a find reads as a vending machine. */
-    if (rng() < 0.25) continue;
+    /* Quiet-ground bias (09-09): already-walked sectors rest more; unvisited
+       ones almost always hold a find. With no journal yet, keep the old 1/4 rest. */
+    const explored = opts.explored_sector;
+    const rest =
+      explored && explored.size > 0 ? (explored.has(s.sector_code) ? 0.45 : 0.1) : 0.25;
+    if (rng() < rest) continue;
 
     let count = 1 + (rng() < 0.55 ? 1 : 0);
     if (s.area_m2 > 8000 && count < per_sector_max) count += 1;
@@ -275,6 +281,7 @@ export function spawnForWindow(
         spawn_id: `${s.sector_code}-w${index}-${i}`,
         species_code: pick.species_code,
         common_name: pick.common_name,
+        scientific_name: pick.scientific_name,
         lat: at.lat,
         lon: at.lon,
         sector_code: s.sector_code,
@@ -394,6 +401,11 @@ export function rankSpawn(spawns: Spawn[], at: LatLon | null, limit: number): Ne
 /** Whole minutes until this window closes. Never negative. */
 export function windowMinuteLeft(ends_at: string, now_ms: number): number {
   return Math.max(0, Math.ceil((new Date(ends_at).getTime() - now_ms) / 60000));
+}
+
+/** The finds standing in one sector — capped at three (09-09 `1:56:55`). */
+export function spawnInSector(spawns: Spawn[], sector_code: string, limit = 3): Spawn[] {
+  return spawns.filter((row) => row.sector_code === sector_code).slice(0, limit);
 }
 
 /** Every sector find, indexed by the sector that holds it (for the map pass). */
