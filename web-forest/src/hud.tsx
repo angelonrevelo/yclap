@@ -175,7 +175,7 @@ export function GameDock({
           <span className="gm-go-tag">Go</span>
         </button>
         <DockButton label="Dex" is_active={is_journal} icon={game_icon.dex} onClick={onDex} />
-        <DockButton label="Plan" is_active={is_plan} icon={game_icon.plan} onClick={onPlan} />
+        <DockButton label="About" is_active={is_plan} icon={game_icon.plan} onClick={onPlan} />
       </div>
     </nav>
   );

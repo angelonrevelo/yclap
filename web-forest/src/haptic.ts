@@ -1,3 +1,5 @@
+import { isHapticEnabled } from "./preference.ts";
+
 /**
  * Haptics — the one confirmation a walk can give you without asking you to look.
  *
@@ -13,7 +15,7 @@
  * nothing is ever *only* haptic: every buzz below accompanies something the
  * screen also says. This is a second channel, never the only one.
  *
- * It also respects `prefers-reduced-motion`. Vibration is motion — for someone
+ * It is also switchable in Settings, and respects `prefers-reduced-motion`. Vibration is motion — for someone
  * with a vestibular or sensory condition a device that shakes in the hand is
  * exactly the thing that setting is asking us not to do.
  */
@@ -33,6 +35,9 @@ const PATTERN = {
 export type HapticKind = keyof typeof PATTERN;
 
 function isAllowed(): boolean {
+  /* The device preference wins over everything. Read from a module cache, not
+     from storage: this runs inside a pointer handler. */
+  if (!isHapticEnabled()) return false;
   if (typeof navigator === "undefined") return false;
   if (typeof navigator.vibrate !== "function") return false;
   try {

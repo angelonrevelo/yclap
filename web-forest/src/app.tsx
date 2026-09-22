@@ -15,6 +15,13 @@ import {
 import { joinCodeOf } from "./campus-world";
 import { haptic } from "./haptic";
 import StreakFlame from "./streak-flame";
+import SettingsScreen, { type SettingsIcon } from "./settings";
+import {
+  readPreference,
+  setHapticEnabled,
+  writePreference,
+  type Preference,
+} from "./preference";
 import { type SkylineStyle } from "./skyline";
 import PlayMap, { PLAY_MAX_ZOOM, PLAY_MIN_ZOOM } from "./play-map";
 import { pinKindOf, type PinKind } from "./pin";
@@ -89,7 +96,7 @@ import { cosmeticForStage } from "./cosmetic";
 import { BadgeShelf, loadSpawnPool, RarityPill, reachableSpawn, useLiveWorld, useSpawnWorld, WildShelf, WorldStrip } from "./live";
 import { displayName, kindOf } from "./kind";
 import { SpeciesPortrait } from "./portrait.tsx";
-import { icon } from "./asset/kit";
+import { icon, settings_icon as kit_settings_icon } from "./asset/kit";
 import type { Rarity, Spawn, SpawnPoolEntry } from "./spawn";
 import { receiptHighlight } from "./collection";
 import { demoJournal, isSeededJournal } from "./demo-seed";
@@ -136,10 +143,15 @@ const PLAY_ZOOM = PLAY_MAX_ZOOM;
 const CARD_RADIUS = RADIUS.card;
 const TILE_RADIUS = RADIUS.tile;
 
-export type Route = "/" | "/map" | "/journal" | "/plan";
+export type Route = "/" | "/map" | "/journal" | "/settings";
 
 function pathToRoute(path: string): Route {
-  if (path === "/map" || path === "/journal" || path === "/plan") return path;
+  /* `/plan` is the Working Doc's name for this surface and shipped in the
+     September deck, so the old path keeps working — it just lands on Settings,
+     which carries Plan's brief (what happens after the walk, who we work with,
+     how to get involved) plus the part a student at a booth asks first. */
+  if (path === "/plan") return "/settings";
+  if (path === "/map" || path === "/journal" || path === "/settings") return path;
   return "/";
 }
 
@@ -2516,25 +2528,6 @@ function PlanContent() {
   );
 }
 
-function PlanScreen({ is_desktop }: { is_desktop: boolean }) {
-  return (
-    <div
-      className="scroll-soft"
-      style={{
-        height: "100%",
-        overflowY: "auto",
-        overflowX: "hidden",
-        background: "#312e2b",
-        color: "rgba(255,255,255,0.85)",
-        padding: is_desktop ? "28px 56px 120px" : "18px 20px 120px",
-      }}
-    >
-      <div style={{ maxWidth: 720, margin: is_desktop ? "0 auto" : undefined }}>
-        <PlanContent />
-      </div>
-    </div>
-  );
-}
 
 /**
  * The two things the map has to keep saying out loud, in one place instead of
@@ -3064,7 +3057,7 @@ export default function App() {
   /* `?skyline=` — solid / hollow / shadow. A view parameter like `?bearing=`
      and `?zoom=`, here so the three can be compared on the same ground rather
      than argued about from memory. */
-  const skyline_style = ((): SkylineStyle | undefined => {
+  const skyline_url_style = ((): SkylineStyle | undefined => {
     const raw = new URLSearchParams(window.location.search).get("skyline");
     return raw === "solid" || raw === "hollow" || raw === "shadow" ? raw : undefined;
   })();
@@ -3157,6 +3150,25 @@ export default function App() {
     },
   });
   const me = readPlayer();
+  /* Device preferences. `setHapticEnabled` mirrors the flag into a module
+     cache because the haptic path runs inside pointer handlers and must not
+     touch localStorage on every tap. */
+  const [preference, setPreference] = useState<Preference>(() => {
+    const row = readPreference();
+    setHapticEnabled(row.is_haptic);
+    return row;
+  });
+  /* Section art. Filled from `asset/kit.ts` once the generated set is keyed and
+     committed; every section renders headed-but-unillustrated until then, which
+     is why `SettingsIcon` is all-optional. */
+  const settings_icon: SettingsIcon = kit_settings_icon;
+
+  const savePreference = (next: Preference) => {
+    setPreference(next);
+    writePreference(next);
+    setHapticEnabled(next.is_haptic);
+  };
+
   /* Walking partners. Local roster; the streak is computed over the synced
      world, because only the world knows what somebody else walked. */
   const [friend, setFriend] = useState<Friend[]>(() => readFriend());
@@ -3658,7 +3670,10 @@ export default function App() {
         stage={stage}
         vigor={vigor}
         is_desktop={is_desktop}
-        is_restricted_on={is_restricted}
+        /* Both the map's own toggle and the device preference have to agree
+           before the hatch is drawn. Neither of them makes the ground
+           walkable — `play-walk.ts` and `spawn.ts` read the polygon, not this. */
+        is_restricted_on={is_restricted && preference.is_restricted_shown}
         onSelectSector={(row) => {
           setSheetOpen(false);
           setPickedSector(row);
@@ -3682,7 +3697,9 @@ export default function App() {
            weld it to. Without a fix there is nothing to be stuck to, so the
            map stays draggable rather than freezing on the campus centre. */
         is_camera_locked={Boolean(geo.fix)}
-        skyline_style={skyline_style}
+        /* `?skyline=` still wins, so a projector can be set to a known style
+           without touching the device's saved preference. */
+        skyline_style={skyline_url_style ?? preference.skyline_style}
       />
 
       {/* The stick. Only in play mode, because in the other two the position
@@ -3931,7 +3948,19 @@ export default function App() {
             world={live.world}
           />
         )}
-        {route === "/plan" && <PlanScreen is_desktop={is_desktop} />}
+        {route === "/settings" && (
+          <SettingsScreen
+            is_desktop={is_desktop}
+            preference={preference}
+            onPreference={savePreference}
+            walker_name={me.name}
+            join_code={me.join_code}
+            is_live={live.is_live}
+            icon={settings_icon}
+            onJoin={(code) => void joinWalker(code)}
+            plan={<PlanContent />}
+          />
+        )}
 
         {is_nearby_open && is_play && (
           <NearbySightTray
@@ -3979,7 +4008,7 @@ export default function App() {
             }}
             onPlan={() => {
               setTrainerOpen(false);
-              go("/plan");
+              go("/settings");
             }}
             onClose={() => setTrainerOpen(false)}
           />
@@ -3990,12 +4019,12 @@ export default function App() {
             stage={stage}
             vigor={vigor}
             is_journal={route === "/journal"}
-            is_plan={route === "/plan"}
+            is_plan={route === "/settings"}
             is_nearby_open={is_nearby_open}
             onPlan={() => {
               setTrainerOpen(false);
               setNearbyOpen(false);
-              go(route === "/plan" ? "/" : "/plan");
+              go(route === "/settings" ? "/" : "/settings");
             }}
             onAvatar={() => {
               setNearbyOpen(false);
