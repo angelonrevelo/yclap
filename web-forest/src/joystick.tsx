@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { haptic, hapticStop } from "./haptic";
 import { STICK_DEADZONE, type PlayStick } from "./play-walk";
 
 /**
@@ -24,19 +25,35 @@ import { STICK_DEADZONE, type PlayStick } from "./play-walk";
  * this file is designed not to produce.
  */
 
-/** Radius of the stick's travel, in px. The base is twice this across. */
-const THROW_PX = 52;
-const KNOB_PX = 56;
+/**
+ * Radius of the stick's travel, in px. The base is twice this across.
+ *
+ * 52 was chosen on a desktop window and playtested on a real 375 px viewport,
+ * where the 160 px base ran from x=18 to x=178 and the walker — drawn at the
+ * centre of the screen, x=187 — sat directly against its edge. The two were
+ * touching. 44 pulls the whole control clear of the character on the narrowest
+ * phone the roadmap targets while staying well above the 44 px minimum tap
+ * target.
+ */
+const THROW_PX = 44;
+const KNOB_PX = 52;
 
 interface Props {
   onSteer: (stick: PlayStick) => void;
   /** Hidden unless the walk is actually player-steered. */
   is_on: boolean;
-  /** Lift above the bottom edge, so it clears the game dock. */
+  /**
+   * Lift above the bottom edge.
+   *
+   * Has to clear two things, not one: the game dock, and the ODbL credit the
+   * map parks at `credit_offset` (158 px). The credit is a licence condition,
+   * not chrome, and a thumbstick sitting on top of it is the same failure as
+   * hiding it.
+   */
   bottom?: number;
 }
 
-export default function Joystick({ onSteer, is_on, bottom = 150 }: Props) {
+export default function Joystick({ onSteer, is_on, bottom = 178 }: Props) {
   const base_ref = useRef<HTMLDivElement | null>(null);
   const pointer_id = useRef<number | null>(null);
   const [knob, setKnob] = useState({ x: 0, y: 0 });
@@ -46,6 +63,7 @@ export default function Joystick({ onSteer, is_on, bottom = 150 }: Props) {
     pointer_id.current = null;
     setKnob({ x: 0, y: 0 });
     setHeld(false);
+    hapticStop();
     onSteer({ x: 0, y: 0 });
   }, [onSteer]);
 
@@ -56,6 +74,37 @@ export default function Joystick({ onSteer, is_on, bottom = 150 }: Props) {
   }, [is_on, release]);
 
   useEffect(() => () => onSteer({ x: 0, y: 0 }), [onSteer]);
+
+  /**
+   * A stick that is still held when the world stops telling us about it.
+   *
+   * `pointerup` is not guaranteed to arrive: a finger that slides off the glass
+   * edge, a browser that steals the gesture, the phone locking, an alt-tab
+   * mid-push. The element-level handlers cannot see any of those, and what they
+   * leave behind is the worst failure this control has — the walker keeps
+   * walking, on their own, with nobody touching the screen. On a booth phone
+   * being passed between judges that is the bug that makes the demo look
+   * broken.
+   *
+   * So the release is ALSO listened for on the window and on losing focus.
+   * Releasing twice is free; releasing never is not.
+   */
+  useEffect(() => {
+    if (!is_on) return;
+    const stop = () => {
+      if (pointer_id.current !== null) release();
+    };
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("pointercancel", stop);
+    window.addEventListener("blur", stop);
+    document.addEventListener("visibilitychange", stop);
+    return () => {
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
+      window.removeEventListener("blur", stop);
+      document.removeEventListener("visibilitychange", stop);
+    };
+  }, [is_on, release]);
 
   const track = useCallback(
     (client_x: number, client_y: number) => {
@@ -91,6 +140,9 @@ export default function Joystick({ onSteer, is_on, bottom = 150 }: Props) {
         pointer_id.current = event.pointerId;
         (event.target as Element).setPointerCapture?.(event.pointerId);
         setHeld(true);
+        /* The stick is the one control you use without looking at it, so the
+           confirmation that you actually have hold of it cannot be visual. */
+        haptic("tap");
         track(event.clientX, event.clientY);
       }}
       onPointerMove={(event) => {

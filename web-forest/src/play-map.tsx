@@ -8,6 +8,7 @@ import { AT_TREE_RADIUS_M, RESTRICTED_POLYGON, species, type Encounter } from ".
 import { residentBySector } from "./nearby";
 import { pinKindOf, type PinKind } from "./pin";
 import { distanceMeter, type Fix, type LatLon } from "./geo";
+import { screenAngleOf, signedAngle } from "./play-walk";
 import {
   biome_sector,
   SECTOR_ATTRIBUTION,
@@ -156,7 +157,8 @@ interface Props {
   seen_sector: Set<string>;
   stage: Stage;
   vigor: number;
-  onSelectSector: (row: Sector) => void;
+  /** Kept for the field view's shared shape; the play ground takes no clicks. */
+  onSelectSector?: (row: Sector) => void;
   onSelectEncounter: (e: Encounter) => void;
   /** Species already in this journal — a logged marker reads as filled. */
   seen_species: Set<string>;
@@ -268,7 +270,6 @@ export default function PlayMap({
   seen_sector,
   stage,
   vigor,
-  onSelectSector,
   onSelectEncounter,
   seen_species,
   onGesture,
@@ -296,7 +297,14 @@ export default function PlayMap({
       const dy = fix.lat - prev.lat;
       const dx = (fix.lon - prev.lon) * Math.cos((fix.lat * Math.PI) / 180);
       travel.current = {
-        heading: (Math.atan2(dx, dy) * 180) / Math.PI - bearing_degree,
+        /* `atan2(east, north)` is a real compass heading; the character is
+           drawn on the glass, so it needs the angle that heading APPEARS at
+           under the current camera. That is `screenAngleOf`, and it adds the
+           bearing — subtracting it leaned the walker away from the direction
+           they were actually walking as soon as the camera turned. */
+        heading: signedAngle(
+          screenAngleOf((Math.atan2(dx, dy) * 180) / Math.PI, bearing_degree),
+        ),
         is_walking: true,
       };
       last_fix.current = { lat: fix.lat, lon: fix.lon, at: Date.now() };
@@ -382,11 +390,17 @@ export default function PlayMap({
                     zIndex: 6,
                   }}
                 >
+                  {/* No `tilt_degree`, no `bearing_degree`. Those props exist
+                      to counter-rotate the character OUT of the tilted plane,
+                      and it does not live in the plane any more — it is drawn
+                      on the glass, where up is already up. Passing the bearing
+                      here spun the tree by the camera angle: the visible bug
+                      where the walker leans over and parts company with its own
+                      shadow the moment you rotate. */}
                   <Character
                     stage={stage}
                     vigor={vigor}
                     size={is_desktop ? 128 : 108}
-                    bearing_degree={bearing_degree}
                     is_walking={travel.current.is_walking}
                     heading_degree={travel.current.heading}
                   />
@@ -485,11 +499,21 @@ export default function PlayMap({
                     stroke={is_here ? "#F0B429" : sectorStroke(row)}
                     strokeWidth={is_here ? 4.5 : 1}
                     strokeLinejoin="round"
-                    /* Paved ground is drawn but not offered: tapping a car
-                       park to "log a tree here" is the same mistake as
-                       colouring it green. */
-                    style={row.is_biome ? { pointerEvents: "auto", cursor: "pointer" } : undefined}
-                    onClick={row.is_biome ? () => onSelectSector(row) : undefined}
+                    /* The ground takes no clicks in the play view.
+                     *
+                     * It used to open the sector card, and that is the wrong
+                     * verb for this screen: on a map welded to a walker, a tap
+                     * on the ground means GO THERE, and `onTap` on the map
+                     * already means exactly that. Having both meant every
+                     * attempt to walk somewhere threw a panel of area
+                     * statistics over the map instead — and every camera drag
+                     * that happened to end on a sector did the same.
+                     *
+                     * The information is not gone. The sector you are standing
+                     * in is named on the HUD, and the full card with coverage,
+                     * species and citations is the field view, one tap away —
+                     * which is where a survey belongs. */
+                    style={undefined}
                   />
                 );
               })}

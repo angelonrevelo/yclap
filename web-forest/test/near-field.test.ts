@@ -15,6 +15,8 @@ import {
   headingFromKey,
   headingFromStick,
   playMeterForTick,
+  screenAngleOf,
+  signedAngle,
   STICK_DEADZONE,
   throttleFromStick,
 } from "../src/play-walk.ts";
@@ -173,21 +175,60 @@ describe("the stick", () => {
     assert.equal(throttleFromStick({ x: 0, y: 0 }), 0);
   });
 
-  it("reads screen-up as the way the camera is facing", () => {
+  it("reads screen-up as the direction that LOOKS up under this camera", () => {
+    /* The ground plane turns by rotateZ(+bearing), so a bearing of 90 swings
+       north round to the RIGHT of the screen and the direction now appearing
+       straight up is WEST — 270, not 90. Verified against `toScreen` itself,
+       not assumed: the two run in opposite directions, and getting this
+       backwards walks you the wrong way round campus the moment anybody
+       rotates the view. */
     assert.equal(headingFromStick({ x: 0, y: 1 }, 0), 0);
-    assert.equal(headingFromStick({ x: 0, y: 1 }, 90), 90);
-    assert.equal(headingFromStick({ x: 0, y: 1 }, 270), 270);
+    assert.equal(headingFromStick({ x: 0, y: 1 }, 90), 270);
+    assert.equal(headingFromStick({ x: 0, y: 1 }, 180), 180);
+    assert.equal(headingFromStick({ x: 0, y: 1 }, 270), 90);
   });
 
   it("reads screen-right as a right turn from the camera", () => {
     assert.equal(headingFromStick({ x: 1, y: 0 }, 0), 90);
     assert.equal(headingFromStick({ x: -1, y: 0 }, 0), 270);
     assert.equal(headingFromStick({ x: 0, y: -1 }, 0), 180);
+    /* Bearing 90: north is to the right, so screen-right is north. */
+    assert.equal(headingFromStick({ x: 1, y: 0 }, 90), 0);
   });
 
-  it("agrees with the keyboard it replaced", () => {
+  it("is the exact inverse of the angle the same heading is DRAWN at", () => {
+    /* One moves the walker, the other leans them. If these ever disagree the
+       character faces somewhere other than where it is going. */
+    for (const bearing of [0, 37, 90, 180, 271, 359]) {
+      for (const heading of [0, 45, 90, 180, 300]) {
+        const screen = screenAngleOf(heading, bearing);
+        const stick = {
+          x: Math.sin((screen * Math.PI) / 180),
+          y: Math.cos((screen * Math.PI) / 180),
+        };
+        const back = headingFromStick(stick, bearing);
+        assert.ok(back !== null);
+        assert.ok(
+          Math.abs(signedAngle(back - heading)) < 1e-6,
+          `bearing ${bearing}, heading ${heading} round-tripped to ${back}`,
+        );
+      }
+    }
+  });
+
+  it("folds a lean into -180..180 so straight-up never reads as a hard turn", () => {
+    assert.equal(signedAngle(0), 0);
+    assert.equal(signedAngle(359), -1);
+    assert.equal(signedAngle(181), -179);
+    assert.equal(signedAngle(90), 90);
+    assert.equal(signedAngle(-370), -10);
+  });
+
+  it("agrees with the keyboard it replaced, at every camera angle", () => {
     const held = { north: true, south: false, east: false, west: false };
-    assert.equal(headingFromKey(held, 37), headingFromStick({ x: 0, y: 1 }, 37));
+    for (const bearing of [0, 37, 90, 180, 271]) {
+      assert.equal(headingFromKey(held, bearing), headingFromStick({ x: 0, y: 1 }, bearing));
+    }
   });
 
   it("gives a full push full pace and a light push less", () => {

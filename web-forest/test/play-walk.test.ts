@@ -50,12 +50,25 @@ describe("play walk", () => {
     assert.ok(distanceMeter(at, to) < 0.05);
   });
 
-  it("WASD is relative to the camera: W at bearing 90 faces east", () => {
+  it("WASD is relative to the camera: W at bearing 90 faces WEST", () => {
+    /* This assertion used to say east, and it was wrong in the same direction
+       the code was wrong — the test was written from the same assumption as
+       the bug. The ground plane is turned by `rotateZ(+bearing)`, so at
+       bearing 90 NORTH swings round to the right of the screen and the
+       direction that now appears straight up is WEST, 270. Checked against
+       `toScreen` directly rather than reasoned about a second time.
+
+       The symptom was worth the trouble: with the camera rotated, pushing the
+       stick "forward" walked you off at an angle to wherever you were
+       looking. */
     const idle = { north: false, south: false, east: false, west: false };
     assert.equal(headingFromKey(idle, 0), null);
     assert.equal(headingFromKey({ ...idle, north: true }, 0), 0);
-    assert.equal(headingFromKey({ ...idle, north: true }, 90), 90);
+    assert.equal(headingFromKey({ ...idle, north: true }, 90), 270);
+    assert.equal(headingFromKey({ ...idle, north: true }, 270), 90);
     assert.equal(headingFromKey({ ...idle, east: true }, 0), 90);
+    /* At bearing 90 the screen-right key points at north. */
+    assert.equal(headingFromKey({ ...idle, east: true }, 90), 0);
     const diag = headingFromKey({ north: true, south: false, east: true, west: false }, 0);
     assert.ok(diag !== null);
     assert.ok(Math.abs(diag - 45) < 1e-9);

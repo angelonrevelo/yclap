@@ -200,16 +200,23 @@
 
 /* ── Quest banner ───────────────────────────────────────────────────────── */
 
+/* The daily hunt is a TAB, not a card.
+ *
+ * It was a 340x64 three-line panel parked across the top third of the map — on
+ * a 375 px phone that is a banner over the thing you are supposed to be looking
+ * at, and it never changes often enough to earn that. One line, hugging its own
+ * content, still says the same four things: what, where, what it pays, and
+ * whether it is done. */
 .gm-quest {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-  width: min(340px, 100%);
-  padding: 10px 12px 10px 10px;
-  border-radius: 10px;
+  gap: 8px;
+  max-width: min(100%, 62vw);
+  padding: 5px 6px 5px 5px;
+  border-radius: 999px;
   text-align: left;
   color: var(--cc-text-bolder);
-  background: rgba(38, 36, 33, 0.97);
+  background: rgba(38, 36, 33, 0.95);
   box-shadow: var(--cc-shadow-sm);
   transition: background var(--cc-motion);
 }
@@ -218,18 +225,22 @@
 }
 
 .gm-quest-target {
-  width: 44px;
-  height: 44px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
-  border-radius: 8px;
+  border-radius: 999px;
+  overflow: hidden;
   display: grid;
   place-items: center;
   background: rgba(0, 0, 0, 0.2);
 }
 
 .gm-quest-body {
-  flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  overflow: hidden;
 }
 
 .gm-ribbon {
@@ -249,38 +260,51 @@
 .gm-quest-name {
   font-family: var(--cc-heading);
   font-weight: 800;
-  font-size: 16px;
+  font-size: 13.5px;
   line-height: 1.15;
-  margin-top: 1px;
   color: var(--cc-text-boldest);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
+/* The place is the first thing to go.
+ *
+ * The tab hugs its own content and is capped well short of the screen, so on a
+ * narrow phone the sector simply does not fit — and that is the right thing to
+ * drop: the species is what you act on, and where to look is what the map under
+ * the tab is already showing. Below 380 px it is hidden outright rather than
+ * rendered as three letters and an ellipsis. */
 .gm-quest-hint {
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
   color: var(--cc-text-subtle);
-  margin-top: 1px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+}
+@media (max-width: 380px) {
+  .gm-quest-hint {
+    display: none;
+  }
 }
 
 .gm-reward {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 28px;
-  padding: 0 8px 0 5px;
-  border-radius: 5px;
+  gap: 3px;
+  height: 22px;
+  padding: 0 7px 0 4px;
+  border-radius: 999px;
   background: rgba(0, 0, 0, 0.25);
   color: var(--cc-gold-100);
   font-family: var(--cc-heading);
   font-weight: 900;
-  font-size: 14px;
+  font-size: 12.5px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }

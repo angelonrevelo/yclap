@@ -84,7 +84,12 @@ The play layer, wired in `src/live.tsx`:
   `?zoom=` and `?bearing=` set a reproducible camera for a projector.
 - **`joystick.tsx` + `play-walk.ts`** — an on-screen thumbstick, because the
   26 September showcase is in a hall with no campus trees and a GPS fix that
-  resolves somewhere this app correctly refuses to spawn anything. It drives
+  resolves somewhere this app correctly refuses to spawn anything. **A fix that
+  lands off campus now switches to the stick by itself and says so** — a
+  playtest at 375 px with the venue's coordinates found that the one case the
+  feature exists for was the one case that fell through: a clean off-campus fix
+  kept the app in GPS mode, hid the stick, and showed an empty green screen with
+  nothing to press. It drives
   the same `play` source WASD drives, under the same rules (inside
   `CAMPUS_BOX`, outside the restricted grove), so a stick walk and a GPS walk
   produce the same journal. **It is not a GPS spoofer**: the fix it makes is
@@ -117,6 +122,13 @@ The play layer, wired in `src/live.tsx`:
   and presence (points / streak as “who is out”, not an official AIS rank).
   A six-character walker code joins two phones as one player. With no server
   reachable the world strip renders nothing rather than an unmeasured zero.
+- **Gestures and haptics.** A tap on the play ground means GO THERE, not "show
+  me this area's statistics" — the sector card moved to the field view, where a
+  survey belongs. A drag never becomes a tap: `TileMap` traps the click in the
+  capture phase when the gesture travelled, so a camera swing that happens to
+  end over a marker no longer opens it. `haptic.ts` adds a second, eyes-free
+  confirmation channel and is honest that **iOS Safari has no `navigator.vibrate`
+  at all**, so nothing is ever only haptic.
 - **`friend.ts` + `streak-flame.tsx`** — walking partners and the streak they
   keep together, answering the Working Doc's *"Note to Gelo: Is this
   feasible?"* on group streaks and the 09-21 recording's friends system

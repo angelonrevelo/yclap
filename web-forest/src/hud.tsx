@@ -71,7 +71,17 @@ export function PlayerHud({
   );
 }
 
-/** The daily hunt as a quest: one target, where to look, and what it pays. */
+/**
+ * The daily hunt as a one-line TAB: one target, where to look, what it pays.
+ *
+ * It used to be a three-line card 340 px wide and 64 px tall, sitting across
+ * the top third of the play view. On a 375 px phone that is a banner laid over
+ * the map you are meant to be reading, for a target that changes once a day.
+ * The eyebrow ("DAILY HUNT") went first — a gold pill with a target icon on it
+ * does not need a label saying it is a target — and the species and the sector
+ * moved onto one line, where the sector truncates first because the map is
+ * already showing you where you are.
+ */
 export function QuestBanner({
   daily,
   reward,
@@ -85,22 +95,19 @@ export function QuestBanner({
     <button type="button" className="gm-quest" data-done={daily.is_done} onClick={onGo}>
       <span className="gm-quest-target">
         {species[daily.species_code] ? (
-          <TaxonThumb species_code={daily.species_code} size={40} style={{ background: "rgba(255,255,255,0.92)", border: "none" }} />
+          <TaxonThumb species_code={daily.species_code} size={28} style={{ background: "rgba(255,255,255,0.92)", border: "none" }} />
         ) : (
-          <GameIcon src={game_icon.quest} size={36} />
+          <GameIcon src={game_icon.quest} size={24} />
         )}
       </span>
       <span className="gm-quest-body">
-        <span className="gm-ribbon">{daily.is_done ? "Hunt cleared" : "Daily hunt"}</span>
-        <span className="gm-quest-name" style={{ display: "block" }}>
-          {daily.common_name}
-        </span>
-        <span className="gm-quest-hint" style={{ display: "block" }}>
-          {daily.is_done ? "Come back tomorrow" : `Look in ${daily.sector_name}`}
+        <span className="gm-quest-name">{daily.common_name}</span>
+        <span className="gm-quest-hint">
+          {daily.is_done ? "cleared · back tomorrow" : `· ${daily.sector_name}`}
         </span>
       </span>
       <span className="gm-reward">
-        <GameIcon src={game_icon.points} size={20} />+{reward}
+        <GameIcon src={game_icon.points} size={15} />+{reward}
       </span>
     </button>
   );

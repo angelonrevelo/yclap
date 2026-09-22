@@ -209,6 +209,8 @@ export default function TileMap({
   const drag = useRef<{ x: number; y: number; lat: number; lon: number; bearing: number; is_rotate: boolean } | null>(null);
   const pointer = useRef(new Map<number, { x: number; y: number }>());
   const down_at = useRef<{ x: number; y: number } | null>(null);
+  /** Set by `endDrag` when the gesture travelled; consumed by the click trap. */
+  const was_dragged = useRef(false);
   const from_screen = useRef<(x: number, y: number) => LatLon>((x, y) => fromWorld({ x, y }, view.zoom));
 
   useLayoutEffect(() => {
@@ -273,6 +275,27 @@ export default function TileMap({
     },
     [zoom, zoom_cap, zoom_floor, is_pan_locked, origin.x, origin.y, size.width, size.height, view, onView],
   );
+
+  /**
+   * The click trap.
+   *
+   * Capture phase on the container, so it runs BEFORE any marker, sector path
+   * or overlay child gets its click. If the gesture that produced this click
+   * was a drag, the click is swallowed here and nothing downstream ever hears
+   * about it.
+   */
+  useEffect(() => {
+    const node = box_ref.current;
+    if (!node) return;
+    const trap = (event: MouseEvent) => {
+      if (!was_dragged.current) return;
+      was_dragged.current = false;
+      event.stopPropagation();
+      event.preventDefault();
+    };
+    node.addEventListener("click", trap, true);
+    return () => node.removeEventListener("click", trap, true);
+  }, []);
 
   useEffect(() => {
     const node = box_ref.current;
@@ -354,8 +377,18 @@ export default function TileMap({
     if (pointer.current.size === 0) drag.current = null;
     const start = down_at.current;
     down_at.current = null;
+    const travel = start ? Math.hypot(event.clientX - start.x, event.clientY - start.y) : 0;
+    /* A drag is not a tap — for THIS handler, and also for every child.
+     *
+     * `onTap` has always guarded itself on travel. Children never did: a
+     * browser still fires `click` on whatever element the gesture happened to
+     * end over, so dragging the camera across the map ended by opening the
+     * sector card you released on. The suppression is set here and consumed by
+     * the capture-phase listener below, which is the only place that can stop
+     * a child's click before the child sees it. */
+    was_dragged.current = travel >= 8;
     if (!onTap || !start || !box_ref.current) return;
-    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) >= 8) return;
+    if (travel >= 8) return;
     const mark = event.target instanceof Element ? event.target.closest("[data-play-marker]") : null;
     if (mark) return;
     const rect = box_ref.current.getBoundingClientRect();

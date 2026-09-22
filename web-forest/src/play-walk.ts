@@ -116,7 +116,42 @@ export function headingFromStick(stick: PlayStick, bearing_degree: number): numb
   const throw_ = Math.hypot(stick.x, stick.y);
   if (throw_ < STICK_DEADZONE) return null;
   const screen = (Math.atan2(stick.x, stick.y) * 180) / Math.PI;
-  return (bearing_degree + screen + 360) % 360;
+  /* MINUS the bearing, not plus.
+   *
+   * The ground plane is turned by `rotateZ(+bearing)`, so a camera bearing of
+   * 90 swings NORTH round to the right of the screen — which means the
+   * direction that now appears to be straight up is WEST, compass 270, i.e.
+   * −90. The camera bearing and the compass therefore run in opposite
+   * directions, and adding them walked you the wrong way round the campus the
+   * moment anybody rotated the view. `screenAngleOf` below is this function's
+   * inverse and the two are pinned against each other by a test.
+   */
+  return (screen - bearing_degree + 360) % 360;
+}
+
+/**
+ * The inverse: a real compass heading → the angle it appears to point at on
+ * screen, under a camera turned by `bearing_degree`.
+ *
+ * Anything that DRAWS a direction needs this one — a walker leaning into their
+ * travel, an arrow toward a find. Anything that MOVES the walker needs
+ * `headingFromStick`. They are inverses and the sign is easy to get backwards
+ * in either, which is why both live here next to each other.
+ */
+export function screenAngleOf(heading_degree: number, bearing_degree: number): number {
+  return (heading_degree + bearing_degree + 360) % 360;
+}
+
+/**
+ * Fold an angle into −180…180.
+ *
+ * A DIRECTION is happiest as 0…360, but a LEAN is not: the character tips by
+ * `angle / 12`, and on a 0…360 scale "one degree west of straight up" arrives
+ * as 359 and tips the walker hard over to the right. A lean needs to know which
+ * side of forward it is on, so it needs the signed form.
+ */
+export function signedAngle(degree: number): number {
+  return ((degree + 540) % 360) - 180;
 }
 
 /**

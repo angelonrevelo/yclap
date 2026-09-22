@@ -50,6 +50,24 @@ const MAX_LABEL = 3;
 const LABEL_MARGIN_PX = 76;
 
 /**
+ * Drop a building whose footprint covers more than this much of the glass.
+ *
+ * Found by playtesting the thing at the camera it actually ships at. The play
+ * view defaults to z22 — about 14 m across a phone — and a 2,000 m² building is
+ * then far wider than the screen. What that produced was not a building: it was
+ * a flat cream sheet over the entire map, every path and sector under it gone,
+ * with a Gaussian blur applied to a path measured at 279,000 x 166,000 px.
+ *
+ * A building you are standing against is not a shape you read. It is the wall
+ * beside you, and the honest way to draw a wall you are inside the footprint of
+ * is not to draw it — the sector layer still carries the ground, and the
+ * building's name still sits on the map one zoom out. So past this ratio the
+ * prism drops out, which is also what stops the compositor being handed a
+ * quarter-million-pixel blur on a phone.
+ */
+const MAX_SCREEN_COVER = 2.2;
+
+/**
  * How much of a building to draw.
  *
  * This is a choice, not a setting, and the reason it is a choice is a real
@@ -139,6 +157,14 @@ export default function Skyline({
       if (max_x < -pad || min_x > width + pad) continue;
       if (max_y < -pad || min_y > height + pad) continue;
 
+      /* Too close to be a building any more — see MAX_SCREEN_COVER. */
+      if (
+        (max_x - min_x) > width * MAX_SCREEN_COVER &&
+        (max_y - min_y) > height * MAX_SCREEN_COVER
+      ) {
+        continue;
+      }
+
       const prism = extrude(ring, row.height_m, (scale) => rise1 * scale);
       if (!prism) continue;
 
@@ -198,7 +224,18 @@ export default function Skyline({
         {/* A soft drop under every prism. Without it a building sits ON the
             green rather than IN it, which is the single thing that made the
             small ones read as boxes dropped on a lawn. */}
-        <filter id="sky-contact" x="-30%" y="-30%" width="160%" height="160%">
+        {/* Bounded in USER SPACE, not in percent. A percentage filter region
+            on a path the size of a city block asks the compositor for a buffer
+            the size of a city block; `filterUnits="userSpaceOnUse"` with a
+            screen-sized region keeps the cost flat however big the path is. */}
+        <filter
+          id="sky-contact"
+          filterUnits="userSpaceOnUse"
+          x={-80}
+          y={-80}
+          width={width + 160}
+          height={height + 160}
+        >
           <feGaussianBlur stdDeviation="3" />
         </filter>
         <g

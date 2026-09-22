@@ -13,6 +13,7 @@ import {
   type GroupStreak,
 } from "./friend";
 import { joinCodeOf } from "./campus-world";
+import { haptic } from "./haptic";
 import StreakFlame from "./streak-flame";
 import { type SkylineStyle } from "./skyline";
 import PlayMap, { PLAY_MAX_ZOOM, PLAY_MIN_ZOOM } from "./play-map";
@@ -2782,7 +2783,27 @@ function MapChrome({
       }}
     >
       <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-        <div style={{ minWidth: 0, pointerEvents: "auto" }}>{context}</div>
+        {/* `below` hangs off the BOTTOM-LEFT of the context card, inside the
+            same column — not under the whole row.
+            
+            Under the row it was laid out after the control stack, and that
+            stack is three 44 px buttons tall. So the daily hunt sat ~150 px
+            down the screen with a band of empty map between it and the card it
+            belongs to, which read as a gap somebody forgot to close rather than
+            as a deliberate space. */}
+        <div
+          style={{
+            minWidth: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: 8,
+            pointerEvents: "auto",
+          }}
+        >
+          {context}
+          {below}
+        </div>
         <div style={{ flex: 1 }} />
         <div
           style={{
@@ -2797,7 +2818,6 @@ function MapChrome({
           {control}
         </div>
       </div>
-      {below && <div style={{ pointerEvents: "auto" }}>{below}</div>}
     </div>
   );
 }
@@ -3172,10 +3192,32 @@ export default function App() {
      puts you on campus at street zoom rather than leaving the map empty. */
   useEffect(() => {
     if (geo_mode !== "gps") return;
-    if (geo.fix) return;
-    if (geo.status !== "denied" && geo.status !== "unavailable") return;
-    setGeoMode("play");
-  }, [geo_mode, geo.status, geo.fix]);
+    /* Two ways a device cannot walk this campus, and until a playtest at the
+       venue only the first was handled.
+
+       1. No fix at all — permission denied, or no hardware answer.
+       2. A PERFECT fix, somewhere that is not Loyola Heights. This is the
+          showcase. A judge standing in the hall on 26 September gets a clean
+          position a few kilometres away, so the app stayed in GPS mode,
+          correctly refused to spawn anything, hid the thumbstick — which only
+          shows in play mode — and presented an empty green screen with no
+          explanation and nothing to press. The one venue the feature was built
+          for was the one case that fell through.
+
+       Either way the answer is the stick, and the switch says so out loud
+       rather than silently changing what the position means. */
+    if (!geo.fix) {
+      if (geo.status !== "denied" && geo.status !== "unavailable") return;
+      setGeoMode("play");
+      showToast("No position here — steer with the stick instead.");
+      return;
+    }
+    if (geo.is_off_campus) {
+      setGeoMode("play");
+      setFollowing(true);
+      showToast("You are off campus. Steer the demo walk with the stick.");
+    }
+  }, [geo_mode, geo.status, geo.fix, geo.is_off_campus]);
 
   /* One tap before the demo, so offline covers the campus and not just wherever
      the map happened to be panned. Production only — a dev build has no worker
@@ -3314,6 +3356,10 @@ export default function App() {
     const result = persistAward(kind, subject_key);
     if (result.awarded && result.event) {
       setPointEvents(result.events);
+      /* Points are the one event worth feeling. It rides alongside the toast,
+         never instead of it — half the phones at the showcase are iPhones and
+         will feel nothing at all (see `haptic.ts`). */
+      haptic("success");
       showToast(toast_line ?? `+${result.event.points} ${POINT_LABEL[kind]}`);
     }
     return result;
@@ -3356,9 +3402,13 @@ export default function App() {
   const walkToSpawn = (row: Spawn) => {
     const reach = reachableSpawn(spawn_world.spawn, geo.fix).some((r) => r.spawn_id === row.spawn_id);
     if (reach) {
+      /* You are close enough and the camera is opening — the moment the whole
+         walk is for. */
+      haptic("bump");
       openCamera(row.species_code, sectorByCode(row.sector_code)?.name, row.rarity);
       return;
     }
+    haptic("tap");
     setPickedSector(null);
     setPinnedId(null);
     if (geo_mode === "play") {
