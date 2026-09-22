@@ -211,7 +211,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  max-width: min(100%, 62vw);
+  max-width: min(100%, 74vw);
   padding: 5px 6px 5px 5px;
   border-radius: 999px;
   text-align: left;
@@ -286,7 +286,14 @@
   text-overflow: ellipsis;
   min-width: 0;
 }
-@media (max-width: 380px) {
+/* 430, not 380.
+ *
+ * At 390 both the species and the sector fitted "technically" and neither was
+ * readable — a real hunt rendered as "River R... · Xavier Ha...", which is two
+ * ellipses and no information. The species is the part you act on, so below a
+ * comfortable width it takes the whole tab and the sector drops out entirely.
+ * The sector is on the map underneath it anyway. */
+@media (max-width: 430px) {
   .gm-quest-hint {
     display: none;
   }
