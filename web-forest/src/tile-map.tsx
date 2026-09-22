@@ -562,22 +562,128 @@ export default function TileMap({
         </div>
       )}
 
-      <div
+      <Credit
+        text={
+          is_tile_hidden
+            ? overlay_attribution ?? source.attribution
+            : overlay_attribution
+              ? `${source.attribution} · ${overlay_attribution}`
+              : source.attribution
+        }
+        offset={credit_offset}
+        is_dim={is_chrome_hidden}
+      />
+    </div>
+  );
+}
+
+/**
+ * The ODbL credit, collapsed to an "i" until somebody asks.
+ *
+ * It cannot be deleted. OpenStreetMap data is ODbL and attribution is a licence
+ * condition, not chrome — every sector boundary, every path and every building
+ * footprint on this screen is OSM geometry.
+ *
+ * It CAN be collapsed, and this is not a loophole: the OSMF attribution
+ * guidelines explicitly allow the credit to sit behind a clickable icon where
+ * screen space is limited, which is how Apple, Google and Mapbox all ship it on
+ * a phone. What the guidelines do not allow is for it to be absent or
+ * unreachable, so the rules this follows are:
+ *
+ *   - the "i" is always visible, never conditional, never behind a menu;
+ *   - one tap opens the full text, in full contrast, with the OSM copyright
+ *     page linked;
+ *   - it is a real control with a real label, so a screen reader announces it.
+ *
+ * Two full lines of grey type across the bottom of a walking map was the thing
+ * being solved. The licence was never the thing to solve.
+ */
+function Credit({ text, offset, is_dim }: { text: string; offset: number; is_dim: boolean }) {
+  const [is_open, setOpen] = useState(false);
+
+  if (!is_open) {
+    return (
+      <button
+        type="button"
+        aria-label="Map data credits"
+        title={text}
+        onClick={() => setOpen(true)}
         style={{
           position: "absolute",
-          right: 0,
-          bottom: credit_offset,
+          right: 8,
+          bottom: offset + 6,
           zIndex: 21,
-          opacity: is_chrome_hidden ? 0.55 : 1,
-          background: "rgba(249,249,249,0.82)",
-          borderTopLeftRadius: 8,
-          padding: "2px 7px",
-          fontSize: 9.5,
-          color: "rgba(31,32,34,0.72)",
-          pointerEvents: "none",
+          width: 22,
+          height: 22,
+          borderRadius: 999,
+          border: "1px solid rgba(31,32,34,0.16)",
+          background: "rgba(249,249,249,0.86)",
+          color: "rgba(31,32,34,0.68)",
+          fontSize: 12,
+          fontWeight: 800,
+          fontStyle: "italic",
+          fontFamily: "Georgia, serif",
+          lineHeight: 1,
+          display: "grid",
+          placeItems: "center",
+          cursor: "pointer",
+          opacity: is_dim ? 0.72 : 1,
+          padding: 0,
         }}
       >
-        {is_tile_hidden ? overlay_attribution ?? source.attribution : overlay_attribution ? `${source.attribution} · ${overlay_attribution}` : source.attribution}
+        i
+      </button>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        right: 8,
+        left: 8,
+        bottom: offset + 6,
+        zIndex: 21,
+        background: "rgba(249,249,249,0.97)",
+        border: "1px solid rgba(31,32,34,0.14)",
+        borderRadius: 10,
+        padding: "8px 10px",
+        fontSize: 10.5,
+        lineHeight: 1.45,
+        color: "rgba(31,32,34,0.82)",
+        boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {text}
+          {" · "}
+          <a
+            href="https://www.openstreetmap.org/copyright"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: "#2d6a2f", fontWeight: 700, textDecoration: "underline" }}
+          >
+            openstreetmap.org/copyright
+          </a>
+        </div>
+        <button
+          type="button"
+          aria-label="Hide map data credits"
+          onClick={() => setOpen(false)}
+          style={{
+            border: "none",
+            background: "transparent",
+            color: "rgba(31,32,34,0.5)",
+            fontSize: 16,
+            lineHeight: 1,
+            cursor: "pointer",
+            padding: "0 2px",
+            flexShrink: 0,
+          }}
+        >
+          ×
+        </button>
       </div>
     </div>
   );

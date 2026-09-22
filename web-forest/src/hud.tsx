@@ -162,7 +162,10 @@ export function GameDock({
     <nav className="gm-dock" aria-label="Game">
       <div className="gm-dock-bar">
         <DockButton label="Buddy" onClick={onAvatar}>
-          <Character stage={stage} vigor={vigor} size={32} is_idle_animated={false} />
+          {/* 28, not 32: `Character` renders at size x 1.15, so a 32 asked for a
+              36.8 px box inside the dock's 32 px face and the bottom of the
+              tree — trunk and shadow — was cut off. */}
+          <Character stage={stage} vigor={vigor} size={28} is_idle_animated={false} />
         </DockButton>
         <DockButton label="Nearby" is_active={is_nearby_open} icon={game_icon.nearby} onClick={onNearby} />
         <button type="button" className="gm-go" aria-label="Go — log a sighting" onClick={onGo}>

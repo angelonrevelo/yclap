@@ -2191,42 +2191,17 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
      the stage table so the bar never invents a number the rules do not have. */
   const next_total = next ? p.sector_seen_count + next.remaining : null;
   const ratio = next_total ? Math.min(1, p.sector_seen_count / next_total) : 1;
-  return (
-    <Card style={{ display: "flex", gap: is_desktop ? 22 : 16, alignItems: "stretch" }}>
-      <div
-        style={{
-          flexShrink: 0,
-          display: "grid",
-          placeItems: "center",
-          borderRadius: RADIUS.tile,
-          background: "rgba(129,182,76,0.12)",
-          border: "1px solid rgba(129,182,76,0.12)",
-          padding: is_desktop ? "14px 20px" : "12px 16px",
-        }}
-      >
-        <Suspense
-          fallback={<Character stage={p.stage} vigor={p.vigor} size={is_desktop ? 108 : 92} is_idle_animated />}
-        >
-          <CharacterModel stage={p.stage} size={is_desktop ? 108 : 92} />
-        </Suspense>
-      </div>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div className="flex items-baseline gap-2">
-          <Eyebrow>YOUR GROWTH · BIODIVERSITY BUDDY</Eyebrow>
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginLeft: "auto" }}>
-            {gamify.total_points} pts · {gamify.streak_weeks} wk
-          </span>
-        </div>
-        <div className="flex items-baseline gap-2" style={{ marginTop: 4 }}>
-          <div style={{ fontWeight: 800, fontSize: is_desktop ? 24 : 20 }}>{stage_label}</div>
-          {p.sector_seen_count > 0 && (
-            <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.72)" }}>
-              · {p.sector_seen_count} {p.sector_seen_count === 1 ? "area" : "areas"} walked
-            </span>
-          )}
-        </div>
-
-        <div className="flex gap-2" style={{ marginTop: 12 }}>
+  /* The two stat tiles, the progress bar and its note.
+   *
+   * Extracted because WHERE this block sits depends on the width. Beside a
+   * 92 px portrait on a 375 px phone it had 167 px to work with, which gave
+   * each tile 56 px of content — and "CONTRIBUTIONS" is thirteen characters,
+   * so it was clipped mid-word inside its own card. On mobile the block moves
+   * below the portrait and gets the card's full width; on desktop, where there
+   * is room, it stays beside it. */
+  const detail = (
+    <>
+        <div className="flex gap-2" style={{ marginTop: is_desktop ? 12 : 0 }}>
           <div
             style={{
               flex: 1,
@@ -2290,7 +2265,58 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
           </div>
         </div>
         <BuddyLine snap={gamify} />
+    </>
+  );
+
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: is_desktop ? 0 : 14 }}>
+      <div style={{ display: "flex", gap: is_desktop ? 22 : 14, alignItems: "stretch" }}>
+        <div
+          style={{
+            flexShrink: 0,
+            display: "grid",
+            placeItems: "center",
+            borderRadius: RADIUS.tile,
+            background: "rgba(129,182,76,0.12)",
+            border: "1px solid rgba(129,182,76,0.12)",
+            padding: is_desktop ? "14px 20px" : "10px 12px",
+          }}
+        >
+          <Suspense
+            fallback={<Character stage={p.stage} vigor={p.vigor} size={is_desktop ? 108 : 84} is_idle_animated />}
+          >
+            <CharacterModel stage={p.stage} size={is_desktop ? 108 : 84} />
+          </Suspense>
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          {/* Wraps rather than clips: the eyebrow is long and the counter on
+              the right is the part that must stay whole. */}
+          <div className="flex items-baseline gap-2" style={{ flexWrap: "wrap" }}>
+            <Eyebrow>{is_desktop ? "YOUR GROWTH · BIODIVERSITY BUDDY" : "YOUR GROWTH"}</Eyebrow>
+            <span
+              style={{
+                fontSize: 11,
+                color: "rgba(255,255,255,0.5)",
+                marginLeft: "auto",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+              }}
+            >
+              {gamify.total_points} pts · {gamify.streak_weeks} wk
+            </span>
+          </div>
+          <div className="flex items-baseline gap-2" style={{ marginTop: 4, flexWrap: "wrap" }}>
+            <div style={{ fontWeight: 800, fontSize: is_desktop ? 24 : 20 }}>{stage_label}</div>
+            {p.sector_seen_count > 0 && (
+              <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.72)" }}>
+                · {p.sector_seen_count} {p.sector_seen_count === 1 ? "area" : "areas"} walked
+              </span>
+            )}
+          </div>
+          {is_desktop && detail}
+        </div>
       </div>
+      {!is_desktop && <div>{detail}</div>}
     </Card>
   );
 }
