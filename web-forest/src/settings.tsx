@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Card, Eyebrow, RADIUS } from "./ui";
+import { RADIUS } from "./ui";
 import {
   ESSAY,
   LIMIT,
@@ -10,147 +10,52 @@ import {
 import type { Preference } from "./preference";
 
 /**
- * Settings — the screen that says what this is, who made it, how far along it
- * is, and who it is talking to.
+ * Settings — what this is, how far along it is, and who it is talking to.
  *
- * It replaces the Plan tab rather than sitting beside it, and it carries Plan's
- * job forward: the Working Doc's four-tab structure gives PLAN the brief "from
- * data to action — what happens after the walk, who we work with, how to get
- * involved", and every one of those is a section below. What is added is the
- * part a student at a booth actually asks first, which the old Plan tab never
- * answered: *what IS this, and can I trust it yet?*
+ * It replaces the Plan tab and carries Plan's brief forward: the Working Doc's
+ * four-tab structure gives PLAN "from data to action — what happens after the
+ * walk, who we work with, how to get involved", and every one of those is a
+ * panel below. What is added is the question a student at a booth asks first,
+ * which the plan document never answered: *what IS this, and can I trust it
+ * yet?*
  *
- * ## The rule this screen is built on
+ * ## Why it is tabbed tables and not one long page
  *
- * It is the surface most able to overclaim, so it is the surface that claims
- * least. The stage ladder says **alpha** and spells out what alpha costs you.
- * The partner list is headed by what we have ASKED each office for, with an
- * explicit "none of these have agreed yet", because the Working Doc's own first
- * objective forbids the other version: *"Record who answered and who did not.
- * Do not claim '20 representatives consulted' until that number is real."* And
- * the limits sit on the same screen as the pitch, not a tap away from it.
+ * The first cut was a single column of prose cards — essay, then account, then
+ * preferences, then the ladder, then six offices — and it ran to roughly five
+ * screens on a phone. That shape has two faults. Somebody looking for one fact
+ * ("is this official?", "who have you asked?") has to scroll past four things
+ * they did not want, and nothing on the page can be COMPARED, because the rows
+ * that belong in a column are separated by paragraphs.
  *
- * Accounts are the same story. There is no server-side account, no password and
- * no Ateneo SSO — SSO is blocked on the Working Doc's data decisions, not on
- * engineering. What exists is the walker identity the sync layer already mints,
- * so that is what the Account section shows: a name you can change, the code
- * that joins a second phone to this walker, and a straight sentence about what
- * happens if you clear your browser.
+ * So: five panels, one on screen at a time, and inside each the content is a
+ * real `<table>` wherever it is genuinely tabular. Six offices against one
+ * status column is a table. Four stages against what changes at each is a
+ * table. That is not decoration — a reader scanning "which of these have
+ * agreed" is doing a column scan, and a column is the shape that supports it.
+ *
+ * ## The rule the content follows
+ *
+ * This is the surface most able to overclaim, so it claims least. The stage
+ * says ALPHA and spells out what alpha costs you. Every office reads NOT YET,
+ * because the Working Doc's first objective forbids the other version:
+ * *"Record who answered and who did not. Do not claim '20 representatives
+ * consulted' until that number is real."* `settings.test.ts` holds that line.
+ * And the limits sit in the same panel as the pitch, not a tap away from it.
  */
 
 const TONE = {
   panel: "#312e2b",
-  edge: "rgba(255,255,255,0.08)",
-  text: "rgba(255,255,255,0.85)",
+  card: "#262421",
+  edge: "rgba(255,255,255,0.09)",
+  rule: "rgba(255,255,255,0.07)",
+  text: "rgba(255,255,255,0.86)",
   dim: "rgba(255,255,255,0.55)",
+  faint: "rgba(255,255,255,0.4)",
   green: "#81b64c",
   green_soft: "rgba(129,182,76,0.12)",
   gold: "#f7c631",
 };
-
-function Section({
-  icon,
-  title,
-  caption,
-  children,
-}: {
-  icon?: string;
-  title: string;
-  caption?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section style={{ marginTop: 22 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-        {icon && (
-          <img
-            src={icon}
-            alt=""
-            width={34}
-            height={34}
-            style={{ flexShrink: 0, imageRendering: "auto" }}
-          />
-        )}
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 800, fontSize: 17, color: "rgba(255,255,255,0.92)" }}>{title}</div>
-          {caption && (
-            <div style={{ fontSize: 12, color: TONE.dim, marginTop: 1, lineHeight: 1.35 }}>{caption}</div>
-          )}
-        </div>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function Switch({
-  label,
-  hint,
-  is_on,
-  onToggle,
-}: {
-  label: string;
-  hint?: string;
-  is_on: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={is_on}
-      onClick={onToggle}
-      style={{
-        width: "100%",
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        textAlign: "left",
-        padding: "11px 12px",
-        borderRadius: RADIUS.tile,
-        border: `1px solid ${TONE.edge}`,
-        background: "rgba(255,255,255,0.04)",
-        color: TONE.text,
-        cursor: "pointer",
-      }}
-    >
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: "block", fontWeight: 700, fontSize: 14 }}>{label}</span>
-        {hint && (
-          <span style={{ display: "block", fontSize: 11.5, color: TONE.dim, marginTop: 2, lineHeight: 1.4 }}>
-            {hint}
-          </span>
-        )}
-      </span>
-      <span
-        aria-hidden="true"
-        style={{
-          flexShrink: 0,
-          width: 44,
-          height: 26,
-          borderRadius: 999,
-          background: is_on ? TONE.green : "rgba(255,255,255,0.16)",
-          position: "relative",
-          transition: "background .18s ease",
-        }}
-      >
-        <span
-          style={{
-            position: "absolute",
-            top: 3,
-            left: is_on ? 21 : 3,
-            width: 20,
-            height: 20,
-            borderRadius: 999,
-            background: "#fff",
-            transition: "left .18s ease",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
-          }}
-        />
-      </span>
-    </button>
-  );
-}
 
 export interface SettingsIcon {
   account?: string;
@@ -160,6 +65,177 @@ export interface SettingsIcon {
   partner?: string;
   about?: string;
 }
+
+type PanelKey = "why" | "walker" | "setup" | "path" | "asks";
+
+const PANEL: { key: PanelKey; label: string; icon: keyof SettingsIcon }[] = [
+  { key: "why", label: "Why", icon: "about" },
+  { key: "walker", label: "Walker", icon: "account" },
+  { key: "setup", label: "Setup", icon: "pref" },
+  { key: "path", label: "Path", icon: "roadmap" },
+  { key: "asks", label: "Asks", icon: "partner" },
+];
+
+/* ── table primitives ─────────────────────────────────────────────────────
+ *
+ * Real `<table>` markup, not a grid of divs. A screen reader announces row and
+ * column relationships from the element, and the relationships ARE the content
+ * here — six offices against one status column is the whole point.
+ *
+ * `tableLayout: fixed` is load-bearing on a 375 px phone. Under auto layout one
+ * long ask sets the column width for every row, which is how a table on mobile
+ * becomes two columns of one word each.
+ */
+function Table({ children, label }: { children: ReactNode; label: string }) {
+  return (
+    <table
+      aria-label={label}
+      style={{
+        width: "100%",
+        borderCollapse: "collapse",
+        tableLayout: "fixed",
+        background: TONE.card,
+        borderRadius: RADIUS.tile,
+        overflow: "hidden",
+        border: `1px solid ${TONE.edge}`,
+      }}
+    >
+      {children}
+    </table>
+  );
+}
+
+function Th({ children, width }: { children: ReactNode; width?: string }) {
+  return (
+    <th
+      scope="col"
+      style={{
+        width,
+        textAlign: "left",
+        fontSize: 10,
+        fontWeight: 800,
+        letterSpacing: "0.07em",
+        textTransform: "uppercase",
+        color: TONE.faint,
+        padding: "8px 10px",
+        borderBottom: `1px solid ${TONE.rule}`,
+        background: "rgba(255,255,255,0.03)",
+      }}
+    >
+      {children}
+    </th>
+  );
+}
+
+function Td({ children, is_head = false }: { children: ReactNode; is_head?: boolean }) {
+  const style: React.CSSProperties = {
+    padding: "9px 10px",
+    borderBottom: `1px solid ${TONE.rule}`,
+    fontSize: is_head ? 13 : 12.5,
+    fontWeight: is_head ? 800 : 500,
+    color: is_head ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.74)",
+    lineHeight: 1.45,
+    verticalAlign: "top",
+    textAlign: "left",
+    /* Long names break rather than widening the column past its share. */
+    overflowWrap: "anywhere",
+  };
+  return is_head ? (
+    <th scope="row" style={style}>
+      {children}
+    </th>
+  ) : (
+    <td style={style}>{children}</td>
+  );
+}
+
+function Pill({ tone, children }: { tone: "green" | "gold" | "grey"; children: ReactNode }) {
+  const map = {
+    green: { fg: "#b2e068", bd: "rgba(129,182,76,0.5)" },
+    gold: { fg: TONE.gold, bd: "rgba(247,198,49,0.5)" },
+    grey: { fg: TONE.faint, bd: "rgba(255,255,255,0.15)" },
+  }[tone];
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        fontSize: 9.5,
+        fontWeight: 800,
+        letterSpacing: "0.04em",
+        color: map.fg,
+        border: `1px solid ${map.bd}`,
+        borderRadius: 999,
+        padding: "2px 6px",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function Switch({ is_on, onToggle, label }: { is_on: boolean; onToggle: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={is_on}
+      aria-label={label}
+      onClick={onToggle}
+      style={{
+        width: 44,
+        height: 26,
+        borderRadius: 999,
+        border: "none",
+        padding: 0,
+        background: is_on ? TONE.green : "rgba(255,255,255,0.16)",
+        position: "relative",
+        cursor: "pointer",
+        transition: "background .18s ease",
+        flexShrink: 0,
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          top: 3,
+          left: is_on ? 21 : 3,
+          width: 20,
+          height: 20,
+          borderRadius: 999,
+          background: "#fff",
+          transition: "left .18s ease",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
+        }}
+      />
+    </button>
+  );
+}
+
+const INPUT: React.CSSProperties = {
+  width: "100%",
+  minWidth: 0,
+  padding: "8px 10px",
+  borderRadius: 9,
+  border: `1.5px solid ${TONE.edge}`,
+  background: "rgba(0,0,0,0.25)",
+  color: "#fff",
+  fontSize: 13.5,
+  fontWeight: 700,
+};
+
+const BTN: React.CSSProperties = {
+  padding: "8px 12px",
+  borderRadius: 9,
+  border: "none",
+  background: TONE.green,
+  color: "#12220c",
+  fontWeight: 800,
+  fontSize: 12.5,
+  cursor: "pointer",
+  flexShrink: 0,
+};
 
 export default function SettingsScreen({
   is_desktop,
@@ -181,16 +257,13 @@ export default function SettingsScreen({
   icon?: SettingsIcon;
   onJoin: (code: string) => void;
   /**
-   * The Working Doc's PLAN tab, folded in rather than deleted.
-   *
-   * The four-tab structure (HOME / MAP / JOURNAL / PLAN) is the committee's
-   * approved framework and PLAN's brief is "from data to action". Settings
-   * carries that brief, but the long-form plan is real work that was approved
-   * and should not be orphaned by a tab rename — so it lives at the bottom,
-   * collapsed, one tap away.
+   * The Working Doc's PLAN tab, folded in rather than deleted. The four-tab
+   * structure is the committee's approved framework and PLAN is in it, so the
+   * long-form plan keeps a home at the bottom of the Path panel.
    */
   plan?: ReactNode;
 }) {
+  const [panel, setPanel] = useState<PanelKey>("why");
   const [name_draft, setNameDraft] = useState(preference.walker_name || walker_name);
   const [join_draft, setJoinDraft] = useState("");
   const stage_index = STAGE_LADDER.findIndex((s) => s.key === STAGE_NOW);
@@ -204,452 +277,487 @@ export default function SettingsScreen({
         overflowX: "hidden",
         background: TONE.panel,
         color: TONE.text,
-        padding: is_desktop ? "28px 56px 190px" : "18px 16px 190px",
+        padding: is_desktop ? "22px 56px 190px" : "14px 14px 190px",
       }}
     >
       <div style={{ maxWidth: 720, margin: is_desktop ? "0 auto" : undefined }}>
-        {/* ── the hero: what stage this is, said first ─────────────────── */}
+        {/* ── identity strip: the stage first, because it qualifies the rest ── */}
         <div
           style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "12px 14px",
             borderRadius: RADIUS.tile,
-            padding: is_desktop ? "22px 24px" : "18px 16px",
+            border: `1px solid ${TONE.edge}`,
             background:
-              "radial-gradient(120% 140% at 12% 0%, rgba(129,182,76,0.30) 0%, rgba(129,182,76,0.10) 42%, rgba(0,0,0,0) 72%), #262421",
+              "radial-gradient(120% 160% at 10% 0%, rgba(129,182,76,0.26) 0%, rgba(0,0,0,0) 68%), " +
+              TONE.card,
+          }}
+        >
+          {icon.stage && <img src={icon.stage} alt="" width={40} height={40} style={{ flexShrink: 0 }} />}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontWeight: 800, fontSize: 18 }}>Magisphere</span>
+              <Pill tone="gold">ALPHA</Pill>
+            </div>
+            <div style={{ fontSize: 11.5, color: TONE.dim, marginTop: 1, lineHeight: 1.35 }}>
+              A student field guide to the Ateneo campus forest · Youth CLAP 2026
+            </div>
+          </div>
+        </div>
+
+        {/* ── the tab bar. Five fixed columns, so it never scrolls sideways. ── */}
+        <div
+          role="tablist"
+          aria-label="Settings sections"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(5, 1fr)",
+            gap: 4,
+            marginTop: 10,
+            padding: 4,
+            borderRadius: RADIUS.tile,
+            background: "rgba(0,0,0,0.22)",
             border: `1px solid ${TONE.edge}`,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            {icon.stage && <img src={icon.stage} alt="" width={54} height={54} style={{ flexShrink: 0 }} />}
-            <div style={{ minWidth: 0 }}>
-              <div
+          {PANEL.map((row) => {
+            const is_on = panel === row.key;
+            const art = icon[row.icon];
+            return (
+              <button
+                key={row.key}
+                type="button"
+                role="tab"
+                aria-selected={is_on}
+                onClick={() => setPanel(row.key)}
                 style={{
-                  display: "inline-block",
-                  fontSize: 10,
-                  fontWeight: 900,
-                  letterSpacing: "0.12em",
-                  color: "#12220c",
-                  background: TONE.gold,
-                  borderRadius: 999,
-                  padding: "3px 9px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 2,
+                  padding: "7px 2px 6px",
+                  borderRadius: 7,
+                  border: "none",
+                  background: is_on ? TONE.green_soft : "transparent",
+                  color: is_on ? "#b2e068" : TONE.dim,
+                  fontWeight: 800,
+                  fontSize: 11,
+                  cursor: "pointer",
+                  minWidth: 0,
                 }}
               >
-                ALPHA
-              </div>
-              <h1 style={{ fontWeight: 800, fontSize: is_desktop ? 26 : 22, marginTop: 6, lineHeight: 1.15 }}>
-                Magisphere
-              </h1>
-              <p style={{ fontSize: 13, color: TONE.dim, marginTop: 2, lineHeight: 1.4 }}>
-                A field guide to the Ateneo campus forest, built by students for Youth CLAP 2026.
-              </p>
-            </div>
-          </div>
-
-          {/* The ladder, with the rung we are on lit. Four rungs, not a
-              percentage — a percentage of an unfinished thing is a guess. */}
-          <div style={{ display: "flex", gap: 6, marginTop: 16 }}>
-            {STAGE_LADDER.map((row, i) => (
-              <div key={row.key} style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    height: 5,
-                    borderRadius: 999,
-                    background: i <= stage_index ? TONE.green : "rgba(255,255,255,0.13)",
-                  }}
-                />
-                <div
-                  style={{
-                    fontSize: 10,
-                    fontWeight: i === stage_index ? 800 : 600,
-                    color: i === stage_index ? "rgba(255,255,255,0.92)" : TONE.dim,
-                    marginTop: 5,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {row.label}
-                </div>
-              </div>
-            ))}
-          </div>
-          <p style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 10, color: "rgba(255,255,255,0.78)" }}>
-            {STAGE_LADDER[stage_index].blurb}
-          </p>
+                {art ? (
+                  <img src={art} alt="" width={22} height={22} style={{ opacity: is_on ? 1 : 0.55 }} />
+                ) : (
+                  <span aria-hidden="true" style={{ height: 22 }} />
+                )}
+                {row.label}
+              </button>
+            );
+          })}
         </div>
 
-        {/* ── what it is for ───────────────────────────────────────────── */}
-        <Section icon={icon.about} title="Why this exists" caption="A minute, if you have one.">
-          {ESSAY.map((beat, i) => (
-            <Card key={beat.key} style={{ padding: 14, marginTop: i === 0 ? 0 : 10 }}>
-              <div style={{ display: "flex", gap: 10 }}>
-                <span
-                  aria-hidden="true"
-                  style={{
-                    flexShrink: 0,
-                    width: 22,
-                    height: 22,
-                    borderRadius: 999,
-                    background: TONE.green_soft,
-                    border: `1px solid ${TONE.green}`,
-                    color: TONE.green,
-                    fontSize: 11,
-                    fontWeight: 900,
-                    display: "grid",
-                    placeItems: "center",
-                  }}
-                >
-                  {i + 1}
-                </span>
-                <div style={{ minWidth: 0 }}>
-                  <h2 style={{ fontWeight: 800, fontSize: 15, lineHeight: 1.3 }}>{beat.heading}</h2>
-                  <p style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 5, color: "rgba(255,255,255,0.8)" }}>
-                    {beat.body}
-                  </p>
-                  {beat.source && (
-                    <p style={{ fontSize: 11, color: TONE.dim, marginTop: 6, fontStyle: "italic" }}>
-                      {beat.source}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </Card>
-          ))}
-        </Section>
-
-        {/* ── account ──────────────────────────────────────────────────── */}
-        <Section
-          icon={icon.account}
-          title="Your walker"
-          caption="There is no sign-in yet — this is what stands in for one."
-        >
-          <Card style={{ padding: 14 }}>
-            <label style={{ display: "block", fontSize: 11.5, fontWeight: 800, color: TONE.dim, letterSpacing: "0.04em" }}>
-              DISPLAY NAME
-            </label>
-            <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-              <input
-                value={name_draft}
-                onChange={(e) => setNameDraft(e.target.value.slice(0, 40))}
-                placeholder={walker_name}
-                aria-label="Your display name on the live campus"
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  padding: "9px 11px",
-                  borderRadius: 12,
-                  border: `1.5px solid ${TONE.edge}`,
-                  background: "rgba(0,0,0,0.22)",
-                  color: "#fff",
-                  fontSize: 14,
-                  fontWeight: 600,
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => onPreference({ ...preference, walker_name: name_draft.trim() })}
-                style={{
-                  padding: "9px 14px",
-                  borderRadius: 12,
-                  border: "none",
-                  background: TONE.green,
-                  color: "#12220c",
-                  fontWeight: 800,
-                  fontSize: 13,
-                  cursor: "pointer",
-                  flexShrink: 0,
-                }}
-              >
-                Save
-              </button>
-            </div>
-
-            <div style={{ marginTop: 14 }}>
-              <div style={{ fontSize: 11.5, fontWeight: 800, color: TONE.dim, letterSpacing: "0.04em" }}>
-                THIS WALKER'S CODE
-              </div>
-              <div
-                style={{
-                  fontSize: 22,
-                  fontWeight: 900,
-                  letterSpacing: "0.18em",
-                  marginTop: 4,
-                  color: "rgba(255,255,255,0.92)",
-                }}
-              >
-                {join_code}
-              </div>
-              <p style={{ fontSize: 12, color: TONE.dim, marginTop: 4, lineHeight: 1.45 }}>
-                Type this on a second phone to make it the same walker. It is not a password — anybody
-                with the code becomes you, so share it the way you would share a Wi-Fi name, not a PIN.
-              </p>
-            </div>
-
-            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-              <input
-                value={join_draft}
-                onChange={(e) => setJoinDraft(e.target.value.toUpperCase().slice(0, 7))}
-                placeholder="OTHER PHONE'S CODE"
-                aria-label="Join another phone's walker by code"
-                autoCapitalize="characters"
-                autoCorrect="off"
-                spellCheck={false}
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  padding: "9px 11px",
-                  borderRadius: 12,
-                  border: `1.5px solid ${TONE.edge}`,
-                  background: "rgba(0,0,0,0.22)",
-                  color: "#fff",
-                  fontSize: 14,
-                  fontWeight: 800,
-                  letterSpacing: "0.16em",
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  onJoin(join_draft);
-                  setJoinDraft("");
-                }}
-                style={{
-                  padding: "9px 14px",
-                  borderRadius: 12,
-                  border: `1.5px solid ${TONE.green}`,
-                  background: "transparent",
-                  color: TONE.green,
-                  fontWeight: 800,
-                  fontSize: 13,
-                  cursor: "pointer",
-                  flexShrink: 0,
-                }}
-              >
-                Join
-              </button>
-            </div>
-          </Card>
-
-          {/* The honest version of "Log in". */}
-          <Card style={{ padding: 14, marginTop: 10, borderColor: "rgba(247,198,49,0.35)" }}>
-            <Eyebrow>SIGN-IN · NOT YET</Eyebrow>
-            <p style={{ fontSize: 13, lineHeight: 1.5, marginTop: 6, color: "rgba(255,255,255,0.8)" }}>
-              There is no account, no password and no Ateneo sign-in. Your journal lives in this
-              browser and nowhere else — clear your browsing data and it is gone, and we cannot get it
-              back for you.
-            </p>
-            <p style={{ fontSize: 12, lineHeight: 1.5, marginTop: 8, color: TONE.dim }}>
-              That is a decision, not an oversight. Real accounts mean storing student names, photos
-              and locations, and the project has not yet agreed with Ateneo what may be collected, who
-              may see it, or how long it is kept. Those terms come first; the login comes after.
-            </p>
-          </Card>
-        </Section>
-
-        {/* ── preferences ──────────────────────────────────────────────── */}
-        <Section icon={icon.pref} title="Preferences" caption="Saved on this device.">
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <Switch
-              label="Haptics"
-              hint="A short buzz when you log a find or pick up the stick. iPhones cannot vibrate from a web page, so this does nothing there."
-              is_on={preference.is_haptic}
-              onToggle={() => onPreference({ ...preference, is_haptic: !preference.is_haptic })}
-            />
-            <Switch
-              label="Show the restricted grove"
-              hint="Draws the hatch over ground students may not enter. Turning it off only hides the drawing — the ground stays off-limits and nothing will ever spawn there."
-              is_on={preference.is_restricted_shown}
-              onToggle={() =>
-                onPreference({ ...preference, is_restricted_shown: !preference.is_restricted_shown })
-              }
-            />
-            <div
-              style={{
-                padding: "11px 12px",
-                borderRadius: RADIUS.tile,
-                border: `1px solid ${TONE.edge}`,
-                background: "rgba(255,255,255,0.04)",
-              }}
-            >
-              <div style={{ fontWeight: 700, fontSize: 14 }}>Buildings</div>
-              <div style={{ fontSize: 11.5, color: TONE.dim, marginTop: 2, lineHeight: 1.4 }}>
-                Full walls look the most solid but are drawn above the map, so a building can cover a
-                path that is actually in front of it. Shadow never does.
-              </div>
-              <div style={{ display: "flex", gap: 6, marginTop: 9 }}>
-                {(["shadow", "hollow", "solid"] as const).map((style) => (
-                  <button
-                    key={style}
-                    type="button"
-                    aria-pressed={preference.skyline_style === style}
-                    onClick={() => onPreference({ ...preference, skyline_style: style })}
-                    style={{
-                      flex: 1,
-                      padding: "7px 4px",
-                      borderRadius: 10,
-                      border: `1.5px solid ${preference.skyline_style === style ? TONE.green : TONE.edge}`,
-                      background: preference.skyline_style === style ? TONE.green_soft : "transparent",
-                      color: preference.skyline_style === style ? "#b2e068" : TONE.dim,
-                      fontWeight: 800,
-                      fontSize: 12,
-                      textTransform: "capitalize",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {style}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </Section>
-
-        {/* ── roadmap ──────────────────────────────────────────────────── */}
-        <Section icon={icon.roadmap} title="Where this is going" caption="Four rungs. We are on the first.">
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {STAGE_LADDER.map((row, i) => {
-              const is_now = i === stage_index;
-              const is_done = i < stage_index;
-              return (
-                <div
-                  key={row.key}
-                  style={{
-                    display: "flex",
-                    gap: 11,
-                    padding: "11px 12px",
-                    borderRadius: RADIUS.tile,
-                    border: `1px solid ${is_now ? "rgba(247,198,49,0.45)" : TONE.edge}`,
-                    background: is_now ? "rgba(247,198,49,0.08)" : "rgba(255,255,255,0.03)",
-                  }}
-                >
-                  <span
-                    aria-hidden="true"
-                    style={{
-                      flexShrink: 0,
-                      width: 20,
-                      height: 20,
-                      borderRadius: 999,
-                      marginTop: 2,
-                      background: is_done ? TONE.green : is_now ? TONE.gold : "rgba(255,255,255,0.12)",
-                      display: "grid",
-                      placeItems: "center",
-                      fontSize: 11,
-                      fontWeight: 900,
-                      color: "#12220c",
-                    }}
-                  >
-                    {is_done ? "✓" : i + 1}
-                  </span>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: 14 }}>
-                      {row.label}
-                      {is_now && (
-                        <span style={{ color: TONE.gold, fontSize: 11, marginLeft: 7, fontWeight: 800 }}>
-                          YOU ARE HERE
+        <div style={{ marginTop: 12 }}>
+          {/* ── WHY ─────────────────────────────────────────────────────── */}
+          {panel === "why" && (
+            <>
+              {/* Four headings, each one a whole sentence that carries its own
+                  point, with the paragraph behind a disclosure.
+                  
+                  Side by side in two columns the same four beats ran to 1,816 px
+                  — two and a bit screens of body copy for somebody who mostly
+                  wants to know what this is. Collapsed, the argument is legible
+                  in one screen and the evidence is one tap away, which is the
+                  right order for a booth. The first is open, so the panel never
+                  reads as four buttons and no content. */}
+              <Table label="Why Magisphere exists">
+                <thead>
+                  <tr>
+                    {/* px, not a bare number: a unitless CSS `width` is invalid
+                        and silently ignored, which under `tableLayout: fixed`
+                        splits the table 50/50 and gives a one-digit column half
+                        the screen. */}
+                    <Th width="42px">#</Th>
+                    <Th>The argument · tap to open</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ESSAY.map((beat, i) => (
+                    <tr key={beat.key}>
+                      <Td is_head>
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            display: "grid",
+                            placeItems: "center",
+                            width: 20,
+                            height: 20,
+                            borderRadius: 999,
+                            background: TONE.green_soft,
+                            border: `1px solid ${TONE.green}`,
+                            color: "#b2e068",
+                            fontSize: 11,
+                            fontWeight: 900,
+                          }}
+                        >
+                          {i + 1}
                         </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.72)", marginTop: 3, lineHeight: 1.45 }}>
-                      {row.blurb}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Section>
+                      </Td>
+                      <Td>
+                        <details open={i === 0}>
+                          <summary
+                            style={{
+                              cursor: "pointer",
+                              fontWeight: 800,
+                              fontSize: 13,
+                              color: "rgba(255,255,255,0.92)",
+                              lineHeight: 1.35,
+                            }}
+                          >
+                            {beat.heading}
+                          </summary>
+                          <p style={{ margin: "7px 0 0", lineHeight: 1.5 }}>{beat.body}</p>
+                          {beat.source && (
+                            <p
+                              style={{
+                                margin: "6px 0 0",
+                                fontSize: 10,
+                                color: TONE.faint,
+                                fontStyle: "italic",
+                              }}
+                            >
+                              {beat.source}
+                            </p>
+                          )}
+                        </details>
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
 
-        {/* ── partners ─────────────────────────────────────────────────── */}
-        <Section
-          icon={icon.partner}
-          title="Offices we are asking"
-          caption="What we need from each. None have agreed yet — this is the ask, not a partnership."
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {PARTNER.map((row) => (
-              <div
-                key={row.short}
-                style={{
-                  padding: "11px 12px",
-                  borderRadius: RADIUS.tile,
-                  border: `1px solid ${TONE.edge}`,
-                  background: "rgba(255,255,255,0.03)",
-                }}
-              >
-                {/* Code and status on one row, full name beneath.
-                    Sharing a wrapping row put the pill inline for "MO" and on a
-                    line of its own for "Ateneo Institute of Sustainability",
-                    so the six cards each aligned differently. The status is the
-                    thing being compared down the column, so it is the thing
-                    that gets a fixed position. */}
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontWeight: 800, fontSize: 14, flexShrink: 0 }}>{row.short}</span>
-                  <span
+              <div style={{ marginTop: 12 }}>
+                <Table label="What this is not">
+                  <thead>
+                    <tr>
+                      <Th>What this is not</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {LIMIT.map((line) => (
+                      <tr key={line}>
+                        <Td>
+                          <span aria-hidden="true" style={{ color: TONE.gold, fontWeight: 900, marginRight: 7 }}>
+                            !
+                          </span>
+                          {line}
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
+            </>
+          )}
+
+          {/* ── WALKER ──────────────────────────────────────────────────── */}
+          {panel === "walker" && (
+            <>
+              <Table label="Your walker">
+                <thead>
+                  <tr>
+                    <Th width="34%">Your walker</Th>
+                    <Th>&nbsp;</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <Td is_head>Display name</Td>
+                    <Td>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <input
+                          value={name_draft}
+                          onChange={(e) => setNameDraft(e.target.value.slice(0, 40))}
+                          placeholder={walker_name}
+                          aria-label="Your display name on the live campus"
+                          style={INPUT}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => onPreference({ ...preference, walker_name: name_draft.trim() })}
+                          style={BTN}
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </Td>
+                  </tr>
+                  <tr>
+                    <Td is_head>Walker code</Td>
+                    <Td>
+                      <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: "0.14em", color: "#fff" }}>
+                        {join_code}
+                      </div>
+                      <div style={{ fontSize: 11, color: TONE.faint, marginTop: 3, lineHeight: 1.4 }}>
+                        Not a password — anybody with it becomes you.
+                      </div>
+                    </Td>
+                  </tr>
+                  <tr>
+                    <Td is_head>Join a phone</Td>
+                    <Td>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <input
+                          value={join_draft}
+                          onChange={(e) => setJoinDraft(e.target.value.toUpperCase().slice(0, 7))}
+                          placeholder="THEIR CODE"
+                          aria-label="Join another phone's walker by code"
+                          autoCapitalize="characters"
+                          autoCorrect="off"
+                          spellCheck={false}
+                          style={{ ...INPUT, letterSpacing: "0.12em" }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onJoin(join_draft);
+                            setJoinDraft("");
+                          }}
+                          style={{
+                            ...BTN,
+                            background: "transparent",
+                            color: TONE.green,
+                            border: `1.5px solid ${TONE.green}`,
+                          }}
+                        >
+                          Join
+                        </button>
+                      </div>
+                    </Td>
+                  </tr>
+                  <tr>
+                    <Td is_head>Live campus</Td>
+                    <Td>{is_live ? <Pill tone="green">ON</Pill> : <Pill tone="grey">OFF</Pill>}</Td>
+                  </tr>
+                </tbody>
+              </Table>
+
+              <div style={{ marginTop: 12 }}>
+                <Table label="Sign-in">
+                  <thead>
+                    <tr>
+                      <Th width="34%">Sign-in</Th>
+                      <Th>Not yet — and why</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <Td is_head>Account</Td>
+                      <Td>
+                        There is none. No password, no Ateneo sign-in. Your journal lives in this browser
+                        and nowhere else.
+                      </Td>
+                    </tr>
+                    <tr>
+                      <Td is_head>If you clear data</Td>
+                      <Td>It is gone, and we cannot restore it for you.</Td>
+                    </tr>
+                    <tr>
+                      <Td is_head>Why not yet</Td>
+                      <Td>
+                        Real accounts mean storing student names, photos and locations. The project has not
+                        agreed with Ateneo what may be collected, who may see it, or how long it is kept.
+                        Those terms come first.
+                      </Td>
+                    </tr>
+                  </tbody>
+                </Table>
+              </div>
+            </>
+          )}
+
+          {/* ── SETUP ───────────────────────────────────────────────────── */}
+          {panel === "setup" && (
+            <Table label="Preferences, saved on this device">
+              <thead>
+                <tr>
+                  <Th width="42%">Setting</Th>
+                  <Th>What it does</Th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <Td is_head>
+                    <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                      <Switch
+                        is_on={preference.is_haptic}
+                        onToggle={() => onPreference({ ...preference, is_haptic: !preference.is_haptic })}
+                        label="Haptics"
+                      />
+                      Haptics
+                    </div>
+                  </Td>
+                  <Td>
+                    A short buzz when you log a find or pick up the stick. iPhones cannot vibrate from a web
+                    page, so this does nothing there.
+                  </Td>
+                </tr>
+                <tr>
+                  <Td is_head>
+                    <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                      <Switch
+                        is_on={preference.is_restricted_shown}
+                        onToggle={() =>
+                          onPreference({
+                            ...preference,
+                            is_restricted_shown: !preference.is_restricted_shown,
+                          })
+                        }
+                        label="Show the restricted grove"
+                      />
+                      Restricted grove
+                    </div>
+                  </Td>
+                  <Td>
+                    Draws the hatch over ground students may not enter. Turning it off hides the drawing only
+                    — the ground stays off-limits and nothing ever spawns there.
+                  </Td>
+                </tr>
+                <tr>
+                  <Td is_head>
+                    Buildings
+                    <div style={{ display: "flex", gap: 4, marginTop: 7 }}>
+                      {(["shadow", "hollow", "solid"] as const).map((style) => (
+                        <button
+                          key={style}
+                          type="button"
+                          aria-pressed={preference.skyline_style === style}
+                          onClick={() => onPreference({ ...preference, skyline_style: style })}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            padding: "5px 2px",
+                            borderRadius: 7,
+                            border: `1.5px solid ${
+                              preference.skyline_style === style ? TONE.green : TONE.edge
+                            }`,
+                            background: preference.skyline_style === style ? TONE.green_soft : "transparent",
+                            color: preference.skyline_style === style ? "#b2e068" : TONE.dim,
+                            fontWeight: 800,
+                            fontSize: 10.5,
+                            textTransform: "capitalize",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {style}
+                        </button>
+                      ))}
+                    </div>
+                  </Td>
+                  <Td>
+                    Full walls look most solid but are drawn above the map, so a building can cover a path
+                    that is actually in front of it. Shadow never does.
+                  </Td>
+                </tr>
+              </tbody>
+            </Table>
+          )}
+
+          {/* ── PATH ────────────────────────────────────────────────────── */}
+          {panel === "path" && (
+            <>
+              <Table label="Where this is going">
+                <thead>
+                  <tr>
+                    <Th width="30%">Stage</Th>
+                    <Th>What changes</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {STAGE_LADDER.map((row, i) => (
+                    <tr
+                      key={row.key}
+                      style={{ background: i === stage_index ? "rgba(247,198,49,0.07)" : undefined }}
+                    >
+                      <Td is_head>
+                        {row.label}
+                        <div style={{ marginTop: 4 }}>
+                          {i < stage_index ? (
+                            <Pill tone="green">DONE</Pill>
+                          ) : i === stage_index ? (
+                            <Pill tone="gold">NOW</Pill>
+                          ) : (
+                            <Pill tone="grey">LATER</Pill>
+                          )}
+                        </div>
+                      </Td>
+                      <Td>{row.blurb}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+
+              {plan && (
+                <details style={{ marginTop: 12 }}>
+                  <summary
                     style={{
-                      marginLeft: "auto",
-                      flexShrink: 0,
-                      fontSize: 10,
+                      cursor: "pointer",
+                      padding: "10px 12px",
+                      borderRadius: RADIUS.tile,
+                      border: `1px solid ${TONE.edge}`,
+                      background: TONE.card,
                       fontWeight: 800,
-                      letterSpacing: "0.04em",
-                      color: row.is_confirmed ? "#b2e068" : "rgba(255,255,255,0.45)",
-                      border: `1px solid ${row.is_confirmed ? "rgba(129,182,76,0.5)" : "rgba(255,255,255,0.14)"}`,
-                      borderRadius: 999,
-                      padding: "2px 7px",
-                      whiteSpace: "nowrap",
+                      fontSize: 13,
                     }}
                   >
-                    {row.is_confirmed ? "AGREED" : "NOT YET ASKED"}
-                  </span>
-                </div>
-                <div style={{ fontSize: 11.5, color: TONE.dim, marginTop: 1 }}>{row.name}</div>
-                <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.75)", marginTop: 6, lineHeight: 1.45 }}>
-                  {row.ask}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Section>
+                    The full Youth CLAP plan
+                  </summary>
+                  <div style={{ marginTop: 12 }}>{plan}</div>
+                </details>
+              )}
+            </>
+          )}
 
-        {/* ── limits ───────────────────────────────────────────────────── */}
-        <Section title="What this is not">
-          <Card style={{ padding: 14, borderColor: "rgba(255,255,255,0.12)" }}>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 9 }}>
-              {LIMIT.map((line) => (
-                <li key={line} style={{ display: "flex", gap: 9, fontSize: 13, lineHeight: 1.5 }}>
-                  <span aria-hidden="true" style={{ color: TONE.gold, fontWeight: 900, flexShrink: 0 }}>
-                    !
-                  </span>
-                  <span style={{ color: "rgba(255,255,255,0.8)" }}>{line}</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        </Section>
+          {/* ── ASKS ────────────────────────────────────────────────────── */}
+          {panel === "asks" && (
+            <>
+              <p style={{ fontSize: 12, color: TONE.dim, margin: "0 0 10px", lineHeight: 1.45 }}>
+                What we need from each office.{" "}
+                <b style={{ color: "rgba(255,255,255,0.82)" }}>None have agreed yet</b> — this is the ask,
+                not a partnership.
+              </p>
+              <Table label="Offices we are asking">
+                <thead>
+                  <tr>
+                    <Th width="30%">Office</Th>
+                    <Th>What we need</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {PARTNER.map((row) => (
+                    <tr key={row.short}>
+                      <Td is_head>
+                        {row.short}
+                        <div style={{ fontSize: 10.5, fontWeight: 500, color: TONE.faint, marginTop: 2 }}>
+                          {row.name}
+                        </div>
+                        <div style={{ marginTop: 5 }}>
+                          {row.is_confirmed ? <Pill tone="green">AGREED</Pill> : <Pill tone="grey">NOT YET</Pill>}
+                        </div>
+                      </Td>
+                      <Td>{row.ask}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </>
+          )}
+        </div>
 
-        {plan && (
-          <Section title="The full plan" caption="The Youth CLAP plan this app was built against.">
-            <details>
-              <summary
-                style={{
-                  cursor: "pointer",
-                  padding: "11px 12px",
-                  borderRadius: RADIUS.tile,
-                  border: `1px solid ${TONE.edge}`,
-                  background: "rgba(255,255,255,0.04)",
-                  fontWeight: 700,
-                  fontSize: 14,
-                  listStyle: "none",
-                }}
-              >
-                Open the plan
-              </summary>
-              <div style={{ marginTop: 12 }}>{plan}</div>
-            </details>
-          </Section>
-        )}
-
-        <p style={{ fontSize: 11, color: TONE.dim, marginTop: 24, lineHeight: 1.5 }}>
-          Youth CLAP 2026 · student prototype · not an official AIS product.{" "}
-          {is_live ? "Live campus is on." : "Live campus is off — the board and partners are idle."}
+        <p style={{ fontSize: 10.5, color: TONE.faint, marginTop: 18, lineHeight: 1.5 }}>
+          Youth CLAP 2026 · student prototype · not an official AIS product.
         </p>
       </div>
     </div>
