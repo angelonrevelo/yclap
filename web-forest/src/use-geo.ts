@@ -6,6 +6,7 @@ import {
   headingFromKey,
   headingFromStick,
   isWalkable,
+  PLAY_DEFAULT_SPAN_M,
   playMeterForTick,
   stepPlayWalk,
   stepToward,
@@ -74,6 +75,15 @@ function applyKey(held: PlayHeld, code: string, is_down: boolean): PlayHeld | nu
 export function useGeo(
   mode: GeoMode,
   bearing_degree = 0,
+  /**
+   * How much ground the camera can see, in metres.
+   *
+   * The stick's pace is a fraction of this, so steering feels the same whether
+   * the camera is at the street or pulled back — see `play-walk.ts`. Omitted,
+   * it falls back to the close camera's span, which is what the keyboard used
+   * before any of this was zoom-aware.
+   */
+  view_span_m = PLAY_DEFAULT_SPAN_M,
 ): GeoState & {
   is_off_campus: boolean;
   walkTo: (point: LatLon) => void;
@@ -91,6 +101,11 @@ export function useGeo(
   last_fix.current = state.fix;
   const bearing_ref = useRef(bearing_degree);
   bearing_ref.current = bearing_degree;
+  /* A ref, not a dependency: the span changes on every zoom frame and the walk
+     tick reads it when it ticks. Listing it would tear down and rebuild the
+     keyboard listeners and the interval sixty times a second mid-gesture. */
+  const span_ref = useRef(view_span_m);
+  span_ref.current = view_span_m;
 
   const publishPlay = useCallback((point: LatLon) => {
     play_at.current = point;
@@ -226,7 +241,7 @@ export function useGeo(
       const heading =
         stick_heading ?? headingFromKey(held.current, bearing_ref.current);
       const throttle = stick_heading === null ? 1 : throttleFromStick(stick.current);
-      const meter = playMeterForTick(dt, is_run.current, throttle);
+      const meter = playMeterForTick(dt, is_run.current, throttle, span_ref.current);
       let at = play_at.current;
       if (heading !== null) at = stepPlayWalk(at, heading, meter);
       else if (destination.current) {

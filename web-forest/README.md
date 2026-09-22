@@ -102,7 +102,15 @@ The play layer, wired in `src/live.tsx`:
   nothing to press. It drives
   the same `play` source WASD drives, under the same rules (inside
   `CAMPUS_BOX`, outside the restricted grove), so a stick walk and a GPS walk
-  produce the same journal. **It is not a GPS spoofer**: the fix it makes is
+  produce the same journal. Its PACE, though, is its own: the stick moves at a
+  fraction of the visible ground per second (`stickTopPaceMs`), not at
+  `WALK_PACE_MS`. 1.3 m/s is the real preferred walking speed and it is a claim
+  the app prints — every "≈4 min walk" caption comes from it — but on glass it
+  crossed the street camera in twenty seconds and reached a find sixty metres
+  out in three quarters of a minute. Quoting the pace against the camera is what
+  makes it feel the same at z19 and z22. The throttle IS the speed, so a thumb
+  can reach the top of the range; speed used to live on Shift, which a phone
+  does not have. **It is not a GPS spoofer**: the fix it makes is
   tagged `source: "play"`, and every surface that shows a position says which
   of the three it is. The position source now has its own control on the play
   view itself, not only behind the field layers.

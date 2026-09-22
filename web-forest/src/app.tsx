@@ -88,7 +88,7 @@ import {
   type GamifySnapshot,
   type PointEvent,
 } from "./gamify";
-import { CAMPUS_CENTER, formatLatLon, formatMeter, formatWalkMinute, WALK_PACE_MS, type GeoState } from "./geo";
+import { CAMPUS_CENTER, formatLatLon, formatMeter, formatWalkMinute, meterPerPixel, WALK_PACE_MS, type GeoState } from "./geo";
 import { LAYER_ORDER, nextLayer, prefetchCampus, SOURCE, type Layer, type View } from "./tile-map";
 import { geoModeLabel, nextGeoMode, useGeo, type GeoMode } from "./use-geo";
 import { biomePresenceAt, rankEncounter, sectorResident, type BiomePresence } from "./nearby";
@@ -3104,7 +3104,13 @@ export default function App() {
   const [is_trainer_open, setTrainerOpen] = useState(false);
   const [is_nearby_open, setNearbyOpen] = useState(false);
   const { is_desktop } = useDesktop();
-  const geo = useGeo(geo_mode, bearing);
+  /* How much ground is on screen, so the stick's pace tracks the camera rather
+     than crawling at the wide end and racing at the close one. A nominal 800 px
+     of viewport height — the exact figure only has to be the right order, and
+     plumbing the real container size up here to get it would be a lot of wiring
+     for a pace. */
+  const view_span_m = meterPerPixel(view.lat, Math.round(view.zoom)) * 800;
+  const geo = useGeo(geo_mode, bearing, view_span_m);
   const seen_sector = useMemo(() => seenSector(sighting), [sighting]);
   /* The rotating world. One fetch of the real sweep, recomputed when the
      30-minute window rolls — see `live.tsx`. Quiet sectors get more finds, and

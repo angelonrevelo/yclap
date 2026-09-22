@@ -9,7 +9,6 @@
 import { RESTRICTED_POLYGON } from "./data.ts";
 import {
   DEMO_WALK,
-  WALK_PACE_MS,
   bearingDegree,
   distanceMeter,
   isInsideCampus,
@@ -20,8 +19,57 @@ import {
 export const PLAY_START: LatLon = DEMO_WALK[0];
 
 export const PLAY_TICK_MS = 50;
-/** Shift multiplies walking pace. 3× is a jog, not a teleport. */
-export const PLAY_RUN_MULTIPLIER = 3;
+
+/**
+ * Shift, on a keyboard, on top of whatever the stick is already giving you.
+ *
+ * Only 2× now, because the stick itself carries the range: full deflection is
+ * already the fast end. It used to be the ONLY way to move at any speed, and it
+ * needed a key — which meant that on the phone the showcase is demoed from,
+ * where there is no Shift, there was no way to go faster at all.
+ */
+export const PLAY_RUN_MULTIPLIER = 2;
+
+/* ── how fast the stick walks ────────────────────────────────────────────────
+ *
+ * The stick used to move you at `WALK_PACE_MS`, 1.3 m/s, the real preferred
+ * walking speed of an adult. That is the right number for the "≈4 min walk"
+ * captions — it is a claim the app makes on screen and it must not move — and
+ * it is the wrong number for a thumb on a glass screen. At the street camera
+ * 1.3 m/s crosses the visible ground in about twenty seconds and reaches a find
+ * sixty metres off in three quarters of a minute. At a booth, with somebody
+ * else waiting for the phone, that reads as broken.
+ *
+ * So the stick gets its own pace, and it is deliberately NOT a walking speed:
+ * it is a camera-traversal speed, quoted as a fraction of the visible ground
+ * per second. Expressing it that way is what makes it feel the same at z19 and
+ * at z22 — a fixed m/s crawls when the camera is wide and races when it is
+ * close, because the same distance is a different fraction of the screen.
+ *
+ * Nothing here touches `WALK_PACE_MS`, the walking-minute captions, or the demo
+ * loop, which is still a real walk because a projector is showing a real walk.
+ */
+
+/** Fraction of the visible span the stick covers per second at full throw. */
+export const PLAY_SPAN_PER_SECOND = 0.3;
+
+/** Floor and ceiling, so neither camera end produces a crawl or a teleport. */
+export const PLAY_PACE_FLOOR_MS = 2.5;
+export const PLAY_PACE_CEILING_MS = 16;
+
+/** Visible span assumed when the caller does not know the camera. ~z22. */
+export const PLAY_DEFAULT_SPAN_M = 30;
+
+/**
+ * Top speed for a given camera, in metres per second.
+ *
+ * Clamped at both ends: wide open the fraction would ask for a car, and at the
+ * closest camera it would ask for less than a walk.
+ */
+export function stickTopPaceMs(span_m: number): number {
+  const want = PLAY_SPAN_PER_SECOND * Math.max(0, span_m);
+  return Math.max(PLAY_PACE_FLOOR_MS, Math.min(PLAY_PACE_CEILING_MS, want));
+}
 
 function inRestricted(point: LatLon): boolean {
   const ring = RESTRICTED_POLYGON;
@@ -167,7 +215,20 @@ export function throttleFromStick(stick: PlayStick): number {
   return (throw_ - STICK_DEADZONE) / (1 - STICK_DEADZONE);
 }
 
-export function playMeterForTick(dt_ms: number, is_run: boolean, throttle = 1): number {
-  const pace = WALK_PACE_MS * (is_run ? PLAY_RUN_MULTIPLIER : 1);
-  return pace * (dt_ms / 1000) * Math.max(0, Math.min(1, throttle));
+/**
+ * Metres to move this tick.
+ *
+ * `throttle` is the stick's deflection, so the speed is analog end to end: a
+ * nudge is a walk and a full push is the top of the range. That is the whole
+ * reason the run key is no longer load-bearing — a thumb can already ask for
+ * the fast end, which a thumb could not do when speed lived on Shift.
+ */
+export function playMeterForTick(
+  dt_ms: number,
+  is_run: boolean,
+  throttle = 1,
+  span_m = PLAY_DEFAULT_SPAN_M,
+): number {
+  const top = stickTopPaceMs(span_m) * (is_run ? PLAY_RUN_MULTIPLIER : 1);
+  return top * (dt_ms / 1000) * Math.max(0, Math.min(1, throttle));
 }
