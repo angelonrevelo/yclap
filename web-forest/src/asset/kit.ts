@@ -2,6 +2,8 @@ import settings_account from "./icon/settings/account.png";
 import settings_pref from "./icon/settings/pref.png";
 import settings_roadmap from "./icon/settings/roadmap.png";
 import settings_stage from "./icon/settings/stage.png";
+import settings_about from "./icon/settings/about.png";
+import settings_partner from "./icon/settings/partner.png";
 import home from "./icon/home.png";
 import map from "./icon/map.png";
 import journal from "./icon/journal.png";
@@ -136,6 +138,8 @@ export const settings_icon: {
   partner?: string;
   about?: string;
 } = {
+  partner: settings_partner,
+  about: settings_about,
   account: settings_account,
   pref: settings_pref,
   roadmap: settings_roadmap,

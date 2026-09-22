@@ -575,9 +575,14 @@ export default function SettingsScreen({
                   background: "rgba(255,255,255,0.03)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ fontWeight: 800, fontSize: 14 }}>{row.short}</span>
-                  <span style={{ fontSize: 11.5, color: TONE.dim, minWidth: 0 }}>{row.name}</span>
+                {/* Code and status on one row, full name beneath.
+                    Sharing a wrapping row put the pill inline for "MO" and on a
+                    line of its own for "Ateneo Institute of Sustainability",
+                    so the six cards each aligned differently. The status is the
+                    thing being compared down the column, so it is the thing
+                    that gets a fixed position. */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontWeight: 800, fontSize: 14, flexShrink: 0 }}>{row.short}</span>
                   <span
                     style={{
                       marginLeft: "auto",
@@ -595,7 +600,8 @@ export default function SettingsScreen({
                     {row.is_confirmed ? "AGREED" : "NOT YET ASKED"}
                   </span>
                 </div>
-                <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.75)", marginTop: 5, lineHeight: 1.45 }}>
+                <div style={{ fontSize: 11.5, color: TONE.dim, marginTop: 1 }}>{row.name}</div>
+                <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.75)", marginTop: 6, lineHeight: 1.45 }}>
                   {row.ask}
                 </div>
               </div>
