@@ -36,6 +36,8 @@ npm run sync       # live campus world on :8788 (Vite proxies /sync /live /world
 npm run build      # tsc --noEmit && vite build
 npm test           # node --test
 npm run lint
+npm run handset    # build, then serve over HTTPS on the LAN for a real phone
+npm run deploy     # build, then wrangler deploy (needs `wrangler login` first)
 ```
 
 Port 4177 is claimed with `strictPort`, so a collision fails loudly rather than

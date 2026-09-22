@@ -7,7 +7,7 @@ Ateneo desk for the **Youth Climate Leadership Accelerator Project (Youth CLAP)*
 | What | Where | Command |
 |------|--------|---------|
 | **YCLAP landing** | `web/` | `cd web && npm run dev` (port 9500) |
-| **Magisphere PWA** | `web-forest/` | `cd web-forest && npm run dev` (port **4177**) — a rotating world of finds, 1,098 3D species, badges, GPS walk, camera + iNaturalist identify, offline. See [`web-forest/README.md`](web-forest/README.md) |
+| **Magisphere PWA** | `web-forest/` | `cd web-forest && npm run dev` (port **4177**) — a rotating world of finds, 1,098 3D species, badges, camera + iNaturalist identify, offline. GPS walk, an on-screen **thumbstick** for a venue with no campus trees, a locked GO camera with continuous zoom, a shadow **skyline** from 75 real building heights, walking partners + group streak, and a **Settings** tab that says what stage this is at. See [`web-forest/README.md`](web-forest/README.md) |
 | **Magisphere sync** | `web-forest/` | `npm run sync` (port **8788**) — live campus world. Vite on 4177 proxies `/sync` `/live` `/world`. Production is same-origin on the Worker. No auth, no official rank |
 | **Gargar pilot** | `~/Codex/gargar` | `cd ~/Codex/gargar && npm run dev` |
 | **EcoWaste intel** | `~/Antigravity/ecowaste` | `npm run dev` there |

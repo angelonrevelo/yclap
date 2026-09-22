@@ -19,7 +19,7 @@ For older rejected ideas (carbon product, second recycling app, and similar), se
 | **Home** | The play map at street level (z22): player card (level, points, weekly streak), daily-hunt quest card, bottom tab bar with a raised Go. The trainer sheet holds challenges and the local demo leaderboard |
 | **Map** | Explore nearby finds / spawns, Demo campus for off-site demos, species cards with 3D, optional camera log, Open in Seek |
 | **Journal** | Personal finds on this device, points + streak + challenges + Biodiversity Buddy, optional photos, collection / badge shelf. Local observation statuses. Private device journal |
-| **Plan** | What the site is for, who we still hope to consult (AIS, MO, CFMO/TAW, orgs), how another campus could copy the four surfaces |
+| **Settings** *(was Plan)* | Five tabbed tables: why this exists, your walker, preferences, the stage ladder (**alpha**), and the offices we are asking — each marked NOT YET, because none have agreed. `/plan` still resolves here and the full Youth CLAP plan is folded in under Path |
 
 ### What is in the product today
 
@@ -98,6 +98,11 @@ Angelo overruled the prior "NOT DOING gamification" stance for Magisphere. These
 | **GO camera (locked, banded zoom)** | Shipped (P0) | Welded to the walker; drag rotates, never pans off. z19–z22 only in play. Field view keeps the campus diagram |
 | **Thumbstick (venue demo)** | Shipped (P0) | 26 Sep is in a hall with no campus trees. Drives the same `play` source as WASD under the same walkability rules. Tagged `source: "play"`, never presented as GPS |
 | **Near-field spawns** | Shipped (P0) | Dense field on a campus-fixed grid around the walker, unioned with the campus-wide world further out. Walking finds dice already cast, so two phones still agree |
+| **Off-campus fix falls back to the stick** | Shipped (P0) | A playtest at the venue's own coordinates found the one case the stick exists for was the one that fell through: a clean fix a few km away kept the app in GPS mode, hid the stick and showed an empty screen. It now switches itself and says why |
+| **Continuous zoom + pinch** | Shipped (P0) | Fractional zoom ported from `tripi` — tile grid stays integer, the fraction rides a CSS scale, a frame loop eases toward a goal. Two fingers pinch AND rotate; before, they only rotated, so a phone could not zoom at all |
+| **Stick pace decoupled from the walk** | Shipped (P0) | The stick moved at `WALK_PACE_MS` (1.3 m/s), which is a claim the app prints and useless as a control. It now traverses a fraction of the visible ground per second, and the throttle IS the speed — speed used to live on Shift, which a phone has not got |
+| **Haptics** | Shipped (P1) | Second, eyes-free confirmation channel on the stick, on a find in reach, and on points. Honest that iOS Safari has no `navigator.vibrate` at all, so nothing is ever only haptic |
+| **Ground rings lie flat** | Fixed (P1) | The reach radius was a hand-squashed `<ellipse>` inside a plane the browser already tilts — foreshortened twice, and axis-aligned, so rotating the camera stood it on edge. Plain circles now; the plane's own transform does it |
 | **Blindbox / cosmetic reveals** | Partial | Stage cosmetics already exist; not the Working Doc blindbox product yet |
 
 ---
