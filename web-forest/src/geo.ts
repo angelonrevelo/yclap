@@ -18,10 +18,13 @@ export interface LatLon {
   lon: number;
 }
 
+/** Where a fix came from. "play" is player-steered; "demo" is the scripted loop. */
+export type FixSource = "gps" | "demo" | "play";
+
 export interface Fix extends LatLon {
   accuracy_m: number;
   at: number;
-  source: "gps" | "demo";
+  source: FixSource;
 }
 
 /**
@@ -103,7 +106,7 @@ export function formatLatLon(point: LatLon): string {
   return `${point.lat.toFixed(5)}, ${point.lon.toFixed(5)}`;
 }
 
-export type GeoStatus = "idle" | "prompting" | "watching" | "denied" | "unavailable" | "demo";
+export type GeoStatus = "idle" | "prompting" | "watching" | "denied" | "unavailable" | "demo" | "play";
 
 export interface GeoState {
   status: GeoStatus;

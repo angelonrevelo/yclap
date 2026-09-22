@@ -1,7 +1,7 @@
 import { picker_order } from "./data.ts";
 import { biomeContains, biome as biome_row, type Biome } from "./biome.ts";
 import { sectorAt, sectorContains, sector as sector_list, type Sector } from "./sector.ts";
-import { distanceMeter, formatLatLon, type Fix, type LatLon } from "./geo.ts";
+import { distanceMeter, formatLatLon, type Fix, type FixSource, type LatLon } from "./geo.ts";
 import { stageFor, toNextStage, type Stage } from "./stage.ts";
 
 export interface Sighting {
@@ -15,8 +15,8 @@ export interface Sighting {
   lat: number | null;
   lon: number | null;
   accuracy_m: number | null;
-  /** "gps" = a real device fix. "demo" = the scripted stage walk. */
-  fix_source: "gps" | "demo" | null;
+  /** "gps" = a real device fix. "demo" = the scripted stage loop. "play" = you steered. */
+  fix_source: FixSource | null;
   note: string | null;
   walk_id: string | null;
   /**
@@ -41,7 +41,7 @@ export interface WalkFix {
   lat: number;
   lon: number;
   at: number;
-  source: "gps" | "demo";
+  source: FixSource;
 }
 
 export interface Walk {
@@ -98,7 +98,7 @@ function parse(raw: string | null): Sighting[] {
           lat: num(r.lat),
           lon: num(r.lon),
           accuracy_m: num(r.accuracy_m),
-          fix_source: source === "gps" || source === "demo" ? source : null,
+          fix_source: source === "gps" || source === "demo" || source === "play" ? source : null,
           note: str(r.note),
           walk_id: str(r.walk_id),
           entry_kind: kind,
@@ -129,7 +129,7 @@ export interface SightingDraft {
   photo_data: string | null;
   inat_scientific_name?: string | null;
   inat_common_name?: string | null;
-  point?: (LatLon & { accuracy_m: number; source: "gps" | "demo" }) | null;
+  point?: (LatLon & { accuracy_m: number; source: FixSource }) | null;
   note?: string | null;
   walk_id?: string | null;
   entry_kind?: "badge" | "contribution";
@@ -520,7 +520,7 @@ export interface WalkReceipt {
   new_species_code: string[];
   new_species_count: number;
   /** "demo" when the stage loop drove the walk — said out loud on the receipt. */
-  fix_source: "gps" | "demo" | null;
+  fix_source: FixSource | null;
   is_demo: boolean;
 }
 
@@ -545,7 +545,13 @@ export function walkReceipt(walk: Walk, row: Sighting[], ended_at = new Date().t
 
   const new_species_code = species_code.filter((code) => !seen_before.has(code));
   const source_seen = new Set([...walk.track.map((p) => p.source), ...mine.map((s) => s.fix_source)]);
-  const fix_source = source_seen.has("demo") ? "demo" : source_seen.has("gps") ? "gps" : null;
+  const fix_source = source_seen.has("demo")
+    ? "demo"
+    : source_seen.has("gps")
+      ? "gps"
+      : source_seen.has("play")
+        ? "play"
+        : null;
   const elapsed_ms = new Date(ended_at).getTime() - new Date(walk.started_at).getTime();
 
   return {

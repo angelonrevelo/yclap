@@ -90,8 +90,14 @@ Angelo overruled the prior "NOT DOING gamification" stance for Magisphere. These
 | **Challenges** | Shipped basic (P1) | Discover 2 species / Explore 2 areas. 09-09 wants a **daily hunt** (one tree + sector hint), not just these counters |
 | **Biodiversity Buddy** | Shipped basic (P1) | Seedling → Sprout → Young Tree → Mature Tree from weekly streak. Art can stay simple placeholders |
 | **Local observation statuses** | Scaffold (P2) | Device journal labels only. No human reviewer queue; no "updates AIS dataset" claim |
-| **Group streak** | Not started | 09-09 Sophie / Ivan (`1:34:05`). Feasibility TBD |
-| **09-09 play layer (Home HUD, daily hunt, anti-spam)** | Shipped on-device (P0) | GO Home, daily hunt card, Hunt 40 > Observe 25, `observe:${code}:${sector}` anti-spam, quiet-sector spawn bias. Group streak still not started |
+| **Group streak** | Shipped (P1) | 09-09 Sophie / Ivan (`1:34:05`), Working Doc "Note to Gelo", 09-21 (`35:37`). Group week is alive if ANY member walks it. `friend.ts`. A streak, never a total — a total is a leaderboard |
+| **Friends system** | Shipped, one-sided (P1) | 09-21 (`29:17`). Local roster, add by six-character walker code. Nobody is notified; the card says so. A mutual graph waits on the consent/retention decision the Working Doc still lists as open |
+| **Streak as a flame on the buddy** | Shipped (P1) | 09-21 (`38:13`, `40:00`). Hotter, not bigger; never overlaps the plant; always numbered. `streak-heat.ts` pins the rule, `friend.test.ts` asserts it |
+| **09-09 play layer (Home HUD, daily hunt, anti-spam)** | Shipped on-device (P0) | GO Home, daily hunt card, Hunt 40 > Observe 25, `observe:${code}:${sector}` anti-spam, quiet-sector spawn bias |
+| **3D buildings (skyline)** | Shipped as shadow (P1) | 75 curated footprints + real heights imported from sisia. Drawn as footprint + soft drop. Full prisms exist behind `?skyline=solid\|hollow` but cannot depth-sort against in-plane paths, so they are not the default. Sports grounds excluded — a pitch is ground |
+| **GO camera (locked, banded zoom)** | Shipped (P0) | Welded to the walker; drag rotates, never pans off. z19–z22 only in play. Field view keeps the campus diagram |
+| **Thumbstick (venue demo)** | Shipped (P0) | 26 Sep is in a hall with no campus trees. Drives the same `play` source as WASD under the same walkability rules. Tagged `source: "play"`, never presented as GPS |
+| **Near-field spawns** | Shipped (P0) | Dense field on a campus-fixed grid around the walker, unioned with the campus-wide world further out. Walking finds dice already cast, so two phones still agree |
 | **Blindbox / cosmetic reveals** | Partial | Stage cosmetics already exist; not the Working Doc blindbox product yet |
 
 ---
@@ -169,7 +175,12 @@ Room decisions that still stand: omit “round opens”; same map for discovery 
 
 | Behavior | Surface | Tier 3 | Status |
 |----------|---------|--------|--------|
-| Group streak | Journal / Home | PASS iff two or more device-local names share a week key | Not started |
+| Group streak | Trainer sheet | PASS iff one member's find keeps the group's week alive while the others are idle | Shipped — `friend.test.ts` "stays alive on one member's week" |
+| Group streak is not a total | Trainer sheet | PASS iff 1 find and 50 finds in one week produce the same streak | Shipped — `friend.test.ts` "is a streak, not a scoreboard" |
+| Flame stays small | Buddy / trainer | PASS iff the flame grows at most 14% across the whole streak range | Shipped — `FLAME_MAX_GROWTH`, asserted at 520 weeks |
+| Skyline never hides a path | Play map | PASS iff the default style draws no wall over in-plane geometry | Shipped — `shadow` is default; `solid` kept behind `?skyline=` and documented as artefacted |
+| Play camera cannot reach the survey zoom | Play map | PASS iff zoom is clamped to 19..22 and a drag does not move the centre | Shipped — `min_zoom` + `is_pan_locked` |
+| Stick walk obeys the same ground rules as GPS | Play map | PASS iff a stick step off campus or into the grove is refused | Shipped — `stepPlayWalk` is the shared path; `play-walk.test.ts` |
 | Quiet restricted-area treatment | Map | PASS iff restricted ground is gray / black and is not explained in a paragraph | Partial — hatch exists; still obvious as off-limits |
 
 ### Triage (do not treat as showcase must-ship)

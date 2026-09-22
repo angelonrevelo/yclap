@@ -193,7 +193,7 @@ describe("toCsv", () => {
 const a_sector = sector.find((s) => s.is_biome)!;
 const b_sector = sector.find((s) => s.is_biome && s.sector_code !== a_sector.sector_code)!;
 
-function fixAt(lat: number, lon: number, at: number, source: "gps" | "demo" = "gps"): WalkFix {
+function fixAt(lat: number, lon: number, at: number, source: "gps" | "demo" | "play" = "gps"): WalkFix {
   return { lat, lon, at, source };
 }
 
@@ -275,6 +275,10 @@ describe("walkReceipt", () => {
 
     const real = walkReceipt(walkOf({ track: [fixAt(14.6386, 121.0785, 1, "gps")] }), []);
     assert.equal(real.is_demo, false);
+
+    const play = walkReceipt(walkOf({ track: [fixAt(14.6386, 121.0785, 1, "play")] }), []);
+    assert.equal(play.fix_source, "play");
+    assert.equal(play.is_demo, false);
   });
 
   it("reports elapsed minutes from the two timestamps", () => {

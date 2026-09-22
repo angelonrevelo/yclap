@@ -1,0 +1,277 @@
+import { useMemo } from "react";
+import {
+  building as all_building,
+  buildingNear,
+  extrude,
+  riseAtScale1,
+  ringCentre,
+  roofColour,
+  type CampusBuilding,
+  type ScreenPoint,
+} from "./building";
+import type { LatLon } from "./geo";
+import type { Projection } from "./tile-map";
+
+/**
+ * The campus skyline, drawn in screen space above the raked ground.
+ *
+ * It has to be screen space. Everything in `TileMap`'s `children` lives inside
+ * one CSS 3D transform, which is what welds a marker to its feature for free —
+ * and which is also exactly why a building cannot be drawn there. Geometry
+ * inside that plane IS the plane; there is no direction in it that points up
+ * out of the ground. A prism's whole content is the offset between its roof and
+ * its footprint, so it is computed against `toScreen` and painted on the glass.
+ *
+ * The cost of that choice, stated rather than hidden: the skyline does not
+ * occlude the walker. Markers and the character draw above it at `zIndex` 3 and
+ * up, so you never lose yourself behind Areté. Under a 52° rake that reads as a
+ * camera that keeps its subject visible, which is the behaviour the genre has
+ * anyway — and the alternative is a depth buffer, which is a renderer.
+ */
+
+/** How far out buildings are drawn, in metres from the camera centre. */
+const DRAW_RADIUS_M = 420;
+
+/** Don't label a building whose roof is smaller than this on screen. */
+const LABEL_MIN_PX = 90;
+
+/**
+ * At most this many building names at once.
+ *
+ * The sector layer learned this the expensive way — naming all 103 sectors was
+ * the clutter, not the sectors — and a skyline with 105 buildings on it is the
+ * same mistake with a different noun. Three is enough to tell you which part of
+ * campus you are looking at; the fourth is decoration on top of a map that
+ * already has labels of its own.
+ */
+const MAX_LABEL = 3;
+
+/** Keep a label this far inside the glass, so none of it is ever cut off. */
+const LABEL_MARGIN_PX = 76;
+
+/**
+ * How much of a building to draw.
+ *
+ * This is a choice, not a setting, and the reason it is a choice is a real
+ * limit of the approach. The prism is painted on the glass, above the whole
+ * tilted plane, so it cannot depth-sort against anything IN that plane — a
+ * footpath running between you and a building is drawn first and then covered
+ * by it. At a raked camera that is visible and it is wrong.
+ *
+ *   `solid`  — full prism. The most building-like, and the one that covers paths.
+ *   `hollow` — roof cap and wall EDGES only. The path still reads through it.
+ *   `shadow` — no walls at all: the footprint and a soft drop, so a building has
+ *              weight and an outline and never occludes anything.
+ *
+ * `shadow` is the only one of the three with no artefact, because it is the
+ * only one that does not claim a volume it cannot depth-sort.
+ */
+export type SkylineStyle = "solid" | "hollow" | "shadow";
+
+interface Props {
+  projection: Projection;
+  /** Camera centre — what the cull is measured from. */
+  centre: LatLon;
+  /** Names on the big ones. Off while the camera is moving fast. */
+  is_labelled?: boolean;
+  style?: SkylineStyle;
+}
+
+interface Drawn {
+  row: CampusBuilding;
+  roof: string;
+  /** The footprint on screen — drawn blurred, as the building's own shadow. */
+  ground: string;
+  wall: { d: string; light: number }[];
+  depth: number;
+  label: { x: number; y: number; width: number } | null;
+}
+
+function shade(hex: string, light: number): string {
+  /* Walls are the roof colour taken down toward a warm shadow. Multiplying
+     toward black instead goes grey and the campus reads as concrete. */
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const k = 0.46 + light * 0.46;
+  const mix = (c: number, floor: number) => Math.round(c * k + floor * (1 - k));
+  return `rgb(${mix(r, 122)},${mix(g, 108)},${mix(b, 88)})`;
+}
+
+export default function Skyline({
+  projection,
+  centre,
+  is_labelled = true,
+  style = "shadow",
+}: Props) {
+  const { project, toScreen, meter_per_pixel, tilt_degree, width, height } = projection;
+
+  const drawn = useMemo<Drawn[]>(() => {
+    const rise1 = riseAtScale1(tilt_degree, meter_per_pixel);
+    /* Flat camera: a prism with no rise is a footprint, and the in-plane
+       footprint already drew it. Bail rather than paint a second copy. */
+    if (rise1 < 0.05) return [];
+
+    const near = buildingNear(centre, DRAW_RADIUS_M);
+    const list = near.length > 0 ? near : all_building;
+    const out: Drawn[] = [];
+
+    for (const row of list) {
+      const ring: ScreenPoint[] = row.point.map(([lat, lon]) =>
+        toScreen(project({ lat, lon })),
+      );
+
+      /* Screen-space cull. A building entirely off the glass still costs a
+         path string and a parse, and at z22 most of them are. The pad is
+         generous enough that a tall building whose footprint is just off the
+         bottom still gets to put its roof on screen. */
+      let min_x = Infinity;
+      let max_x = -Infinity;
+      let min_y = Infinity;
+      let max_y = -Infinity;
+      for (const p of ring) {
+        if (p.x < min_x) min_x = p.x;
+        if (p.x > max_x) max_x = p.x;
+        if (p.y < min_y) min_y = p.y;
+        if (p.y > max_y) max_y = p.y;
+      }
+      const pad = 40 + rise1 * row.height_m;
+      if (max_x < -pad || min_x > width + pad) continue;
+      if (max_y < -pad || min_y > height + pad) continue;
+
+      const prism = extrude(ring, row.height_m, (scale) => rise1 * scale);
+      if (!prism) continue;
+
+      const span = Math.max(max_x - min_x, max_y - min_y);
+      let label: Drawn["label"] = null;
+      if (is_labelled && row.name && span >= LABEL_MIN_PX) {
+        const c = toScreen(project(ringCentre(row.point)));
+        const y = c.y - (style === "shadow" ? 0 : rise1 * row.height_m * c.scale) - 6;
+        /* A name half off the edge reads as a rendering fault, not as a name.
+           It is dropped rather than nudged inward, because a nudged label no
+           longer points at the building it belongs to. */
+        const fits =
+          c.x > LABEL_MARGIN_PX &&
+          c.x < width - LABEL_MARGIN_PX &&
+          y > LABEL_MARGIN_PX &&
+          y < height - LABEL_MARGIN_PX;
+        if (fits) label = { x: c.x, y, width: span };
+      }
+
+      const ground = `${ring
+        .map((p, k) => `${k === 0 ? "M" : "L"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
+        .join("")}Z`;
+      out.push({ row, roof: prism.roof, ground, wall: prism.wall, depth: prism.depth, label });
+    }
+
+    /* Ration the names: the biggest few on screen keep theirs, the rest go
+       quiet. Ranked by roof span, which is the one thing that reads as "this is
+       the building you meant" from inside the walk. */
+    const ranked = out
+      .filter((d) => d.label !== null)
+      .sort((a, b) => b.label!.width - a.label!.width);
+    for (const d of ranked.slice(MAX_LABEL)) d.label = null;
+
+    /* Painter's algorithm: the building whose ground sits lowest on screen is
+       nearest the camera, so it goes last and covers what is behind it. */
+    out.sort((a, b) => a.depth - b.depth);
+    return out;
+  }, [project, toScreen, meter_per_pixel, tilt_degree, width, height, centre, is_labelled, style]);
+
+  if (drawn.length === 0) return null;
+
+  return (
+    <>
+      <svg
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          overflow: "visible",
+          pointerEvents: "none",
+          zIndex: 1,
+        }}
+        width={width}
+        height={height}
+        aria-hidden="true"
+      >
+        {/* A soft drop under every prism. Without it a building sits ON the
+            green rather than IN it, which is the single thing that made the
+            small ones read as boxes dropped on a lawn. */}
+        <filter id="sky-contact" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="3" />
+        </filter>
+        <g
+          transform={style === "shadow" ? "translate(2.5 3)" : undefined}
+          opacity={style === "shadow" ? 0.85 : 1}
+        >
+          {drawn.map(({ row, ground }, i) => (
+            <path
+              key={`sh-${row.building_code ?? "b"}-${i}`}
+              d={ground}
+              fill="rgba(46,58,38,0.26)"
+              filter="url(#sky-contact)"
+            />
+          ))}
+        </g>
+        {drawn.map(({ row, roof, ground, wall }, i) => {
+          const colour = roofColour(row);
+          return (
+            <g key={`${row.building_code ?? "b"}-${i}`}>
+              {style === "solid" &&
+                wall.map((w, j) => <path key={j} d={w.d} fill={shade(colour, w.light)} />)}
+              {style === "hollow" &&
+                wall.map((w, j) => (
+                  <path
+                    key={j}
+                    d={w.d}
+                    fill={shade(colour, w.light)}
+                    fillOpacity={0.34}
+                    stroke="rgba(96,84,64,0.5)"
+                    strokeWidth={0.9}
+                    strokeLinejoin="round"
+                  />
+                ))}
+              <path
+                d={style === "shadow" ? ground : roof}
+                fill={colour}
+                fillOpacity={style === "hollow" ? 0.92 : 1}
+                stroke="rgba(96,84,64,0.42)"
+                strokeWidth={0.9}
+                strokeLinejoin="round"
+              />
+            </g>
+          );
+        })}
+      </svg>
+
+      {drawn.map(({ row, label }, i) =>
+        label === null ? null : (
+          <div
+            key={`bl-${row.building_code ?? "b"}-${i}`}
+            style={{
+              position: "absolute",
+              left: label.x,
+              top: label.y,
+              transform: "translate(-50%, -100%)",
+              pointerEvents: "none",
+              zIndex: 2,
+              whiteSpace: "nowrap",
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: 0.2,
+              color: "rgba(48,42,30,0.9)",
+              background: "rgba(255,252,244,0.82)",
+              border: "1px solid rgba(255,255,255,0.9)",
+              borderRadius: 6,
+              padding: "1px 5px",
+              boxShadow: "0 1px 4px rgba(24,38,20,0.16)",
+            }}
+          >
+            {row.name!.length > 22 ? `${row.name!.slice(0, 21)}…` : row.name}
+          </div>
+        ),
+      )}
+    </>
+  );
+}

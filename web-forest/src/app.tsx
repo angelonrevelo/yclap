@@ -1,6 +1,21 @@
 import { Suspense, lazy, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import CampusMap from "./campus-map";
-import PlayMap, { PLAY_MAX_ZOOM } from "./play-map";
+import Joystick from "./joystick";
+import {
+  addFriend,
+  groupMember,
+  groupStreak,
+  readFriend,
+  removeFriend,
+  walkerByJoinCode,
+  writeFriend,
+  type Friend,
+  type GroupStreak,
+} from "./friend";
+import { joinCodeOf } from "./campus-world";
+import StreakFlame from "./streak-flame";
+import { type SkylineStyle } from "./skyline";
+import PlayMap, { PLAY_MAX_ZOOM, PLAY_MIN_ZOOM } from "./play-map";
 import { pinKindOf, type PinKind } from "./pin";
 import Character, { stageFor, STAGE_LABEL, type Stage } from "./character";
 /* The 3D character (T4.1) — lazy so the model-viewer chunk is fetched only
@@ -65,9 +80,9 @@ import {
   type GamifySnapshot,
   type PointEvent,
 } from "./gamify";
-import { CAMPUS_CENTER, formatLatLon, formatMeter, formatWalkMinute, WALK_PACE_MS } from "./geo";
+import { CAMPUS_CENTER, formatLatLon, formatMeter, formatWalkMinute, WALK_PACE_MS, type GeoState } from "./geo";
 import { LAYER_ORDER, nextLayer, prefetchCampus, SOURCE, type Layer, type View } from "./tile-map";
-import { useGeo } from "./use-geo";
+import { geoModeLabel, nextGeoMode, useGeo, type GeoMode } from "./use-geo";
 import { biomePresenceAt, rankEncounter, sectorResident, type BiomePresence } from "./nearby";
 import { cosmeticForStage } from "./cosmetic";
 import { BadgeShelf, loadSpawnPool, RarityPill, reachableSpawn, useLiveWorld, useSpawnWorld, WildShelf, WorldStrip } from "./live";
@@ -191,17 +206,165 @@ function HudOrb({
   );
 }
 
+/**
+ * Walking partners, and the streak they keep together.
+ *
+ * Two asks from the 09-21 recording land on one card — a friends system
+ * (`29:17`) and a group streak (`35:37`) — plus the Working Doc's "Note to
+ * Gelo: Is this feasible?" against the same idea. It is feasible because the
+ * sync layer already stamps every find with who made it and when; see
+ * `friend.ts` for the rule and for what this roster deliberately is NOT.
+ *
+ * The card says out loud that the roster is one-sided. A social feature that
+ * lets you believe somebody has added you back, when nothing has told them you
+ * exist, is worse than no social feature.
+ */
+function PartnerCard({
+  friend,
+  group,
+  join_code,
+  is_live,
+  on_add,
+  on_remove,
+}: {
+  friend: Friend[];
+  group: GroupStreak;
+  join_code: string;
+  is_live: boolean;
+  on_add: (code: string) => void;
+  on_remove: (player_id: string) => void;
+}) {
+  const [code, setCode] = useState("");
+  return (
+    <Card style={{ padding: 14 }}>
+      <div className="flex items-center justify-between">
+        <Eyebrow>WALKING PARTNERS</Eyebrow>
+        <StreakFlame weeks={group.weeks} size={30} is_group />
+      </div>
+
+      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.72)", marginTop: 8, lineHeight: 1.45 }}>
+        {group.member_count === 1
+          ? "Add a partner by their code. Your group's week stays alive if any one of you walks it."
+          : group.is_week_carried
+            ? `This week is carried${group.carried_by.length ? ` — ${group.carried_by.slice(0, 3).join(", ")}` : ""}.`
+            : "Nobody has walked this week yet. Any one of you keeps it alive."}
+      </div>
+
+      <div className="flex items-center gap-2" style={{ marginTop: 10 }}>
+        <input
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 7))}
+          placeholder="PARTNER CODE"
+          aria-label="Add a walking partner by their six-character code"
+          inputMode="text"
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            padding: "9px 11px",
+            borderRadius: 12,
+            border: "1.5px solid rgba(255,255,255,0.14)",
+            background: "rgba(0,0,0,0.22)",
+            color: "#fff",
+            fontWeight: 800,
+            letterSpacing: "0.16em",
+            fontSize: 14,
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            on_add(code);
+            setCode("");
+          }}
+          style={{
+            padding: "9px 14px",
+            borderRadius: 12,
+            border: "none",
+            background: "#81b64c",
+            color: "#12220c",
+            fontWeight: 800,
+            fontSize: 13,
+            cursor: "pointer",
+          }}
+        >
+          Add
+        </button>
+      </div>
+
+      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 7, lineHeight: 1.45 }}>
+        Your code is <b style={{ color: "rgba(255,255,255,0.8)", letterSpacing: "0.1em" }}>{join_code}</b>.
+        {" "}
+        {/* The honesty clause. `friend.ts` explains why the roster is local. */}
+        Adding somebody is one-sided and only this device knows about it — they
+        are not told, and nothing is shared beyond the campus finds already on
+        the board.
+        {is_live ? "" : " Partners need the live campus on to count a week."}
+      </div>
+
+      {friend.length > 0 && (
+        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+          {friend.map((row) => (
+            <div
+              key={row.player_id}
+              className="flex items-center gap-2"
+              style={{
+                padding: "8px 10px",
+                borderRadius: 12,
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 13.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {row.name}
+                </div>
+                {group.carried_by.includes(row.name) && (
+                  <div style={{ fontSize: 11, color: "#b2e068" }}>carried this week</div>
+                )}
+              </div>
+              <button
+                type="button"
+                aria-label={`Remove ${row.name}`}
+                onClick={() => on_remove(row.player_id)}
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  color: "rgba(255,255,255,0.45)",
+                  fontSize: 18,
+                  lineHeight: 1,
+                  cursor: "pointer",
+                  padding: "2px 6px",
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function TrainerSheet({
   snap,
   daily,
   stage,
   vigor,
-  is_demo,
+  geo_mode,
+  geo_status,
   join_code,
   walker_name,
   is_live,
   live_count,
-  onDemo,
+  friend,
+  group,
+  onAddPartner,
+  onDropPartner,
+  onCycleMode,
   onHunt,
   onPlan,
   onJoin,
@@ -211,12 +374,17 @@ function TrainerSheet({
   daily: DailyTask | null;
   stage: Stage;
   vigor: number;
-  is_demo: boolean;
+  geo_mode: GeoMode;
+  geo_status: GeoState["status"];
   join_code: string;
   walker_name: string;
   is_live: boolean;
   live_count: number;
-  onDemo: () => void;
+  friend: Friend[];
+  group: GroupStreak;
+  onAddPartner: (code: string) => void;
+  onDropPartner: (player_id: string) => void;
+  onCycleMode: () => void;
   onHunt: () => void;
   onPlan: () => void;
   onJoin: (code: string) => void;
@@ -246,7 +414,10 @@ function TrainerSheet({
           <div>
             <div style={{ fontWeight: 800, fontSize: 28, fontVariantNumeric: "tabular-nums" }}>{snap.total_points}</div>
             <div style={{ fontSize: 13, opacity: 0.75 }}>{walker_name}</div>
-            <div style={{ fontSize: 12, opacity: 0.7 }}>{snap.streak_weeks} wk · {snap.buddy.label}</div>
+            <div className="flex items-center gap-2" style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>
+              <StreakFlame weeks={snap.streak_weeks} size={26} />
+              <span style={{ opacity: 0.8 }}>· {snap.buddy.label}</span>
+            </div>
             <div style={{ fontSize: 11, marginTop: 4, letterSpacing: "0.08em", fontWeight: 800 }}>
               {is_live ? `LIVE · ${live_count} out` : "OFFLINE"} · {join_code}
             </div>
@@ -264,6 +435,16 @@ function TrainerSheet({
         >
           <PointsStreakCard snap={snap} is_desktop={false} />
           <div style={{ marginTop: 10 }}>
+            <PartnerCard
+              friend={friend}
+              group={group}
+              join_code={join_code}
+              is_live={is_live}
+              on_add={onAddPartner}
+              on_remove={onDropPartner}
+            />
+          </div>
+          <div style={{ marginTop: 10 }}>
             <DailyHuntCard daily={daily} onHunt={onHunt} />
           </div>
           <div style={{ marginTop: 10 }}>
@@ -274,8 +455,8 @@ function TrainerSheet({
           </div>
         </div>
         <div className="flex gap-2" style={{ marginTop: 16, paddingBottom: 140 }}>
-          <Chip is_on={is_demo} onClick={onDemo}>
-            Demo
+          <Chip is_on={geo_mode === "gps"} onClick={onCycleMode}>
+            {geoModeLabel(geo_mode, geo_status)}
           </Chip>
           <button type="button" onClick={onPlan} style={{ fontWeight: 700, fontSize: 13, color: "#4dc3ea" }}>
             Plan
@@ -1645,6 +1826,7 @@ function SightingLog({ sighting }: { sighting: Sighting[] }) {
                       {formatLatLon({ lat: s.lat, lon: s.lon })}
                       {s.accuracy_m !== null && ` · ±${Math.round(s.accuracy_m)} m`}
                       {s.fix_source === "demo" && " · demo walk"}
+                      {s.fix_source === "play" && " · play walk"}
                     </>
                   ) : (
                     "no position recorded"
@@ -2693,12 +2875,85 @@ function ModeSwitch({
   );
 }
 
-/** Swing back to north. Doubles as the only sign that rotation exists. */
-function Compass({ bearing, onReset }: { bearing: number; onReset: () => void }) {
-  const off = Math.abs(((bearing % 360) + 540) % 360 - 180) < 179.5;
+/**
+ * Which of the three position sources is driving the walk — and the one control
+ * that changes it, on the screen the walk actually happens on.
+ *
+ * It used to live only in the field view, which was survivable while the only
+ * alternative source was a scripted loop for a projector. It stopped being
+ * survivable once the answer to "there are no campus trees in the venue" became
+ * a thumbstick: a stick you can only reach by leaving the play view, opening
+ * the field layers and finding a chip is a stick nobody finds on a stage.
+ *
+ * It states the source rather than hiding it. A walk driven by a thumb and a
+ * walk driven by a satellite produce the same journal, and the only honest way
+ * to ship that is for the screen to say which one is happening.
+ */
+function GeoModeSwitch({
+  mode,
+  label,
+  onCycle,
+}: {
+  mode: GeoMode;
+  label: string;
+  onCycle: () => void;
+}) {
+  const tone =
+    mode === "gps" ? "#5d9948" : mode === "play" ? "#C98A12" : "rgba(38,36,33,0.97)";
   return (
     <button
-      aria-label={off ? "Face north" : "Facing north"}
+      type="button"
+      aria-label={`Position source: ${label}. Tap to change.`}
+      title={label}
+      onClick={onCycle}
+      style={{
+        width: 44,
+        height: 44,
+        borderRadius: 10,
+        background: tone,
+        color: "#fff",
+        boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
+        border: "none",
+        display: "grid",
+        placeItems: "center",
+        cursor: "pointer",
+      }}
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+        {mode === "gps" ? (
+          <>
+            <circle cx="12" cy="12" r="3.4" fill="#fff" />
+            <circle cx="12" cy="12" r="7.4" fill="none" stroke="#fff" strokeWidth="1.8" opacity="0.8" />
+            <path d="M12 1.6v3M12 19.4v3M1.6 12h3M19.4 12h3" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
+          </>
+        ) : mode === "play" ? (
+          <>
+            <circle cx="12" cy="12" r="8" fill="none" stroke="#fff" strokeWidth="1.8" opacity="0.85" />
+            <circle cx="12" cy="12" r="3.6" fill="#fff" />
+            <path d="M12 3.4v2.2M12 18.4v2.2M3.4 12h2.2M18.4 12h2.2" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
+          </>
+        ) : (
+          <path
+            d="M6 4.5v15l12-7.5z"
+            fill="#fff"
+          />
+        )}
+      </svg>
+    </button>
+  );
+}
+
+/**
+ * Recentre on the walker at street zoom, facing north.
+ * The play camera sits at z22 (~14 m across a 390 px phone) — path level,
+ * third person, not the campus diagram.
+ */
+function Compass({ bearing, onReset }: { bearing: number; onReset: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label="Street view on me"
+      title="Street view on me"
       onClick={onReset}
       style={{
         width: 44,
@@ -2756,7 +3011,26 @@ export default function App() {
   const [is_restricted, setRestricted] = useState(true);
   /* `guide` reads better on a walk than imagery; satellite is one tap away. */
   const [layer, setLayer] = useState<Layer>("guide");
-  const [view, setView] = useState<View>(() => ({ ...CAMPUS_CENTER, zoom: PLAY_ZOOM }));
+  /* `?zoom=` is the bearing parameter's twin and exists for the same reason: a
+     projector can be set up at a known camera, and a screenshot of a given zoom
+     is reproducible. Clamped to the play band, so the parameter cannot reach a
+     camera the gestures are not allowed to reach either. */
+  /* `?skyline=` — solid / hollow / shadow. A view parameter like `?bearing=`
+     and `?zoom=`, here so the three can be compared on the same ground rather
+     than argued about from memory. */
+  const skyline_style = ((): SkylineStyle | undefined => {
+    const raw = new URLSearchParams(window.location.search).get("skyline");
+    return raw === "solid" || raw === "hollow" || raw === "shadow" ? raw : undefined;
+  })();
+  const [view, setView] = useState<View>(() => {
+    const raw = new URLSearchParams(window.location.search).get("zoom");
+    const asked = Number(raw);
+    const zoom =
+      raw !== null && Number.isFinite(asked)
+        ? Math.max(PLAY_MIN_ZOOM, Math.min(PLAY_MAX_ZOOM, Math.round(asked)))
+        : PLAY_ZOOM;
+    return { ...CAMPUS_CENTER, zoom };
+  });
   /* Off the moment the walker pans or zooms — a map that fights the hand is worse
      than one that stops following. The Recentre control turns it back on. */
   const [is_following, setFollowing] = useState(true);
@@ -2772,7 +3046,7 @@ export default function App() {
   const [camera_rarity, setCameraRarity] = useState<Rarity | null>(null);
   const [sighting, setSighting] = useState<Sighting[]>(() => readSighting());
   const [point_events, setPointEvents] = useState<PointEvent[]>(() => readPointEvents());
-  const [is_demo, setDemo] = useState(true);
+  const [geo_mode, setGeoMode] = useState<GeoMode>("gps");
   const [toast, setToast] = useState<string | null>(null);
   const [inat, setInat] = useState<InatNearbyState>({ status: "idle" });
   const [walk, setWalk] = useState<Walk | null>(() => readWalk());
@@ -2791,11 +3065,13 @@ export default function App() {
   const [is_trainer_open, setTrainerOpen] = useState(false);
   const [is_nearby_open, setNearbyOpen] = useState(false);
   const { is_desktop } = useDesktop();
-  const geo = useGeo(is_demo);
+  const geo = useGeo(geo_mode, bearing);
   const seen_sector = useMemo(() => seenSector(sighting), [sighting]);
   /* The rotating world. One fetch of the real sweep, recomputed when the
-     30-minute window rolls — see `live.tsx`. Quiet sectors get more finds. */
-  const spawn_world = useSpawnWorld(seen_sector);
+     30-minute window rolls — see `live.tsx`. Quiet sectors get more finds, and
+     the ground the walker is actually standing on gets the dense near field,
+     because a locked camera can only show what is within about a sector. */
+  const spawn_world = useSpawnWorld(seen_sector, geo.fix);
 
   /**
    * `?seed=demo` fills the journal so the badge shelf and the collection are
@@ -2835,6 +3111,38 @@ export default function App() {
     },
   });
   const me = readPlayer();
+  /* Walking partners. Local roster; the streak is computed over the synced
+     world, because only the world knows what somebody else walked. */
+  const [friend, setFriend] = useState<Friend[]>(() => readFriend());
+  const group_streak = useMemo(
+    () => groupStreak(live.world?.find ?? [], groupMember(friend, me.player_id)),
+    [live.world?.find, friend, me.player_id],
+  );
+  const addPartner = (code: string) => {
+    const hit = walkerByJoinCode(live.world?.walker ?? [], code, joinCodeOf);
+    if (!hit) {
+      showToast(
+        live.is_live
+          ? "No walker on this campus holds that code."
+          : "Turn the live campus on to add a partner.",
+      );
+      return;
+    }
+    const next = addFriend(friend, { player_id: hit.player_id, name: hit.name, join_code: code }, me.player_id);
+    if (next === friend) {
+      showToast(hit.player_id === me.player_id ? "That is your own code." : `${hit.name} is already a partner.`);
+      return;
+    }
+    setFriend(next);
+    writeFriend(next);
+    showToast(`${hit.name} is walking with you.`);
+  };
+  const dropPartner = (player_id: string) => {
+    const next = removeFriend(friend, player_id);
+    setFriend(next);
+    writeFriend(next);
+  };
+
   const live_snap = useMemo(
     () => ({
       ...gamify,
@@ -2859,6 +3167,15 @@ export default function App() {
     if (!is_following || !geo.fix) return;
     setView((prev) => ({ ...prev, lat: geo.fix!.lat, lon: geo.fix!.lon }));
   }, [is_following, geo.fix?.lat, geo.fix?.lon]);
+
+  /* GPS is the default. If this device will not give a fix, Play walk still
+     puts you on campus at street zoom rather than leaving the map empty. */
+  useEffect(() => {
+    if (geo_mode !== "gps") return;
+    if (geo.fix) return;
+    if (geo.status !== "denied" && geo.status !== "unavailable") return;
+    setGeoMode("play");
+  }, [geo_mode, geo.status, geo.fix]);
 
   /* One tap before the demo, so offline covers the campus and not just wherever
      the map happened to be panned. Production only — a dev build has no worker
@@ -2904,6 +3221,20 @@ export default function App() {
   const recentre = () => {
     setFollowing(true);
     setView((prev) => ({ ...prev, ...(geo.fix ?? CAMPUS_CENTER) }));
+  };
+
+  /** Compass: my location, play camera, street/path zoom, facing north. */
+  const returnToStreet = () => {
+    setMapMode("play");
+    setBearing(0);
+    setFollowing(true);
+    if (route !== "/" && route !== "/map") {
+      window.history.pushState({}, "", "/");
+      setRoute("/");
+    }
+    const here = geo.fix ?? CAMPUS_CENTER;
+    setView({ lat: here.lat, lon: here.lon, zoom: PLAY_ZOOM });
+    if (geo_mode !== "gps") setGeoMode("gps");
   };
 
   const go = (next: Route) => {
@@ -3030,6 +3361,12 @@ export default function App() {
     }
     setPickedSector(null);
     setPinnedId(null);
+    if (geo_mode === "play") {
+      geo.walkTo(row);
+      setFollowing(true);
+      showToast(`Walking to ${row.common_name}`);
+      return;
+    }
     setFollowing(false);
     setView((prev) => ({ ...prev, lat: row.lat, lon: row.lon, zoom: Math.max(prev.zoom, PLAY_ZOOM) }));
     go("/map");
@@ -3117,7 +3454,7 @@ export default function App() {
   const walk_count = walk ? sighting.filter((row) => row.walk_id === walk.walk_id).length : 0;
 
   const fix_line = geo.fix
-    ? `${formatLatLon(geo.fix)} · ±${Math.round(geo.fix.accuracy_m)} m · ${geo.fix.source === "demo" ? "demo walk" : "this device"}`
+    ? `${formatLatLon(geo.fix)} · ±${Math.round(geo.fix.accuracy_m)} m · ${geo.fix.source === "demo" ? "demo walk" : geo.fix.source === "play" ? "play walk" : "this device"}`
     : "No position — this sighting will be saved without one.";
 
   /* The same filter the play view applies, so the two surfaces agree about
@@ -3159,9 +3496,9 @@ export default function App() {
           here. This is NOT the display:none splitting that caused the
           duplicates above — the chip exists in exactly one place per size. */}
       {!is_desktop && (
-        <Chip is_on={is_demo} onClick={() => setDemo((d) => !d)}>
+        <Chip is_on={geo_mode === "gps"} onClick={() => setGeoMode((m) => nextGeoMode(m))}>
           <LocateIcon size={15} />
-          {is_demo ? "Demo campus" : geo.status === "watching" ? "Live GPS" : "Real GPS"}
+          {geoModeLabel(geo_mode, geo.status)}
         </Chip>
       )}
       <Chip is_on={Boolean(walk)} tone="#4dc3ea" onClick={toggleWalk}>
@@ -3206,10 +3543,14 @@ export default function App() {
   const geo_line =
     geo.message ??
     (geo.is_off_campus
-      ? "You are outside the Loyola Heights frame — switch Demo campus on to show the walk here."
-      : geo.fix
-        ? `${formatLatLon(geo.fix)} · ±${Math.round(geo.fix.accuracy_m)} m`
-        : "Waiting for a position…");
+      ? "You are outside the Loyola Heights frame — switch to Play walk to stay on campus."
+      : geo.status === "play"
+        ? "Play walk · WASD or tap the ground"
+        : geo.status === "prompting"
+          ? "Finding your location…"
+          : geo.fix
+          ? `${formatLatLon(geo.fix)} · ±${Math.round(geo.fix.accuracy_m)} m`
+          : "Waiting for a position…");
 
 
   /* ── the play view ────────────────────────────────────────────────────────
@@ -3260,7 +3601,17 @@ export default function App() {
         onBearing={setBearing}
         spawn={spawn_world.spawn}
         onSelectSpawn={walkToSpawn}
+        onWalkTo={geo_mode === "play" ? (point) => { geo.walkTo(point); setFollowing(true); } : undefined}
+        /* The GO camera: welded to the walker whenever there is a walker to
+           weld it to. Without a fix there is nothing to be stuck to, so the
+           map stays draggable rather than freezing on the campus centre. */
+        is_camera_locked={Boolean(geo.fix)}
+        skyline_style={skyline_style}
       />
+
+      {/* The stick. Only in play mode, because in the other two the position
+          comes from somewhere that is not a thumb. */}
+      <Joystick is_on={geo_mode === "play"} onSteer={geo.steer} />
 
       {/* Quiet HUD: corners only. No dense dashboard while walking. */}
       <MapChrome
@@ -3282,7 +3633,15 @@ export default function App() {
         control={
           <>
             <ModeSwitch mode={map_mode} onMode={setMode} />
-            <Compass bearing={bearing} onReset={() => setBearing(0)} />
+            <GeoModeSwitch
+              mode={geo_mode}
+              label={geoModeLabel(geo_mode, geo.status)}
+              onCycle={() => {
+                setGeoMode((m) => nextGeoMode(m));
+                setFollowing(true);
+              }}
+            />
+            <Compass bearing={bearing} onReset={returnToStreet} />
           </>
         }
         below={
@@ -3292,7 +3651,13 @@ export default function App() {
               reward={POINT_VALUE.challenge}
               onGo={() => {
                 const place = sectorByCode(daily.sector_code);
-                if (place) setView((prev) => ({ ...prev, lat: place.label_point[0], lon: place.label_point[1], zoom: Math.max(prev.zoom, 17) }));
+                if (!place) return;
+                if (geo_mode === "play") {
+                  geo.walkTo({ lat: place.label_point[0], lon: place.label_point[1] });
+                  setFollowing(true);
+                  return;
+                }
+                setView((prev) => ({ ...prev, lat: place.label_point[0], lon: place.label_point[1], zoom: Math.max(prev.zoom, 17) }));
               }}
             />
           ) : null
@@ -3368,6 +3733,7 @@ export default function App() {
         control={
           <>
             <ModeSwitch mode={map_mode} onMode={setMode} />
+            <Compass bearing={bearing} onReset={returnToStreet} />
             {/* The basemap cycler lives under the switch in the same column, so
                 it can never sit on top of it the way it used to. */}
             <button
@@ -3509,18 +3875,28 @@ export default function App() {
             daily={daily}
             stage={stage}
             vigor={vigor}
-            is_demo={is_demo}
+            geo_mode={geo_mode}
+            geo_status={geo.status}
             join_code={me.join_code}
             walker_name={me.name}
             is_live={live.is_live}
             live_count={live.world?.walker.length ?? 0}
+            friend={friend}
+            group={group_streak}
+            onAddPartner={addPartner}
+            onDropPartner={dropPartner}
             onJoin={(code) => void joinWalker(code)}
-            onDemo={() => setDemo((d) => !d)}
+            onCycleMode={() => setGeoMode((m) => nextGeoMode(m))}
             onHunt={() => {
               setTrainerOpen(false);
               if (daily) {
                 const place = sectorByCode(daily.sector_code);
-                if (place) setView((prev) => ({ ...prev, lat: place.label_point[0], lon: place.label_point[1], zoom: Math.max(prev.zoom, 17) }));
+                if (place && geo_mode === "play") {
+                  geo.walkTo({ lat: place.label_point[0], lon: place.label_point[1] });
+                  setFollowing(true);
+                } else if (place) {
+                  setView((prev) => ({ ...prev, lat: place.label_point[0], lon: place.label_point[1], zoom: Math.max(prev.zoom, 17) }));
+                }
               }
               setMode("play");
               go("/");

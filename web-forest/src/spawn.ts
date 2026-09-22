@@ -1,5 +1,5 @@
 import { RESTRICTED_POLYGON } from "./data.ts";
-import { distanceMeter, type LatLon } from "./geo.ts";
+import { CAMPUS_BOX, distanceMeter, type LatLon } from "./geo.ts";
 import { biome_sector, sectorContains, sector as sector_row, type Sector } from "./sector.ts";
 
 /* ── the spawn system ────────────────────────────────────────────────────────
@@ -445,3 +445,167 @@ export function poolFromFile(json: { model: unknown }): SpawnPoolEntry[] {
 
 /* Re-exported so a caller does not need sector.ts to mean the same list. */
 export const spawn_sectors: Sector[] = sector_row.filter((s) => s.is_biome);
+
+/* ── the near field ─────────────────────────────────────────────────────────
+ *
+ * `spawnForWindow` spreads a fixed budget of finds across the whole campus, and
+ * that was right while the map was a survey you read from above. It stops being
+ * right the moment the camera is welded to the walker at z19–22, where the
+ * screen holds one or two sectors: ninety finds spread over 38.8 hectares means
+ * a screen with nothing on it, and a game whose content you can only see by
+ * leaving the view it is played in.
+ *
+ * The genre's answer is that the world is dense EVERYWHERE and you only ever
+ * see your own patch of it. This is that — but it has to keep the property the
+ * README already promises, that two phones standing side by side see the same
+ * finds. So the field is not generated around the player. It is generated on a
+ * grid fixed to the campus itself, and the player simply reads the cells they
+ * are near. Walking does not roll new dice; it brings you to dice already cast.
+ */
+
+/** Grid pitch. One cell is about four paces across, so a find is never far. */
+export const SPAWN_CELL_M = 35;
+
+/** How far out the dense field is generated, in metres. */
+export const NEAR_FIELD_M = 170;
+
+/** Chance a habitable cell holds a find this window. */
+const CELL_DENSITY = 0.34;
+
+const CELL_LAT = SPAWN_CELL_M / 110_540;
+
+/**
+ * The grid's longitude pitch, fixed to the campus rather than to the walker.
+ *
+ * Deriving it from the reader's own latitude looks harmless and is not: two
+ * phones a few metres apart then lay down grids of very slightly different
+ * widths, and the finds they compute drift apart — quietly, by centimetres, in
+ * exactly the situation the seeded world exists to make identical. One
+ * constant, taken at the middle of campus, is what makes the grid a property of
+ * the ground instead of a property of whoever is standing on it.
+ */
+const CELL_LON =
+  SPAWN_CELL_M /
+  (111_320 * Math.cos((((CAMPUS_BOX.north + CAMPUS_BOX.south) / 2) * Math.PI) / 180));
+
+/** The biome sector a point falls in, or null. Paved ground answers null. */
+function biomeAt(point: LatLon): Sector | null {
+  for (const s of biome_sector) if (sectorContains(s, point)) return s;
+  return null;
+}
+
+/**
+ * The dense local field around `at`.
+ *
+ * Every cell within `NEAR_FIELD_M` is asked the same three questions in the
+ * same order, seeded by the cell's own absolute index and the window: does
+ * anything grow here, does anything spawn here this window, and what. None of
+ * the three can see the player, which is what makes two devices agree.
+ */
+export function spawnAround(
+  pool: SpawnPoolEntry[],
+  now_ms: number,
+  at: LatLon,
+  opts: SpawnOptions & { radius_m?: number } = {},
+): Spawn[] {
+  const radius_m = opts.radius_m ?? NEAR_FIELD_M;
+  const window_ms = opts.window_ms ?? SPAWN_WINDOW_MS;
+  const { index, starts_at, ends_at } = spawnWindow(now_ms, window_ms);
+  const reach = Math.ceil(radius_m / SPAWN_CELL_M);
+
+  /* Absolute cell indices — floor of the position in cell units, measured from
+     the equator and the prime meridian rather than from the player. */
+  const col0 = Math.floor(at.lon / CELL_LON);
+  const row0 = Math.floor(at.lat / CELL_LAT);
+
+  const out: Spawn[] = [];
+  for (let dr = -reach; dr <= reach; dr += 1) {
+    for (let dc = -reach; dc <= reach; dc += 1) {
+      const row = row0 + dr;
+      const col = col0 + dc;
+      const centre: LatLon = {
+        lat: (row + 0.5) * CELL_LAT,
+        lon: (col + 0.5) * CELL_LON,
+      };
+      if (distanceMeter(at, centre) > radius_m) continue;
+
+      const s = biomeAt(centre);
+      if (!s) continue;
+
+      const rng = mulberry32(fnv(`cell:${col}:${row}:${index}`));
+
+      /* Ground you have already worked rests more often, the same 09-09 rule
+         the campus-wide world follows — so a sector you have walked flat does
+         not stay as busy as one you have never entered. */
+      const explored = opts.explored_sector;
+      const density =
+        explored && explored.has(s.sector_code) ? CELL_DENSITY * 0.55 : CELL_DENSITY;
+      if (rng() >= density) continue;
+
+      const pick = pickSpecies(pool, s, rng);
+      if (!pick) continue;
+
+      /* Jitter inside the cell, then check it is really on that ground. A find
+         nudged onto a car park or into the grove is dropped, not clamped:
+         clamping would pile finds against the edge of every restriction. */
+      const point: LatLon = {
+        lat: (row + rng()) * CELL_LAT,
+        lon: (col + rng()) * CELL_LON,
+      };
+      if (!sectorContains(s, point)) continue;
+      if (inRestricted(point)) continue;
+
+      out.push({
+        spawn_id: `cell-${col}-${row}-w${index}`,
+        species_code: pick.species_code,
+        common_name: pick.common_name,
+        scientific_name: pick.scientific_name,
+        lat: point.lat,
+        lon: point.lon,
+        sector_code: s.sector_code,
+        rarity: rarityFor(pick.count),
+        iconic_taxon_name: pick.iconic_taxon_name,
+        archetype: pick.archetype,
+        starts_at,
+        ends_at,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * What the app actually plays against: a dense field under the walker, and the
+ * sparse campus-wide world everywhere else.
+ *
+ * The two never overlap — the campus-wide half is filtered to what lies OUTSIDE
+ * the near field's radius — so no find is ever drawn twice and no `spawn_id`
+ * collides. With no fix there is no near field, and this is exactly the old
+ * campus-wide world, which is what the projector demo and the first paint both
+ * get before a position arrives.
+ */
+export function spawnWorld(
+  pool: SpawnPoolEntry[],
+  now_ms: number,
+  at: LatLon | null | undefined,
+  opts: SpawnOptions & { radius_m?: number } = {},
+): Spawn[] {
+  const far = spawnForWindow(pool, now_ms, undefined, opts);
+  if (!at) return far;
+  const radius_m = opts.radius_m ?? NEAR_FIELD_M;
+  const near = spawnAround(pool, now_ms, at, opts);
+  return [...near, ...far.filter((row) => distanceMeter(at, row) > radius_m)];
+}
+
+/**
+ * The grid cell a point falls in, as a string.
+ *
+ * A memo key, and the reason it lives here: the near field may only be rebuilt
+ * when the walker crosses a cell boundary, and the only way to guarantee that
+ * is for the key and the grid to be computed from the same two constants. A
+ * caller that derived its own would drift from the grid the moment either
+ * changed, and the symptom would be a world that rebuilds every GPS frame.
+ */
+export function spawnCellKey(at: LatLon): string {
+  return `${Math.floor(at.lat / CELL_LAT)}:${Math.floor(at.lon / CELL_LON)}`;
+}

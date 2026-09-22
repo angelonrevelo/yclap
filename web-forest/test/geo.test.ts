@@ -221,6 +221,12 @@ describe("web mercator", () => {
     assert.ok(Math.abs(b.y - a.y * 2) < 1e-6);
   });
 
+  it("play zoom (z22) fills a 390 px phone with about one street", () => {
+    /* Compass returns here. 14 m across the glass is path-level, not campus-level. */
+    const span_m = meterPerPixel(CAMPUS_CENTER.lat, 22) * 390;
+    assert.ok(span_m > 10 && span_m < 20, `street span was ${span_m.toFixed(1)} m`);
+  });
+
   it("agrees with haversine on ground scale to within 1%", () => {
     /* The overlay is only honest if a metre on screen is a metre on the ground. */
     const zoom = 18;

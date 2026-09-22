@@ -67,9 +67,40 @@ The play layer, wired in `src/live.tsx`:
   `sector_code:window_index`, so two phones side by side see the same finds.
   Rarity is the species' **real iNaturalist campus observation count**; how
   often each band appears (55/25/15/5) is the one invented number and the card
-  says so. A find within 40 m opens the camera; further away the map goes to it
-  and says walk, because a find logged where you are not standing records
-  nothing useful.
+  says so. A find within 40 m opens the camera; further away the map walks you
+  there. Default position is **this device** (GPS).
+  - **The near field.** The campus-wide spread (90 finds over 38.8 ha) was
+    right while the map was a survey read from above, and wrong the moment the
+    camera locked to the walker: at z19–22 the screen holds a sector or two, so
+    ninety finds campus-wide is a screen with nothing on it. `spawnAround`
+    generates a dense field on a grid **fixed to the campus**, not to the
+    player — walking does not roll new dice, it brings you to dice already
+    cast, which is what keeps two phones agreeing. `spawnWorld` unions that
+    with the campus-wide world outside the radius, so no find is drawn twice.
+- **The camera.** Welded to the walker whenever there is a fix: a drag rotates
+  around you instead of panning off you, and the zoom band is **z19–z22**
+  (~110 m down to ~14 m across a phone). You cannot pull back to the campus
+  diagram from the play view; the field view still has it, one tap away.
+  `?zoom=` and `?bearing=` set a reproducible camera for a projector.
+- **`joystick.tsx` + `play-walk.ts`** — an on-screen thumbstick, because the
+  26 September showcase is in a hall with no campus trees and a GPS fix that
+  resolves somewhere this app correctly refuses to spawn anything. It drives
+  the same `play` source WASD drives, under the same rules (inside
+  `CAMPUS_BOX`, outside the restricted grove), so a stick walk and a GPS walk
+  produce the same journal. **It is not a GPS spoofer**: the fix it makes is
+  tagged `source: "play"`, and every surface that shows a position says which
+  of the three it is. The position source now has its own control on the play
+  view itself, not only behind the field layers.
+- **`building.ts` + `skyline.tsx`** — 75 campus buildings with real heights,
+  imported from the sisia campus app (`script/import-sisia-building.mjs`, run
+  by hand; the output is committed). Drawn as **footprint plus a soft drop**,
+  not as extruded prisms. The prism code is there and `?skyline=solid|hollow`
+  will show you it, but a prism is painted in screen space above the whole
+  tilted plane and therefore cannot depth-sort against a path in it — a
+  building covers a footpath that is actually in front of it. `shadow` is the
+  default because it is the only one of the three that does not claim a volume
+  the renderer cannot sort. Sports grounds are excluded outright: a pitch is
+  ground, and extruded it laid a 12,055 m² slab over the walker.
 - **`badge.ts`** — 13 badges, every one a pure function of this device's
   journal. `badge.test.ts` enforces two rules: no badge may name or describe a
   fact outside the journal (*synced*, *leaderboard*, *rank* are a pinned
@@ -86,6 +117,19 @@ The play layer, wired in `src/live.tsx`:
   and presence (points / streak as “who is out”, not an official AIS rank).
   A six-character walker code joins two phones as one player. With no server
   reachable the world strip renders nothing rather than an unmeasured zero.
+- **`friend.ts` + `streak-flame.tsx`** — walking partners and the streak they
+  keep together, answering the Working Doc's *"Note to Gelo: Is this
+  feasible?"* on group streaks and the 09-21 recording's friends system
+  (`29:17`, `35:37`). Feasible because the world already stamps every find with
+  who made it and when. **The group's week is alive if any one member walks
+  it** — a streak, never a total, because a total makes the group a
+  leaderboard, which is the thing a shared streak was chosen instead of. The
+  roster is local and **one-sided**, and the card says so: nobody is notified,
+  nothing is shared beyond finds already on the board. A mutual graph needs the
+  consent and retention decisions the Working Doc still lists as open. The
+  streak renders as a small flame that gets **hotter, not bigger** (`38:13`,
+  `40:00` — *"you have to keep the fire small"*), never overlaps the plant, and
+  always carries its number.
 - **`gamify.ts`** — device-local points (Explore 10, Learn 10, Observe 25,
   Hunt 40, Local verified 50), weekly streak, Biodiversity Buddy, a seeded
   demo board, and one daily hunt (a tree + a biome, deterministic per

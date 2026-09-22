@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { badgeFor, type BadgeAward } from "./badge";
-import { formatMeter, formatWalkMinute, type Fix } from "./geo";
+import { formatMeter, formatWalkMinute, type Fix, type LatLon } from "./geo";
 import { isBadge, type Sighting } from "./journal";
 import { species } from "./data";
 import { biome_sector, sectorByCode } from "./sector";
@@ -15,7 +15,8 @@ import {
   RARITY_LABEL,
   RARITY_ORDER,
   REACH_RADIUS_M,
-  spawnForWindow,
+  spawnWorld,
+  spawnCellKey,
   spawnWindow,
   SPAWN_WINDOW_MS,
   windowMinuteLeft,
@@ -99,7 +100,10 @@ const EMPTY_WORLD: SpawnWorld = {
  * everyone else's world, and the whole point of a seeded window is that two
  * phones standing next to each other see the same finds.
  */
-export function useSpawnWorld(explored_sector?: ReadonlySet<string>): SpawnWorld {
+export function useSpawnWorld(
+  explored_sector?: ReadonlySet<string>,
+  at?: LatLon | null,
+): SpawnWorld {
   const [pool, setPool] = useState<SpawnPoolEntry[] | null>(null);
   const [now_ms, setNow] = useState(() => Date.now());
 
@@ -123,18 +127,28 @@ export function useSpawnWorld(explored_sector?: ReadonlySet<string>): SpawnWorld
 
   const explored_key = explored_sector ? [...explored_sector].sort().join("|") : "";
 
+  /* The near field is regenerated when the walker crosses into a new cell, not
+     on every GPS frame. Rounding the position to the grid gives a memo key that
+     changes exactly as often as the answer does — a walk otherwise rebuilds the
+     whole world sixty times a second and the map drops frames. */
+  const cell_key = at ? spawnCellKey(at) : "";
+
   return useMemo(() => {
     if (!pool || pool.length === 0) return EMPTY_WORLD;
     const { ends_at } = spawnWindow(now_ms);
     const explored = explored_key ? new Set(explored_key.split("|")) : undefined;
     return {
-      spawn: spawnForWindow(pool, now_ms, undefined, { explored_sector: explored }),
+      spawn: spawnWorld(pool, now_ms, at ?? null, { explored_sector: explored }),
       pool,
       pool_count: new Map(pool.map((e) => [e.species_code, e.count])),
       ends_at,
       is_ready: true,
     };
-  }, [pool, now_ms, explored_key]);
+    /* `at` is read through `cell_key`: the world may only change when the
+       walker changes cell, and listing the raw position here would defeat that
+       on purpose-built devices that report a new fix every 200 ms. */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pool, now_ms, explored_key, cell_key]);
 }
 
 /* ── rarity ─────────────────────────────────────────────────────────────── */

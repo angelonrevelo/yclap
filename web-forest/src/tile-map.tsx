@@ -73,6 +73,8 @@ export interface Projection {
    * pitch changes. So it lives here, next to the transform it inverts.
    */
   toScreen: (point: { x: number; y: number }) => { x: number; y: number; scale: number };
+  /** Inverse of `toScreen` then `project`: a click on the glass → lat/lon. */
+  fromScreen: (x: number, y: number) => LatLon;
 }
 
 interface Props {
@@ -143,10 +145,33 @@ interface Props {
    * view raises it to a Pokémon GO camera, where one street fills the screen.
    */
   max_zoom?: number;
+  /**
+   * Furthest zoom allowed. Defaults to `MIN_ZOOM`, the survey view.
+   *
+   * The play view raises the floor. Zooming out until the whole campus is a
+   * green postage stamp turns the walk back into the map screen it was supposed
+   * to replace — you stop looking for the tree and start reading a diagram of
+   * where the tree is. The genre this borrows from simply does not offer that
+   * zoom, and neither does this one; the field view still does, one tap away.
+   */
+  min_zoom?: number;
+  /**
+   * Weld the camera to `view` — a drag rotates around it instead of panning
+   * off it.
+   *
+   * With `view` driven by the walker's fix, this is the GO camera: you are
+   * always in the middle of your own screen, and the only thing a thumb can
+   * change is which way you are facing. It also removes a real failure on
+   * stage, where a stray drag leaves the presenter looking at empty ground with
+   * no obvious way back.
+   */
+  is_pan_locked?: boolean;
   /** Chrome the map draws in SCREEN space, above the tilted plane. */
   overlay?: (projection: Projection) => ReactNode;
   is_chrome_hidden?: boolean;
   children?: (projection: Projection) => ReactNode;
+  /** Click / tap on empty ground. Not fired after a pan, or on a marked find. */
+  onTap?: (point: LatLon) => void;
 }
 
 function tileRange(origin: number, span: number): number[] {
@@ -172,14 +197,19 @@ export default function TileMap({
   ground,
   credit_offset = 0,
   max_zoom = MAX_ZOOM,
+  min_zoom = MIN_ZOOM,
+  is_pan_locked = false,
   overlay,
   is_chrome_hidden = false,
   children,
+  onTap,
 }: Props) {
   const box_ref = useRef<HTMLDivElement | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const drag = useRef<{ x: number; y: number; lat: number; lon: number; bearing: number; is_rotate: boolean } | null>(null);
   const pointer = useRef(new Map<number, { x: number; y: number }>());
+  const down_at = useRef<{ x: number; y: number } | null>(null);
+  const from_screen = useRef<(x: number, y: number) => LatLon>((x, y) => fromWorld({ x, y }, view.zoom));
 
   useLayoutEffect(() => {
     const node = box_ref.current;
@@ -196,7 +226,10 @@ export default function TileMap({
      raster source's max zoom — that is what lets the camera sit closer than
      OSM's z19 ceiling. Field still respects the active basemap. */
   const zoom_cap = is_tile_hidden ? max_zoom : source.max_zoom;
-  const zoom = Math.round(Math.max(MIN_ZOOM, Math.min(zoom_cap, view.zoom)));
+  /* The floor may not cross the ceiling: a view that asked for a closer floor
+     than its own cap would otherwise pin the camera at an unreachable zoom. */
+  const zoom_floor = Math.min(min_zoom, zoom_cap);
+  const zoom = Math.round(Math.max(zoom_floor, Math.min(zoom_cap, view.zoom)));
   const center_world = toWorld(view, zoom);
   const origin = {
     x: center_world.x - size.width / 2,
@@ -214,10 +247,13 @@ export default function TileMap({
   /* Zoom about the cursor, so the feature under the pointer stays put. */
   const zoomAt = useCallback(
     (step: number, client_x?: number, client_y?: number) => {
-      const next_zoom = Math.max(MIN_ZOOM, Math.min(zoom_cap, zoom + step));
+      const next_zoom = Math.max(zoom_floor, Math.min(zoom_cap, zoom + step));
       if (next_zoom === zoom) return;
       const rect = box_ref.current?.getBoundingClientRect();
-      if (!rect || client_x === undefined || client_y === undefined) {
+      /* Zoom-about-the-cursor moves the centre, which a locked camera is not
+         allowed to do — it would walk the map off the character one pinch at a
+         time. Locked, the zoom is about the walker, full stop. */
+      if (is_pan_locked || !rect || client_x === undefined || client_y === undefined) {
         onView({ ...view, zoom: next_zoom });
         return;
       }
@@ -235,7 +271,7 @@ export default function TileMap({
       );
       onView({ ...clampCenter(next_center), zoom: next_zoom });
     },
-    [zoom, zoom_cap, origin.x, origin.y, size.width, size.height, view, onView],
+    [zoom, zoom_cap, zoom_floor, is_pan_locked, origin.x, origin.y, size.width, size.height, view, onView],
   );
 
   useEffect(() => {
@@ -243,13 +279,13 @@ export default function TileMap({
     if (!node || !is_interactive) return;
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
-      onGesture?.();
+      if (!is_pan_locked) onGesture?.();
       zoomAt(event.deltaY < 0 ? 1 : -1, event.clientX, event.clientY);
     };
     /* Non-passive, or the browser refuses preventDefault and the page scrolls. */
     node.addEventListener("wheel", onWheel, { passive: false });
     return () => node.removeEventListener("wheel", onWheel);
-  }, [zoomAt, is_interactive, onGesture]);
+  }, [zoomAt, is_interactive, is_pan_locked, onGesture]);
 
   /**
    * One pointer pans, two pointers rotate (and so does shift-drag or a
@@ -265,7 +301,9 @@ export default function TileMap({
     if (!is_interactive) return;
     (event.target as Element).setPointerCapture?.(event.pointerId);
     pointer.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    const rotating = pointer.current.size > 1 || event.shiftKey || event.button === 2;
+    down_at.current = { x: event.clientX, y: event.clientY };
+    const rotating =
+      is_pan_locked || pointer.current.size > 1 || event.shiftKey || event.button === 2;
     drag.current = {
       x: event.clientX,
       y: event.clientY,
@@ -285,7 +323,11 @@ export default function TileMap({
     const dx = event.clientX - from.x;
     const dy = event.clientY - from.y;
     if (Math.abs(dx) + Math.abs(dy) < 3) return;
-    onGesture?.();
+    /* A locked camera cannot be dragged off its subject, so the gesture that
+       normally means "stop following me" no longer means anything — reporting
+       it would switch following off while the camera stayed put, and the
+       Recentre control would then appear with nothing to recentre. */
+    if (!is_pan_locked) onGesture?.();
 
     if (from.is_rotate) {
       /* Horizontal travel swings the camera; a quarter of the screen is a
@@ -310,6 +352,14 @@ export default function TileMap({
     (event.target as Element).releasePointerCapture?.(event.pointerId);
     pointer.current.delete(event.pointerId);
     if (pointer.current.size === 0) drag.current = null;
+    const start = down_at.current;
+    down_at.current = null;
+    if (!onTap || !start || !box_ref.current) return;
+    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) >= 8) return;
+    const mark = event.target instanceof Element ? event.target.closest("[data-play-marker]") : null;
+    if (mark) return;
+    const rect = box_ref.current.getBoundingClientRect();
+    onTap(from_screen.current(event.clientX - rect.left, event.clientY - rect.top));
   };
 
   /* A tilted plane shows ground the flat viewport never would, and rotation
@@ -349,6 +399,26 @@ export default function TileMap({
     [tilt_degree, bearing_degree, origin_x, origin_y, depth, rad, bear, shift_y],
   );
 
+  const fromScreen = useCallback(
+    (sx: number, sy: number): LatLon => {
+      if (!tilt_degree && !bearing_degree) {
+        return fromWorld({ x: origin.x + sx, y: origin.y + sy }, zoom);
+      }
+      const sy1 = sy - shift_y;
+      const scale = 1 + ((sy1 - origin_y) * Math.tan(rad)) / depth;
+      if (!Number.isFinite(scale) || scale <= 0.05) {
+        return fromWorld({ x: origin.x + sx, y: origin.y + sy }, zoom);
+      }
+      const dx = (sx - origin_x) / scale;
+      const dy = (sy1 - origin_y) / (Math.cos(rad) * scale);
+      const dx0 = dx * Math.cos(bear) + dy * Math.sin(bear);
+      const dy0 = -dx * Math.sin(bear) + dy * Math.cos(bear);
+      return fromWorld({ x: origin.x + origin_x + dx0, y: origin.y + origin_y + dy0 }, zoom);
+    },
+    [tilt_degree, bearing_degree, origin.x, origin.y, origin_x, origin_y, depth, rad, bear, shift_y, zoom],
+  );
+  from_screen.current = fromScreen;
+
   const projection: Projection = {
     project,
     meter_per_pixel: meterPerPixel(view.lat, zoom),
@@ -358,6 +428,7 @@ export default function TileMap({
     tilt_degree,
     bearing_degree,
     toScreen,
+    fromScreen,
   };
 
   /* One transform for the entire ground plane. `transformOrigin` sits below the

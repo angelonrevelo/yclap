@@ -1,11 +1,13 @@
 import { useMemo, useRef } from "react";
 import campus_shape from "./asset/campus-shape.json" with { type: "json" };
 import Botanical from "./botanical";
+import { BUILDING_ATTRIBUTION, building as campus_building } from "./building";
+import Skyline, { type SkylineStyle } from "./skyline";
 import Character, { type Stage } from "./character";
 import { AT_TREE_RADIUS_M, RESTRICTED_POLYGON, species, type Encounter } from "./data";
 import { residentBySector } from "./nearby";
 import { pinKindOf, type PinKind } from "./pin";
-import { distanceMeter, type Fix } from "./geo";
+import { distanceMeter, type Fix, type LatLon } from "./geo";
 import {
   biome_sector,
   SECTOR_ATTRIBUTION,
@@ -54,6 +56,16 @@ const TILT_DEGREE = 52;
 const GROUND = "#CFE3BD";
 /** Closest play camera. Exported so the app's default play zoom cannot outrun it. */
 export const PLAY_MAX_ZOOM = 22;
+/**
+ * Furthest the play camera pulls back.
+ *
+ * At z19 a 390 px phone spans about 110 m — a couple of sectors, enough to see
+ * where you are going and not enough to plan the whole walk from a chair. One
+ * step further out and the character is a dot, which is the moment this stops
+ * being a game you are inside and goes back to being a diagram of one. The
+ * field view keeps the whole-campus zoom; this view deliberately does not.
+ */
+export const PLAY_MIN_ZOOM = 19;
 const MAX_LABEL = 5;
 
 interface ShapeFile {
@@ -158,6 +170,12 @@ interface Props {
   /** The rotating world for this window. Empty until the pool has loaded. */
   spawn?: Spawn[];
   onSelectSpawn?: (row: Spawn) => void;
+  /** Play-mode tap on empty ground. The walker walks there. */
+  onWalkTo?: (point: LatLon) => void;
+  /** Weld the camera to the walker — see `is_pan_locked` on `TileMap`. */
+  is_camera_locked?: boolean;
+  /** How much of a building to draw — see `SkylineStyle`. */
+  skyline_style?: SkylineStyle;
 }
 
 type Project = Projection["project"];
@@ -261,6 +279,9 @@ export default function PlayMap({
   onBearing,
   spawn = [],
   onSelectSpawn,
+  onWalkTo,
+  is_camera_locked = false,
+  skyline_style,
 }: Props) {
   const here = useMemo(() => (fix ? sectorAt(fix) : null), [fix]);
 
@@ -297,13 +318,18 @@ export default function PlayMap({
       onBearing={onBearing}
       is_tile_hidden
       ground={GROUND}
-      overlay_attribution={`${SECTOR_ATTRIBUTION} · basemap © OpenStreetMap contributors`}
+      overlay_attribution={`${SECTOR_ATTRIBUTION} · ${BUILDING_ATTRIBUTION}`}
       /* ODbL credit has to stay readable: sit it just above the game dock (156 px). */
       credit_offset={158}
       /* Pokémon GO scale: at z22 a 390 px screen spans ~14 m, so a street is the
          width of the view and the walker's egg reads at about human height. */
       max_zoom={PLAY_MAX_ZOOM}
+      /* And no further out than this. Past z19 the walker is a dot on a green
+         shape and the screen has quietly become the survey map again. */
+      min_zoom={PLAY_MIN_ZOOM}
+      is_pan_locked={is_camera_locked}
       is_chrome_hidden
+      onTap={onWalkTo}
       overlay={(projection) => {
         /* Only real biomes speak. A car park does not get a pill. */
         const label = pickLabel(
@@ -326,6 +352,47 @@ export default function PlayMap({
                   "linear-gradient(180deg, #BCD9EA 0%, #C9E1E3 10%, rgba(210,232,210,0.9) 18%, rgba(214,234,206,0.5) 25%, rgba(214,234,206,0) 33%)",
               }}
             />
+            {/* The campus, standing up. Under the sky, over the ground, and
+                below every marker — see `skyline.tsx` on why it cannot live
+                in the tilted plane with the rest of the map. */}
+            <Skyline projection={projection} centre={view} style={skyline_style} />
+
+            {/* The walker, drawn on the glass rather than in the ground.
+                It used to live inside the tilted plane and counter-rotate out
+                of it, which was right while nothing was ever painted above the
+                plane. The skyline is painted above the plane — it has to be,
+                there is no "up" inside a plane — so a walker left down there
+                goes behind the first building they stand near, and behind the
+                football pitch if that pitch is ever mistaken for a building.
+                Up here the rake is already applied by `toScreen`, so the
+                character no longer counter-rotates for it: `tilt_degree` is 0
+                and the figure is simply upright, which is what it was always
+                trying to look like. */}
+            {fix && (() => {
+              const at = projection.toScreen(projection.project(fix));
+              return (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: at.x,
+                    top: at.y,
+                    transform: `translate(-50%, -100%) scale(${Math.max(0.6, Math.min(1.35, at.scale)).toFixed(3)})`,
+                    transformOrigin: "50% 100%",
+                    pointerEvents: "none",
+                    zIndex: 6,
+                  }}
+                >
+                  <Character
+                    stage={stage}
+                    vigor={vigor}
+                    size={is_desktop ? 128 : 108}
+                    bearing_degree={bearing_degree}
+                    is_walking={travel.current.is_walking}
+                    heading_degree={travel.current.heading}
+                  />
+                </div>
+              );
+            })()}
             {/* Birds. Pure atmosphere, screen space, no data behind them —
                 they exist because a still map reads as a diagram. */}
             <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
@@ -427,15 +494,18 @@ export default function PlayMap({
                 );
               })}
 
-              {/* 2 · buildings as flat blocks, so the ground reads as a campus */}
-              {shape.building.map((b, i) => (
+              {/* 2 · where each building MEETS the ground.
+                     The building itself is a prism drawn in screen space by
+                     `Skyline` — this is only its contact patch, which has to
+                     stay in the plane so it stays welded to the sector under
+                     it. Drawn dark rather than pale: a prism rising out of a
+                     light block looks like it is floating on one. */}
+              {campus_building.map((b, i) => (
                 <path
                   key={`b${i}`}
                   d={ringPath(b.point, project, true)}
-                  fill="#E8E2D6"
-                  stroke="#CFC6B4"
-                  strokeWidth="1"
-                  strokeLinejoin="round"
+                  fill="rgba(104,96,78,0.30)"
+                  stroke="none"
                 />
               ))}
 
@@ -567,6 +637,7 @@ export default function PlayMap({
               return (
                 <div
                   key={`pin-${e.encounter_id}`}
+                  data-play-marker="1"
                   onClick={() => onSelectEncounter(e)}
                   title={sp ? `${sp.common_name} — demo-map position` : e.where}
                   style={{
@@ -618,6 +689,7 @@ export default function PlayMap({
               return (
                 <div
                   key={row.spawn_id}
+                  data-play-marker="1"
                   onClick={onSelectSpawn ? () => onSelectSpawn(row) : undefined}
                   title={`${row.common_name}${row.rarity ? ` — ${row.rarity}` : ""}, out until ${new Date(row.ends_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`}
                   style={{
@@ -654,30 +726,6 @@ export default function PlayMap({
               );
             })}
 
-            {/* The walker. Standing up out of the plane — large in a GO play view. */}
-            {fix && (
-              <div
-                style={{
-                  position: "absolute",
-                  left: project(fix).x,
-                  top: project(fix).y,
-                  transform: "translate(-50%, -100%)",
-                  transformStyle: "preserve-3d",
-                  pointerEvents: "none",
-                  zIndex: 5,
-                }}
-              >
-                <Character
-                  stage={stage}
-                  vigor={vigor}
-                  size={is_desktop ? 128 : 108}
-                  tilt_degree={TILT_DEGREE}
-                  bearing_degree={bearing_degree}
-                  is_walking={travel.current.is_walking}
-                  heading_degree={travel.current.heading}
-                />
-              </div>
-            )}
           </>
         );
       }}
