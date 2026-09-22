@@ -609,28 +609,56 @@ export default function PlayMap({
               const pin_kind = pinKindOf(species[e.species_code]);
               if (pin_filter && pin_filter.size > 0 && !pin_filter.has(pin_kind)) return null;
               const in_range = fix ? distanceMeter(fix, e) <= AT_TREE_RADIUS_M : false;
-              const px = Math.max(10, AT_TREE_RADIUS_M / Math.max(projection.meter_per_pixel, 0.01));
+              const px = Math.max(10, AT_TREE_RADIUS_M / Math.max(projection.plane_meter_per_pixel, 0.01));
               return (
                 <g key={`sh-${e.encounter_id}`}>
-                  <ellipse cx={p.x} cy={p.y} rx="12" ry="7" fill="rgba(28,74,34,0.18)" />
+                  <circle cx={p.x} cy={p.y} r="11" fill="rgba(28,74,34,0.18)" />
                   {in_range && (
                     <>
-                      <ellipse cx={p.x} cy={p.y} rx={px * 0.55} ry={px * 0.32} fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="2" style={{ animation: "fgpulse 1.8s ease-out infinite" }} />
-                      <ellipse cx={p.x} cy={p.y} rx={px * 0.85} ry={px * 0.48} fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" style={{ animation: "fgpulse 1.8s ease-out 0.45s infinite" }} />
+                      <circle cx={p.x} cy={p.y} r={px * 0.55} fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="2" style={{ animation: "fgpulse 1.8s ease-out infinite" }} />
+                      <circle cx={p.x} cy={p.y} r={px * 0.85} fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" style={{ animation: "fgpulse 1.8s ease-out 0.45s infinite" }} />
                     </>
                   )}
                 </g>
               );
             })}
 
-            {/* Walker interaction radius — quiet white pulse, genre grammar. */}
+            {/* Walker interaction radius — quiet white pulse, genre grammar.
+             *
+             * A CIRCLE, not a pre-squashed ellipse. This is drawn inside the
+             * ground plane, and the plane already carries the 52° rake and the
+             * camera bearing in one CSS transform — so the browser foreshortens
+             * a circle into exactly the right ellipse, for free, at any tilt
+             * and any bearing.
+             *
+             * Drawing an ellipse here squashed it twice, and worse, the squash
+             * was axis-aligned in plane space while the rake is applied after
+             * the bearing rotation. At north it looked almost right; swing the
+             * camera and the ring lifted out of the ground and stood up on
+             * edge. That is the "not parallel to the ground" — it was never a
+             * tuning problem with the 0.55, it was geometry done twice in two
+             * different frames of reference.
+             *
+             * `plane_meter_per_pixel`, not `meter_per_pixel`: 40 m has to be 40 m
+             * in the space this circle is actually drawn in. */}
             {fix && (() => {
               const p = project(fix);
-              const r = Math.max(14, AT_TREE_RADIUS_M / Math.max(projection.meter_per_pixel, 0.01));
+              const r = Math.max(14, AT_TREE_RADIUS_M / Math.max(projection.plane_meter_per_pixel, 0.01));
+              /* Drawn only when 40 m actually fits on the glass.
+               *
+               * At the street camera (z22, ~14 m across a phone) the real reach
+               * radius is about three screens wide, and a ring three screens
+               * wide is not a ring — it is a pale wash with no edge, which
+               * tells you nothing about how close you have to be. Rather than
+               * shrink it to a decorative circle and quietly stop meaning
+               * 40 m, it is simply not drawn until the camera is wide enough to
+               * hold it. Pull back and the ring appears at its true size. */
+              const r_screen = AT_TREE_RADIUS_M / Math.max(projection.meter_per_pixel, 0.01);
+              if (r_screen > Math.min(projection.width, projection.height) * 0.6) return null;
               return (
                 <g pointerEvents="none">
-                  <ellipse cx={p.x} cy={p.y} rx={r} ry={r * 0.55} fill="rgba(255,255,255,0.14)" stroke="rgba(255,255,255,0.55)" strokeWidth="1.5" />
-                  <ellipse cx={p.x} cy={p.y} rx={r * 0.72} ry={r * 0.4} fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" style={{ animation: "fgpulse 2.2s ease-out infinite" }} />
+                  <circle cx={p.x} cy={p.y} r={r} fill="rgba(255,255,255,0.14)" stroke="rgba(255,255,255,0.55)" strokeWidth="1.5" />
+                  <circle cx={p.x} cy={p.y} r={r * 0.72} fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" style={{ animation: "fgpulse 2.2s ease-out infinite" }} />
                 </g>
               );
             })()}

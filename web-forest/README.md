@@ -82,6 +82,16 @@ The play layer, wired in `src/live.tsx`:
   (~110 m down to ~14 m across a phone). You cannot pull back to the campus
   diagram from the play view; the field view still has it, one tap away.
   `?zoom=` and `?bearing=` set a reproducible camera for a projector.
+- **`zoom.ts` — continuous zoom**, ported from the fix in `tripi`
+  (`apps/web/public/map.html`, which gets it from Leaflet's `zoomSnap: 0` plus
+  an inlined SmoothWheelZoom). This repo has no Leaflet on purpose, so the
+  technique is ported rather than the plugin: the zoom is **fractional**, the
+  tile grid and every projection stay on `tileZoomOf()` and the leftover
+  fraction rides on a CSS scale of the ground plane, so between whole levels
+  nothing is refetched and nothing is reprojected. The wheel sets a *goal* and a
+  frame loop eases 30% of the gap per frame, anchored on the cursor.
+  **Two fingers now pinch as well as rotate** — before, they only rotated, so on
+  a phone the one gesture everybody tries first swung the camera instead.
 - **`joystick.tsx` + `play-walk.ts`** — an on-screen thumbstick, because the
   26 September showcase is in a hall with no campus trees and a GPS fix that
   resolves somewhere this app correctly refuses to spawn anything. **A fix that

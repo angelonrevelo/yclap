@@ -11,6 +11,17 @@ import {
   toWorld,
   type LatLon,
 } from "./geo";
+import {
+  clampZoom,
+  easeZoom,
+  isZoomSettled,
+  pinchZoomDelta,
+  tileZoomOf,
+  wheelZoomStep,
+  WHEEL_IDLE_MS,
+  ZOOM_BUTTON_DELTA,
+  zoomScaleOf,
+} from "./zoom";
 
 /**
  * A real slippy map, with no map library.
@@ -54,6 +65,15 @@ export interface Projection {
   project: (point: LatLon) => { x: number; y: number };
   /** Ground metres per screen pixel — turns a real radius into a real circle. */
   meter_per_pixel: number;
+  /**
+   * Ground metres per PLANE pixel — for geometry drawn inside the tilted plane.
+   *
+   * Not the same number as `meter_per_pixel` once the zoom is fractional: the
+   * plane is CSS-scaled by the leftover fraction, so a plane pixel and a screen
+   * pixel cover different amounts of ground everywhere except a whole zoom
+   * level. Anything sized in `<svg>` under `children` wants this one.
+   */
+  plane_meter_per_pixel: number;
   width: number;
   height: number;
   zoom: number;
@@ -208,6 +228,8 @@ export default function TileMap({
   const [size, setSize] = useState({ width: 0, height: 0 });
   const drag = useRef<{ x: number; y: number; lat: number; lon: number; bearing: number; is_rotate: boolean } | null>(null);
   const pointer = useRef(new Map<number, { x: number; y: number }>());
+  /** Finger spread and zoom at the moment the second finger landed. */
+  const pinch = useRef<{ distance: number; zoom: number } | null>(null);
   const down_at = useRef<{ x: number; y: number } | null>(null);
   /** Set by `endDrag` when the gesture travelled; consumed by the click trap. */
   const was_dragged = useRef(false);
@@ -231,7 +253,20 @@ export default function TileMap({
   /* The floor may not cross the ceiling: a view that asked for a closer floor
      than its own cap would otherwise pin the camera at an unreachable zoom. */
   const zoom_floor = Math.min(min_zoom, zoom_cap);
-  const zoom = Math.round(Math.max(zoom_floor, Math.min(zoom_cap, view.zoom)));
+  /**
+   * Zoom is fractional now; the TILES are not.
+   *
+   * `zoom_exact` is what the camera is actually at. `zoom` is the integer level
+   * the tile grid and every projection run on — so `project`, the sector paths,
+   * the markers and the tile URLs all stay consistent with each other — and the
+   * leftover fraction rides on `zoom_scale`, a CSS scale applied to the whole
+   * ground plane. Between whole levels nothing is refetched and nothing is
+   * reprojected: the tiles you already have are scaled, which is what makes the
+   * zoom continuous instead of a staircase. See `zoom.ts`.
+   */
+  const zoom_exact = clampZoom(view.zoom, zoom_floor, zoom_cap);
+  const zoom = tileZoomOf(zoom_exact);
+  const zoom_scale = zoomScaleOf(zoom_exact);
   const center_world = toWorld(view, zoom);
   const origin = {
     x: center_world.x - size.width / 2,
@@ -246,35 +281,110 @@ export default function TileMap({
     [zoom, origin.x, origin.y],
   );
 
-  /* Zoom about the cursor, so the feature under the pointer stays put. */
-  const zoomAt = useCallback(
-    (step: number, client_x?: number, client_y?: number) => {
-      const next_zoom = Math.max(zoom_floor, Math.min(zoom_cap, zoom + step));
-      if (next_zoom === zoom) return;
-      const rect = box_ref.current?.getBoundingClientRect();
+  /**
+   * Set the camera to an exact zoom, keeping `anchor` under the same pixel.
+   *
+   * The anchor is a lat/lon, resolved by the caller BEFORE the gesture starts
+   * moving the camera — resolving it per frame would chase the point it is
+   * meant to be pinning.
+   */
+  const applyZoom = useCallback(
+    (next_exact: number, anchor: { point: LatLon; x: number; y: number } | null) => {
+      const clamped = clampZoom(next_exact, zoom_floor, zoom_cap);
       /* Zoom-about-the-cursor moves the centre, which a locked camera is not
          allowed to do — it would walk the map off the character one pinch at a
          time. Locked, the zoom is about the walker, full stop. */
-      if (is_pan_locked || !rect || client_x === undefined || client_y === undefined) {
-        onView({ ...view, zoom: next_zoom });
+      if (is_pan_locked || !anchor) {
+        onView({ ...view, zoom: clamped });
         return;
       }
-      const anchor = fromWorld(
-        { x: origin.x + (client_x - rect.left), y: origin.y + (client_y - rect.top) },
-        zoom,
-      );
-      const anchor_world = toWorld(anchor, next_zoom);
-      const next_center = fromWorld(
-        {
-          x: anchor_world.x - (client_x - rect.left) + size.width / 2,
-          y: anchor_world.y - (client_y - rect.top) + size.height / 2,
-        },
-        next_zoom,
-      );
-      onView({ ...clampCenter(next_center), zoom: next_zoom });
+      /* Solve for the centre that puts `anchor.point` back on `anchor.x/y`, in
+         the projection the NEXT frame will actually draw with: its integer tile
+         level and its plane scale. Doing the arithmetic at the old scale is
+         what makes an anchored zoom creep. */
+      const next_tile = tileZoomOf(clamped);
+      const next_scale = zoomScaleOf(clamped);
+      const anchor_world = toWorld(anchor.point, next_tile);
+      const centre_world = {
+        x: anchor_world.x - (anchor.x - size.width / 2) / next_scale,
+        y: anchor_world.y - (anchor.y - size.height / 2) / next_scale,
+      };
+      onView({ ...clampCenter(fromWorld(centre_world, next_tile)), zoom: clamped });
     },
-    [zoom, zoom_cap, zoom_floor, is_pan_locked, origin.x, origin.y, size.width, size.height, view, onView],
+    [zoom_cap, zoom_floor, is_pan_locked, size.width, size.height, view, onView],
   );
+
+  /* Live gesture state. Refs, not state: these change every frame and none of
+     them is rendered. */
+  const zoom_goal = useRef(zoom_exact);
+  const zoom_anchor = useRef<{ point: LatLon; x: number; y: number } | null>(null);
+  const zoom_frame = useRef<number | null>(null);
+  const zoom_idle = useRef<number | null>(null);
+  const view_ref = useRef(view);
+  view_ref.current = view;
+  const apply_ref = useRef(applyZoom);
+  apply_ref.current = applyZoom;
+
+  const stopZoomLoop = useCallback(() => {
+    if (zoom_frame.current !== null) cancelAnimationFrame(zoom_frame.current);
+    zoom_frame.current = null;
+    zoom_anchor.current = null;
+  }, []);
+
+  /**
+   * The frame loop.
+   *
+   * Deliberately free of early returns. The bug this port exists to avoid —
+   * tripi's `cee3a12`, where the cursor landing exactly on the container centre
+   * hit an early `return` that skipped `requestAnimationFrame` and froze the
+   * zoom mid-gesture — is a bug about a frame loop with a condition in it. This
+   * one runs `easeZoom`, which is total, and either reschedules or finishes.
+   */
+  const runZoomLoop = useCallback(() => {
+    if (zoom_frame.current !== null) return;
+    const step = () => {
+      const current = clampZoom(view_ref.current.zoom, zoom_floor, zoom_cap);
+      const goal = zoom_goal.current;
+      const next = easeZoom(current, goal);
+      apply_ref.current(next, zoom_anchor.current);
+      /* Two ways to be finished, and both are needed. Arrived — `easeZoom`
+         returned the goal exactly. Or stuck — the value did not move, which is
+         what happens when the goal is past a zoom bound and the clamp keeps
+         handing back the same number. Without the second the loop would spin at
+         60 fps against a wall. */
+      if (isZoomSettled(next, goal) || next === current) {
+        zoom_frame.current = null;
+        zoom_anchor.current = null;
+        return;
+      }
+      zoom_frame.current = requestAnimationFrame(step);
+    };
+    zoom_frame.current = requestAnimationFrame(step);
+  }, [zoom_floor, zoom_cap]);
+
+  /** Nudge the goal by `step` levels, anchored at a client point if given. */
+  const zoomAt = useCallback(
+    (step: number, client_x?: number, client_y?: number) => {
+      const rect = box_ref.current?.getBoundingClientRect();
+      const base =
+        zoom_frame.current !== null
+          ? zoom_goal.current
+          : clampZoom(view_ref.current.zoom, zoom_floor, zoom_cap);
+      zoom_goal.current = clampZoom(base + step, zoom_floor, zoom_cap);
+      if (rect && client_x !== undefined && client_y !== undefined && !is_pan_locked) {
+        const x = client_x - rect.left;
+        const y = client_y - rect.top;
+        /* Resolve the anchor once, at the zoom on screen right now. */
+        zoom_anchor.current = { point: from_screen.current(x, y), x, y };
+      } else {
+        zoom_anchor.current = null;
+      }
+      runZoomLoop();
+    },
+    [zoom_floor, zoom_cap, is_pan_locked, runZoomLoop],
+  );
+
+  useEffect(() => stopZoomLoop, [stopZoomLoop]);
 
   /**
    * The click trap.
@@ -303,7 +413,13 @@ export default function TileMap({
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
       if (!is_pan_locked) onGesture?.();
-      zoomAt(event.deltaY < 0 ? 1 : -1, event.clientX, event.clientY);
+      /* A fraction of a level per tick, not a whole one. The goal accumulates
+         across a trackpad flick and the frame loop chases it. */
+      zoomAt(wheelZoomStep(event.deltaY), event.clientX, event.clientY);
+      if (zoom_idle.current !== null) window.clearTimeout(zoom_idle.current);
+      zoom_idle.current = window.setTimeout(() => {
+        zoom_anchor.current = null;
+      }, WHEEL_IDLE_MS);
     };
     /* Non-passive, or the browser refuses preventDefault and the page scrolls. */
     node.addEventListener("wheel", onWheel, { passive: false });
@@ -322,7 +438,18 @@ export default function TileMap({
    */
   const onPointerDown = (event: React.PointerEvent) => {
     if (!is_interactive) return;
-    (event.target as Element).setPointerCapture?.(event.pointerId);
+    /* Capture is best-effort and must not be able to abort the handler.
+     *
+     * `setPointerCapture` throws `NotFoundError` for a pointer the browser does
+     * not consider active — a pointer already lifted, or a synthetic event. It
+     * used to run BEFORE the bookkeeping below, so one throw meant this pointer
+     * was never recorded: no drag start, and with a second finger, no pinch.
+     * The gesture state is what matters; the capture is an optimisation. */
+    try {
+      (event.target as Element).setPointerCapture?.(event.pointerId);
+    } catch {
+      /* not an active pointer — carry on without capture */
+    }
     pointer.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     down_at.current = { x: event.clientX, y: event.clientY };
     const rotating =
@@ -335,6 +462,20 @@ export default function TileMap({
       bearing: bearing_degree,
       is_rotate: rotating && Boolean(onBearing),
     };
+    /* Second finger down: open a pinch alongside the rotate.
+     *
+     * Two fingers used to mean rotate and nothing else, so on a phone — where
+     * there is no wheel at all — the map could not be zoomed by the one gesture
+     * every person alive tries first. They now run together, the way they do in
+     * a real map app: the distance between the fingers drives the zoom, their
+     * horizontal travel drives the bearing. */
+    if (pointer.current.size === 2) {
+      const [a, b] = [...pointer.current.values()];
+      pinch.current = {
+        distance: Math.hypot(a.x - b.x, a.y - b.y),
+        zoom: clampZoom(view.zoom, zoom_floor, zoom_cap),
+      };
+    }
   };
 
   const onPointerMove = (event: React.PointerEvent) => {
@@ -351,6 +492,27 @@ export default function TileMap({
        it would switch following off while the camera stayed put, and the
        Recentre control would then appear with nothing to recentre. */
     if (!is_pan_locked) onGesture?.();
+
+    /* Pinch runs BEFORE the rotate branch and does not consume the gesture —
+       both read the same two fingers. */
+    const start_pinch = pinch.current;
+    if (start_pinch && pointer.current.size === 2) {
+      const [a, b] = [...pointer.current.values()];
+      const now = Math.hypot(a.x - b.x, a.y - b.y);
+      const want = start_pinch.zoom + pinchZoomDelta(start_pinch.distance, now);
+      const rect = box_ref.current?.getBoundingClientRect();
+      /* Anchored on the midpoint between the fingers, so the ground you are
+         pinching stays between them. */
+      if (rect && !is_pan_locked) {
+        const mx = (a.x + b.x) / 2 - rect.left;
+        const my = (a.y + b.y) / 2 - rect.top;
+        zoom_anchor.current = { point: from_screen.current(mx, my), x: mx, y: my };
+      } else {
+        zoom_anchor.current = null;
+      }
+      zoom_goal.current = clampZoom(want, zoom_floor, zoom_cap);
+      runZoomLoop();
+    }
 
     if (from.is_rotate) {
       /* Horizontal travel swings the camera; a quarter of the screen is a
@@ -372,8 +534,15 @@ export default function TileMap({
   };
 
   const endDrag = (event: React.PointerEvent) => {
-    (event.target as Element).releasePointerCapture?.(event.pointerId);
+    try {
+      (event.target as Element).releasePointerCapture?.(event.pointerId);
+    } catch {
+      /* never captured, or already released — releasing is not the point */
+    }
     pointer.current.delete(event.pointerId);
+    /* One finger left is no longer a pinch — and must not become one again from
+       a stale spread when the second comes back down. */
+    if (pointer.current.size < 2) pinch.current = null;
     if (pointer.current.size === 0) drag.current = null;
     const start = down_at.current;
     down_at.current = null;
@@ -398,9 +567,13 @@ export default function TileMap({
   /* A tilted plane shows ground the flat viewport never would, and rotation
      swings more in from the sides, so the overscan has to cover the diagonal
      rather than just the top. Without it the map ends in a hard empty band. */
-  const pad_x = tilt_degree ? size.width * 0.9 : 0;
-  const pad_top = tilt_degree ? size.height * 1.35 : 0;
-  const pad_bottom = tilt_degree ? size.height * 0.9 : 0;
+  /* Scaling the plane DOWN (zoom_exact below its tile level) shrinks the tiles,
+     so the same viewport needs more of them — without this the map ends in a
+     hard empty band on the way out of a zoom. `1/zoom_scale` is at most √2. */
+  const spread = 1 / zoom_scale;
+  const pad_x = tilt_degree ? size.width * 0.9 * spread : (size.width * (spread - 1)) / 2 + 2;
+  const pad_top = tilt_degree ? size.height * 1.35 * spread : (size.height * (spread - 1)) / 2 + 2;
+  const pad_bottom = tilt_degree ? size.height * 0.9 * spread : (size.height * (spread - 1)) / 2 + 2;
 
   const tile_x = size.width ? tileRange(origin.x - pad_x, size.width + pad_x * 2) : [];
   const tile_y = size.height ? tileRange(origin.y - pad_top, size.height + pad_top + pad_bottom) : [];
@@ -418,9 +591,20 @@ export default function TileMap({
 
   const toScreen = useCallback(
     (point: { x: number; y: number }) => {
-      if (!tilt_degree && !bearing_degree) return { x: point.x, y: point.y, scale: 1 };
-      const dx0 = point.x - origin_x;
-      const dy0 = point.y - origin_y;
+      if (!tilt_degree && !bearing_degree) {
+        return {
+          x: origin_x + (point.x - origin_x) * zoom_scale,
+          y: origin_y + (point.y - origin_y) * zoom_scale,
+          scale: 1,
+        };
+      }
+      /* The plane carries `scale(zoom_scale)` in the same transform as the
+         rake, so an offset measured in plane pixels lands `zoom_scale` times
+         further out on the glass. Anything reasoning in SCREEN space — a label
+         fit test, the skyline, the walker — has to see that or it drifts off
+         the tiles between whole levels. */
+      const dx0 = (point.x - origin_x) * zoom_scale;
+      const dy0 = (point.y - origin_y) * zoom_scale;
       /* Same order as the CSS: rotate the ground about the player first, then
          rake the camera over it, then divide by depth. */
       const dx = dx0 * Math.cos(bear) - dy0 * Math.sin(bear);
@@ -429,35 +613,46 @@ export default function TileMap({
       const scale = depth / (depth - z);
       return { x: origin_x + dx * scale, y: origin_y + dy * Math.cos(rad) * scale + shift_y, scale };
     },
-    [tilt_degree, bearing_degree, origin_x, origin_y, depth, rad, bear, shift_y],
+    [tilt_degree, bearing_degree, origin_x, origin_y, depth, rad, bear, shift_y, zoom_scale],
   );
 
   const fromScreen = useCallback(
     (sx: number, sy: number): LatLon => {
       if (!tilt_degree && !bearing_degree) {
-        return fromWorld({ x: origin.x + sx, y: origin.y + sy }, zoom);
+        return fromWorld(
+          {
+            x: origin.x + origin_x + (sx - origin_x) / zoom_scale,
+            y: origin.y + origin_y + (sy - origin_y) / zoom_scale,
+          },
+          zoom,
+        );
       }
       const sy1 = sy - shift_y;
       const scale = 1 + ((sy1 - origin_y) * Math.tan(rad)) / depth;
       if (!Number.isFinite(scale) || scale <= 0.05) {
         return fromWorld({ x: origin.x + sx, y: origin.y + sy }, zoom);
       }
-      const dx = (sx - origin_x) / scale;
-      const dy = (sy1 - origin_y) / (Math.cos(rad) * scale);
+      const dx = (sx - origin_x) / scale / zoom_scale;
+      const dy = (sy1 - origin_y) / (Math.cos(rad) * scale) / zoom_scale;
       const dx0 = dx * Math.cos(bear) + dy * Math.sin(bear);
       const dy0 = -dx * Math.sin(bear) + dy * Math.cos(bear);
       return fromWorld({ x: origin.x + origin_x + dx0, y: origin.y + origin_y + dy0 }, zoom);
     },
-    [tilt_degree, bearing_degree, origin.x, origin.y, origin_x, origin_y, depth, rad, bear, shift_y, zoom],
+    [tilt_degree, bearing_degree, origin.x, origin.y, origin_x, origin_y, depth, rad, bear, shift_y, zoom, zoom_scale],
   );
   from_screen.current = fromScreen;
 
   const projection: Projection = {
     project,
-    meter_per_pixel: meterPerPixel(view.lat, zoom),
+    /* Ground metres per SCREEN pixel, so it has to divide by the plane scale:
+       between whole levels the tiles are stretched and a pixel covers less
+       ground than its tile level says. The skyline's building heights and every
+       real-radius circle read this. */
+    meter_per_pixel: meterPerPixel(view.lat, zoom) / zoom_scale,
+    plane_meter_per_pixel: meterPerPixel(view.lat, zoom),
     width: size.width,
     height: size.height,
-    zoom,
+    zoom: zoom_exact,
     tilt_degree,
     bearing_degree,
     toScreen,
@@ -473,10 +668,18 @@ export default function TileMap({
         inset: 0,
         transformStyle: "preserve-3d",
         transformOrigin: "50% 50%",
-        transform: `translateY(${shift_y}px) perspective(${depth}px) rotateX(${tilt_degree}deg) rotateZ(${bearing_degree}deg)`,
+        transform: `translateY(${shift_y}px) perspective(${depth}px) rotateX(${tilt_degree}deg) rotateZ(${bearing_degree}deg) scale(${zoom_scale})`,
         willChange: "transform",
       }
-    : { position: "absolute", inset: 0 };
+    : {
+        position: "absolute",
+        inset: 0,
+        /* Flat camera still needs the fractional part, and the origin must
+           match `toScreen`'s (the container centre) or the two disagree. */
+        transform: zoom_scale === 1 ? undefined : `scale(${zoom_scale})`,
+        transformOrigin: "50% 50%",
+        willChange: zoom_scale === 1 ? undefined : "transform",
+      };
 
   return (
     <div
@@ -541,7 +744,7 @@ export default function TileMap({
               aria-label={label}
               onClick={() => {
                 onGesture?.();
-                zoomAt(sign);
+                zoomAt(sign * ZOOM_BUTTON_DELTA);
               }}
               style={{
                 width: 34,
