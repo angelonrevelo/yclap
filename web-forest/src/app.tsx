@@ -93,6 +93,7 @@ import { LAYER_ORDER, nextLayer, prefetchCampus, SOURCE, type Layer, type View }
 import { geoModeLabel, nextGeoMode, useGeo, type GeoMode } from "./use-geo";
 import { biomePresenceAt, rankEncounter, sectorResident, type BiomePresence } from "./nearby";
 import { cosmeticForStage } from "./cosmetic";
+import { BlindboxShelf } from "./blindbox-reveal";
 import { BadgeShelf, loadSpawnPool, RarityPill, reachableSpawn, useLiveWorld, useSpawnWorld, WildShelf, WorldStrip } from "./live";
 import { displayName, kindOf } from "./kind";
 import { SpeciesPortrait } from "./portrait.tsx";
@@ -2398,6 +2399,9 @@ function JournalScreen({
           <>
             <div style={{ marginTop: 22 }}>
               <ProgressCard sighting={sighting} is_desktop={is_desktop} gamify={gamify} />
+            </div>
+            <div style={{ marginTop: 22 }}>
+              <BlindboxShelf refresh_key={gamify.total_points} />
             </div>
             <div style={{ marginTop: 22 }}>
               <SummaryStrip sighting={sighting} pool={pool} />
