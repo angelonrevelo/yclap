@@ -421,6 +421,11 @@ export class Cute {
     this.nodes = [];
     this.channels = [];
     this.root = this.node("root");
+    /* Y shift applied by a wrapping "ground" node at export. 0 = none. Set by
+       the builder after measuring the rest pose (script/audit-model.mjs), so a
+       model whose lowest point floats over or sinks through y=0 stands on the
+       ground plane the gallery and <model-viewer> put it on. */
+    this.ground_offset = 0;
   }
 
   node(name, { parent = null, at = [0, 0, 0], rot = null, scale = [1, 1, 1], meshOf = null } = {}) {
@@ -672,10 +677,17 @@ export class Cute {
       });
     }
 
+    /* Appended last so every node index an animation channel targets stays put. */
+    let scene_root = roots;
+    if (this.ground_offset) {
+      gltfNodes.push({ name: "ground", translation: [0, this.ground_offset, 0], children: roots });
+      scene_root = [gltfNodes.length - 1];
+    }
+
     const gltf = {
       asset: { version: "2.0", generator: "yclap species-model builder (hand-rolled, no deps)" },
       scene: 0,
-      scenes: [{ name: this.name, nodes: roots }],
+      scenes: [{ name: this.name, nodes: scene_root }],
       nodes: gltfNodes,
       meshes,
       materials: [

@@ -20,6 +20,7 @@ import { Kit, APP, LEAVES, TRUNKS, FLOWERS, FUNGI_CAPS, SHELLS, INSECTS, BIRDS, 
 import { fauna } from "./species-model/fauna.mjs";
 import { flora } from "./species-model/flora.mjs";
 import { species as curated } from "../src/data.ts";
+import { auditGlb, groundOffset, FLYER } from "./audit-model.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const wf = join(here, "..");
@@ -1060,7 +1061,17 @@ for (const spec of list.values()) {
     const k = new Kit(spec, { idleDur: iconic === "Plantae" ? 2.4 : 1.6 });
     if (col.variegated) { /* vine reads the flag off colors */ }
     arch.fn(k, col, opt);
-    const glb = k.finish();
+    let glb = k.finish();
+    /* Stand it on y=0. The archetypes are authored by eye and ~10% of them
+       rest a few centimetres above the ground plane or through it; measured
+       from the rest pose, fixed with one wrapping node, checked by the same
+       rule in script/audit-model.mjs. */
+    const { bound } = auditGlb(glb);
+    const offset = bound ? groundOffset(bound, FLYER.has(archetypeKey)) : 0;
+    if (offset) {
+      k.cute.ground_offset = +offset.toFixed(5);
+      glb = k.finish();
+    }
     bytes = glb.byteLength;
     writeFileSync(join(outDir, `${spec.species_code}.glb`), glb);
   } catch (err) {
