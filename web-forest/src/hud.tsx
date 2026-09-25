@@ -321,17 +321,39 @@ export function DexCard({
   species_code,
   is_seen,
   size,
+  onOpen,
 }: {
   index: number;
   species_code: string;
   is_seen: boolean;
   size: number;
+  /** Opens the 3D species card. Only a seen card opens — "???" stays a secret. */
+  onOpen?: (species_code: string) => void;
 }) {
   const sp = species[species_code];
   const origin = sp ? (sp.pill.includes("Threatened") ? "Threatened" : sp.origin) : null;
   const tag = origin ? ORIGIN_TAG[origin] : null;
+  const is_openable = Boolean(onOpen && is_seen && sp);
   return (
-    <div className="gm-card" data-locked={!is_seen} style={{ animationDelay: `${index * 35}ms` }}>
+    <div
+      className="gm-card"
+      data-locked={!is_seen}
+      style={{ animationDelay: `${index * 35}ms`, cursor: is_openable ? "pointer" : undefined }}
+      role={is_openable ? "button" : undefined}
+      tabIndex={is_openable ? 0 : undefined}
+      aria-label={is_openable && sp ? `Open the ${sp.common_name} card` : undefined}
+      onClick={is_openable ? () => onOpen?.(species_code) : undefined}
+      onKeyDown={
+        is_openable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onOpen?.(species_code);
+              }
+            }
+          : undefined
+      }
+    >
       <span className="gm-card-no">#{String(index + 1).padStart(3, "0")}</span>
       {!is_seen && (
         <span className="gm-card-lock">

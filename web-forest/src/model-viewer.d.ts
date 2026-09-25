@@ -6,7 +6,7 @@
  * the attributes this app actually uses are listed — the full set is documented
  * at model-viewer.dev.
  */
-import type { CSSProperties, HTMLAttributes } from "react";
+import type { CSSProperties, HTMLAttributes, Key, Ref } from "react";
 
 interface ModelViewerAttributes extends HTMLAttributes<HTMLElement> {
   src: string;
@@ -17,6 +17,15 @@ interface ModelViewerAttributes extends HTMLAttributes<HTMLElement> {
   "shadow-intensity"?: string;
   "shadow-softness"?: string;
   exposure?: string;
+  /** Plays the model's embedded clip (the species pack's looping "idle"). */
+  autoplay?: boolean;
+  /** "none" hides the hand-wave hint that model-viewer shows over a still model. */
+  "interaction-prompt"?: string;
+  /** "eager" | "lazy" | "auto". */
+  loading?: string;
+  /** Listeners for `load` / `error` are attached through the ref (see SpeciesCard). */
+  ref?: Ref<HTMLElement>;
+  key?: Key | null;
   style?: CSSProperties;
 }
 
