@@ -104,7 +104,7 @@ Angelo overruled the prior "NOT DOING gamification" stance for Magisphere. These
 | **Stick pace decoupled from the walk** | Shipped (P0) | The stick moved at `WALK_PACE_MS` (1.3 m/s), which is a claim the app prints and useless as a control. It now traverses a fraction of the visible ground per second, and the throttle IS the speed — speed used to live on Shift, which a phone has not got |
 | **Haptics** | Shipped (P1) | Second, eyes-free confirmation channel on the stick, on a find in reach, and on points. Honest that iOS Safari has no `navigator.vibrate` at all, so nothing is ever only haptic |
 | **Ground rings lie flat** | Fixed (P1) | The reach radius was a hand-squashed `<ellipse>` inside a plane the browser already tilts — foreshortened twice, and axis-aligned, so rotating the camera stood it on edge. Plain circles now; the plane's own transform does it |
-| **Blindbox / cosmetic reveals** | Partial | Stage cosmetics already exist; not the Working Doc blindbox product yet |
+| **Blindbox / cosmetic reveals** | Shipped on-device (P1) | A box is earned only from the points ledger: one per finished daily hunt (`hunt:<day>`), one per first-logged species (`species:<code>`). Explore / Learn earn nothing; `?seed=demo` earns nothing. Opened on the Journal shelf with the existing shake / crack / burst keyframes (reduced-motion respected). Own 8-charm set — the 3 stage cosmetics stay tied to stage advances. No repeat until all 8 are out; which charm is an FNV hash of the box id, never `Math.random`. No price, no odds, nothing to buy. Opened list is device-local (`field-guide.blindbox`); it does not follow an account. See **2026-09-25** |
 
 ---
 
@@ -116,12 +116,12 @@ Demo-critical work first.
 |------|----------------|------------|
 | **Handset proof** | PWA has not been proven on a real phone (HTTPS / secure context for SW, geo, camera). Runbook: `web-forest/script/handset.md` | Prove install + Map + one journal save + points toast on a physical handset |
 | **Ateneo eagle QR on Canva** | Boards must use the Ateneo QR generator (`go.ateneo.edu/QRcode`) in the "a" / eagle style, pointing at the live Magisphere URL. Not a generic QR | Confirm Canva / Intermatrix materials |
-| **Ma'am demo script** | Short path: Home (points + local board) → Demo campus Map → Learn card → one log → Journal | One page or slide cue card |
+| **Ma'am demo script** | Short path: Home (points + local board) → Demo campus Map → Learn card → one log → Journal | Cue card written: `docs/showcase/demo-script-0926.md` (setup checklist, a network-fail line per beat, lines never to say). Not yet rehearsed on the hall's phones |
 | **09-09 play layer (P0)** | Showcase demo behaviors from the 09-09 Plaud | Shipped on-device — see **2026-09-12**. Handset / QR still open |
 | **Final deck + concept note to CCC by 23 Sep** | Deadline moved with the showcase (Anna Oposa, Youth CLAP Innovators Telegram GC). Email to partnershipsandcampaign@climate.gov.ph. Follow CCC's six-part elevator-pitch guide | Ivan finishing slides + script workspace |
 | **AIS tree inventory export** | Ms. Shenina (Ateneo CCC YCLAP chat, 09-14): request the export from AIS (campus flora / arboretum pages). Unblocks real geo on the map | Request, then map import |
-| **Reference-link appendix** | Ms. Shenina (09-14): one appendix of every reference link, uploaded to the shared Drive | Anyone; repo sources already cite most links |
-| **Feature list at a glance** | Feeds the pre/post-test GForm, the booth "museum of features" walls, and the 30-second feature video (team chat, 09-09) | Website group |
+| **Reference-link appendix** | Ms. Shenina (09-14): one appendix of every reference link, uploaded to the shared Drive | Written: `docs/showcase/reference-appendix.md`, 735 deduplicated links in 10 topics, each with its citing file. Per-species data links, npm / localhost and personal links left out. **Not yet uploaded to the Drive** — a person does that |
+| **Feature list at a glance** | Feeds the pre/post-test GForm, the booth "museum of features" walls, and the 30-second feature video (team chat, 09-09) | Written: `docs/showcase/feature-list.md`, with a 30-second video shot order. The GForm, walls and video themselves are not made |
 | **Heat layer: not from AIS** | AIS has no campus land-surface-temperature layer; it would need QGIS from satellite imagery. Not a showcase blocker | Decide in or out |
 | **Demo-critical fixes only** | Bugs that would break the hall demo (blank 3D, Demo campus off by default, broken journal save, points not awarding). No unrelated feature expansion | Triage ruthlessly |
 
@@ -200,6 +200,17 @@ Room decisions that still stand: omit “round opens”; same map for discovery 
 
 ---
 
+## 2026-09-25 — 09-25 Plaud demo push
+
+Source: [`docs/plaud/2026-09-25-demo-readiness-backend.md`](docs/plaud/2026-09-25-demo-readiness-backend.md) — Gelo's solo note on the eve of the showcase: 17 asks checked against the repo (0 exist, 12 partial, 4 absent, one is only the deadline), 3 decisions, 8 open questions. Work was cut into lanes on `demo-0926`; one row per lane as it merges. Appended; does not rewrite the Showcase clock or the rows above.
+
+| Lane | Behavior | Surface | PASS iff | Status |
+|------|----------|---------|----------|--------|
+| gap | A blind box is earned only by a real find — a finished daily hunt or a species logged for the first time — and opens on the Journal into one of 8 charms, never a repeat until the set is complete, the same charm on every device | `/journal` shelf (`blindbox.ts`, `blindbox-reveal.tsx`) | PASS iff `blindbox.test.ts` (19) passes — "explore and learn earn no box", "will not open the same box twice", "never repeats a charm until the whole set has come out", "grantFor is a pure lookup — no Math.random", "no charm carries a price, a currency or an odds figure" | Shipped on-device. Gate at merge: build / 416 tests / lint all exit 0. **Not done:** the reveal was not played on a physical handset; boxes are device-local and do not sync with accounts; the 3 stage cosmetics are not in the box (they belong to stage advances) |
+| gap | The showcase has a cue card, a feature list and a reference appendix a presenter can hold | `docs/showcase/demo-script-0926.md`, `feature-list.md`, `reference-appendix.md` | PASS iff each beat of the cue card (accounts, two-phone multiplayer, pet eagle, identify + journal) has a fallback line for a failed network | Written. **Not done:** appendix not uploaded to the shared Drive; cue card not rehearsed; 30-second video not shot |
+
+---
+
 ## How to read this file
 
 1. **North star** = truth of the live app.
@@ -209,3 +220,4 @@ Room decisions that still stand: omit “round opens”; same map for discovery 
 5. **BLOCKED** = partner-gated, not a coding backlog disguised as open features.
 6. **NOT DOING** = still closed (or narrowed). Point people to `docs/roadmap-rejected.md` for the older full list.
 7. **2026-09-12 play layer** = 09-09 Plaud showcase demo rows. They sit under the Showcase clock; they do not replace handset / QR.
+8. **2026-09-25 demo push** = one row per lane merged into `demo-0926` from Gelo's 09-25 note, each with its PASS-iff test and what it could not do.
