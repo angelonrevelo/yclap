@@ -12,7 +12,9 @@
     "smoke:detect": "node script/smoke-detect.mjs",
     "handset": "npm run build && node script/serve-https.mjs",
     "sync": "node --experimental-strip-types server/sync-server.mjs --port 8788",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && wrangler deploy",
+    "audit:model": "node script/audit-model.mjs",
+    "audit:location": "node --experimental-strip-types script/audit-location.ts"
   },
   "dependencies": {
     "@google/model-viewer": "^4.3.1",

@@ -125,14 +125,15 @@ export interface GeoState {
  */
 export const DEMO_WALK: LatLon[] = [
   { lat: 14.63695, lon: 121.07576 },
-  { lat: 14.63785, lon: 121.07616 },
-  { lat: 14.6386, lon: 121.07664 },
+  { lat: 14.637801, lon: 121.075952 },
+  /* 8 m east of where it was, which was inside an unnamed building footprint. */
+  { lat: 14.6386, lon: 121.076714 },
   { lat: 14.63905, lon: 121.07712 },
   { lat: 14.63875, lon: 121.07752 },
   { lat: 14.63725, lon: 121.07792 },
   { lat: 14.640025, lon: 121.07864 },
   { lat: 14.638375, lon: 121.0796 },
-  { lat: 14.6395, lon: 121.08024 },
+  { lat: 14.639527, lon: 121.079842 },
   /* Routed north of the restricted grove rather than straight back across it —
      a demo that walks a student through off-limits ground teaches the wrong
      thing, and `geo.test.ts` fails if this route ever re-enters the polygon. */

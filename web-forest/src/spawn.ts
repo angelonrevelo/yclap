@@ -1,4 +1,4 @@
-import { RESTRICTED_POLYGON } from "./data.ts";
+import { buildingAt, inRestricted } from "./placement.ts";
 import { CAMPUS_BOX, distanceMeter, type LatLon } from "./geo.ts";
 import { biome_sector, sectorContains, sector as sector_row, type Sector } from "./sector.ts";
 
@@ -154,19 +154,6 @@ function mulberry32(seed: number): () => number {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-}
-
-function inRestricted(point: LatLon): boolean {
-  const ring = RESTRICTED_POLYGON;
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
-    const a = ring[i];
-    const b = ring[j];
-    if (a.lat > point.lat !== b.lat > point.lat && point.lon < ((b.lon - a.lon) * (point.lat - a.lat)) / (b.lat - a.lat) + a.lon) {
-      inside = !inside;
-    }
-  }
-  return inside;
 }
 
 /**
@@ -333,7 +320,7 @@ function pickSpecies(pool: SpawnPoolEntry[], s: Sector, rng: () => number): Spaw
   return habitat[habitat.length - 1];
 }
 
-/** A point inside the sector ring and outside the restricted grove, or null. */
+/** A point inside the sector ring, outside the restricted grove and every building, or null. */
 function pointIn(s: Sector, rng: () => number): LatLon | null {
   let lat0 = Infinity, lat1 = -Infinity, lon0 = Infinity, lon1 = -Infinity;
   for (const [lat, lon] of s.point) {
@@ -346,6 +333,8 @@ function pointIn(s: Sector, rng: () => number): LatLon | null {
     const at = { lat: lat0 + rng() * (lat1 - lat0), lon: lon0 + rng() * (lon1 - lon0) };
     if (!sectorContains(s, at)) continue;
     if (inRestricted(at)) continue;
+    /* A find inside a footprint is a tree in a classroom (09-25 audit). */
+    if (buildingAt(at)) continue;
     return at;
   }
   return null;
@@ -554,6 +543,7 @@ export function spawnAround(
       };
       if (!sectorContains(s, point)) continue;
       if (inRestricted(point)) continue;
+      if (buildingAt(point)) continue;
 
       out.push({
         spawn_id: `cell-${col}-${row}-w${index}`,

@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { walkPoint } from "./placement.ts";
 import CampusMap from "./campus-map";
 import Joystick from "./joystick";
 import {
@@ -3769,7 +3770,7 @@ export default function App() {
                 const place = sectorByCode(daily.sector_code);
                 if (!place) return;
                 if (geo_mode === "play") {
-                  geo.walkTo({ lat: place.label_point[0], lon: place.label_point[1] });
+                  geo.walkTo(walkPoint(place));
                   setFollowing(true);
                   return;
                 }
@@ -4020,7 +4021,7 @@ export default function App() {
               if (daily) {
                 const place = sectorByCode(daily.sector_code);
                 if (place && geo_mode === "play") {
-                  geo.walkTo({ lat: place.label_point[0], lon: place.label_point[1] });
+                  geo.walkTo(walkPoint(place));
                   setFollowing(true);
                 } else if (place) {
                   setView((prev) => ({ ...prev, lat: place.label_point[0], lon: place.label_point[1], zoom: Math.max(prev.zoom, 17) }));

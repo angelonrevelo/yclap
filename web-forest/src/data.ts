@@ -297,14 +297,18 @@ export type Encounter = EncounterSeed;
 /* An encounter coordinate is a position on THIS demo map, not a surveyed tree
    location — the type alias keeps that sentence attached to the name. */
 
-/** Walkable-path discs only. None sit inside the SOM / swamp hatch. */
+/**
+ * Walkable-path discs only. None sit inside the SOM / swamp hatch, on a road,
+ * on paved ground or inside a building — `placement.test.ts` holds all four.
+ * The `where` names came with the old hand-drawn map and are not re-surveyed.
+ */
 const encounter_seed: EncounterSeed[] = [
   { encounter_id: "e1", species_code: "narra", lat: 14.63905, lon: 121.07712, where: "Gonzaga walk" }, // was 39%, 46%
   { encounter_id: "e2", species_code: "raintree", lat: 14.640025, lon: 121.07864, where: "CTC quad" }, // was 58%, 33%
-  { encounter_id: "e3", species_code: "molave", lat: 14.63785, lon: 121.07616, where: "Rizal Library lawn" }, // was 27%, 62%
+  { encounter_id: "e3", species_code: "molave", lat: 14.637801, lon: 121.075952, where: "Rizal Library lawn" }, // was 27%, 62%; moved 23 m off the road onto the SOM grove (south-west) sector, 09-25
   { encounter_id: "e4", species_code: "balete", lat: 14.638375, lon: 121.0796, where: "Bellarmine field edge" }, // was 70%, 55%
   { encounter_id: "e5", species_code: "katmon", lat: 14.63725, lon: 121.07792, where: "Xavier walk" }, // was 49%, 70%
-  { encounter_id: "e6", species_code: "mahogany", lat: 14.6395, lon: 121.08024, where: "Katipunan gate yard" }, // was 78%, 40%
+  { encounter_id: "e6", species_code: "mahogany", lat: 14.639527, lon: 121.079842, where: "Katipunan gate yard" }, // was 78%, 40%; moved 43 m off the road onto the Bellarmine & Cervini sector, 09-25
   { encounter_id: "e7", species_code: "dao", lat: 14.64025, lon: 121.07664, where: "Berchmans lawn" }, // was 33%, 30%
   { encounter_id: "e8", species_code: "lagundi", lat: 14.63695, lon: 121.07576, where: "Bellarmine path" }, // was 22%, 74%
 ];

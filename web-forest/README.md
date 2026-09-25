@@ -37,6 +37,8 @@ npm run build      # tsc --noEmit && vite build
 npm test           # node --test
 npm run lint
 npm run smoke:detect  # plant-detection smoke suite (replay unless a token is set)
+npm run audit:model     # every .glb: parses, in range, has a mesh, grounded, <=1.5 MB
+npm run audit:location  # every find, encounter and walk target on green, unbuilt, open ground
 npm run handset    # build, then serve over HTTPS on the LAN for a real phone
 npm run deploy     # build, then wrangler deploy (needs `wrangler login` first)
 ```
@@ -116,6 +118,20 @@ and deliberately **not** precached — but its 422 kB manifest
 `species-model.json` **is**, because it is the only input to the rotating world
 and without it offline the "Out right now" strip renders nothing at all.
 
+`npm run audit:model` (`script/audit-model.mjs`) checks every `.glb` the app
+can ask for — the manifest plus the five character slots — as files: glTF 2.0
+binary, chunks and accessors in range, at least one mesh, not over 1.5 MB, not
+zero-size, standing on y=0, manifest `bytes` matching disk, no orphans or
+duplicates. `test/model-audit.test.ts` runs it, so a regression fails
+`npm test`. Current state: 1,103 files, all clean, median 2,452 triangles,
+largest 114 kB. On 09-25 it found 110 models floating over or sunk through the
+ground plane (a cat 14 cm up, spiders' legs through the floor); the builder now
+measures the rest pose and wraps such a model in a `ground` node, using the
+same `groundOffset` rule the audit checks. Flying poses (butterflies, moths,
+dragonflies, flies, bees, wasps) may hover but not sink; the companion's soil
+mound is half-buried on purpose. How the models LOOK is a separate gate:
+`node script/species-model/audit.mjs`.
+
 The character's four stages render through a self-hosted `<model-viewer>`
 (`src/character-model.tsx`, lazy-loaded) and their `.glb` files are precached,
 which is spec T4.1 and closes the "3D character offline" blocker.
@@ -175,6 +191,17 @@ The play layer, wired in `src/live.tsx`:
   tagged `source: "play"`, and every surface that shows a position says which
   of the three it is. The position source now has its own control on the play
   view itself, not only behind the field layers.
+- **`placement.ts`** — one rule for where anything may stand: on a green
+  sector (≥45% measured vegetation), outside the grove placeholder, outside
+  every `building.ts` footprint. The spawner used to check only the first two,
+  so about one find in seventeen stood inside a building; it now checks all
+  three. Two curated encounters (e3, e6) sat on a road and were moved 23 m and
+  43 m onto the nearest green sector; their `where` names still come from the
+  old hand-drawn map and are not re-surveyed. "Walk me there" on the daily hunt
+  now leads to `walkPoint(sector)` — the label point when it is good ground,
+  else the nearest good ground — because 8 of 68 labels sit on a roof or in the
+  grove. `npm run audit:location` prints any failure with its nearest fix;
+  `test/placement.test.ts` holds all of it.
 - **`building.ts` + `skyline.tsx`** — 75 campus buildings with real heights,
   imported from the sisia campus app (`script/import-sisia-building.mjs`, run
   by hand; the output is committed). Drawn as **footprint plus a soft drop**,
