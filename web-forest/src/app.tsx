@@ -16,6 +16,7 @@ import { joinCodeOf } from "./campus-world";
 import { haptic } from "./haptic";
 import StreakFlame from "./streak-flame";
 import SettingsScreen, { type SettingsIcon } from "./settings";
+import { useAccountSync } from "./account";
 import {
   readPreference,
   setHapticEnabled,
@@ -3085,6 +3086,7 @@ export default function App() {
   const [camera_rarity, setCameraRarity] = useState<Rarity | null>(null);
   const [sighting, setSighting] = useState<Sighting[]>(() => readSighting());
   const [point_events, setPointEvents] = useState<PointEvent[]>(() => readPointEvents());
+  useAccountSync(sighting.length, point_events.length, setSighting, setPointEvents);
   const [geo_mode, setGeoMode] = useState<GeoMode>("gps");
   const [toast, setToast] = useState<string | null>(null);
   const [inat, setInat] = useState<InatNearbyState>({ status: "idle" });

@@ -26,6 +26,8 @@ export default defineConfig({
       "/health": "http://127.0.0.1:8788",
       "/join": "http://127.0.0.1:8788",
       "/mine": "http://127.0.0.1:8788",
+      "/auth/": "http://127.0.0.1:8788",
+      "/account/": "http://127.0.0.1:8788",
     },
   },
   preview: { host: HOST, port: 4178, strictPort: true },

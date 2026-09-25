@@ -191,6 +191,9 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (url.origin !== self.location.origin) return;
+  /* Accounts go straight to the network: never cache a session or a save, and
+     never let the OAuth redirects be stored as the app shell. */
+  if (url.pathname.startsWith("/auth/") || url.pathname.startsWith("/account/")) return;
 
   if (request.mode === "navigate") {
     event.respondWith(handleNavigate(request));

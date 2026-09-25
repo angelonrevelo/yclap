@@ -9,6 +9,7 @@ import {
   STAGE_NOW,
 } from "./settings-content";
 import type { Preference } from "./preference";
+import AccountPanel from "./account-panel.tsx";
 
 /**
  * Settings — what this is, how far along it is, and who it is talking to.
@@ -264,7 +265,10 @@ export default function SettingsScreen({
    */
   plan?: ReactNode;
 }) {
-  const [panel, setPanel] = useState<PanelKey>("why");
+  /* Back from Google sign-in (?account= / ?account_error=) → open on the account. */
+  const [panel, setPanel] = useState<PanelKey>(() =>
+    typeof location !== "undefined" && /[?&]account(_error)?=/.test(location.search) ? "walker" : "why",
+  );
   const [name_draft, setNameDraft] = useState(preference.walker_name || walker_name);
   const [join_draft, setJoinDraft] = useState("");
   const stage_index = STAGE_LADDER.findIndex((s) => s.key === STAGE_NOW);
@@ -550,35 +554,7 @@ export default function SettingsScreen({
               </Table>
 
               <div style={{ marginTop: 12 }}>
-                <Table label="Sign-in">
-                  <thead>
-                    <tr>
-                      <Th width="34%">Sign-in</Th>
-                      <Th>Not yet — and why</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <Td is_head>Account</Td>
-                      <Td>
-                        There is none. No password, no Ateneo sign-in. Your journal lives in this browser
-                        and nowhere else.
-                      </Td>
-                    </tr>
-                    <tr>
-                      <Td is_head>If you clear data</Td>
-                      <Td>It is gone, and we cannot restore it for you.</Td>
-                    </tr>
-                    <tr>
-                      <Td is_head>Why not yet</Td>
-                      <Td>
-                        Real accounts mean storing student names, photos and locations. The project has not
-                        agreed with Ateneo what may be collected, who may see it, or how long it is kept.
-                        Those terms come first.
-                      </Td>
-                    </tr>
-                  </tbody>
-                </Table>
+                <AccountPanel />
               </div>
             </>
           )}

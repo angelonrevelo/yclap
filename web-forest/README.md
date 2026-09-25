@@ -32,7 +32,7 @@ chose ourselves is flagged `is_named_by_us`.
 ```
 npm install
 npm run dev        # http://127.0.0.1:4177
-npm run sync       # live campus world on :8788 (Vite proxies /sync /live /world)
+npm run sync       # live campus world + accounts on :8788 (Vite proxies /sync /live /world /auth/ /account/)
 npm run build      # tsc --noEmit && vite build
 npm test           # node --test
 npm run lint
@@ -142,6 +142,8 @@ The play layer, wired in `src/live.tsx`:
   and presence (points / streak as “who is out”, not an official AIS rank).
   A six-character walker code joins two phones as one player. With no server
   reachable the world strip renders nothing rather than an unmeasured zero.
+- **`account-core.ts` + `account.ts` + `account-panel.tsx` + `worker/account.ts`**
+  — optional accounts and the per-account save; see *Accounts* below.
 - **Gestures and haptics.** A tap on the play ground means GO THERE, not "show
   me this area's statistics" — the sector card moved to the field view, where a
   survey belongs. A drag never becomes a tap: `TileMap` traps the click in the
@@ -172,6 +174,64 @@ The play layer, wired in `src/live.tsx`:
 the iNaturalist sweep never requested `establishment_means`. The intended 1.5×
 bias toward native species therefore reaches 0.8% of the world today.
 `spawn.test.ts` holds that number so improving it fails loudly.
+
+## Accounts — the working database
+
+Optional accounts, from the 09-25 note (`0:35` accounts, passwords, Google
+OAuth; `4:41` a working database). Settings → Walker → Account; a signed-in
+`@username` line sits on the HUD player card.
+
+**Decision: the database is the SQLite inside the CampusWorld Durable Object**
+(`ctx.storage.sql`), not Gelo's VPS or Neon. It is already deployed with the
+PWA, it is a real SQL store with transactions and unique indexes, it costs
+nothing extra, and it keeps the auth cookie same-origin with no CORS and no
+second host to keep alive on demo day. Locally, `npm run sync` runs the same
+`AccountService` on `node:sqlite` (`server/yclap-account.db`, gitignored).
+If the project outgrows one Durable Object, the SQL moves to Neon unchanged.
+
+- **Tables:** `account` (account_code, username unique, password_hash,
+  password_salt, google_sub unique nullable, display_name, created_at,
+  updated_at) · `session` (session_token_hash, account_code, expires_at) ·
+  `save` (account_code, save_json, updated_at).
+- **Routes** (`worker/account.ts`, hooked into `worker/sync.ts` in two lines):
+  `POST /auth/signup` `/auth/login` `/auth/logout` `/auth/password`,
+  `GET /auth/me`, `GET /auth/google` + `/auth/google/callback`,
+  `GET|PUT /account/save`. Same-origin only; POSTs must be JSON.
+- **Passwords:** PBKDF2-SHA256, 100,000 iterations (the Workers ceiling),
+  16-byte per-account salt, constant-time compare. **Sessions:** 32 random
+  bytes in an `HttpOnly; SameSite=Lax; Secure` cookie (Secure is dropped only
+  on plain-http localhost), stored server-side as a SHA-256 hash, 30 days.
+  Changing the password signs out every other device.
+- **Login rate limit:** 5 wrong passwords per username per 15 minutes → 429.
+  In memory, so it resets if the Durable Object is evicted.
+- **The save:** journal rows + the point ledger (the streak is computed from
+  it). **Photos never leave the phone** — `photo_data` is nulled before upload
+  and again on the server. On sign-in, on load and a few seconds after each new
+  find, the device pulls the account copy, **unions** it in (every local find
+  survives; server-only rows are appended with a fresh catalogue number if
+  theirs is taken; the same point subject is never paid twice), then pushes the
+  union back. The server is last-write-wins on `updated_at` and answers a stale
+  upload with 409 plus its copy, which the client merges and retries. Known
+  limit: no tombstones, so a find deleted on one phone comes back from the
+  account.
+- **Google:** on only when both secrets exist. Without them `/auth/google` is a
+  503 JSON and the button is greyed with a caption saying why. The flow is the
+  OAuth code flow with a 10-minute `mg_oauth_state` cookie, a server-side code
+  exchange, and the id_token checked through Google's tokeninfo plus our own
+  `aud` / `iss` / `exp` checks. Signed in already → Google is linked to that
+  account. To switch it on (human step — needs the Google Cloud console):
+
+  ```
+  # Google Cloud → APIs & Services → Credentials → OAuth client ID (Web)
+  # Authorised redirect URI:
+  #   https://yclap-field-guide.marangelonrevelo.workers.dev/auth/google/callback
+  #   (and http://127.0.0.1:4177/auth/google/callback for local dev)
+  npx wrangler secret put GOOGLE_CLIENT_ID
+  npx wrangler secret put GOOGLE_CLIENT_SECRET
+  # local: GOOGLE_CLIENT_ID=… GOOGLE_CLIENT_SECRET=… npm run sync
+  ```
+
+This is the project's own server, not an Ateneo login, and the panel says so.
 
 ## Two map views
 

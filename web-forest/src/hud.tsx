@@ -5,6 +5,7 @@ import { species } from "./data";
 import type { DailyTask } from "./gamify";
 import { levelOf } from "./level";
 import { TaxonThumb } from "./ui";
+import { AccountChip } from "./account-panel.tsx";
 
 /**
  * The game layer, in the Magisphere system (`game.css`, off the team's poster
@@ -85,6 +86,7 @@ export function PlayerHud({
           <span>
             {lv.to_next} to LV {lv.level + 1}
           </span>
+          <AccountChip />
         </span>
       </span>
     </button>

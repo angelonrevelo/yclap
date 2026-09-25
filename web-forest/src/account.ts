@@ -1,0 +1,239 @@
+/**
+ * Client side of accounts: fetch wrappers over /auth/* and /account/save, one
+ * module-level state that the Settings panel and the HUD chip both read, and
+ * the merge-on-sign-in that pulls the account's save onto this device.
+ *
+ * The session is an HttpOnly cookie — this file never sees the token.
+ * Photos stay on the device; only journal rows and the point ledger sync.
+ */
+import { useEffect, useSyncExternalStore } from "react";
+import { mergeSave, withoutPhoto, type AccountSave, type PublicAccount } from "./account-core.ts";
+import { readSighting, writeSighting, type Sighting } from "./journal.ts";
+import { readPointEvents, writePointEvents, type PointEvent } from "./gamify.ts";
+
+/** Fired on window after a sync wrote new rows into this device's storage. */
+export const SAVE_MERGED_EVENT = "magisphere:save-merged";
+
+export interface SyncReport {
+  at: string;
+  added_sighting_count: number;
+  added_point_count: number;
+  sighting_count: number;
+}
+
+export interface AccountState {
+  status: "loading" | "signed_out" | "signed_in" | "offline";
+  account: PublicAccount | null;
+  /** Google sign-in is configured on the server. */
+  is_google: boolean;
+  is_syncing: boolean;
+  last_sync: SyncReport | null;
+  error: string | null;
+}
+
+let state: AccountState = {
+  status: "loading",
+  account: null,
+  is_google: false,
+  is_syncing: false,
+  last_sync: null,
+  error: null,
+};
+const listener = new Set<() => void>();
+let is_started = false;
+
+function set(patch: Partial<AccountState>): void {
+  state = { ...state, ...patch };
+  for (const fn of listener) fn();
+}
+
+/** First reader to mount asks the server who is signed in; later ones share it. */
+function startAccount(): void {
+  if (is_started) return;
+  is_started = true;
+  void refreshAccount();
+}
+
+export function useAccount(): AccountState {
+  const snap = useSyncExternalStore(
+    (fn) => {
+      listener.add(fn);
+      return () => listener.delete(fn);
+    },
+    () => state,
+  );
+  useEffect(() => startAccount(), []);
+  return snap;
+}
+
+async function call<T>(path: string, method = "GET", body?: unknown): Promise<{ status: number; data: T }> {
+  const res = await fetch(path, {
+    method,
+    credentials: "same-origin",
+    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  let data = {} as T;
+  try {
+    data = (await res.json()) as T;
+  } catch {
+    /* 502 from the dev proxy when the sync server is not running, etc. */
+  }
+  return { status: res.status, data };
+}
+
+type ErrorBody = { error?: string };
+
+export async function refreshAccount(): Promise<void> {
+  try {
+    const { status, data } = await call<{ account: PublicAccount | null; is_google: boolean }>("/auth/me");
+    if (status !== 200 || !("account" in data)) {
+      set({ status: "offline", error: "The account server is not reachable right now." });
+      return;
+    }
+    set({
+      status: data.account ? "signed_in" : "signed_out",
+      account: data.account,
+      is_google: !!data.is_google,
+      error: null,
+    });
+    if (data.account) await syncSave();
+  } catch {
+    set({ status: "offline", error: "The account server is not reachable right now." });
+  }
+}
+
+async function signedIn(status: number, data: { account?: PublicAccount } & ErrorBody): Promise<string | null> {
+  if ((status === 200 || status === 201) && data.account) {
+    set({ status: "signed_in", account: data.account, error: null });
+    await syncSave();
+    return null;
+  }
+  return data.error ?? `Something went wrong (HTTP ${status}).`;
+}
+
+/** Returns an error sentence, or null on success. */
+export async function signUp(username: string, password: string, display_name: string): Promise<string | null> {
+  try {
+    const { status, data } = await call<{ account?: PublicAccount } & ErrorBody>("/auth/signup", "POST", {
+      username,
+      password,
+      display_name,
+    });
+    return await signedIn(status, data);
+  } catch {
+    return "The account server is not reachable right now.";
+  }
+}
+
+export async function logIn(username: string, password: string): Promise<string | null> {
+  try {
+    const { status, data } = await call<{ account?: PublicAccount } & ErrorBody>("/auth/login", "POST", {
+      username,
+      password,
+    });
+    return await signedIn(status, data);
+  } catch {
+    return "The account server is not reachable right now.";
+  }
+}
+
+export async function logOut(): Promise<void> {
+  try {
+    await call("/auth/logout", "POST", {});
+  } finally {
+    set({ status: "signed_out", account: null, last_sync: null });
+  }
+}
+
+export async function changePassword(old_password: string, new_password: string): Promise<string | null> {
+  try {
+    const { status, data } = await call<ErrorBody>("/auth/password", "POST", { old_password, new_password });
+    if (status === 200) {
+      await refreshAccount();
+      return null;
+    }
+    return data.error ?? `Something went wrong (HTTP ${status}).`;
+  } catch {
+    return "The account server is not reachable right now.";
+  }
+}
+
+export const GOOGLE_HREF = "/auth/google";
+
+function localSave(): AccountSave {
+  return { sighting: readSighting(), point_event: readPointEvents() };
+}
+
+/**
+ * Pull the account's save, union it into this device (never dropping a local
+ * find), then push the union back up. One retry if another phone wrote in
+ * between (HTTP 409).
+ */
+export async function syncSave(): Promise<SyncReport | null> {
+  if (state.status !== "signed_in" || state.is_syncing) return null;
+  set({ is_syncing: true });
+  try {
+    let added_sighting_count = 0;
+    let added_point_count = 0;
+    const got = await call<{ save: AccountSave | null } & ErrorBody>("/account/save");
+    if (got.status !== 200) throw new Error(got.data.error ?? `HTTP ${got.status}`);
+    let remote = got.data.save;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const merged = mergeSave(localSave(), remote ?? { sighting: [], point_event: [] });
+      if (merged.added_sighting_count || merged.added_point_count) {
+        writeSighting(merged.save.sighting);
+        writePointEvents(merged.save.point_event);
+        added_sighting_count += merged.added_sighting_count;
+        added_point_count += merged.added_point_count;
+        window.dispatchEvent(new Event(SAVE_MERGED_EVENT));
+      }
+      const put = await call<{ save?: AccountSave | null } & ErrorBody>("/account/save", "PUT", {
+        save: withoutPhoto(merged.save),
+        updated_at: new Date().toISOString(),
+      });
+      if (put.status === 200) {
+        const report: SyncReport = {
+          at: new Date().toISOString(),
+          added_sighting_count,
+          added_point_count,
+          sighting_count: merged.save.sighting.length,
+        };
+        set({ is_syncing: false, last_sync: report, error: null });
+        return report;
+      }
+      if (put.status !== 409) throw new Error(put.data.error ?? `HTTP ${put.status}`);
+      remote = put.data.save ?? null;
+    }
+    throw new Error("another device kept saving at the same moment");
+  } catch (e) {
+    set({ is_syncing: false, error: `Sync failed: ${e instanceof Error ? e.message : String(e)}` });
+    return null;
+  }
+}
+
+/**
+ * The app's one hook into accounts: re-read storage after a sync merged rows
+ * in, and push new local finds up a few seconds after they are made. A no-op
+ * while nobody is signed in.
+ */
+export function useAccountSync(
+  sighting_count: number,
+  point_count: number,
+  setSighting: (row: Sighting[]) => void,
+  setPointEvent: (row: PointEvent[]) => void,
+): void {
+  useEffect(() => {
+    const reload = () => {
+      setSighting(readSighting());
+      setPointEvent(readPointEvents());
+    };
+    window.addEventListener(SAVE_MERGED_EVENT, reload);
+    return () => window.removeEventListener(SAVE_MERGED_EVENT, reload);
+  }, [setSighting, setPointEvent]);
+  useEffect(() => {
+    if (state.status !== "signed_in") return;
+    const t = setTimeout(() => void syncSave(), 4000);
+    return () => clearTimeout(t);
+  }, [sighting_count, point_count]);
+}
