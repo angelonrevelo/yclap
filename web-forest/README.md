@@ -173,6 +173,33 @@ The play layer, wired in `src/live.tsx`:
   (~110 m down to ~14 m across a phone). You cannot pull back to the campus
   diagram from the play view; the field view still has it, one tap away.
   `?zoom=` and `?bearing=` set a reproducible camera for a projector.
+  **The feel (09-25 note: "big roads, zoomed-in characters, a natural tilt…
+  still very jittery")** lives in `camera-feel.ts` and `fix-filter.ts`, both
+  pure and tested:
+  - *Jitter.* GPS fixes go through an accuracy-weighted Kalman filter with a
+    1.8 m stationary dead-band (`fix-filter.ts`), so standing still publishes
+    nothing. The raked camera glides toward the walker on a
+    `requestAnimationFrame` critically damped spring (`glideStep`) and the walker
+    is drawn at that glide centre, so 50 ms stick steps and 1 s GPS steps come
+    out as one continuous move. The ground is memoised, culled to a circle round
+    the camera and re-projected only every 2,048 plane px; between those
+    anchors a move is one CSS transform. The pulsing rings are composited HTML,
+    not animated SVG.
+  - *Measured*, headless Chrome, 390×844, play view, holding W (release build,
+    `vite preview`, same machine, two runs each): before **~13 fps walking,
+    ~18 idle** (p50 76 ms / 60 ms, nearly every frame over 33 ms); after
+    **~64 fps walking, ~65 idle** (p50 15 ms, 2 frames over 33 ms in 6 s). At
+    4× CPU throttle: before ~1.4 fps walking, after ~11. Not yet measured on
+    the booth phone — open the play view with `?probe=1` for the on-screen
+    readout (`frame-probe.tsx`).
+  - *Roads* are drawn at real width (5.5 m roads, 2.6 m paths, floored and
+    capped in px), cream with a soft kerb.
+  - *Walker* is 112→140 px on a phone (136→172 desktop) as the camera closes,
+    standing at 70% of the screen height so the ground ahead shows.
+  - *Tilt* rests at 46° pulled back and eases to 58° at z22; two fingers dragged
+    vertically (desktop: shift- or right-drag) adjust it within 40–64°. A
+    12 px deadzone keeps a pinch or a swing from nodding the camera.
+  - *Restricted ground* is flat quiet gray. No hatch, no label.
 - **`zoom.ts` — continuous zoom**, ported from the fix in `tripi`
   (`apps/web/public/map.html`, which gets it from Leaflet's `zoomSnap: 0` plus
   an inlined SmoothWheelZoom). This repo has no Leaflet on purpose, so the
@@ -377,7 +404,8 @@ This is the project's own server, not an Ateneo login, and the panel says so.
 - **Field** — the same sectors over four real basemaps, with the path network,
   every layer control and every citation. The reference surface.
 
-Two fingers (or shift-drag) swing the camera 360°; the compass returns north.
+Two fingers (or shift-drag) swing the camera 360° sideways and tilt it
+up and down; the compass returns north.
 `?bearing=62` seeds an angle for a projector demo or a reproducible screenshot.
 
 ## Look and feel

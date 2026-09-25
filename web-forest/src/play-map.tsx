@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { memo, useMemo, useRef, useState } from "react";
 import campus_shape from "./asset/campus-shape.json" with { type: "json" };
 import Botanical from "./botanical";
 import { BUILDING_ATTRIBUTION, building as campus_building } from "./building";
@@ -25,6 +25,8 @@ import { kindOf } from "./kind";
 import { KindPath, KIND_TONE } from "./kind-mark";
 import RemoteWalkerLayer, { HallCount, useHall } from "./remote-walker";
 import PetEagle from "./pet-eagle";
+import { avatarPx, clampPitch, pitchForZoom, roadCasingPx, roadWidthPx } from "./camera-feel";
+import FrameProbe from "./frame-probe";
 
 /**
  * The play view — the map as the owner asked for it on 09-03: "simple pokemon
@@ -53,9 +55,10 @@ import PetEagle from "./pet-eagle";
  * every line on this screen is OSM geometry and says so.
  */
 
-/* 52° play-view rake. Earlier 46° left the walker feeling small on a flat
-   diagram; sky haze is handled by the gradient overlay rather than by flattening. */
-const TILT_DEGREE = 52;
+/* The play-view rake is no longer one number. It rests at `pitchForZoom` —
+   46° pulled back, 58° at the street — and two fingers dragged up or down move
+   it inside `PITCH_MIN`…`PITCH_MAX` (see `camera-feel.ts`). The old fixed 52°
+   sat in the middle of that band. */
 const GROUND = "#CFE3BD";
 /** Closest play camera. Exported so the app's default play zoom cannot outrun it. */
 export const PLAY_MAX_ZOOM = 22;
@@ -195,6 +198,29 @@ interface LabelPlace {
   scale: number;
 }
 
+/**
+ * The part of the ground worth drawing: a circle in plane pixels around the
+ * camera anchor. See `Ground` for why it exists.
+ */
+interface Cull {
+  x: number;
+  y: number;
+  r: number;
+}
+
+/** Does any of this ring's bounding box reach inside the cull circle? */
+function isNear(ring: [number, number][], project: Project, cull: Cull): boolean {
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const [lat, lon] of ring) {
+    const p = project({ lat, lon });
+    if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x;
+    if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y;
+  }
+  const dx = Math.max(x0 - cull.x, 0, cull.x - x1);
+  const dy = Math.max(y0 - cull.y, 0, cull.y - y1);
+  return dx * dx + dy * dy <= cull.r * cull.r;
+}
+
 function ringPath(ring: [number, number][], project: Project, close: boolean): string {
   if (!ring.length) return "";
   let d = "";
@@ -267,6 +293,231 @@ function pickLabel(
   return placed;
 }
 
+/**
+ * The ground: sector fills, grass, building contact patches, walkways, canopy
+ * tufts and the restricted gray.
+ *
+ * None of it depends on where the walker is — only on `project`, which the
+ * raked camera anchors (see `ANCHOR_GRID` in `tile-map.tsx`). Memoised on
+ * exactly that, so the 20 Hz walker updates and the 60 Hz camera glide leave
+ * it alone; it is re-rendered when the anchor steps, the zoom changes, or the
+ * sector underfoot changes.
+ *
+ * And CULLED to a circle around the camera. The whole campus is ~1,400
+ * elements, and at the street camera almost all of them are kilometres of
+ * plane pixels off the glass — but every one of them still cost paint and
+ * layerisation on every frame the plane moved. Measured in a headless Chrome
+ * (390x844, moving only the plane's transform): ~20 fps with the whole campus
+ * in the SVG, ~65 fps with only what is near. Past the circle the view is
+ * sky haze and flat ground colour anyway.
+ */
+const Ground = memo(function Ground({
+  project,
+  plane_meter_per_pixel,
+  here_code,
+  is_restricted_on,
+  cull_x,
+  cull_y,
+  cull_r,
+}: {
+  project: Project;
+  plane_meter_per_pixel: number;
+  here_code: string | null;
+  is_restricted_on: boolean;
+  /* Primitives rather than a `Cull` object, so `memo` compares them by value. */
+  cull_x: number;
+  cull_y: number;
+  cull_r: number;
+}) {
+  const cull: Cull = { x: cull_x, y: cull_y, r: cull_r };
+  const near = (ring: [number, number][]) => isNear(ring, project, cull);
+  return (
+    <>
+      {/* 1 · sector fills — the map itself */}
+      {sector_row.map((row) => {
+        if (!near(row.point)) return null;
+        const is_here = here_code === row.sector_code;
+        return (
+          <path
+            key={row.sector_code}
+            d={ringPath(row.point, project, true)}
+            fill={sectorFill(row)}
+            fillOpacity={is_here ? 1 : 0.95}
+            stroke={is_here ? "#F0B429" : sectorStroke(row)}
+            strokeWidth={is_here ? 4.5 : 1}
+            strokeLinejoin="round"
+            /* The ground takes no clicks in the play view.
+             *
+             * It used to open the sector card, and that is the wrong
+             * verb for this screen: on a map welded to a walker, a tap
+             * on the ground means GO THERE, and `onTap` on the map
+             * already means exactly that. Having both meant every
+             * attempt to walk somewhere threw a panel of area
+             * statistics over the map instead — and every camera drag
+             * that happened to end on a sector did the same.
+             *
+             * The information is not gone. The sector you are standing
+             * in is named on the HUD, and the full card with coverage,
+             * species and citations is the field view, one tap away —
+             * which is where a survey belongs. */
+            style={undefined}
+          />
+        );
+      })}
+      {sector_row
+        .filter((row) => row.is_biome && near(row.point))
+        .map((row) => (
+          <path key={`g${row.sector_code}`} d={ringPath(row.point, project, true)} fill="url(#pm-grass)" stroke="none" />
+        ))}
+
+      {/* 2 · where each building MEETS the ground.
+             The building itself is a prism drawn in screen space by
+             `Skyline` — this is only its contact patch, which has to
+             stay in the plane so it stays welded to the sector under
+             it. Drawn dark rather than pale: a prism rising out of a
+             light block looks like it is floating on one. */}
+      {campus_building.map((b, i) => near(b.point) && (
+        <path
+          key={`b${i}`}
+          d={ringPath(b.point, project, true)}
+          fill="rgba(104,96,78,0.30)"
+          stroke="none"
+        />
+      ))}
+
+      {/* 3a · the city outside, at a whisper.
+             Cutting it entirely left campus floating in a void, which
+             reads as isolation rather than as a boundary. Faded says
+             "this continues, you just do not play here" without
+             inviting anyone into Katipunan traffic. */}
+      {outside_path.map((p, i) => near(p.point) && (
+        <path
+          key={`po${i}`}
+          d={ringPath(p.point, project, false)}
+          fill="none"
+          stroke="rgba(255,255,255,0.34)"
+          strokeWidth={roadWidthPx(p.is_road, plane_meter_per_pixel) * 0.7}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ))}
+
+      {/* 3b · the ways the sectors were cut along — casing then fill,
+             at their real width (`roadWidthPx`), so at the street
+             camera they read as GO's wide pale roads, not hairlines */}
+      {campus_path.map((p, i) => near(p.point) && (
+        <path
+          key={`pc${i}`}
+          d={ringPath(p.point, project, false)}
+          fill="none"
+          stroke="rgba(150,140,112,0.32)"
+          strokeWidth={roadCasingPx(roadWidthPx(p.is_road, plane_meter_per_pixel))}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ))}
+      {campus_path.map((p, i) => near(p.point) && (
+        <path
+          key={`pf${i}`}
+          d={ringPath(p.point, project, false)}
+          fill="none"
+          stroke={p.is_road ? "#FBF5E6" : "#FFFBF2"}
+          strokeWidth={roadWidthPx(p.is_road, plane_meter_per_pixel)}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ))}
+
+      {/* 4 · ambient life. Deterministic, decorative, and never a
+             claim: these are not surveyed trees, they are texture so a
+             wooded sector looks wooded. `is_biome` gates them, so
+             nothing sprouts on a car park. */}
+      {/* The old 0.55 group opacity is folded into the fill: a `<g
+             opacity>` per tuft was one compositing effect per tuft. */}
+      {tuft.map((t, i) => {
+        const p = project({ lat: t.lat, lon: t.lon });
+        if ((p.x - cull.x) ** 2 + (p.y - cull.y) ** 2 > cull.r * cull.r) return null;
+        return (
+          <ellipse
+            key={`t${i}`}
+            cx={p.x}
+            cy={p.y}
+            rx={t.r}
+            ry={t.r * 0.72}
+            fill={t.dark ? "rgba(28,74,34,0.3)" : "rgba(44,110,50,0.21)"}
+          />
+        );
+      })}
+
+      {/* 4 · restricted ground: quiet flat gray, drawn over the green
+             and its tufts so nothing living seems to grow there. No
+             hatch, no dashed fence, no label — gray ground you cannot
+             walk onto says it without a paragraph (ROADMAP "quiet
+             restricted-area treatment"). */}
+      {is_restricted_on && (
+        <path
+          d={ringPath(RESTRICTED_POLYGON.map((p) => [p.lat, p.lon] as [number, number]), project, true)}
+          fill="#9A9E99"
+          fillOpacity={0.92}
+          stroke="#80847F"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+        />
+      )}
+    </>
+  );
+});
+
+/**
+ * Pulses are capped in size. At the street camera the 40 m reach is three
+ * screens wide, and a composited ripple that size is a texture of tens of
+ * megabytes for a ring nobody can see the edge of.
+ */
+const RIPPLE_MAX_PX = 150;
+
+/**
+ * A pulsing ring that lies flat on the ground.
+ *
+ * It used to be an SVG `<circle>` with a CSS animation, inside the one big
+ * ground `<svg>`. Anything animating inside that SVG makes the browser repaint
+ * and re-layerise the WHOLE ground every frame — measured on the 09-25 build,
+ * turning those animations off took the idle play view from ~20 to ~64 fps in
+ * a throttled headless Chrome. As its own `will-change` div inside the plane it
+ * is still foreshortened by the plane's transform, and the pulse is a
+ * compositor-only transform/opacity animation that repaints nothing.
+ */
+function Ripple({
+  x,
+  y,
+  r,
+  duration_s = 1.8,
+  is_faint = false,
+}: {
+  x: number;
+  y: number;
+  r: number;
+  duration_s?: number;
+  is_faint?: boolean;
+}) {
+  return (
+    <div
+      className="pm-ripple"
+      style={{
+        position: "absolute",
+        left: x - r,
+        top: y - r,
+        width: r * 2,
+        height: r * 2,
+        borderRadius: "50%",
+        border: `2px solid rgba(255,255,255,${is_faint ? 0.4 : 0.8})`,
+        pointerEvents: "none",
+        willChange: "transform, opacity",
+        animation: `fgpulse ${duration_s}s ease-out infinite`,
+      }}
+    />
+  );
+}
+
 export default function PlayMap({
   view,
   onView,
@@ -292,6 +543,12 @@ export default function PlayMap({
   /* The hall: other phones' walkers, live. Only while this view is mounted. */
   const hall = useHall({ fix, stage, level });
   const here = useMemo(() => (fix ? sectorAt(fix) : null), [fix]);
+
+  /* Pitch = the zoom's resting pitch plus whatever two fingers added. Kept as
+     an OFFSET so zooming still eases the tilt after somebody has adjusted it,
+     and local to this view so a tilt does not re-render the app. */
+  const [pitch_offset, setPitchOffset] = useState(0);
+  const tilt_degree = clampPitch(pitchForZoom(view.zoom) + pitch_offset);
 
   /* Heading and gait come from the fix actually MOVING, not from a flag
      somebody has to remember to set. The demo walk and a real GPS track both
@@ -328,7 +585,8 @@ export default function PlayMap({
       onView={onView}
       onGesture={onGesture}
       layer="guide"
-      tilt_degree={TILT_DEGREE}
+      tilt_degree={tilt_degree}
+      onTilt={(degree) => setPitchOffset(degree - pitchForZoom(view.zoom))}
       bearing_degree={bearing_degree}
       onBearing={onBearing}
       is_tile_hidden
@@ -386,7 +644,14 @@ export default function PlayMap({
                 and the figure is simply upright, which is what it was always
                 trying to look like. */}
             {fix && (() => {
-              const at = projection.toScreen(projection.project(fix));
+              /* Welded camera: the walker IS the camera centre, so it is drawn
+                 at the centre the camera is gliding through this frame, not at
+                 the fix the camera is still easing toward. Drawn at the fix it
+                 stepped across the glass at 20 Hz over smoothly moving ground,
+                 which was most of the "jittery" in the 09-25 note. The 25 m
+                 guard covers a camera sent somewhere else while locked. */
+              const is_on_camera = is_camera_locked && distanceMeter(view, fix) < 25;
+              const at = projection.toScreen(projection.project(is_on_camera ? projection.centre : fix));
               return (
                 <div
                   style={{
@@ -409,7 +674,7 @@ export default function PlayMap({
                   <Character
                     stage={stage}
                     vigor={vigor}
-                    size={is_desktop ? 128 : 108}
+                    size={avatarPx(view.zoom, is_desktop)}
                     is_walking={travel.current.is_walking}
                     heading_degree={travel.current.heading}
                   />
@@ -426,7 +691,7 @@ export default function PlayMap({
                 @keyframes yc-fly-b { from { transform: translate(-18vw, 0) } to { transform: translate(118vw, 14px) } }
                 @keyframes yc-flap { 0%,100% { transform: scaleY(1) } 50% { transform: scaleY(0.45) } }
                 @media (prefers-reduced-motion: reduce) {
-                  .yc-bird, .yc-bird svg { animation: none !important }
+                  .yc-bird, .yc-bird svg, .pm-ripple { animation: none !important }
                 }
               `}</style>
               {BIRD.map((b, i) => (
@@ -477,6 +742,7 @@ export default function PlayMap({
                 </div>
               );
             })}
+            <FrameProbe />
           </>
         );
       }}
@@ -492,10 +758,6 @@ export default function PlayMap({
               height={height}
             >
               <defs>
-                <pattern id="pm-restricted" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                  <rect width="10" height="10" fill="rgba(120,86,58,0.14)" />
-                  <line x1="0" y1="0" x2="0" y2="10" stroke="rgba(96,66,40,0.5)" strokeWidth="2.4" />
-                </pattern>
                 {/* Grass, the posters' way: tufts and the odd plumeria over the
                     measured fill. It only ever sits on biome ground, so asphalt
                     stays asphalt; the fill underneath still carries the data. */}
@@ -513,125 +775,25 @@ export default function PlayMap({
                 </pattern>
               </defs>
 
-              {/* 1 · sector fills — the map itself */}
-              {sector_row.map((row) => {
-                const is_here = here?.sector_code === row.sector_code;
-                return (
-                  <path
-                    key={row.sector_code}
-                    d={ringPath(row.point, project, true)}
-                    fill={sectorFill(row)}
-                    fillOpacity={is_here ? 1 : 0.95}
-                    stroke={is_here ? "#F0B429" : sectorStroke(row)}
-                    strokeWidth={is_here ? 4.5 : 1}
-                    strokeLinejoin="round"
-                    /* The ground takes no clicks in the play view.
-                     *
-                     * It used to open the sector card, and that is the wrong
-                     * verb for this screen: on a map welded to a walker, a tap
-                     * on the ground means GO THERE, and `onTap` on the map
-                     * already means exactly that. Having both meant every
-                     * attempt to walk somewhere threw a panel of area
-                     * statistics over the map instead — and every camera drag
-                     * that happened to end on a sector did the same.
-                     *
-                     * The information is not gone. The sector you are standing
-                     * in is named on the HUD, and the full card with coverage,
-                     * species and citations is the field view, one tap away —
-                     * which is where a survey belongs. */
-                    style={undefined}
-                  />
-                );
-              })}
-              {sector_row
-                .filter((row) => row.is_biome)
-                .map((row) => (
-                  <path key={`g${row.sector_code}`} d={ringPath(row.point, project, true)} fill="url(#pm-grass)" stroke="none" />
-                ))}
-
-              {/* 2 · where each building MEETS the ground.
-                     The building itself is a prism drawn in screen space by
-                     `Skyline` — this is only its contact patch, which has to
-                     stay in the plane so it stays welded to the sector under
-                     it. Drawn dark rather than pale: a prism rising out of a
-                     light block looks like it is floating on one. */}
-              {campus_building.map((b, i) => (
-                <path
-                  key={`b${i}`}
-                  d={ringPath(b.point, project, true)}
-                  fill="rgba(104,96,78,0.30)"
-                  stroke="none"
-                />
-              ))}
-
-              {/* 3a · the city outside, at a whisper.
-                     Cutting it entirely left campus floating in a void, which
-                     reads as isolation rather than as a boundary. Faded says
-                     "this continues, you just do not play here" without
-                     inviting anyone into Katipunan traffic. */}
-              {outside_path.map((p, i) => (
-                <path
-                  key={`po${i}`}
-                  d={ringPath(p.point, project, false)}
-                  fill="none"
-                  stroke="rgba(255,255,255,0.34)"
-                  strokeWidth={3.5}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              ))}
-
-              {/* 3b · the ways the sectors were cut along — casing then fill,
-                     so they read as walkable ribbons, not hairlines */}
-              {campus_path.map((p, i) => (
-                <path
-                  key={`pc${i}`}
-                  d={ringPath(p.point, project, false)}
-                  fill="none"
-                  stroke="rgba(255,255,255,0.85)"
-                  strokeWidth={p.is_road ? 9 : 5.5}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              ))}
-              {campus_path.map((p, i) => (
-                <path
-                  key={`pf${i}`}
-                  d={ringPath(p.point, project, false)}
-                  fill="none"
-                  stroke={p.is_road ? "#F6EFE0" : "#FBF7EE"}
-                  strokeWidth={p.is_road ? 6 : 3}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              ))}
-
-              {/* 4 · ambient life. Deterministic, decorative, and never a
-                     claim: these are not surveyed trees, they are texture so a
-                     wooded sector looks wooded. `is_biome` gates them, so
-                     nothing sprouts on a car park. */}
-              {tuft.map((t, i) => (
-                <g key={`t${i}`} opacity={0.55}>
-                  <ellipse
-                    cx={project({ lat: t.lat, lon: t.lon }).x}
-                    cy={project({ lat: t.lat, lon: t.lon }).y}
-                    rx={t.r}
-                    ry={t.r * 0.72}
-                    fill={t.dark ? "rgba(28,74,34,0.55)" : "rgba(44,110,50,0.38)"}
-                  />
-                </g>
-              ))}
-
-              {/* 4 · restricted ground is SUBTRACTED, never overdrawn */}
-              {is_restricted_on && (
-                <path
-                  d={ringPath(RESTRICTED_POLYGON.map((p) => [p.lat, p.lon] as [number, number]), project, true)}
-                  fill="url(#pm-restricted)"
-                  stroke="rgba(96,66,40,0.7)"
-                  strokeWidth="2"
-                  strokeDasharray="7 5"
-                />
-              )}
+              <Ground
+                project={project}
+                /* Four figures: the exact value drifts with latitude on every
+                   step, which would defeat the memo for no visible change. */
+                plane_meter_per_pixel={Number(projection.plane_meter_per_pixel.toPrecision(4))}
+                here_code={here?.sector_code ?? null}
+                is_restricted_on={is_restricted_on}
+                /* The anchor sits at the container centre in plane pixels.
+                   The radius covers the raked view out to the sky haze at the
+                   steepest pitch, in plane pixels (hence the zoom scale), plus
+                   the anchor's own slack. */
+                cull_x={width / 2}
+                cull_y={height / 2}
+                cull_r={Math.round(
+                  (Math.max(width, height) * 3.2 * projection.meter_per_pixel) /
+                    Math.max(projection.plane_meter_per_pixel, 1e-6) +
+                    1500,
+                )}
+              />
 
               {/* 5 · soft ground contact under each find (and in-range ripples).
                    Ripples are diegetic: only when the walker is close enough to log. */}
@@ -644,11 +806,11 @@ export default function PlayMap({
               return (
                 <g key={`sh-${e.encounter_id}`}>
                   <circle cx={p.x} cy={p.y} r="11" fill="rgba(28,74,34,0.18)" />
+                  {/* The in-range ripple is NOT drawn here — see `Ripple`. A
+                      still ring marks the spot so the reach reads even with
+                      reduced motion. */}
                   {in_range && (
-                    <>
-                      <circle cx={p.x} cy={p.y} r={px * 0.55} fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="2" style={{ animation: "fgpulse 1.8s ease-out infinite" }} />
-                      <circle cx={p.x} cy={p.y} r={px * 0.85} fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" style={{ animation: "fgpulse 1.8s ease-out 0.45s infinite" }} />
-                    </>
+                    <circle cx={p.x} cy={p.y} r={Math.min(px * 0.55, RIPPLE_MAX_PX)} fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" />
                   )}
                 </g>
               );
@@ -689,7 +851,6 @@ export default function PlayMap({
               return (
                 <g pointerEvents="none">
                   <circle cx={p.x} cy={p.y} r={r} fill="rgba(255,255,255,0.14)" stroke="rgba(255,255,255,0.55)" strokeWidth="1.5" />
-                  <circle cx={p.x} cy={p.y} r={r * 0.72} fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" style={{ animation: "fgpulse 2.2s ease-out infinite" }} />
                 </g>
               );
             })()}
@@ -707,6 +868,24 @@ export default function PlayMap({
                   );
                 })}
             </svg>
+
+            {/* The pulses, as composited HTML rather than animated SVG. */}
+            {marker.map((e) => {
+              if (!fix || distanceMeter(fix, e) > AT_TREE_RADIUS_M) return null;
+              if (pin_filter && pin_filter.size > 0 && !pin_filter.has(pinKindOf(species[e.species_code]))) return null;
+              const p = project({ lat: e.lat, lon: e.lon });
+              const px = Math.max(10, AT_TREE_RADIUS_M / Math.max(projection.plane_meter_per_pixel, 0.01));
+              return (
+                <Ripple key={`rp-${e.encounter_id}`} x={p.x} y={p.y} r={Math.min(px * 0.85, RIPPLE_MAX_PX)} />
+              );
+            })}
+            {fix && (() => {
+              const r = AT_TREE_RADIUS_M / Math.max(projection.plane_meter_per_pixel, 0.01);
+              const r_screen = AT_TREE_RADIUS_M / Math.max(projection.meter_per_pixel, 0.01);
+              if (r_screen > Math.min(projection.width, projection.height) * 0.6) return null;
+              const p = project(fix);
+              return <Ripple x={p.x} y={p.y} r={Math.max(14, r) * 0.72} duration_s={2.2} is_faint />;
+            })()}
 
             {/* Finds: large botanical model, tiny stem chrome — not a map pin. */}
             {marker.map((e) => {
@@ -727,7 +906,7 @@ export default function PlayMap({
                     position: "absolute",
                     left: p.x,
                     top: p.y,
-                    transform: `translate(-50%, -100%) rotateZ(${-bearing_degree}deg) rotateX(${-TILT_DEGREE}deg)`,
+                    transform: `translate(-50%, -100%) rotateZ(${-bearing_degree}deg) rotateX(${-tilt_degree}deg)`,
                     transformOrigin: "50% 100%",
                     transformStyle: "preserve-3d",
                     cursor: "pointer",
@@ -779,7 +958,7 @@ export default function PlayMap({
                     position: "absolute",
                     left: p.x,
                     top: p.y,
-                    transform: `translate(-50%, -100%) rotateZ(${-bearing_degree}deg) rotateX(${-TILT_DEGREE}deg)`,
+                    transform: `translate(-50%, -100%) rotateZ(${-bearing_degree}deg) rotateX(${-tilt_degree}deg)`,
                     transformOrigin: "50% 100%",
                     transformStyle: "preserve-3d",
                     cursor: onSelectSpawn ? "pointer" : undefined,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { LAYER_ORDER, nextLayer, SOURCE, type Layer } from "./basemap";
 import {
   CAMPUS_BOX,
@@ -22,6 +22,7 @@ import {
   ZOOM_BUTTON_DELTA,
   zoomScaleOf,
 } from "./zoom";
+import { glideStep, pitchAfterDrag, PITCH_DEADZONE_PX, type Glide } from "./camera-feel";
 
 /**
  * A real slippy map, with no map library.
@@ -52,6 +53,24 @@ import {
  * `toScreen` and the CSS transform BOTH read this, so the two cannot drift.
  */
 const PLAYER_SCREEN_Y = 0.70;
+
+/**
+ * The raked camera's plane is drawn against an ANCHOR that only moves in
+ * steps of this many plane pixels; the camera's real position inside the step
+ * rides on the plane's CSS transform.
+ *
+ * Before this, every camera move — twenty a second under the stick —
+ * reprojected every sector, path and building on the ground, rewrote about
+ * 1,300 SVG `d` attributes, and made the browser re-rasterise the whole plane.
+ * Now a move between anchors changes one transform; the geometry is rebuilt
+ * once per 2,048 px of travel.
+ */
+const ANCHOR_GRID = 2048;
+
+/** A camera further than this from its goal jumps instead of gliding across campus. */
+const GLIDE_SNAP_DEGREE = 0.0012;
+/** Close enough, in degrees (~1 mm), with speed to match, to stop the frame loop. */
+const GLIDE_REST_DEGREE = 1e-8;
 
 export interface View extends LatLon {
   zoom: number;
@@ -93,6 +112,15 @@ export interface Projection {
    * pitch changes. So it lives here, next to the transform it inverts.
    */
   toScreen: (point: { x: number; y: number }) => { x: number; y: number; scale: number };
+  /**
+   * Where the camera is actually looking THIS frame.
+   *
+   * On the raked camera this trails `view` by a glide (see `camera-feel.ts`),
+   * so something drawn at the camera centre — the walker, when the camera is
+   * welded to them — should be drawn HERE, not at the fix, or it steps across
+   * the glass while the ground slides smoothly under it.
+   */
+  centre: LatLon;
   /** Inverse of `toScreen` then `project`: a click on the glass → lat/lon. */
   fromScreen: (x: number, y: number) => LatLon;
 }
@@ -128,6 +156,12 @@ interface Props {
    */
   bearing_degree?: number;
   onBearing?: (degree: number) => void;
+  /**
+   * Two fingers dragged up or down (or shift-drag vertically on a desktop)
+   * ask for a new pitch. The map only reports it — the owner of `tilt_degree`
+   * decides, so a view without this prop simply cannot be tilted.
+   */
+  onTilt?: (degree: number) => void;
   /**
    * CSS filter for the tiles only.
    *
@@ -212,6 +246,7 @@ export default function TileMap({
   tilt_degree = 0,
   bearing_degree = 0,
   onBearing,
+  onTilt,
   tile_filter,
   is_tile_hidden = false,
   ground,
@@ -234,6 +269,8 @@ export default function TileMap({
   /** Set by `endDrag` when the gesture travelled; consumed by the click trap. */
   const was_dragged = useRef(false);
   const from_screen = useRef<(x: number, y: number) => LatLon>((x, y) => fromWorld({ x, y }, view.zoom));
+  /** Where a two-finger (or shift-drag) gesture began: its midpoint and the pitch. */
+  const tilt_drag = useRef<{ x: number; y: number; tilt: number } | null>(null);
 
   useLayoutEffect(() => {
     const node = box_ref.current;
@@ -267,10 +304,36 @@ export default function TileMap({
   const zoom_exact = clampZoom(view.zoom, zoom_floor, zoom_cap);
   const zoom = tileZoomOf(zoom_exact);
   const zoom_scale = zoomScaleOf(zoom_exact);
-  const center_world = toWorld(view, zoom);
+
+  /**
+   * The glide. On the raked (play) camera the rendered centre is not `view` —
+   * it chases `view` on a frame loop with a critically damped spring, so a
+   * walker who arrives in 50 ms stick steps or 1 s GPS steps is followed by a
+   * camera that moves every frame. Only this component re-renders per frame;
+   * the app above it renders at the rate positions actually arrive. The flat
+   * field camera is untouched: it is dragged by hand, and a hand wants no lag.
+   */
+  const is_glide = tilt_degree > 0;
+  const [glide, setGlide] = useState<LatLon>(() => ({ lat: view.lat, lon: view.lon }));
+  const glide_state = useRef<{ lat: Glide; lon: Glide }>({
+    lat: { value: view.lat, velocity: 0 },
+    lon: { value: view.lon, velocity: 0 },
+  });
+  const glide_frame = useRef<number | null>(null);
+  const centre: LatLon = is_glide ? glide : view;
+
+  const center_world = toWorld(centre, zoom);
+  /* See `ANCHOR_GRID`. The flat camera anchors on itself, i.e. no shift. */
+  const anchor_world = is_glide
+    ? {
+        x: Math.round(center_world.x / ANCHOR_GRID) * ANCHOR_GRID,
+        y: Math.round(center_world.y / ANCHOR_GRID) * ANCHOR_GRID,
+      }
+    : center_world;
+  const shift = { x: center_world.x - anchor_world.x, y: center_world.y - anchor_world.y };
   const origin = {
-    x: center_world.x - size.width / 2,
-    y: center_world.y - size.height / 2,
+    x: anchor_world.x - size.width / 2,
+    y: anchor_world.y - size.height / 2,
   };
 
   const project = useCallback(
@@ -386,6 +449,57 @@ export default function TileMap({
 
   useEffect(() => stopZoomLoop, [stopZoomLoop]);
 
+  /* The glide's frame loop. Started by a change of target, stopped when the
+     camera has arrived — nothing runs while the walker stands still. It reads
+     the target through `view_ref`, so a target that moves mid-glide is simply
+     chased, not restarted. */
+  useEffect(() => {
+    if (!is_glide || glide_frame.current !== null) return;
+    let last = performance.now();
+    const step = (now: number) => {
+      const target = view_ref.current;
+      const dt = (now - last) / 1000;
+      last = now;
+      const g = glide_state.current;
+      const is_far =
+        Math.abs(target.lat - g.lat.value) > GLIDE_SNAP_DEGREE ||
+        Math.abs(target.lon - g.lon.value) > GLIDE_SNAP_DEGREE;
+      /* A hand panning the map gets the map under the hand, not behind it. */
+      const is_panning = drag.current !== null && !drag.current.is_rotate;
+      if (is_far || is_panning) {
+        g.lat = { value: target.lat, velocity: 0 };
+        g.lon = { value: target.lon, velocity: 0 };
+      } else {
+        g.lat = glideStep(g.lat, target.lat, dt);
+        g.lon = glideStep(g.lon, target.lon, dt);
+      }
+      const is_rest =
+        Math.abs(target.lat - g.lat.value) < GLIDE_REST_DEGREE &&
+        Math.abs(target.lon - g.lon.value) < GLIDE_REST_DEGREE &&
+        Math.abs(g.lat.velocity) < GLIDE_REST_DEGREE * 10 &&
+        Math.abs(g.lon.velocity) < GLIDE_REST_DEGREE * 10;
+      if (is_rest) {
+        g.lat = { value: target.lat, velocity: 0 };
+        g.lon = { value: target.lon, velocity: 0 };
+      }
+      setGlide({ lat: g.lat.value, lon: g.lon.value });
+      if (is_rest) {
+        glide_frame.current = null;
+        return;
+      }
+      glide_frame.current = requestAnimationFrame(step);
+    };
+    glide_frame.current = requestAnimationFrame(step);
+  }, [is_glide, view.lat, view.lon]);
+
+  useEffect(
+    () => () => {
+      if (glide_frame.current !== null) cancelAnimationFrame(glide_frame.current);
+      glide_frame.current = null;
+    },
+    [],
+  );
+
   /**
    * The click trap.
    *
@@ -469,6 +583,16 @@ export default function TileMap({
      * every person alive tries first. They now run together, the way they do in
      * a real map app: the distance between the fingers drives the zoom, their
      * horizontal travel drives the bearing. */
+    /* Pitch: from the midpoint of two fingers, or a desktop's shift /
+       right-button drag, which has no second finger to offer. */
+    if (pointer.current.size === 2) {
+      const [a, b] = [...pointer.current.values()];
+      tilt_drag.current = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, tilt: tilt_degree };
+    } else if (pointer.current.size === 1 && (event.shiftKey || event.button === 2)) {
+      tilt_drag.current = { x: event.clientX, y: event.clientY, tilt: tilt_degree };
+    } else {
+      tilt_drag.current = null;
+    }
     if (pointer.current.size === 2) {
       const [a, b] = [...pointer.current.values()];
       pinch.current = {
@@ -514,10 +638,30 @@ export default function TileMap({
       runZoomLoop();
     }
 
+    /* Vertical travel tilts. Read alongside the pinch and the rotate, not
+       instead of them: a two-finger drag straight up is neither a pinch nor a
+       swing, and a pinch that wobbles stays inside `PITCH_DEADZONE_PX`. */
+    const pair = [...pointer.current.values()];
+    const mid =
+      pair.length === 2
+        ? { x: (pair[0].x + pair[1].x) / 2, y: (pair[0].y + pair[1].y) / 2 }
+        : { x: event.clientX, y: event.clientY };
+    /* Only once the travel clears the deadzone: reporting "no change" on
+       every pinch frame pinned the pitch where the pinch began, so a zoom
+       stopped easing the tilt the way `pitchForZoom` says it should. */
+    if (onTilt && tilt_drag.current && Math.abs(mid.y - tilt_drag.current.y) > PITCH_DEADZONE_PX) {
+      onTilt(pitchAfterDrag(tilt_drag.current.tilt, mid.y - tilt_drag.current.y));
+    }
+
     if (from.is_rotate) {
       /* Horizontal travel swings the camera; a quarter of the screen is a
-         quarter turn, which is about the sensitivity the genre uses. */
-      onBearing?.(from.bearing + (dx / Math.max(1, size.width)) * 360 * 0.75);
+         quarter turn, which is about the sensitivity the genre uses.
+         With two fingers the travel is the MIDPOINT's. It used to be whichever
+         finger happened to fire this event, measured from where the OTHER
+         finger landed — so pointer events alternating between two fingers
+         swung the camera back and forth by their spread on every frame. */
+      const travel = tilt_drag.current && pair.length === 2 ? mid.x - tilt_drag.current.x : dx;
+      onBearing?.(from.bearing + (travel / Math.max(1, size.width)) * 360 * 0.75);
       return;
     }
 
@@ -543,6 +687,7 @@ export default function TileMap({
     /* One finger left is no longer a pinch — and must not become one again from
        a stale spread when the second comes back down. */
     if (pointer.current.size < 2) pinch.current = null;
+    if (pointer.current.size < 2) tilt_drag.current = null;
     if (pointer.current.size === 0) drag.current = null;
     const start = down_at.current;
     down_at.current = null;
@@ -575,8 +720,8 @@ export default function TileMap({
   const pad_top = tilt_degree ? size.height * 1.35 * spread : (size.height * (spread - 1)) / 2 + 2;
   const pad_bottom = tilt_degree ? size.height * 0.9 * spread : (size.height * (spread - 1)) / 2 + 2;
 
-  const tile_x = size.width ? tileRange(origin.x - pad_x, size.width + pad_x * 2) : [];
-  const tile_y = size.height ? tileRange(origin.y - pad_top, size.height + pad_top + pad_bottom) : [];
+  const tile_x = size.width ? tileRange(origin.x + shift.x - pad_x, size.width + pad_x * 2) : [];
+  const tile_y = size.height ? tileRange(origin.y + shift.y - pad_top, size.height + pad_top + pad_bottom) : [];
   const count = 2 ** zoom;
 
   /* Must stay in lockstep with `plane_style` below — same pivot, same depth,
@@ -593,8 +738,8 @@ export default function TileMap({
     (point: { x: number; y: number }) => {
       if (!tilt_degree && !bearing_degree) {
         return {
-          x: origin_x + (point.x - origin_x) * zoom_scale,
-          y: origin_y + (point.y - origin_y) * zoom_scale,
+          x: origin_x + (point.x - shift.x - origin_x) * zoom_scale,
+          y: origin_y + (point.y - shift.y - origin_y) * zoom_scale,
           scale: 1,
         };
       }
@@ -603,8 +748,9 @@ export default function TileMap({
          further out on the glass. Anything reasoning in SCREEN space — a label
          fit test, the skyline, the walker — has to see that or it drifts off
          the tiles between whole levels. */
-      const dx0 = (point.x - origin_x) * zoom_scale;
-      const dy0 = (point.y - origin_y) * zoom_scale;
+      /* `shift` first: the plane is translated by it before anything else. */
+      const dx0 = (point.x - shift.x - origin_x) * zoom_scale;
+      const dy0 = (point.y - shift.y - origin_y) * zoom_scale;
       /* Same order as the CSS: rotate the ground about the player first, then
          rake the camera over it, then divide by depth. */
       const dx = dx0 * Math.cos(bear) - dy0 * Math.sin(bear);
@@ -613,7 +759,7 @@ export default function TileMap({
       const scale = depth / (depth - z);
       return { x: origin_x + dx * scale, y: origin_y + dy * Math.cos(rad) * scale + shift_y, scale };
     },
-    [tilt_degree, bearing_degree, origin_x, origin_y, depth, rad, bear, shift_y, zoom_scale],
+    [tilt_degree, bearing_degree, origin_x, origin_y, depth, rad, bear, shift_y, zoom_scale, shift.x, shift.y],
   );
 
   const fromScreen = useCallback(
@@ -621,8 +767,8 @@ export default function TileMap({
       if (!tilt_degree && !bearing_degree) {
         return fromWorld(
           {
-            x: origin.x + origin_x + (sx - origin_x) / zoom_scale,
-            y: origin.y + origin_y + (sy - origin_y) / zoom_scale,
+            x: origin.x + shift.x + origin_x + (sx - origin_x) / zoom_scale,
+            y: origin.y + shift.y + origin_y + (sy - origin_y) / zoom_scale,
           },
           zoom,
         );
@@ -630,15 +776,15 @@ export default function TileMap({
       const sy1 = sy - shift_y;
       const scale = 1 + ((sy1 - origin_y) * Math.tan(rad)) / depth;
       if (!Number.isFinite(scale) || scale <= 0.05) {
-        return fromWorld({ x: origin.x + sx, y: origin.y + sy }, zoom);
+        return fromWorld({ x: origin.x + shift.x + sx, y: origin.y + shift.y + sy }, zoom);
       }
       const dx = (sx - origin_x) / scale / zoom_scale;
       const dy = (sy1 - origin_y) / (Math.cos(rad) * scale) / zoom_scale;
       const dx0 = dx * Math.cos(bear) + dy * Math.sin(bear);
       const dy0 = -dx * Math.sin(bear) + dy * Math.cos(bear);
-      return fromWorld({ x: origin.x + origin_x + dx0, y: origin.y + origin_y + dy0 }, zoom);
+      return fromWorld({ x: origin.x + shift.x + origin_x + dx0, y: origin.y + shift.y + origin_y + dy0 }, zoom);
     },
-    [tilt_degree, bearing_degree, origin.x, origin.y, origin_x, origin_y, depth, rad, bear, shift_y, zoom, zoom_scale],
+    [tilt_degree, bearing_degree, origin.x, origin.y, origin_x, origin_y, depth, rad, bear, shift_y, zoom, zoom_scale, shift.x, shift.y],
   );
   from_screen.current = fromScreen;
 
@@ -657,7 +803,26 @@ export default function TileMap({
     bearing_degree,
     toScreen,
     fromScreen,
+    centre,
   };
+
+  /**
+   * The plane's children, rebuilt only when the plane's own geometry changes.
+   *
+   * On the gliding camera `project` is anchored (see `ANCHOR_GRID`), so a
+   * glide frame does not change it and the plane is not re-rendered at all —
+   * only its transform moves. The children still get the full projection, but
+   * on this camera they must not read `toScreen`/`fromScreen`/`centre`, which
+   * go stale inside the memo; anything screen-space belongs in `overlay`,
+   * which is rendered every frame. The flat camera keys on `toScreen` too, so
+   * nothing about it changes.
+   */
+  const plane_screen_key = is_glide ? null : toScreen;
+  const plane_node = useMemo(
+    () => (size.width > 0 ? children?.(projection) : null),
+    // Deliberately partial — see above. `projection` is rebuilt every render.
+    [children, project, size.width, size.height, zoom_exact, tilt_degree, bearing_degree, plane_screen_key],
+  );
 
   /* One transform for the entire ground plane. `transformOrigin` sits below the
    * centre so the player, who lives at the centre, stays at a comfortable
@@ -668,7 +833,7 @@ export default function TileMap({
         inset: 0,
         transformStyle: "preserve-3d",
         transformOrigin: "50% 50%",
-        transform: `translateY(${shift_y}px) perspective(${depth}px) rotateX(${tilt_degree}deg) rotateZ(${bearing_degree}deg) scale(${zoom_scale})`,
+        transform: `translateY(${shift_y}px) perspective(${depth}px) rotateX(${tilt_degree}deg) rotateZ(${bearing_degree}deg) scale(${zoom_scale}) translate3d(${(-shift.x).toFixed(2)}px, ${(-shift.y).toFixed(2)}px, 0)`,
         willChange: "transform",
       }
     : {
@@ -688,6 +853,8 @@ export default function TileMap({
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
+      /* A right-button drag tilts, so it must not open the browser menu. */
+      onContextMenu={onTilt ? (event) => event.preventDefault() : undefined}
       style={{
         position: "absolute",
         inset: 0,
@@ -728,7 +895,7 @@ export default function TileMap({
         }),
       )}
 
-      {size.width > 0 && children?.(projection)}
+      {plane_node}
       </div>
 
       {size.width > 0 && overlay?.(projection)}
