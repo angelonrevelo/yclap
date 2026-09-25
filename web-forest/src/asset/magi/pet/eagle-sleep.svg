@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img">
+<title>Agila the Blue Eagle, asleep</title>
+<defs><filter id="pet-edge-sleep" x="-20%" y="-20%" width="140%" height="140%">
+  <feMorphology in="SourceAlpha" operator="dilate" radius="3.5" result="grow"/>
+  <feFlood flood-color="#fff"/><feComposite in2="grow" operator="in" result="edge"/>
+  <feMerge><feMergeNode in="edge"/><feMergeNode in="SourceGraphic"/></feMerge>
+</filter></defs>
+<g filter="url(#pet-edge-sleep)" stroke="#0E3B2A" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round">
+  <!-- tail -->
+  <path d="M34,92 L20,106 L32,106 L36,112 L46,98 Z" fill="#24478A"/>
+  <!-- body, fluffed and round -->
+  <path d="M30,78 C28,58 44,46 62,46 C82,46 94,60 92,78 C90,96 74,104 60,104 C44,104 32,96 30,78 Z" fill="#3463B5"/>
+  <!-- wing wrapped over -->
+  <path d="M34,70 C46,60 70,60 84,72 C88,88 74,100 58,100 C44,100 34,90 34,70 Z" fill="#24478A"/>
+  <path d="M46,82 C54,78 66,78 74,82 M50,90 C56,87 64,87 70,90" fill="none" stroke-width="2.5"/>
+  <!-- head, tucked low into the shoulders -->
+  <path d="M56,56 C54,42 66,34 78,36 C90,38 94,50 90,58 C86,64 74,66 66,64 C60,62 57,60 56,56 Z" fill="#FFF6DC"/>
+  <!-- closed eye -->
+  <path d="M76,48 Q80,52 84,48" fill="none" stroke-width="3"/>
+  <!-- beak, drooped -->
+  <path d="M88,50 C95,52 98,58 94,63 C93,60 90,58 87,58 C87,55 87,52 88,50 Z" fill="#F5B82E"/>
+  <!-- branch -->
+  <path d="M18,108 C44,104 72,105 102,109" fill="none" stroke="#7A4B2A" stroke-width="5"/>
+</g>
+</svg>

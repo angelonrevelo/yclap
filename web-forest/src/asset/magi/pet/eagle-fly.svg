@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img">
+<title>Agila the Blue Eagle, flying</title>
+<defs><filter id="pet-edge-fly" x="-20%" y="-20%" width="140%" height="140%">
+  <feMorphology in="SourceAlpha" operator="dilate" radius="3.5" result="grow"/>
+  <feFlood flood-color="#fff"/><feComposite in2="grow" operator="in" result="edge"/>
+  <feMerge><feMergeNode in="edge"/><feMergeNode in="SourceGraphic"/></feMerge>
+</filter></defs>
+<g filter="url(#pet-edge-fly)" stroke="#0E3B2A" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round">
+  <!-- left wing: pivots at the shoulder (the component flaps .pet-wing-l) -->
+  <g class="pet-wing-l">
+    <path d="M50,58 C38,46 22,40 6,42 C12,48 12,52 8,56 C16,56 18,60 14,64 C24,64 28,68 26,72 C36,70 44,68 50,66 Z" fill="#3463B5"/>
+    <path d="M18,56 L30,58 M24,64 L36,64" fill="none" stroke-width="2.5"/>
+  </g>
+  <g class="pet-wing-r">
+    <path d="M70,58 C82,46 98,40 114,42 C108,48 108,52 112,56 C104,56 102,60 106,64 C96,64 92,68 94,72 C84,70 76,68 70,66 Z" fill="#3463B5"/>
+    <path d="M102,56 L90,58 M96,64 L84,64" fill="none" stroke-width="2.5"/>
+  </g>
+  <!-- tail -->
+  <path d="M52,84 L46,102 L56,98 L60,104 L64,98 L74,102 L68,84 Z" fill="#24478A"/>
+  <!-- body -->
+  <path d="M48,60 C48,50 72,50 72,60 L70,82 C68,90 52,90 50,82 Z" fill="#3463B5"/>
+  <path d="M54,64 C58,62 62,62 66,64 L64,82 C62,86 58,86 56,82 Z" fill="#5B86D6" stroke="none"/>
+  <!-- head -->
+  <circle cx="60" cy="42" r="14" fill="#FFF6DC"/>
+  <path d="M50,35 Q54,33 57,35 M70,35 Q66,33 63,35" fill="none" stroke-width="2.5"/>
+  <circle cx="54" cy="41" r="3.4" fill="#0E3B2A" stroke="none"/>
+  <circle cx="66" cy="41" r="3.4" fill="#0E3B2A" stroke="none"/>
+  <circle cx="55.2" cy="39.8" r="1.2" fill="#fff" stroke="none"/>
+  <circle cx="67.2" cy="39.8" r="1.2" fill="#fff" stroke="none"/>
+  <path d="M55,46 C57,44 63,44 65,46 C64,51 61,54 60,55 C59,54 56,51 55,46 Z" fill="#F5B82E"/>
+  <!-- tucked feet -->
+  <path d="M55,88 L54,93 M65,88 L66,93" fill="none" stroke="#C98A12" stroke-width="3"/>
+</g>
+</svg>
