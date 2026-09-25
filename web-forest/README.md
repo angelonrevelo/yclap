@@ -284,10 +284,18 @@ The play layer, wired in `src/live.tsx`:
   nothing to press. It drives
   the same `play` source WASD drives, under the same rules (inside
   `CAMPUS_BOX`, outside the restricted grove, outside every building
-  footprint — a blocked stick step slides along the wall at up to 75°, and a
-  walk-to that stops closing in for a second gives up; a walk-to target is set
-  on walkable ground first — `walkTargetOf` backs a target inside a footprint
-  out toward the walker, and a walk to a find stops 3 m short of its pin), so a
+  footprint — a blocked stick step slides along the wall at up to 75°), and a
+  walk-to is ROUTED round buildings rather than aimed at them (`src/route.ts`):
+  A* over a 4 m grid of the campus whose open cells are exactly `isWalkable`,
+  with the OSM footpaths (`campus-path.json`) burnt in as cheaper cells so it
+  keeps to the paths where they exist, pulled taut into a few straight legs.
+  The grid is built once (~50 ms, primed when the stick starts); a route then
+  takes ~1–2 ms (p95 under 10 ms, printed by `test/route.test.ts`, which walks
+  315 routes from five starts and requires every one to arrive). The walker
+  follows it waypoint by waypoint through the same stepper (`stepRoute`), stops
+  3 m short of a find along the route, re-plans once if pressed into a corner,
+  and then says so; with no route at all the toast says "Can't find a way to X
+  from here" instead of promising a walk that never moves. So a
   stick walk and a GPS walk
   produce the same journal. Its PACE, though, is its own: the stick moves at a
   fraction of the visible ground per second (`stickTopPaceMs`), not at

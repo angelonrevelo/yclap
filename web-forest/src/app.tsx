@@ -107,6 +107,7 @@ import {
 import { CAMPUS_CENTER, distanceMeter, formatLatLon, formatMeter, formatWalkMinute, meterPerPixel, WALK_PACE_MS, type GeoState } from "./geo";
 import { LAYER_ORDER, nextLayer, prefetchCampus, SOURCE, type Layer, type View } from "./tile-map";
 import { geoModeLabel, nextGeoMode, useGeo, type GeoMode } from "./use-geo";
+import { noRouteLine } from "./route";
 import { biomePresenceAt, rankEncounter, sectorResident, trayRow, type BiomePresence } from "./nearby";
 import { cosmeticForStage } from "./cosmetic";
 import { BlindboxShelf } from "./blindbox-reveal";
@@ -3534,7 +3535,9 @@ export default function App() {
      plumbing the real container size up here to get it would be a lot of wiring
      for a pace. */
   const view_span_m = meterPerPixel(view.lat, Math.round(view.zoom)) * 800;
-  const geo = useGeo(geo_mode, bearing, view_span_m);
+  /* A walk-to that gets stuck part-way says so (showToast is declared below;
+     this only runs on a later tick). */
+  const geo = useGeo(geo_mode, bearing, view_span_m, (line) => showToast(line));
   /* Boot, alerts and weather. The boot overlay sits over everything until the
      safety card is dismissed; alerts raised meanwhile queue behind it. */
   const [is_booted, setBooted] = useState(() => isBootSkipped());
@@ -3624,8 +3627,8 @@ export default function App() {
     const place = sectorByCode(daily.sector_code);
     if (!place) return;
     if (geo_mode === "play") {
-      geo.walkTo(walkPoint(place));
-      setFollowing(true);
+      if (geo.walkTo(walkPoint(place), 0, place.name)) setFollowing(true);
+      else showToast(noRouteLine(place.name));
       return;
     }
     setFollowing(false);
@@ -4029,9 +4032,13 @@ export default function App() {
     setPickedSector(null);
     setPinnedId(null);
     if (reply.kind === "walk") {
-      /* Stop a few metres short, on walkable ground: never on the pin, never
-         inside a building's footprint (walkTargetOf). */
-      geo.walkTo(row, WALK_TO_SHORT_M);
+      /* Routed round the buildings (route.ts), stopping a few metres short
+         on walkable ground. No route from here → say so; never a toast that
+         promises a walk and then stands still. */
+      if (!geo.walkTo(row, WALK_TO_SHORT_M, row.common_name)) {
+        showToast(noRouteLine(row.common_name));
+        return;
+      }
       setFollowing(true);
       showToast(reply.line);
       return;
@@ -4274,7 +4281,14 @@ export default function App() {
         onBearing={setBearing}
         spawn={spawn_world.spawn}
         onSelectSpawn={walkToSpawn}
-        onWalkTo={geo_mode === "play" ? (point) => { geo.walkTo(point); setFollowing(true); } : undefined}
+        onWalkTo={
+          geo_mode === "play"
+            ? (point) => {
+                if (geo.walkTo(point, 0, "that spot")) setFollowing(true);
+                else showToast(noRouteLine("that spot"));
+              }
+            : undefined
+        }
         /* The GO camera: welded to the walker whenever there is a walker to
            weld it to. Without a fix there is nothing to be stuck to, so the
            map stays draggable rather than freezing on the campus centre. */
@@ -4617,8 +4631,8 @@ export default function App() {
               if (daily) {
                 const place = sectorByCode(daily.sector_code);
                 if (place && geo_mode === "play") {
-                  geo.walkTo(walkPoint(place));
-                  setFollowing(true);
+                  if (geo.walkTo(walkPoint(place), 0, place.name)) setFollowing(true);
+                  else showToast(noRouteLine(place.name));
                 } else if (place) {
                   setView((prev) => ({ ...prev, lat: place.label_point[0], lon: place.label_point[1], zoom: Math.max(prev.zoom, 17) }));
                 }

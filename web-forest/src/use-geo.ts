@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { demoWalkAt, distanceMeter, isInsideCampus, type Fix, type GeoState, type LatLon } from "./geo";
+import { demoWalkAt, isInsideCampus, type Fix, type GeoState, type LatLon } from "./geo";
 import {
   PLAY_START,
   stickSeedOf,
@@ -11,12 +11,13 @@ import {
   PLAY_DEFAULT_SPAN_M,
   playMeterForTick,
   stepPlayWalk,
-  stepToward,
+  stepRoute,
   throttleFromStick,
-  walkTargetOf,
   type PlayHeld,
   type PlayStick,
+  type RouteWalk,
 } from "./play-walk";
+import { planRoute, routeGrid, stuckLine } from "./route";
 import { filterFix, type FixFilter } from "./fix-filter";
 import { readPlayer } from "./sync";
 
@@ -77,8 +78,14 @@ function applyKey(held: PlayHeld, code: string, is_down: boolean): PlayHeld | nu
  * `play` — you steer (WASD / arrows / tap) when a fix is not available.
  * `demo` — the scripted campus loop, for a projector that must move itself.
  */
-/** Ticks a walk-to may go without closing in before it gives up (~1 s). */
-const WALK_TO_STALL_TICK = Math.round(1000 / PLAY_TICK_MS);
+/** A walk-to under way: the route, and what it was for, so a stuck walk can re-plan. */
+interface WalkTo {
+  route: RouteWalk;
+  target: LatLon;
+  short_m: number;
+  name: string;
+  is_replanned: boolean;
+}
 
 export function useGeo(
   mode: GeoMode,
@@ -92,10 +99,16 @@ export function useGeo(
    * before any of this was zoom-aware.
    */
   view_span_m = PLAY_DEFAULT_SPAN_M,
+  /** Told, in a line fit for a toast, when a walk-to gets stuck part-way and a re-plan did not help. */
+  onWalkNote?: (line: string) => void,
 ): GeoState & {
   is_off_campus: boolean;
-  /** Walk to `point`, ending `short_m` short of it and never inside a footprint (`walkTargetOf`). */
-  walkTo: (point: LatLon, short_m?: number) => void;
+  /**
+   * Walk to `point` along a planned route (`route.ts`), ending `short_m` short
+   * of it along the route and never inside a footprint. False when there is no
+   * route from here — the caller says so; nothing moves.
+   */
+  walkTo: (point: LatLon, short_m?: number, name?: string) => boolean;
   steer: (stick: PlayStick) => void;
 } {
   const [state, setState] = useState<GeoState>({ status: "idle", fix: null, message: null });
@@ -108,8 +121,9 @@ export function useGeo(
   const held = useRef<PlayHeld>(IDLE_HELD);
   const stick = useRef<PlayStick>(IDLE_STICK);
   const is_run = useRef(false);
-  const destination = useRef<LatLon | null>(null);
-  const stall = useRef(0);
+  const destination = useRef<WalkTo | null>(null);
+  const note_ref = useRef(onWalkNote);
+  note_ref.current = onWalkNote;
   const last_tick = useRef<number>(Date.now());
   const last_fix = useRef<Fix | null>(null);
   last_fix.current = state.fix;
@@ -131,14 +145,23 @@ export function useGeo(
   }, []);
 
   const walkTo = useCallback(
-    (point: LatLon, short_m = 0) => {
-      if (mode !== "play") return;
-      /* The walk ends on ground the stick can stand on: a find beside a wall
-         or a tap on a roof stops short, outside the footprint. */
-      destination.current = walkTargetOf(play_at.current, point, short_m);
-      stall.current = 0;
+    (point: LatLon, short_m = 0, name = "there") => {
+      if (mode !== "play") return false;
+      /* Round the buildings, not into them: the route runs only over ground
+         the stick may stand on, and ends outside any footprint. */
+      const route = planRoute(play_at.current, point, short_m);
+      destination.current = null;
+      if (!route) return false;
+      destination.current = {
+        route: { waypoint: route.waypoint, index: 0, stall: 0 },
+        target: point,
+        short_m,
+        name,
+        is_replanned: false,
+      };
       held.current = IDLE_HELD;
       stick.current = IDLE_STICK;
+      return true;
     },
     [mode],
   );
@@ -274,16 +297,20 @@ export function useGeo(
       let at = play_at.current;
       if (heading !== null) at = stepPlayWalk(at, heading, meter);
       else if (destination.current) {
-        const before = distanceMeter(at, destination.current);
-        at = stepToward(at, destination.current, meter);
-        const after = distanceMeter(at, destination.current);
-        /* Walls are refused and slid along; a walk-to that has stopped closing
-           in for a second is pressed into a corner, and gives up rather than
-           grinding against the building forever. */
-        stall.current = meter > 0 && after > before - meter * 0.2 ? stall.current + 1 : 0;
-        if (after < 0.6 || stall.current >= WALK_TO_STALL_TICK) {
-          destination.current = null;
-          stall.current = 0;
+        const walk = destination.current;
+        const step = stepRoute(at, walk.route, meter);
+        at = step.at;
+        if (step.status === "arrived") destination.current = null;
+        else if (step.status === "stuck") {
+          /* Pressed into a corner the route did not foresee: plan again from
+             here, once. A second stall says so instead of standing silent. */
+          const again = walk.is_replanned ? null : planRoute(at, walk.target, walk.short_m);
+          if (again) {
+            destination.current = { ...walk, route: { waypoint: again.waypoint, index: 0, stall: 0 }, is_replanned: true };
+          } else {
+            destination.current = null;
+            note_ref.current?.(stuckLine(walk.name));
+          }
         }
       } else {
         return;
@@ -291,7 +318,11 @@ export function useGeo(
       publishPlay(at);
     };
     const timer = window.setInterval(tick, PLAY_TICK_MS);
+    /* Build the routing grid (~50 ms on a laptop) while nobody is waiting on
+       it, so the first tap on a find does not pay for it. */
+    const prime = window.setTimeout(() => routeGrid(), 600);
     return () => {
+      window.clearTimeout(prime);
       window.removeEventListener("keydown", onDown);
       window.removeEventListener("keyup", onUp);
       window.clearInterval(timer);
