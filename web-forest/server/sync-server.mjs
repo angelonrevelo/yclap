@@ -1,13 +1,19 @@
 /**
  * LAN campus world — same HTTP + SSE contract as worker/sync.ts.
  *
- * node server/sync-server.mjs [--port 8788] [--db server/yclap-sync.db]
+ * node server/sync-server.mjs [--port 8788] [--db server/yclap-sync.db] [--account-db server/yclap-account.db]
+ *
+ * Accounts (/auth/*, /account/save) run the SAME AccountService as the Worker
+ * (worker/account.ts), on node:sqlite instead of the Durable Object's SQLite.
+ * Google sign-in is on only when GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are
+ * in the environment.
  */
 import { createServer } from "node:http";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { networkInterfaces } from "node:os";
 import { pathToFileURL } from "node:url";
+import { DatabaseSync } from "node:sqlite";
 
 const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -16,6 +22,7 @@ const arg = (name, fallback) => {
 const PORT = Number(arg("port", 8788));
 const DB_PATH = resolve(process.cwd(), arg("db", "server/yclap-sync.json"));
 mkdirSync(dirname(DB_PATH), { recursive: true });
+const ACCOUNT_DB_PATH = resolve(process.cwd(), arg("account-db", "server/yclap-account.db"));
 
 const { MemoryCampusStore, mergeSync, sanitizePlayer, sanitizeSighting, worldFrom } = await import(
   pathToFileURL(resolve(process.cwd(), "src/campus-world.ts")).href
@@ -27,6 +34,39 @@ function loadStore() {
   } catch {
     return new MemoryCampusStore();
   }
+}
+
+const { AccountService, isAccountPath } = await import(
+  pathToFileURL(resolve(process.cwd(), "worker/account.ts")).href
+);
+const account_db = new DatabaseSync(ACCOUNT_DB_PATH);
+const account = new AccountService((query, ...bind) => account_db.prepare(query).all(...bind), {
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+});
+
+/** node req → WHATWG Request → AccountService → node res, cookies intact. */
+async function serveAccount(req, res, url) {
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (Array.isArray(value)) for (const v of value) headers.append(key, v);
+    else if (value != null) headers.set(key, value);
+  }
+  let body;
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    const chunk = [];
+    for await (const c of req) chunk.push(c);
+    body = Buffer.concat(chunk);
+  }
+  const response = await account.handle(new Request(url, { method: req.method, headers, body }));
+  const out = {};
+  response.headers.forEach((value, key) => {
+    if (key !== "set-cookie") out[key] = value;
+  });
+  const set_cookie = response.headers.getSetCookie();
+  if (set_cookie.length) out["set-cookie"] = set_cookie;
+  res.writeHead(response.status, out);
+  res.end(Buffer.from(await response.arrayBuffer()));
 }
 
 let store = loadStore();
@@ -72,8 +112,17 @@ function cors(res) {
 }
 
 const server = createServer(async (req, res) => {
-  cors(res);
   const url = new URL(req.url, `http://${req.headers.host ?? "localhost"}`);
+  if (isAccountPath(url.pathname)) {
+    try {
+      await serveAccount(req, res, url);
+    } catch (e) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: String(e?.message ?? e) }));
+    }
+    return;
+  }
+  cors(res);
 
   if (req.method === "OPTIONS") {
     res.writeHead(204).end();
@@ -146,7 +195,7 @@ const server = createServer(async (req, res) => {
   }
 
   res.writeHead(404, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ error: "not found", route: ["GET /world", "GET /live", "GET /join", "GET /mine", "POST /sync"] }));
+  res.end(JSON.stringify({ error: "not found", route: ["GET /world", "GET /live", "GET /join", "GET /mine", "POST /sync", "/auth/*", "/account/save"] }));
 });
 
 server.listen(PORT, () => {
@@ -159,4 +208,5 @@ server.listen(PORT, () => {
   console.log(`  local   http://localhost:${PORT}`);
   for (const a of addr) console.log(`  lan     ${a}`);
   console.log(`  world   GET /world · GET /live · POST /sync · GET /join · GET /mine`);
+  console.log(`  account ${ACCOUNT_DB_PATH} · /auth/* · /account/save · google ${account.isGoogle ? "on" : "off"}`);
 });

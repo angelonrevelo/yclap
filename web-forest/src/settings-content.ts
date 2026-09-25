@@ -160,6 +160,6 @@ export const ESSAY: EssayBeat[] = [
 export const LIMIT: string[] = [
   "Nothing here is a survey. Species lists are provisional until AIS supplies the real inventory.",
   "No observation has been checked by a person yet. Statuses on your journal are this device's own labels.",
-  "Everything is stored on this phone. Clear your browser data and it is gone — there is no account to restore it from yet.",
+  "Everything is stored on this phone unless you sign in. An optional account copies journal entries and points (never photos) to the project's own server; without one, clearing browser data loses them.",
   "This is a student project for Youth CLAP 2026. It is not an official Ateneo product and does not speak for any office.",
 ];

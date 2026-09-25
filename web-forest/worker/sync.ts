@@ -10,8 +10,9 @@ import {
   worldFrom,
   type SightingRow,
 } from "../src/campus-world.ts";
+import { AccountService, isAccountPath, type AccountEnv, type SqlValue } from "./account.ts";
 
-export interface Env {
+export interface Env extends AccountEnv {
   CAMPUS: DurableObjectNamespace;
   ASSETS: Fetcher;
 }
@@ -21,7 +22,7 @@ const SYNC_PATH = new Set(["/world", "/sync", "/live", "/health", "/join", "/min
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-    if (SYNC_PATH.has(url.pathname)) {
+    if (SYNC_PATH.has(url.pathname) || isAccountPath(url.pathname)) {
       const id = env.CAMPUS.idFromName("loyola");
       return env.CAMPUS.get(id).fetch(request);
     }
@@ -31,10 +32,22 @@ export default {
 
 export class CampusWorld {
   ctx: DurableObjectState;
+  env: Env;
   listener: Set<(chunk: string) => void> = new Set();
+  account_service: AccountService | null = null;
 
-  constructor(ctx: DurableObjectState) {
+  constructor(ctx: DurableObjectState, env: Env) {
     this.ctx = ctx;
+    this.env = env;
+  }
+
+  /** Accounts live in this object's SQLite — see worker/account.ts. */
+  account(): AccountService {
+    this.account_service ??= new AccountService(
+      (query: string, ...bind: SqlValue[]) => this.ctx.storage.sql.exec(query, ...bind).toArray(),
+      this.env,
+    );
+    return this.account_service;
   }
 
   async store(): Promise<MemoryCampusStore> {
@@ -67,6 +80,7 @@ export class CampusWorld {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
+    if (isAccountPath(url.pathname)) return this.account().handle(request);
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: this.cors() });
     }

@@ -4,3 +4,5 @@ server/yclap-sync.db
 script/data/
 a.json
 script/cert/
+server/yclap-account.db
+server/yclap-account.db-*
