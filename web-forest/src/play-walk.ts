@@ -3,10 +3,12 @@
  *
  * Demo campus is a scripted loop for a projector. Play is the same campus
  * with you on the sticks: WASD / arrows, or a tap on the ground. Both stay
- * inside CAMPUS_BOX and outside the restricted grove — a walk that teaches
- * off-limits ground as walkable is the wrong lesson.
+ * inside CAMPUS_BOX, outside the restricted grove and outside every building
+ * footprint — a walk that teaches off-limits ground as walkable is the wrong
+ * lesson, and a walker standing on a roof is the wrong picture.
  */
 import { RESTRICTED_POLYGON } from "./data.ts";
+import { buildingAt } from "./placement.ts";
 import {
   DEMO_WALK,
   bearingDegree,
@@ -146,8 +148,15 @@ function inRestricted(point: LatLon): boolean {
   return inside;
 }
 
+/**
+ * On campus, outside the grove, and not inside a building.
+ *
+ * Buildings joined on 09-26: the playtest walked straight across Kostka Hall's
+ * footprint, and with the buildings extruded the walker then stood on the
+ * roof. A footprint is refused exactly the way the grove is.
+ */
 export function isWalkable(point: LatLon): boolean {
-  return isInsideCampus(point) && !inRestricted(point);
+  return isInsideCampus(point) && !inRestricted(point) && buildingAt(point) === null;
 }
 
 /**
@@ -165,10 +174,43 @@ export function offsetMeter(from: LatLon, heading_degree: number, meter: number)
   };
 }
 
-/** One step. A blocked step (off campus, into the grove) stays put. */
+/**
+ * How far off the heading a blocked step may slide, tried nearest first.
+ *
+ * With buildings refused, a walker that stopped dead at every wall would stick
+ * to the first building it brushed — and a tap-to-walk across campus would
+ * park against the first wall in the straight line. So a blocked step slides:
+ * it tries the heading bent by 30°, then 60°, then 75°, each at the share of
+ * the step that still points the way you meant (cos of the bend), exactly as
+ * a game character scrapes along a wall. Never 90° or more, so a slide can
+ * never carry you backwards or fully sideways off your intent.
+ */
+export const SLIDE_DEGREE = [30, 60, 75];
+
+/**
+ * Only a step this short slides. One stick tick is at most ~4 m (the ceiling
+ * pace, running, over the longest tick); a longer "step" is a jump somebody
+ * asked for in one go, and bending a jump is a detour, not a scrape.
+ */
+export const SLIDE_MAX_METER = 5;
+
+/**
+ * One step. A step into unwalkable ground (off campus, into the grove, into a
+ * building) is refused; the walker slides along the edge if a bent step is
+ * walkable, and otherwise stays put.
+ */
 export function stepPlayWalk(from: LatLon, heading_degree: number, meter: number): LatLon {
   const next = offsetMeter(from, heading_degree, meter);
-  return isWalkable(next) ? next : from;
+  if (isWalkable(next)) return next;
+  if (meter > SLIDE_MAX_METER) return from;
+  for (const bend of SLIDE_DEGREE) {
+    const share = meter * Math.cos((bend * Math.PI) / 180);
+    for (const side of [1, -1]) {
+      const slid = offsetMeter(from, heading_degree + side * bend, share);
+      if (isWalkable(slid)) return slid;
+    }
+  }
+  return from;
 }
 
 /** Walk toward `to`. Arriving lands on it when the remaining gap is one step. */

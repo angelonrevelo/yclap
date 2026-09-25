@@ -171,8 +171,11 @@ The play layer, wired in `src/live.tsx`:
   "pet eagle as a companion … and also as a sleep pet"). A Blue Eagle drawn for
   this app (`src/asset/magi/pet/`, three hand-authored SVG poses: perch, fly,
   sleep — a mascot nod, not an official Ateneo asset). It stands beside the
-  walker on the play map and trails them with a lag in ground space, flaps
-  while they walk, perches when they stop. It sleeps (dimmed, "Zzz") after
+  walker on the play map and trails them with a lag in ground space — on a
+  leash of 0.45 walker widths, so a fast walk-to cannot leave it behind — flaps
+  off the walker's shoulder while they walk, and perches on the ground just
+  past the walker's figure (never over it) when they stop (`petOffset`, sized
+  off `avatarPx`). It sleeps (dimmed, "Zzz") after
   **2 min with no movement and no touch**, or when standing still between
   **22:00 and 06:00** local time. Tap it for its card: rename (kept on this
   device only), what it is doing and why, and a **bond** that is nothing but
@@ -193,8 +196,12 @@ The play layer, wired in `src/live.tsx`:
     1.8 m stationary dead-band (`fix-filter.ts`), so standing still publishes
     nothing. The raked camera glides toward the walker on a
     `requestAnimationFrame` critically damped spring (`glideStep`) and the walker
-    is drawn at that glide centre, so 50 ms stick steps and 1 s GPS steps come
-    out as one continuous move. The ground is memoised, culled to a circle round
+    is drawn at that glide centre (locked or merely following), so 50 ms stick
+    steps and 1 s GPS steps come out as one continuous move. The spring chases
+    a point that slides between position updates over the cadence they arrive
+    at (`tickLerpNext`), not the raw steps — so a walk starts smoothly instead
+    of moving on every other frame, and a turn bends over one tick instead of
+    jumping. The ground is memoised, culled to a circle round
     the camera and re-projected only every 2,048 plane px; between those
     anchors a move is one CSS transform. The pulsing rings are composited HTML,
     not animated SVG.
@@ -207,8 +214,9 @@ The play layer, wired in `src/live.tsx`:
     readout (`frame-probe.tsx`).
   - *Roads* are drawn at real width (5.5 m roads, 2.6 m paths, floored and
     capped in px), cream with a soft kerb.
-  - *Walker* is 112→140 px on a phone (136→172 desktop) as the camera closes,
-    standing at 70% of the screen height so the ground ahead shows.
+  - *Walker* is 22%→28% of the map's short side as the camera closes (82→105 px
+    on a 375 px phone), capped at the old desktop 136→172 px; `avatarPx` is the
+    one source, remote walkers draw at 75% of it. Standing at 70% of the screen height so the ground ahead shows.
   - *Tilt* rests at 46° pulled back and eases to 58° at z22; two fingers dragged
     vertically (desktop: shift- or right-drag) adjust it within 40–64°. A
     12 px deadzone keeps a pinch or a swing from nodding the camera.
@@ -232,7 +240,9 @@ The play layer, wired in `src/live.tsx`:
   kept the app in GPS mode, hid the stick, and showed an empty green screen with
   nothing to press. It drives
   the same `play` source WASD drives, under the same rules (inside
-  `CAMPUS_BOX`, outside the restricted grove), so a stick walk and a GPS walk
+  `CAMPUS_BOX`, outside the restricted grove, outside every building
+  footprint — a blocked stick step slides along the wall at up to 75°, and a
+  walk-to that stops closing in for a second gives up), so a stick walk and a GPS walk
   produce the same journal. Its PACE, though, is its own: the stick moves at a
   fraction of the visible ground per second (`stickTopPaceMs`), not at
   `WALK_PACE_MS`. 1.3 m/s is the real preferred walking speed and it is a claim

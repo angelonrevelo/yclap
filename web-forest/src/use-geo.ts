@@ -75,6 +75,9 @@ function applyKey(held: PlayHeld, code: string, is_down: boolean): PlayHeld | nu
  * `play` — you steer (WASD / arrows / tap) when a fix is not available.
  * `demo` — the scripted campus loop, for a projector that must move itself.
  */
+/** Ticks a walk-to may go without closing in before it gives up (~1 s). */
+const WALK_TO_STALL_TICK = Math.round(1000 / PLAY_TICK_MS);
+
 export function useGeo(
   mode: GeoMode,
   bearing_degree = 0,
@@ -103,6 +106,7 @@ export function useGeo(
   const stick = useRef<PlayStick>(IDLE_STICK);
   const is_run = useRef(false);
   const destination = useRef<LatLon | null>(null);
+  const stall = useRef(0);
   const last_tick = useRef<number>(Date.now());
   const last_fix = useRef<Fix | null>(null);
   last_fix.current = state.fix;
@@ -127,6 +131,7 @@ export function useGeo(
     (point: LatLon) => {
       if (mode !== "play") return;
       destination.current = point;
+      stall.current = 0;
       held.current = IDLE_HELD;
       stick.current = IDLE_STICK;
     },
@@ -263,8 +268,17 @@ export function useGeo(
       let at = play_at.current;
       if (heading !== null) at = stepPlayWalk(at, heading, meter);
       else if (destination.current) {
+        const before = distanceMeter(at, destination.current);
         at = stepToward(at, destination.current, meter);
-        if (distanceMeter(at, destination.current) < 0.6) destination.current = null;
+        const after = distanceMeter(at, destination.current);
+        /* Walls are refused and slid along; a walk-to that has stopped closing
+           in for a second is pressed into a corner, and gives up rather than
+           grinding against the building forever. */
+        stall.current = meter > 0 && after > before - meter * 0.2 ? stall.current + 1 : 0;
+        if (after < 0.6 || stall.current >= WALK_TO_STALL_TICK) {
+          destination.current = null;
+          stall.current = 0;
+        }
       } else {
         return;
       }

@@ -134,15 +134,105 @@ export function roadCasingPx(width_px: number): number {
 /* ── the walker ────────────────────────────────────────────────────────────── */
 
 /**
- * The walker's drawn size, px, for a zoom.
+ * Share of the viewport's SHORT side the walker takes, at the widest play zoom
+ * and at the closest one.
  *
- * Bigger than it was (108 px flat) and bigger again as the camera closes, so
- * at the street camera the character is the thing on screen, which is the
- * genre. Pulled back it shrinks toward the old size so the ground ahead is
- * still visible past it.
+ * The camera lane sized the walker in flat pixels (112–140 on a phone), which
+ * on a 375 px phone made it about 40% of the screen width — the playtest read
+ * that as the character eating the map. Pokémon GO's trainer is roughly a
+ * quarter of the short side, so the walker is quoted as a share of it instead,
+ * which also means a tablet and a phone look like the same game.
  */
-export function avatarPx(zoom: number, is_desktop: boolean): number {
-  const t = Math.max(0, Math.min(1, (zoom - WIDE_ZOOM) / (CLOSE_ZOOM - WIDE_ZOOM)));
-  const [wide, close] = is_desktop ? [136, 172] : [112, 140];
-  return Math.round(wide + (close - wide) * (Number.isNaN(t) ? 0 : t));
+export const AVATAR_SHARE_WIDE = 0.22;
+export const AVATAR_SHARE_CLOSE = 0.28;
+/** The old desktop sizes, now a ceiling: a 1080 px tall window must not get a 300 px egg. */
+export const AVATAR_CAP_WIDE = 136;
+export const AVATAR_CAP_CLOSE = 172;
+/** Before the map has measured itself (0×0) the walker still has a body. */
+export const AVATAR_FLOOR = 64;
+/** Other phones' walkers, relative to yours: present, but plainly not you. */
+export const REMOTE_WALKER_SHARE = 0.75;
+
+/**
+ * The walker's drawn size, px, for a zoom and the map's short side in px.
+ *
+ * The single source for every walker on the play map — yours, and (times
+ * `REMOTE_WALKER_SHARE`) everybody else's. Still grows as the camera closes,
+ * so at the street camera the character is the thing on screen, which is the
+ * genre; pulled back it shrinks so the ground ahead is visible past it.
+ */
+export function avatarPx(zoom: number, short_side_px: number): number {
+  const raw = (zoom - WIDE_ZOOM) / (CLOSE_ZOOM - WIDE_ZOOM);
+  const t = Number.isNaN(raw) ? 0 : Math.max(0, Math.min(1, raw));
+  const short = Number.isFinite(short_side_px) ? Math.max(0, short_side_px) : 0;
+  const share = short * (AVATAR_SHARE_WIDE + (AVATAR_SHARE_CLOSE - AVATAR_SHARE_WIDE) * t);
+  const cap = AVATAR_CAP_WIDE + (AVATAR_CAP_CLOSE - AVATAR_CAP_WIDE) * t;
+  return Math.round(Math.max(AVATAR_FLOOR, Math.min(cap, share)));
+}
+
+/* ── tick interpolation: the walker between position updates ────────────────
+ *
+ * The stick publishes a position every 50 ms. The glide spring alone smoothed
+ * the big steps but not the start of a walk: there the steps are tiny, the
+ * spring reached each one inside a frame or two, came to rest, and waited for
+ * the next tick — so for the first second the map moved on about every other
+ * frame. A turn was the same problem the other way round: the new direction
+ * arrived as one whole 50 ms step.
+ *
+ * So the camera does not chase the raw position. It chases a point that slides
+ * from wherever it was to the newest position over the time the NEXT one is
+ * expected to take (the gap between the last two arrivals). That point moves
+ * every frame at a steady speed while positions keep coming, and a turn bends
+ * over one tick instead of snapping. It costs one tick (~50 ms) of latency,
+ * which the eye does not see and the spring was already spending.
+ */
+
+export interface TickPoint {
+  lat: number;
+  lon: number;
+}
+
+export interface TickLerp {
+  from: TickPoint;
+  to: TickPoint;
+  /** When `to` arrived, ms (any monotonic clock). */
+  at: number;
+  /** How long the slide from `from` to `to` takes. */
+  span_ms: number;
+}
+
+/** Shortest and longest slide. Longer than a slow tick would read as lag, not glide. */
+export const TICK_LERP_MIN_MS = 16;
+export const TICK_LERP_MAX_MS = 120;
+/** A gap longer than this is a fresh start, not a cadence: assume the stick's. */
+export const TICK_LERP_FRESH_MS = 250;
+export const TICK_LERP_DEFAULT_MS = 50;
+
+/** Where the slide is at `now`. */
+export function tickLerpAt(state: TickLerp, now: number): TickPoint {
+  const raw = state.span_ms > 0 ? (now - state.at) / state.span_ms : 1;
+  const t = Number.isNaN(raw) ? 1 : Math.max(0, Math.min(1, raw));
+  return {
+    lat: state.from.lat + (state.to.lat - state.from.lat) * t,
+    lon: state.from.lon + (state.to.lon - state.from.lon) * t,
+  };
+}
+
+export function isTickLerpDone(state: TickLerp, now: number): boolean {
+  return now - state.at >= state.span_ms;
+}
+
+/**
+ * A new position arrived at `now`. The slide restarts from where it is THIS
+ * frame — never from the old target — so a new position can bend the path but
+ * cannot make it jump.
+ */
+export function tickLerpNext(state: TickLerp | null, to: TickPoint, now: number): TickLerp {
+  if (!state) return { from: to, to, at: now, span_ms: 0 };
+  const gap = now - state.at;
+  const span_ms =
+    !Number.isFinite(gap) || gap > TICK_LERP_FRESH_MS
+      ? TICK_LERP_DEFAULT_MS
+      : Math.max(TICK_LERP_MIN_MS, Math.min(TICK_LERP_MAX_MS, gap));
+  return { from: tickLerpAt(state, now), to: { lat: to.lat, lon: to.lon }, at: now, span_ms };
 }

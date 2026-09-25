@@ -13,7 +13,9 @@
  * 1. **Companion.** One eagle, default name "Agila", renameable, the name kept
  *    on this device only (`localStorage`). On the play map it stays beside the
  *    walker and follows with a lag in GROUND space, so when the camera is
- *    welded to the walker you still see it trailing along the path you walked.
+ *    welded to the walker you still see it trailing along the path you walked
+ *    — on a leash of `PET_LEASH_AVATAR` walker widths, and settling at the
+ *    same spot beside the walker's feet (`petOffset`) whenever you stop.
  *    It flies (wings flapping) while you walk and perches when you stand.
  * 2. **Sleep pet.** It tucks in and sleeps (dimmed, "Zzz") when EITHER the
  *    walker has not moved and nobody has touched the screen for
@@ -205,15 +207,49 @@ export function followStep(
   target: PetPoint,
   dt_ms: number,
   half_life_ms = PET_FOLLOW_HALF_LIFE_MS,
+  max_meter = Infinity,
 ): PetPoint {
   if (!pet) return target;
   const gap = roughMeter(pet, target);
   if (gap > PET_SNAP_METER || gap < 0.05) return target;
-  const keep = Math.pow(0.5, Math.max(0, dt_ms) / half_life_ms);
+  let keep = Math.pow(0.5, Math.max(0, dt_ms) / half_life_ms);
+  /* The leash. At the stick's top pace a pure lag trails by metres — about
+     200 px at the street camera during a walk-to, which the playtest read as
+     the eagle wandering off. Past `max_meter` it is pulled back onto the
+     leash along the same line, so it still trails, just never far. */
+  if (gap * keep > max_meter) keep = Math.max(0, max_meter) / gap;
   return {
     lat: target.lat + (pet.lat - target.lat) * keep,
     lon: target.lon + (pet.lon - target.lon) * keep,
   };
+}
+
+/** The leash, in walker widths: the lag never trails further than this behind its perch. */
+export const PET_LEASH_AVATAR = 0.45;
+
+/**
+ * Where the eagle sits relative to the walker's FEET, in unscaled screen px,
+ * for its pose, the walker's drawn size and its own.
+ *
+ * Derived from the walker's size rather than fixed, because the walker is no
+ * longer one size: a fixed 46 px put it over the walker's lower right once
+ * the walker grew past ~100 px. The walker's figure fills about
+ * `PET_FIGURE_SHARE` of its box, so the eagle stands just past that edge — on
+ * the ground beside the feet when perched or asleep, off the shoulder in
+ * flight — and never over the character.
+ */
+export const PET_FIGURE_SHARE = 0.7;
+const PET_GAP_PX = 4;
+
+export function petOffset(pose: PetPose, avatar_px: number, pet_px: number): { x: number; y: number } {
+  const beside = (avatar_px * PET_FIGURE_SHARE) / 2 + pet_px / 2 + PET_GAP_PX;
+  if (pose === "fly") return { x: Math.round(beside), y: Math.round(-avatar_px * 0.45) };
+  return { x: Math.round(beside), y: 2 };
+}
+
+/** The eagle's own size for a walker size: half the walker, within reason. */
+export function petPx(avatar_px: number): number {
+  return Math.round(Math.max(40, Math.min(72, avatar_px * 0.52)));
 }
 
 export function isSettled(pet: PetPoint | null, target: PetPoint): boolean {

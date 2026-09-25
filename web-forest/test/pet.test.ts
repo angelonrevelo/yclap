@@ -10,8 +10,11 @@ import {
   PET_NAME_KEY,
   PET_NAME_MAX,
   PET_SLEEP_IDLE_MS,
+  PET_FIGURE_SHARE,
   PET_SNAP_METER,
   petBond,
+  petOffset,
+  petPx,
   petState,
   petStatusLine,
   readPetName,
@@ -156,5 +159,58 @@ describe("pet follow", () => {
     const close = { lat: walker.lat + 1e-8, lon: walker.lon };
     assert.ok(isSettled(followStep(close, walker, 16), walker));
     assert.deepEqual(followStep(null, walker, 16), walker);
+  });
+});
+
+describe("pet leash and perch", () => {
+  const walker = { lat: 14.6394, lon: 121.0778 };
+  const METER = 111_320;
+
+  function gapMeter(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
+    const dy = (a.lat - b.lat) * METER;
+    const dx = (a.lon - b.lon) * METER * Math.cos((a.lat * Math.PI) / 180);
+    return Math.hypot(dx, dy);
+  }
+
+  it("never trails further than the leash, however fast the walker goes", () => {
+    /* A walk-to at the stick's top pace: 16 m/s, a 50 ms tick, 60 frames. */
+    let pet: { lat: number; lon: number } | null = walker;
+    let at = walker;
+    let worst = 0;
+    for (let i = 0; i < 60; i += 1) {
+      at = { lat: at.lat + 0.8 / METER, lon: at.lon };
+      pet = followStep(pet, at, 16, 420, 1.5);
+      worst = Math.max(worst, gapMeter(pet, at));
+    }
+    assert.ok(worst <= 1.5 + 1e-6, `trailed ${worst.toFixed(2)} m on a 1.5 m leash`);
+    /* Still BEHIND the walker, on the line it came along — a lag, not a jump. */
+    assert.ok(pet.lat < at.lat);
+    assert.ok(Math.abs(pet.lon - at.lon) < 1e-12);
+  });
+
+  it("leaves a lag inside the leash alone", () => {
+    const pet = { lat: walker.lat + 0.5 / METER, lon: walker.lon };
+    assert.deepEqual(followStep(pet, walker, 16, 420, 5), followStep(pet, walker, 16, 420));
+  });
+
+  it("perches beside the walker, not over it, at every walker size", () => {
+    for (const avatar of [82, 105, 136, 172]) {
+      const size = petPx(avatar);
+      for (const pose of ["perch", "sleep", "fly"] as const) {
+        const o = petOffset(pose, avatar, size);
+        /* The eagle's left edge clears the walker figure's right edge. */
+        assert.ok(o.x - size / 2 >= (avatar * PET_FIGURE_SHARE) / 2, `${pose} at ${avatar}px overlaps`);
+        /* And stays close: its centre within ~1.2 walker widths of the feet. */
+        assert.ok(Math.hypot(o.x, o.y) <= avatar * 1.2, `${pose} at ${avatar}px strays`);
+      }
+      assert.deepEqual(petOffset("perch", avatar, size), petOffset("sleep", avatar, size));
+      assert.ok(petOffset("fly", avatar, size).y < petOffset("perch", avatar, size).y, "flies above its perch");
+    }
+  });
+
+  it("scales the eagle with the walker, within bounds", () => {
+    assert.ok(petPx(172) > petPx(82));
+    assert.equal(petPx(0), 40);
+    assert.equal(petPx(1000), 72);
   });
 });

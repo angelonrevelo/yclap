@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { WorldFind } from "./campus-world";
 import Character, { type Stage } from "./character";
+import { avatarPx, REMOTE_WALKER_SHARE } from "./camera-feel";
 import { isInsideCampus, type Fix } from "./geo";
 import {
   applyHall,
@@ -20,7 +21,6 @@ import {
   type SentPose,
   type Track,
 } from "./multiplayer";
-import { avatarPx } from "./camera-feel";
 import { screenAngleOf, signedAngle } from "./play-walk";
 import { readPlayer, syncUrl } from "./sync";
 import type { Projection } from "./tile-map";
@@ -145,19 +145,18 @@ export default function RemoteWalkerLayer({
   hall,
   projection,
   bearing_degree,
-  is_desktop,
   zoom,
 }: {
   hall: Hall;
   projection: Projection;
   bearing_degree: number;
-  is_desktop: boolean;
-  /** The camera zoom — remote walkers are drawn at your own walker's size. */
+  /** The camera zoom your own walker is sized by — remote walkers follow it, a size down. */
   zoom: number;
 }) {
   const now = useGlideClock(hall.track);
   const { width, height } = projection;
-  const size = avatarPx(zoom, is_desktop);
+  /* Same source as your own walker, a size down — present, but plainly not you. */
+  const size = Math.round(avatarPx(zoom, Math.min(width, height)) * REMOTE_WALKER_SHARE);
 
   return (
     <>

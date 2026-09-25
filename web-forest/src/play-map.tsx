@@ -661,13 +661,7 @@ export default function PlayMap({
                 below every marker — see `skyline.tsx` on why it cannot live
                 in the tilted plane with the rest of the map. */}
             <Skyline projection={projection} centre={view} style={skyline_style} avoid={walker_at} is_night={is_night} />
-            <RemoteWalkerLayer
-              hall={hall}
-              projection={projection}
-              bearing_degree={bearing_degree}
-              is_desktop={is_desktop}
-              zoom={view.zoom}
-            />
+            <RemoteWalkerLayer hall={hall} projection={projection} bearing_degree={bearing_degree} zoom={view.zoom} />
             <HallCount hall={hall} />
             <Flora
               tuft={tuft}
@@ -704,9 +698,17 @@ export default function PlayMap({
                  stepped across the glass at 20 Hz over smoothly moving ground,
                  which was most of the "jittery" in the 09-25 note. The 25 m
                  guard covers a camera sent somewhere else while locked. */
-              const is_on_camera = is_camera_locked && distanceMeter(view, fix) < 25;
-              const at = projection.toScreen(projection.project(is_on_camera ? projection.centre : fix));
+              /* Following (the view's target IS the fix) counts too: the
+                 camera is gliding after the walker either way, and a walker
+                 drawn at the raw fix steps at the tick rate over ground that
+                 glides. */
+              const is_on_camera =
+                (is_camera_locked || (view.lat === fix.lat && view.lon === fix.lon)) && distanceMeter(view, fix) < 25;
+              const anchor = is_on_camera ? projection.centre : fix;
+              const at = projection.toScreen(projection.project(anchor));
+              const avatar_px = avatarPx(view.zoom, Math.min(projection.width, projection.height));
               return (
+                <>
                 <div
                   style={{
                     position: "absolute",
@@ -728,15 +730,16 @@ export default function PlayMap({
                   <Character
                     stage={stage}
                     vigor={vigor}
-                    size={avatarPx(view.zoom, is_desktop)}
+                    size={avatar_px}
                     is_walking={travel.current.is_walking}
                     heading_degree={travel.current.heading}
                   />
                 </div>
+                {/* The pet eagle — companion by day, sleep pet when you stop. See `pet.ts`. */}
+                <PetEagle projection={projection} fix={fix} anchor={anchor} avatar_px={avatar_px} />
+                </>
               );
             })()}
-            {/* The pet eagle — companion by day, sleep pet when you stop. See `pet.ts`. */}
-            {fix && <PetEagle projection={projection} fix={fix} size={is_desktop ? 72 : 60} />}
             {/* Birds. Pure atmosphere, screen space, no data behind them —
                 they exist because a still map reads as a diagram. */}
             <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>

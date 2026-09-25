@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { building, ringCentre } from "../src/building.ts";
 import { RESTRICTED_POLYGON } from "../src/data.ts";
-import { DEMO_WALK, WALK_PACE_MS, distanceMeter, isInsideCampus } from "../src/geo.ts";
+import { DEMO_WALK, WALK_PACE_MS, bearingDegree, distanceMeter, isInsideCampus, type LatLon } from "../src/geo.ts";
+import { buildingAt } from "../src/placement.ts";
 import {
   PLAY_PACE_CEILING_MS,
   PLAY_PACE_FLOOR_MS,
@@ -165,5 +167,73 @@ describe("stick start", () => {
     assert.deepEqual(stickStartOf("?at=0,0"), STICK_START);
     assert.deepEqual(stickStartOf("?at=nonsense"), STICK_START);
     assert.deepEqual(stickStartOf(""), STICK_START);
+  });
+});
+
+describe("buildings are not walkable", () => {
+  /* Kostka Hall — the building the playtest walked across. Any big footprint
+     would do; this one is named so a failure reads as a place. */
+  const hall = building.find((b) => b.name === "Kostka Hall") ?? building.find((b) => b.area_m2 > 900)!;
+  const centre = ringCentre(hall.point);
+  const inside = buildingAt(centre) ? centre : { lat: hall.point[0][0], lon: hall.point[0][1] };
+
+  /* A walkable point just outside the footprint, and the heading back into it. */
+  function outsideOf(target: LatLon): { from: LatLon; heading: number } {
+    for (let r = 2; r < 200; r += 1) {
+      for (let h = 0; h < 360; h += 15) {
+        const p = offsetMeter(target, h, r);
+        if (isWalkable(p)) return { from: p, heading: (h + 180) % 360 };
+      }
+    }
+    throw new Error("no walkable ground near the building");
+  }
+
+  it("refuses a footprint as unwalkable, the same way it refuses the grove", () => {
+    assert.ok(buildingAt(inside), "the probe point is inside the building");
+    assert.equal(isInsideCampus(inside), true);
+    assert.equal(isWalkable(inside), false);
+  });
+
+  it("never steps the walker onto a building, from any side, at any stick step", () => {
+    const { from } = outsideOf(inside);
+    for (let h = 0; h < 360; h += 10) {
+      for (const meter of [0.2, 1, 3.8]) {
+        let at = from;
+        for (let i = 0; i < 80; i += 1) {
+          at = stepPlayWalk(at, h, meter);
+          assert.equal(buildingAt(at), null, `heading ${h}, ${meter} m, step ${i}`);
+        }
+      }
+    }
+  });
+
+  it("slides along a wall instead of sticking to it", () => {
+    const { from, heading } = outsideOf(inside);
+    /* Walk straight at the building until the wall stops the direct step. */
+    let at = from;
+    for (let i = 0; i < 400; i += 1) {
+      const direct = offsetMeter(at, heading + 20, 1);
+      if (!isWalkable(direct)) break;
+      at = direct;
+    }
+    const next = stepPlayWalk(at, heading + 20, 1);
+    assert.equal(isWalkable(next), true);
+    assert.ok(distanceMeter(at, next) > 0.2, "a blocked step at an angle to the wall still moves");
+  });
+
+  it("a walk-to through a building goes round it or stops outside, never across", () => {
+    const { from } = outsideOf(inside);
+    const far = offsetMeter(inside, bearingDegree(from, inside), 60);
+    let at = from;
+    for (let i = 0; i < 400; i += 1) {
+      at = stepToward(at, far, 1);
+      assert.equal(buildingAt(at), null, `walk-to entered the building at step ${i}`);
+    }
+  });
+
+  it("keeps every place the walk starts walkable", () => {
+    assert.equal(isWalkable(STICK_START), true);
+    assert.equal(isWalkable(PLAY_START), true);
+    assert.deepEqual(stickStartOf(`?at=${inside.lat},${inside.lon}`), STICK_START, "?at= inside a building falls back");
   });
 });
