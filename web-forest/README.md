@@ -136,6 +136,19 @@ The character's four stages render through a self-hosted `<model-viewer>`
 (`src/character-model.tsx`, lazy-loaded) and their `.glb` files are precached,
 which is spec T4.1 and closes the "3D character offline" blocker.
 
+**The 3D species card** (`src/species-card.tsx`, lazy-loaded; pure half in
+`src/species-card-core.ts`) is where the pack is actually shown. It opens from
+a seen Dex card, a species in the dock's Nearby tray (the old camera move is
+now its "Walk to it" / "Log it here" button), and the species name on the tall
+pin sheet. It turns the model (no turntable or idle clip under
+`prefers-reduced-motion`), shows the portrait while it loads, and falls back to
+the portrait with a stated reason when there is no model, it fails, or the
+phone is offline: the pack is not precached, so the card says "3D needs a
+connection". It also shows the names, taxon kind, rarity band from the campus
+count, whether the species is in your journal, the curated Learn text where it
+exists, and Open in Seek. Opening it is a Learn (+10) under the same
+`species:<code>` subject as the Learn sheet, so it pays once per species.
+
 ## What is out right now
 
 The play layer, wired in `src/live.tsx`:

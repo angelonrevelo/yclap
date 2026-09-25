@@ -35,6 +35,10 @@ import Character, { stageFor, STAGE_LABEL, type Stage } from "./character";
    where the 3D character renders. The SVG `Character` stays as the Suspense
    fallback and on the map, whose billboard must cost no bundle. */
 const CharacterModel = lazy(() => import("./character-model"));
+/* The 3D species card — lazy for the same reason: the species pack's viewer is
+   fetched the first time a card opens, never at boot. */
+const SpeciesCard = lazy(() => import("./species-card"));
+import { learnSubject } from "./species-card-core";
 import { biome_sector, sectorAt, sectorByCode, sector as sector_row, type Sector } from "./sector";
 import Viewfinder, { type Shot } from "./camera";
 import {
@@ -877,6 +881,7 @@ function NearbySheet({
   distance_line,
   onLog,
   onDismiss,
+  onOpenCard,
   is_panel = false,
 }: {
   sp: Species;
@@ -884,6 +889,8 @@ function NearbySheet({
   distance_line: string | null;
   onLog: () => void;
   onDismiss: () => void;
+  /** Tapping the name opens the 3D species card. */
+  onOpenCard?: () => void;
   /** Desktop dock: fill the host card instead of a full-bleed bottom sheet. */
   is_panel?: boolean;
 }) {
@@ -918,7 +925,17 @@ function NearbySheet({
 
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", paddingTop: 4, flexShrink: 0 }}>
         <TaxonThumb species_code={sp.species_code} size={132} style={{ boxShadow: "var(--mg-shadow-sm)" }} />
-        <div style={{ fontWeight: 800, fontSize: 26, lineHeight: 1.15, marginTop: 14, letterSpacing: "-0.02em" }}>{sp.common_name}</div>
+        {onOpenCard ? (
+          <button
+            onClick={onOpenCard}
+            aria-label={`Open the ${sp.common_name} card`}
+            style={{ fontWeight: 800, fontSize: 26, lineHeight: 1.15, marginTop: 14, letterSpacing: "-0.02em", textDecoration: "underline dotted", textUnderlineOffset: 5 }}
+          >
+            {sp.common_name}
+          </button>
+        ) : (
+          <div style={{ fontWeight: 800, fontSize: 26, lineHeight: 1.15, marginTop: 14, letterSpacing: "-0.02em" }}>{sp.common_name}</div>
+        )}
         <div style={{ fontStyle: "italic", fontSize: 14, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 4 }}>{sp.scientific_name}</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 12 }}>
           <SpeciesPill sp={sp} limit={3} />
@@ -1709,7 +1726,15 @@ function CameraSheet({
  * seen, grey silhouette when not. A badge is a fact about your own walking, not
  * a score, so nothing here counts up against anybody else.
  */
-function JournalGrid({ seen, is_desktop }: { seen: Set<string>; is_desktop: boolean }) {
+function JournalGrid({
+  seen,
+  is_desktop,
+  onOpenSpecies,
+}: {
+  seen: Set<string>;
+  is_desktop: boolean;
+  onOpenSpecies?: (species_code: string) => void;
+}) {
   return (
     <div
       className="grid gap-x-3 gap-y-5"
@@ -1722,6 +1747,7 @@ function JournalGrid({ seen, is_desktop }: { seen: Set<string>; is_desktop: bool
           species_code={species_code}
           is_seen={seen.has(species_code) && Boolean(species[species_code])}
           size={is_desktop ? 96 : 76}
+          onOpen={onOpenSpecies}
         />
       ))}
     </div>
@@ -2421,6 +2447,7 @@ function JournalScreen({
   is_seeded = false,
   gamify,
   world = null,
+  onOpenSpecies,
 }: {
   sighting: Sighting[];
   seen: Set<string>;
@@ -2433,6 +2460,8 @@ function JournalScreen({
   is_seeded?: boolean;
   gamify: GamifySnapshot;
   world?: World | null;
+  /** Tapping a seen Dex card opens the 3D species card. */
+  onOpenSpecies?: (species_code: string) => void;
 }) {
   const summary = summarize(sighting);
   const wild_line =
@@ -2468,7 +2497,7 @@ function JournalScreen({
           </p>
         )}
         <div style={{ marginTop: 18 }}>
-          <JournalGrid seen={seen} is_desktop={is_desktop} />
+          <JournalGrid seen={seen} is_desktop={is_desktop} onOpenSpecies={onOpenSpecies} />
         </div>
         <div style={{ marginTop: 18 }}>
           <WorldStrip sighting={sighting} world={world} />
@@ -3186,6 +3215,8 @@ export default function App() {
   const [pin_filter, setPinFilter] = useState<Set<PinKind>>(() => new Set());
   const [is_trainer_open, setTrainerOpen] = useState(false);
   const [is_nearby_open, setNearbyOpen] = useState(false);
+  /* The open 3D species card, and the one action it offers (Nearby's walk). */
+  const [card, setCard] = useState<{ species_code: string; action: { label: string; onClick: () => void } | null } | null>(null);
   const { is_desktop } = useDesktop();
   /* How much ground is on screen, so the stick's pace tracks the camera rather
      than crawling at the wide end and racing at the close one. A nominal 800 px
@@ -3590,6 +3621,13 @@ export default function App() {
     }
   };
 
+  /* Opening a card is a Learn, paid through the same path and subject as the
+     Learn sheet — so the pair of them pays +10 once per species, not twice. */
+  const openSpeciesCard = (species_code: string, action: { label: string; onClick: () => void } | null = null) => {
+    setCard({ species_code, action });
+    noteAward("learn", learnSubject(species_code));
+  };
+
   const openCamera = (species_code: string, where?: string, rarity: Rarity | null = null) => {
     setPickCode(species_code);
     setCameraWhere(where ?? null);
@@ -3921,6 +3959,7 @@ export default function App() {
           <div style={{ position: "absolute", left: 18, bottom: 84, width: 380, zIndex: 48, maxHeight: "78%", overflow: "hidden", borderRadius: 16, boxShadow: "var(--mg-shadow-up)" }}>
             <NearbySheet
               sp={play_sheet_sp}
+              onOpenCard={() => openSpeciesCard(play_sheet_sp.species_code)}
               where={play_sheet_where}
               distance_line={play_sheet_distance}
               is_panel
@@ -3934,6 +3973,7 @@ export default function App() {
         ) : (
           <NearbySheet
             sp={play_sheet_sp}
+            onOpenCard={() => openSpeciesCard(play_sheet_sp.species_code)}
             where={play_sheet_where}
             distance_line={play_sheet_distance}
             onLog={() => {
@@ -4049,6 +4089,7 @@ export default function App() {
         ) : (
           <NearbySheet
             sp={sel_sp}
+            onOpenCard={() => openSpeciesCard(sel_sp.species_code)}
             where={sel.where}
             distance_line={selected_distance}
             onLog={() => openCamera(sel.species_code)}
@@ -4105,6 +4146,7 @@ export default function App() {
             is_seeded={is_seeded}
             gamify={live_snap}
             world={live.world}
+            onOpenSpecies={(code) => openSpeciesCard(code)}
           />
         )}
         {route === "/settings" && (
@@ -4127,7 +4169,14 @@ export default function App() {
             seen={seen}
             onPick={(row) => {
               setNearbyOpen(false);
-              walkToSpawn(row);
+              const is_reach = reachableSpawn(spawn_world.spawn, geo.fix).some((r) => r.spawn_id === row.spawn_id);
+              openSpeciesCard(row.species_code, {
+                label: is_reach ? "Log it here" : "Walk to it",
+                onClick: () => {
+                  setCard(null);
+                  walkToSpawn(row);
+                },
+              });
             }}
             onClose={() => setNearbyOpen(false)}
           />
@@ -4234,6 +4283,18 @@ export default function App() {
             }}
             onDismiss={() => setReceipt(null)}
           />
+        )}
+        {card && (
+          <Suspense fallback={null}>
+            <SpeciesCard
+              species_code={card.species_code}
+              pool={spawn_world.pool}
+              is_seen={seen.has(card.species_code)}
+              learn={species[card.species_code] ? <SpeciesBack sp={species[card.species_code]} /> : null}
+              action={card.action}
+              onClose={() => setCard(null)}
+            />
+          </Suspense>
         )}
         {reveal && <BlindBoxReveal stage={reveal} onDismiss={() => setReveal(null)} />}
         {toast && <GameToast msg={toast} />}
