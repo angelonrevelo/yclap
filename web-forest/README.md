@@ -94,7 +94,10 @@ no CORS header, and a POST whose `Origin` is another site (or whose
 since a `no-cors` form POST would otherwise still spend it. It counts the body
 as it streams and cuts it past ~5 MB (413), declared length or chunked — on the
 LAN server that drops the upload — and refuses a part that is not `image/*`
-(415). The 40-a-minute brake is in memory, so on Workers it is **per isolate**:
+(415). An early refusal on the LAN server (no token, foreign origin, rate
+limit) drains the unread upload, up to that cap, before answering, so the
+503 `needs_token` reaches the sheet through the Vite proxy instead of a socket
+reset the proxy turns into a 502 (`test/identify-lan.test.ts`). The 40-a-minute brake is in memory, so on Workers it is **per isolate**:
 a brake on scripts, not a quota.
 
 Matching (`src/inat-match.ts`) maps each suggestion to the nine campus species
@@ -300,7 +303,10 @@ The play layer, wired in `src/live.tsx`:
   view itself, not only behind the field layers.
 - **`placement.ts`** — one rule for where anything may stand: on a green
   sector (≥45% measured vegetation), outside the grove placeholder, outside
-  every `building.ts` footprint. The spawner used to check only the first two,
+  every `building.ts` footprint, and inside `CAMPUS_BOX` — i.e. `isWalkable`,
+  the same function the stick and tap-to-walk obey (it lives here now). Some
+  sector rings run north of the box, and about one find in sixty-four landed
+  where walk-to could never reach; the audit now also counts unwalkable finds. The spawner used to check only the first two,
   so about one find in seventeen stood inside a building; it now checks all
   three. Two curated encounters (e3, e6) sat on a road and were moved 23 m and
   43 m onto the nearest green sector; their `where` names still come from the

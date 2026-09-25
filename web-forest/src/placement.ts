@@ -1,6 +1,6 @@
 import { building, buildingNear, type CampusBuilding } from "./building.ts";
 import { RESTRICTED_POLYGON } from "./data.ts";
-import type { LatLon } from "./geo.ts";
+import { isInsideCampus, type LatLon } from "./geo.ts";
 import { sector, sectorContains, type Sector } from "./sector.ts";
 
 /**
@@ -17,13 +17,16 @@ import { sector, sectorContains, type Sector } from "./sector.ts";
  *   - on a green sector: `is_biome`, i.e. at least `VEGETATION_FLOOR` measured
  *     vegetation. Paved ground carries no species (README, "the unit of play"),
  *   - outside the restricted grove placeholder,
- *   - outside every building footprint in `building.ts`.
+ *   - outside every building footprint in `building.ts`,
+ *   - walkable: inside `CAMPUS_BOX` too. Some sector rings run past the box
+ *     (round 5 found an Orchid Tree and a Chinese Ixora at 14.6459 / 14.6455,
+ *     north of it), and a find the walker can never reach is not a find.
  */
 
 /** The measured-vegetation floor below which a sector is asphalt, not ground. */
 export const VEGETATION_FLOOR = 0.45;
 
-export type PlacementProblem = "off-sector" | "paved" | "restricted" | "building";
+export type PlacementProblem = "off-sector" | "paved" | "restricted" | "building" | "off-campus";
 
 function ringContains(ring: [number, number][], point: LatLon): boolean {
   let inside = false;
@@ -52,6 +55,19 @@ export function buildingAt(point: LatLon, row: CampusBuilding[] = building): Cam
   return near.find((b) => ringContains(b.point, point)) ?? null;
 }
 
+/**
+ * On campus, outside the grove, and not inside a building — the ground the
+ * walker may stand on. The stick, tap-to-walk and every spawn obey this one
+ * function; a find placed by a looser rule is a find walk-to can never reach.
+ *
+ * Buildings joined on 09-26: the playtest walked straight across Kostka Hall's
+ * footprint, and with the buildings extruded the walker then stood on the
+ * roof. A footprint is refused exactly the way the grove is.
+ */
+export function isWalkable(point: LatLon): boolean {
+  return isInsideCampus(point) && !inRestricted(point) && buildingAt(point) === null;
+}
+
 /** Green enough to hold a species — the flag, and the number behind it. */
 export function isGreenSector(row: Sector): boolean {
   return row.is_biome && (row.vegetation_ratio === null || row.vegetation_ratio >= VEGETATION_FLOOR);
@@ -73,6 +89,7 @@ export function placementProblem(point: LatLon, sector_code?: string): Placement
   else if (!isGreenSector(own)) out.push("paved");
   if (inRestricted(point)) out.push("restricted");
   if (buildingAt(point)) out.push("building");
+  if (!isInsideCampus(point)) out.push("off-campus");
   return out;
 }
 

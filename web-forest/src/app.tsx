@@ -1620,7 +1620,7 @@ function CameraSheet({
     <div className="absolute inset-0" style={{ zIndex: 60 }}>
       <div className="absolute inset-0" style={{ background: "rgba(17,75,47,0.25)" }} onClick={onClose} />
       <div
-        className="absolute inset-x-0 bottom-0 scroll-soft"
+        className="absolute inset-x-0 bottom-0 scroll-soft gm-log-sheet"
         style={{
           top: 24,
           background: "var(--mg-surface)",
@@ -1879,7 +1879,7 @@ function CameraSheet({
             Open Seek
           </a>
         </p>
-        <div style={{ display: "flex", justifyContent: "center", marginTop: 18 }}>
+        <div className="gm-log-save" style={{ display: "flex", justifyContent: "center", marginTop: 18 }}>
           <HudOrb
             label={is_reporting ? "Save this report" : "Save to my journal"}
             onClick={() =>
@@ -2460,8 +2460,8 @@ function BlindBoxReveal({ stage, onDismiss }: { stage: Stage; onDismiss: () => v
             <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", color: "var(--mg-green-text)" }}>
               YOUR BUDDY GREW
             </div>
-            <Suspense fallback={<Character stage={stage} vigor={1} size={120} is_idle_animated />}>
-              <CharacterModel stage={stage} size={120} />
+            <Suspense fallback={<Character stage={stage} vigor={1} size={168} is_idle_animated />}>
+              <CharacterModel stage={stage} size={168} />
             </Suspense>
             {/* The headline names the stage the picture shows. It used to be
                 the cosmetic's name, so the seedling sticker sat over the words
@@ -2677,21 +2677,27 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: is_desktop ? 0 : 14 }}>
       <div style={{ display: "flex", gap: is_desktop ? 22 : 14, alignItems: "stretch" }}>
+        {/* The 3D viewer IS the tile (round 5: an 84 px viewer floated in a
+            110 px tile and the camera sliced the leaf disc). The tile keeps a
+            fixed width and at least a square height; the viewer fills it and
+            frames the whole model itself. */}
         <div
           style={{
             flexShrink: 0,
             display: "grid",
-            placeItems: "center",
+            placeItems: "stretch",
+            width: is_desktop ? 150 : 110,
+            minHeight: is_desktop ? 150 : 110,
+            overflow: "hidden",
             borderRadius: RADIUS.tile,
             background: "rgba(62,154,74,0.12)",
             border: "1px solid rgba(62,154,74,0.12)",
-            padding: is_desktop ? "14px 20px" : "10px 12px",
           }}
         >
           <Suspense
             fallback={<Character stage={p.stage} vigor={p.vigor} size={is_desktop ? 108 : 84} is_idle_animated />}
           >
-            <CharacterModel stage={p.stage} size={is_desktop ? 108 : 84} />
+            <CharacterModel stage={p.stage} is_fill />
           </Suspense>
         </div>
         <div style={{ minWidth: 0, flex: 1 }}>

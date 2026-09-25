@@ -3,7 +3,7 @@ import Botanical from "./botanical";
 import { species } from "./data";
 import { kindOf, type Kind } from "./kind";
 import { KindThumb } from "./kind-mark";
-import { loadTaxonPortrait, seededPortrait } from "./taxon-photo";
+import { knownPortrait, loadTaxonPortrait, seededPortrait } from "./taxon-photo";
 
 export function usePortrait(scientific_name: string | null | undefined): string | null {
   const name = scientific_name?.trim() ?? "";
@@ -32,8 +32,25 @@ export function usePortrait(scientific_name: string | null | undefined): string 
 }
 
 /**
+ * True when `url` is already decoded in the browser's image cache, so drawing
+ * it costs no network and no swap. A fresh `Image` with a cached src reports
+ * `complete` synchronously; anything still to fetch does not.
+ */
+function isPhotoReady(url: string | null): boolean {
+  if (!url || typeof Image === "undefined") return false;
+  const probe = new Image();
+  probe.src = url;
+  return probe.complete && probe.naturalWidth > 0;
+}
+
+/**
  * Circular close-up — iNat photo when we have one, kit drawing while it
  * loads, schematic kind mark only when neither exists.
+ *
+ * `is_settled` (the 3D model's loading poster) picks ONE picture on first
+ * paint and keeps it: the photo if it is already in the image cache, else the
+ * drawing. Round 5 watched the poster swap from the tree sticker to a flower
+ * photo halfway through the model load (zoom5) — two pictures, then a third.
  */
 export function SpeciesPortrait({
   scientific_name,
@@ -42,6 +59,7 @@ export function SpeciesPortrait({
   size = 48,
   is_dim = false,
   photo_data = null,
+  is_settled = false,
   style,
 }: {
   scientific_name?: string | null;
@@ -50,12 +68,18 @@ export function SpeciesPortrait({
   size?: number;
   is_dim?: boolean;
   photo_data?: string | null;
+  is_settled?: boolean;
   style?: CSSProperties;
 }) {
   const sp = species_code ? species[species_code] : undefined;
   const name = scientific_name?.trim() || sp?.scientific_name || "";
-  const portrait = usePortrait(is_dim ? null : name);
-  const src = photo_data || portrait;
+  const [settled_photo] = useState(() => {
+    if (!is_settled) return null;
+    const url = photo_data || knownPortrait(name);
+    return isPhotoReady(url) ? url : null;
+  });
+  const portrait = usePortrait(is_dim || is_settled ? null : name);
+  const src = is_settled ? settled_photo : photo_data || portrait;
   const mark = kind ?? kindOf("Plantae", "tree");
 
   return (

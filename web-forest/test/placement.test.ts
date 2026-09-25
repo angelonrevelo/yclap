@@ -7,6 +7,7 @@ import { DEMO_WALK, distanceMeter } from "../src/geo.ts";
 import {
   buildingAt,
   isGreenSector,
+  isWalkable,
   nearestPlaceable,
   placementProblem,
   VEGETATION_FLOOR,
@@ -14,6 +15,7 @@ import {
 } from "../src/placement.ts";
 import { biome_sector, sector } from "../src/sector.ts";
 import { poolFromFile, spawnWorld } from "../src/spawn.ts";
+import { auditLocation } from "../script/audit-location.ts";
 
 /* ── the rules this file guards (09-25: "the locations … final and working") ─
  *
@@ -47,7 +49,7 @@ describe("placementProblem — the one rule", () => {
   });
 
   it("calls ground no sector encloses off-sector", () => {
-    assert.deepEqual(placementProblem({ lat: 14.6, lon: 121.0 }), ["off-sector"]);
+    assert.deepEqual(placementProblem({ lat: 14.6, lon: 121.0 }), ["off-sector", "off-campus"]);
   });
 
   it("calls a paved sector paved", () => {
@@ -115,5 +117,37 @@ describe("seeded finds", () => {
       }
     }
     assert.ok(count > 1000, `only ${count} finds sampled`);
+  });
+});
+
+describe("every find is walkable (round 5)", () => {
+  it("the two round-5 finds north of CAMPUS_BOX are refused as off-campus", () => {
+    /* Orchid Tree and Chinese Ixora: on a green sector, but past the box the
+       walker is held inside, so walk-to could never reach them. */
+    for (const p of [{ lat: 14.64587, lon: 121.08007 }, { lat: 14.64554, lon: 121.08007 }]) {
+      assert.equal(isWalkable(p), false);
+      assert.ok(placementProblem(p).includes("off-campus"), `${p.lat}, ${p.lon}`);
+    }
+  });
+
+  it("no seeded find near the north edge stands where the walker cannot", () => {
+    const start = Date.UTC(2026, 8, 26);
+    const edge = { lat: 14.6452, lon: 121.08007 };
+    let count = 0;
+    for (let w = 0; w < 48; w += 1) {
+      for (const s of spawnWorld(pool, start + w * 30 * 60 * 1000, edge)) {
+        count += 1;
+        assert.ok(isWalkable(s), `${s.spawn_id} ${s.common_name} ${s.lat}, ${s.lon}`);
+      }
+    }
+    assert.ok(count > 100, `only ${count} finds sampled`);
+  });
+
+  it("npm run audit:location passes, walkability included", () => {
+    const result = auditLocation();
+    assert.equal(result.unwalkable, 0);
+    assert.equal(result.misplaced, 0);
+    assert.equal(result.failure, 0);
+    assert.ok(result.find > 10_000, `only ${result.find} finds audited`);
   });
 });

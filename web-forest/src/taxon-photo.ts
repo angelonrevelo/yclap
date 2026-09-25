@@ -41,6 +41,13 @@ export function seededPortrait(scientific_name: string): string | null {
   return PORTRAIT_SEED[portraitKey(scientific_name)] ?? null;
 }
 
+/** The photo URL known right now without a round trip — seeded or cached — else null. */
+export function knownPortrait(scientific_name: string): string | null {
+  const name = scientific_name.trim();
+  if (!name) return null;
+  return PORTRAIT_SEED[portraitKey(name)] ?? readCache(portraitKey(name));
+}
+
 export function taxaPortraitUrl(scientific_name: string): string {
   const param = new URLSearchParams({
     q: scientific_name.trim(),
