@@ -7,6 +7,10 @@
  * (worker/account.ts), on node:sqlite instead of the Durable Object's SQLite.
  * Google sign-in is on only when GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are
  * in the environment.
+ *
+ * Per-IP rate limits read CF-Connecting-IP, as on Cloudflare. Here that header
+ * is always overwritten with the socket's remote address, so a LAN client
+ * cannot pick its own. Account bodies are capped before they are buffered.
  */
 import { createServer } from "node:http";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -38,10 +42,27 @@ const { handleIdentify, IDENTIFY_PATH } = await import(
   pathToFileURL(resolve(process.cwd(), "worker/inat.ts")).href
 );
 
+/**
+ * The socket's address, as the Worker would see it in CF-Connecting-IP. Null
+ * for loopback: that is the Vite dev proxy carrying every phone on the LAN
+ * under one address, so per-IP limits would lump the whole booth together.
+ * (Per-username login limits still apply.)
+ */
+function remoteIp(req) {
+  const ip = String(req.socket.remoteAddress ?? "").replace(/^::ffff:/, "");
+  if (!ip || ip === "::1" || ip.startsWith("127.")) return null;
+  return ip;
+}
+
 async function serveIdentify(req, res) {
+  const headers = Object.entries(req.headers).flatMap(([k, v]) =>
+    v === undefined || k === "cf-connecting-ip" ? [] : [[k, String(v)]],
+  );
+  const ip = remoteIp(req);
+  if (ip) headers.push(["cf-connecting-ip", ip]);
   const request = new Request(`http://local${req.url}`, {
     method: req.method,
-    headers: Object.entries(req.headers).flatMap(([k, v]) => (v === undefined ? [] : [[k, String(v)]])),
+    headers,
     body: req.method === "POST" ? Readable.toWeb(req) : undefined,
     duplex: "half",
   });
@@ -61,6 +82,9 @@ function loadStore() {
 const { AccountService, isAccountPath } = await import(
   pathToFileURL(resolve(process.cwd(), "worker/account.ts")).href
 );
+const { SAVE_MAX_BYTE } = await import(pathToFileURL(resolve(process.cwd(), "src/account-core.ts")).href);
+/** Largest account body buffered: a full save plus a little JSON around it. */
+const ACCOUNT_BODY_MAX = SAVE_MAX_BYTE + 16 * 1024;
 const account_db = new DatabaseSync(ACCOUNT_DB_PATH);
 const account = new AccountService((query, ...bind) => account_db.prepare(query).all(...bind), {
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
@@ -71,13 +95,27 @@ const account = new AccountService((query, ...bind) => account_db.prepare(query)
 async function serveAccount(req, res, url) {
   const headers = new Headers();
   for (const [key, value] of Object.entries(req.headers)) {
+    if (key === "cf-connecting-ip") continue;
     if (Array.isArray(value)) for (const v of value) headers.append(key, v);
     else if (value != null) headers.set(key, value);
   }
+  const ip = remoteIp(req);
+  if (ip) headers.set("cf-connecting-ip", ip);
   let body;
   if (req.method !== "GET" && req.method !== "HEAD") {
+    const too_big = () => {
+      res.writeHead(413, { "Content-Type": "application/json", Connection: "close" });
+      res.end(JSON.stringify({ error: "body too large", max_byte: ACCOUNT_BODY_MAX }));
+      req.resume();
+    };
+    if (Number(req.headers["content-length"]) > ACCOUNT_BODY_MAX) return too_big();
     const chunk = [];
-    for await (const c of req) chunk.push(c);
+    let byte = 0;
+    for await (const c of req) {
+      byte += c.length;
+      if (byte > ACCOUNT_BODY_MAX) return too_big();
+      chunk.push(c);
+    }
     body = Buffer.concat(chunk);
   }
   const response = await account.handle(new Request(url, { method: req.method, headers, body }));
@@ -144,8 +182,7 @@ const server = createServer(async (req, res) => {
     }
     return;
   }
-  cors(res);
-
+  /* Same-origin like the Worker's: no CORS header on the iNat proxy. */
   if (url.pathname === IDENTIFY_PATH) {
     try {
       await serveIdentify(req, res);
@@ -155,6 +192,7 @@ const server = createServer(async (req, res) => {
     }
     return;
   }
+  cors(res);
 
   if (req.method === "OPTIONS") {
     res.writeHead(204).end();

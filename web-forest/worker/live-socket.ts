@@ -10,9 +10,25 @@
  * ring live in memory only — they are re-sent every second or two, and losing
  * them to an eviction costs one poll, not a walker. Nothing here touches
  * storage: presence is never persisted.
+ *
+ * Brakes: the upgrade must come from this host's page (or a localhost dev
+ * server); at most HALL_WALKER_MAX sockets and polled walkers; poses are
+ * dropped past POSE_PER_SECOND per socket / polled walker and
+ * POSE_IP_PER_SECOND per IP. A socket's IP and id ride in its tags, so they
+ * survive hibernation too.
  */
 import type { WorldFind } from "../src/campus-world.ts";
-import { rosterOf, sanitizePose, STALE_MS, type HallMessage, type Pose } from "../src/multiplayer.ts";
+import {
+  HALL_WALKER_MAX,
+  POSE_IP_PER_SECOND,
+  POSE_PER_SECOND,
+  rosterOf,
+  sanitizePose,
+  STALE_MS,
+  type HallMessage,
+  type Pose,
+} from "../src/multiplayer.ts";
+import { RateWindow, clientIp, isHallOrigin } from "../src/rate-limit.ts";
 
 export const LIVE_PATH = new Set(["/live/socket", "/live/pose", "/live/walker"]);
 
@@ -21,6 +37,8 @@ export class LiveHall {
   cors: (headers?: HeadersInit) => Headers;
   polled: Map<string, Pose> = new Map();
   recent_find: { at: number; find: WorldFind }[] = [];
+  pose_limit: RateWindow = new RateWindow(POSE_PER_SECOND, 1000);
+  ip_limit: RateWindow = new RateWindow(POSE_IP_PER_SECOND, 1000);
 
   constructor(ctx: DurableObjectState, cors: (headers?: HeadersInit) => Headers) {
     this.ctx = ctx;
@@ -31,13 +49,17 @@ export class LiveHall {
     return this.ctx.getWebSockets().map((ws) => ws.deserializeAttachment() as Pose | null).filter((p): p is Pose => Boolean(p));
   }
 
+  prunePolled(now: number): void {
+    for (const [id, pose] of this.polled) if (now - pose.at > STALE_MS) this.polled.delete(id);
+  }
+
   snapshot(): HallMessage {
     const now = Date.now();
     this.recent_find = this.recent_find.filter((f) => now - f.at < STALE_MS);
-    for (const [id, pose] of this.polled) if (now - pose.at > STALE_MS) this.polled.delete(id);
+    this.prunePolled(now);
     return {
       type: "roster",
-      walker: rosterOf([...this.socketPose(), ...this.polled.values()], now),
+      walker: rosterOf([...this.socketPose(), ...this.polled.values()], now).slice(0, HALL_WALKER_MAX),
       find: this.recent_find.map((f) => f.find),
       server_time: now,
     };
@@ -62,6 +84,14 @@ export class LiveHall {
     });
   }
 
+  /** Both brakes in one step; false means drop this pose. */
+  allowPose(key: string, ip: string | null, now: number): boolean {
+    if (ip && this.ip_limit.retryAfter(ip, now) > 0) return false;
+    if (this.pose_limit.take(key, now) > 0) return false;
+    if (ip) this.ip_limit.note(ip, now);
+    return true;
+  }
+
   /** Null when the path is not the hall's. */
   async handle(request: Request, url: URL): Promise<Response | null> {
     if (!LIVE_PATH.has(url.pathname)) return null;
@@ -70,9 +100,16 @@ export class LiveHall {
       if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
         return this.json({ error: "expected a WebSocket upgrade" }, 426);
       }
+      if (!isHallOrigin(request.headers.get("Origin"), url.host)) {
+        return this.json({ error: "this hall only opens to its own page" }, 403);
+      }
+      if (this.ctx.getWebSockets().length >= HALL_WALKER_MAX) {
+        return this.json({ error: "the hall is full — polling still shows who is here" }, 503);
+      }
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
-      this.ctx.acceptWebSocket(server);
+      /* Tags: [socket id, ip]. Read back with getTags, which survives hibernation. */
+      this.ctx.acceptWebSocket(server, [crypto.randomUUID(), clientIp(request) ?? ""]);
       server.serializeAttachment(null);
       server.send(JSON.stringify(this.snapshot()));
       return new Response(null, { status: 101, webSocket: client });
@@ -89,8 +126,16 @@ export class LiveHall {
       } catch {
         return this.json({ error: "bad json" }, 400);
       }
-      const pose = sanitizePose(raw, Date.now());
+      const now = Date.now();
+      const pose = sanitizePose(raw, now);
       if (!pose) return this.json({ error: "pose needs player_id and a lat/lon inside the campus frame" }, 400);
+      if (!this.allowPose(`poll:${pose.walker_id}`, clientIp(request), now)) {
+        return this.json({ error: "too many poses" }, 429);
+      }
+      this.prunePolled(now);
+      if (!this.polled.has(pose.walker_id) && this.polled.size >= HALL_WALKER_MAX) {
+        return this.json({ error: "the hall is full" }, 503);
+      }
       this.polled.set(pose.walker_id, pose);
       this.broadcast({ type: "pose", walker: pose });
       return this.json(this.snapshot());
@@ -108,7 +153,10 @@ export class LiveHall {
       return;
     }
     if (body.type === "pose") {
-      const pose = sanitizePose(body, Date.now());
+      const now = Date.now();
+      const [socket_id = "", ip = ""] = this.ctx.getTags(ws);
+      if (!this.allowPose(`socket:${socket_id}`, ip || null, now)) return;
+      const pose = sanitizePose(body, now);
       if (!pose) return;
       ws.serializeAttachment(pose);
       this.broadcast({ type: "pose", walker: pose }, ws);
@@ -118,6 +166,8 @@ export class LiveHall {
   }
 
   close(ws: WebSocket): void {
+    const [socket_id = ""] = this.ctx.getTags(ws);
+    this.pose_limit.clear(`socket:${socket_id}`);
     const pose = ws.deserializeAttachment() as Pose | null;
     ws.serializeAttachment(null);
     try {
