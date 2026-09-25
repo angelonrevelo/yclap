@@ -528,7 +528,10 @@ function TrainerSheet({
             <Character stage={stage} vigor={vigor} size={68} is_idle_animated />
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: 28, fontVariantNumeric: "tabular-nums" }}>{snap.total_points}</div>
+            <div style={{ fontWeight: 800, fontSize: 28, fontVariantNumeric: "tabular-nums" }}>
+              {snap.total_points}
+              <span style={{ fontSize: 14, fontWeight: 700, marginLeft: 4 }}>pts</span>
+            </div>
             <div style={{ fontSize: 13, opacity: 0.75 }}>{walker_name}</div>
             <div className="flex items-center gap-2" style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>
               <StreakFlame weeks={snap.streak_weeks} size={26} />
@@ -751,6 +754,7 @@ function PointsStreakCard({ snap, is_desktop }: { snap: GamifySnapshot; is_deskt
           <div style={{ fontSize: 10, fontWeight: 800, color: "var(--mg-green-text)", letterSpacing: "0.04em" }}>POINTS</div>
           <div style={{ fontSize: is_desktop ? 28 : 24, fontWeight: 800, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
             {snap.total_points}
+            <span style={{ fontSize: 13, fontWeight: 700, marginLeft: 4 }}>pts</span>
           </div>
           <div style={{ fontSize: 11, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 2 }}>
             {/* The rates, not a breakdown of the total above — labelled as such. */}
@@ -1029,7 +1033,8 @@ function NearbySheet({
           <button
             onClick={onOpenCard}
             aria-label={`Open the ${sp.common_name} card`}
-            style={{ fontWeight: 800, fontSize: 26, lineHeight: 1.15, marginTop: 4, letterSpacing: "-0.02em", textDecoration: "underline dotted", textUnderlineOffset: 5 }}
+            /* 44 px tall at least: the name alone is a 30 px target. */
+            style={{ fontWeight: 800, fontSize: 26, lineHeight: 1.15, marginTop: 4, minHeight: 44, minWidth: 44, padding: "4px 10px", letterSpacing: "-0.02em", textDecoration: "underline dotted", textUnderlineOffset: 5 }}
           >
             {sp.common_name}
           </button>
@@ -1061,7 +1066,7 @@ function NearbySheet({
         <SpeciesBack sp={sp} />
         <p style={{ fontSize: 12, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 18, lineHeight: 1.45 }}>
           Need a second opinion?{" "}
-          <a href={SEEK_URL} target="_blank" rel="noreferrer" style={{ color: "var(--mg-blue)", fontWeight: 700, textDecoration: "underline" }}>
+          <a href={SEEK_URL} target="_blank" rel="noreferrer" className="gm-inline-link" style={{ color: "var(--mg-blue)", fontWeight: 700, textDecoration: "underline" }}>
             Open Seek
           </a>
           . Identification stays with iNaturalist — not this app.
@@ -1852,7 +1857,7 @@ function CameraSheet({
 
         <p style={{ fontSize: 12, color: "rgb(var(--mg-ink-rgb) / 0.62)", marginTop: 14, lineHeight: 1.45 }}>
           iNaturalist is identifying, not this app. The journal stays on this device.{" "}
-          <a href={SEEK_URL} target="_blank" rel="noreferrer" style={{ color: "var(--mg-blue)", textDecoration: "underline", fontWeight: 700 }}>
+          <a href={SEEK_URL} target="_blank" rel="noreferrer" className="gm-inline-link" style={{ color: "var(--mg-blue)", textDecoration: "underline", fontWeight: 700 }}>
             Open Seek
           </a>
         </p>
@@ -2440,10 +2445,30 @@ function BlindBoxReveal({ stage, onDismiss }: { stage: Stage; onDismiss: () => v
             <Suspense fallback={<Character stage={stage} vigor={1} size={120} is_idle_animated />}>
               <CharacterModel stage={stage} size={120} />
             </Suspense>
+            {/* The headline names the stage the picture shows. It used to be
+                the cosmetic's name, so the seedling sticker sat over the words
+                "Terracotta Pot" — a picture of one thing captioned as another.
+                The cosmetic is still announced, as what the stage earned. */}
+            <div style={{ marginTop: 4, fontWeight: 800, fontSize: 18, color: "rgb(var(--mg-ink-rgb) / 0.92)" }}>
+              {STAGE_LABEL[stage]}
+            </div>
             {cosmetic && (
               <>
-                <div style={{ marginTop: 4, fontWeight: 800, fontSize: 18, color: "rgb(var(--mg-ink-rgb) / 0.92)" }}>
-                  {cosmetic.name}
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    padding: "4px 10px",
+                    borderRadius: 999,
+                    background: "rgb(var(--mg-ink-rgb) / 0.06)",
+                    color: "rgb(var(--mg-ink-rgb) / 0.85)",
+                  }}
+                >
+                  <span aria-hidden style={{ width: 10, height: 10, borderRadius: 999, background: cosmetic.accent }} />
+                  Unlocked: {cosmetic.name}
                 </div>
                 <div style={{ fontSize: 13, color: "rgb(var(--mg-ink-rgb) / 0.78)", maxWidth: 260, lineHeight: 1.4 }}>
                   {cosmetic.blurb}
