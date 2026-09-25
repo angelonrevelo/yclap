@@ -167,6 +167,18 @@ The play layer, wired in `src/live.tsx`:
   demo board, and one daily hunt (a tree + a biome, deterministic per
   player-day). Observe awards once per `species+sector`. Hunt pays when the
   daily species is logged. The board is never an official AIS rank.
+- **`blindbox.ts` + `blindbox-reveal.tsx`** — the Working Doc's blind box,
+  earned and never bought. A box is derived from the points ledger and from
+  nothing else: one per finished daily hunt (`hunt:<day>`) and one per species
+  logged for the first time (`species:<code>`). Explore and Learn earn none, and
+  the `?seed=demo` journal writes no point events, so it earns none either. Opening
+  one plays the stage reveal's shake → crack → burst and puts a charm from an
+  eight-charm set on the Journal shelf. There are **no odds**: within a round no
+  charm repeats, so the set is complete after exactly eight boxes, and which
+  missing charm a box holds is a hash of its own id. The same journal opens the
+  same charms on any device. Only the opened list is stored
+  (`field-guide.blindbox`); `blindbox.test.ts` pins all of it, including that
+  nothing calls `Math.random`.
 
 **Measured limit:** only 9 of the 1,098 pool entries carry an origin, because
 the iNaturalist sweep never requested `establishment_means`. The intended 1.5×
