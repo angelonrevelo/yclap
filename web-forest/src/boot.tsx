@@ -14,12 +14,26 @@ import { SafetyMark } from "./alert";
  * only reaches the end when that work has. A floor of dwell time keeps a warm
  * cache from flashing three screens past in a quarter of a second.
  *
+ * No screen fades through white. `index.html` paints the scene's sky and the
+ * splash lockup before the script has even arrived, the splash picks up from
+ * that paint without re-animating, and each later screen fades in OVER the one
+ * before it — the outgoing screen stays drawn underneath until the incoming
+ * one is opaque — so the only colours ever on screen are the scene's.
+ *
  * `?boot=off` skips the lot, for a projector that is reloaded mid-demo.
  */
 
+/** Splash dwell, counted from navigation start: the inline splash in
+ *  `index.html` has been on screen since the first paint. */
 const SPLASH_MS = 1300;
-/** A warm cache finishes in a frame. Long enough to read one tip, no longer. */
+/** Least splash once React is up, so a slow script does not cut it to a blink. */
+const SPLASH_FLOOR_MS = 450;
+/** A warm cache finishes in a frame. Long enough to read one tip, no longer.
+ *  Counted from the moment the loading screen is on screen, not from mount, so
+ *  a throttled timer can never show it for a fraction of a second. */
 const LOAD_MIN_MS = 2400;
+/** How long the incoming screen takes to cover the outgoing one. */
+const FADE_MS = 420;
 /** Past this the map opens anyway: a slow network is not a reason to wait. */
 const LOAD_MAX_MS = 9000;
 const TIP_MS = 3200;
@@ -40,6 +54,14 @@ export const BOOT_TIP = [
 ];
 
 type Phase = "splash" | "load" | "safety" | "done";
+
+/** Read once, before React replaces it: was the inline splash painted? */
+const has_pre_splash = typeof document !== "undefined" && document.getElementById("bt-pre") !== null;
+
+/** Splash time still owed once React is up, given how long the page has been open. */
+export function splashRemainingMs(since_navigation_ms: number): number {
+  return Math.max(SPLASH_FLOOR_MS, SPLASH_MS - Math.max(0, since_navigation_ms));
+}
 
 function preloadImage(src: string): Promise<void> {
   return new Promise((resolve) => {
@@ -73,10 +95,26 @@ function bootTask(): Promise<unknown>[] {
 
 export default function Boot({ onDone }: { onDone: () => void }) {
   const [phase, setPhase] = useState<Phase>("splash");
+  /* The screen being covered. It stays drawn under the incoming one for one
+     fade, so a change of screen is a cross-fade, never a dip to a blank root. */
+  const [leaving, setLeaving] = useState<Phase | null>(null);
   const [done_count, setDoneCount] = useState(0);
   const [task_total, setTaskTotal] = useState(1);
   const [is_min_met, setMinMet] = useState(false);
   const [tip_index, setTipIndex] = useState(() => Math.floor(Math.random() * BOOT_TIP.length));
+
+  /* Called from timers and effects, so it reads the phase through the setter
+     rather than closing over a stale one. */
+  const advance = (from: Phase, to: Phase) => {
+    setPhase((p) => (p === from ? to : p));
+    setLeaving(from);
+  };
+
+  useEffect(() => {
+    if (leaving === null) return;
+    const id = window.setTimeout(() => setLeaving(null), FADE_MS);
+    return () => window.clearTimeout(id);
+  }, [leaving, phase]);
 
   /* Start the work at once, under the splash, so the logo is not dead time. */
   useEffect(() => {
@@ -93,20 +131,26 @@ export default function Boot({ onDone }: { onDone: () => void }) {
         setDoneCount((n) => Math.max(n, finished));
       });
     }
-    const split = window.setTimeout(() => setPhase((p) => (p === "splash" ? "load" : p)), SPLASH_MS);
-    const floor = window.setTimeout(() => setMinMet(true), SPLASH_MS + LOAD_MIN_MS);
-    const ceiling = window.setTimeout(() => setDoneCount(Number.MAX_SAFE_INTEGER), SPLASH_MS + LOAD_MAX_MS);
+    const splash_ms = splashRemainingMs(performance.now());
+    const split = window.setTimeout(() => advance("splash", "load"), splash_ms);
+    const ceiling = window.setTimeout(() => setDoneCount(Number.MAX_SAFE_INTEGER), splash_ms + LOAD_MAX_MS);
     return () => {
       is_alive = false;
       window.clearTimeout(split);
-      window.clearTimeout(floor);
       window.clearTimeout(ceiling);
     };
   }, []);
 
+  /* The loading screen's floor starts when it is actually on screen. */
+  useEffect(() => {
+    if (phase !== "load") return;
+    const floor = window.setTimeout(() => setMinMet(true), LOAD_MIN_MS);
+    return () => window.clearTimeout(floor);
+  }, [phase]);
+
   const is_loaded = done_count >= task_total;
   useEffect(() => {
-    if (phase === "load" && is_loaded && is_min_met) setPhase("safety");
+    if (phase === "load" && is_loaded && is_min_met) advance("load", "safety");
   }, [phase, is_loaded, is_min_met]);
 
   useEffect(() => {
@@ -134,68 +178,91 @@ export default function Boot({ onDone }: { onDone: () => void }) {
 
   if (phase === "done") return null;
 
+  const is_fading = leaving !== null && leaving !== phase;
+
+  const screen = (which: Phase, is_incoming: boolean) => {
+    /* The outgoing layer holds still underneath; only the incoming one fades. */
+    const layer = is_incoming && is_fading ? "bt-layer bt-layer-in" : "bt-layer";
+    switch (which) {
+      case "splash":
+        return (
+          <div key="splash" className={`${layer} bt-splash`} data-warm={has_pre_splash || undefined} aria-label="Magisphere">
+            <img className="bt-splash-logo" src="/brand/magi/lockup-stacked.svg" alt="Magisphere — Rediscovering home." />
+            <div className="bt-partner">
+              <span className="bt-partner-name">
+                Youth CLAP
+                <small>2026 cohort</small>
+              </span>
+              <span className="bt-partner-rule" aria-hidden />
+              <span className="bt-partner-name">
+                Ateneo de Manila
+                <small>Loyola Heights campus</small>
+              </span>
+            </div>
+          </div>
+        );
+      case "load":
+        return (
+          <div
+            key="load"
+            className={`${layer} bt-load`}
+            role={is_incoming ? "progressbar" : undefined}
+            aria-hidden={is_incoming ? undefined : true}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progress * 100)}
+            aria-label="Loading the campus"
+          >
+            <img className="bt-scene" src="/brand/magi/scene-portrait.svg" alt="" aria-hidden />
+            <img className="bt-load-logo" src="/brand/magi/lockup-stacked.svg" alt="Magisphere" />
+            <img className="bt-cast bt-cast-a" src={sticker.buddy_map} alt="" aria-hidden />
+            <img className="bt-cast bt-cast-b" src={sticker.hiker} alt="" aria-hidden />
+            <img className="bt-cast bt-cast-c" src={sticker.buddy_cheer} alt="" aria-hidden />
+            <div className="bt-foot">
+              <p key={tip_index} className="bt-tip">
+                {BOOT_TIP[tip_index]}
+              </p>
+              <div className="bt-bar">
+                <div className="bt-bar-fill" style={{ width: `${(progress * 100).toFixed(1)}%` }} />
+              </div>
+              <p className="bt-status">{progress >= 0.999 ? "Campus ready" : `Loading the campus · ${Math.round(progress * 100)}%`}</p>
+            </div>
+          </div>
+        );
+      case "safety":
+        return (
+          <div key="safety" className={`${layer} bt-safety`}>
+            <div className="al-card al-light" role="alertdialog" aria-labelledby="bt-safety-title" aria-describedby="bt-safety-body">
+              <SafetyMark />
+              <h2 id="bt-safety-title" className="al-title">
+                Stay aware of your surroundings
+              </h2>
+              <p id="bt-safety-body" className="al-body">
+                Look up when you cross a campus road, and keep out of fenced or restricted groves while you play
+                Magisphere.
+              </p>
+              <button
+                type="button"
+                className="al-button"
+                onClick={() => {
+                  setPhase("done");
+                  onDone();
+                }}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="bt-root" data-phase={phase}>
-      {phase === "splash" && (
-        <div className="bt-splash" aria-label="Magisphere">
-          <img className="bt-splash-logo" src="/brand/magi/lockup-stacked.svg" alt="Magisphere — Rediscovering home." />
-          <div className="bt-partner">
-            <span className="bt-partner-name">
-              Youth CLAP
-              <small>2026 cohort</small>
-            </span>
-            <span className="bt-partner-rule" aria-hidden />
-            <span className="bt-partner-name">
-              Ateneo de Manila
-              <small>Loyola Heights campus</small>
-            </span>
-          </div>
-        </div>
-      )}
-
-      {phase === "load" && (
-        <div className="bt-load" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)} aria-label="Loading the campus">
-          <img className="bt-scene" src="/brand/magi/scene-portrait.svg" alt="" aria-hidden />
-          <img className="bt-load-logo" src="/brand/magi/lockup-stacked.svg" alt="Magisphere" />
-          <img className="bt-cast bt-cast-a" src={sticker.buddy_map} alt="" aria-hidden />
-          <img className="bt-cast bt-cast-b" src={sticker.hiker} alt="" aria-hidden />
-          <img className="bt-cast bt-cast-c" src={sticker.buddy_cheer} alt="" aria-hidden />
-          <div className="bt-foot">
-            <p key={tip_index} className="bt-tip">
-              {BOOT_TIP[tip_index]}
-            </p>
-            <div className="bt-bar">
-              <div className="bt-bar-fill" style={{ width: `${(progress * 100).toFixed(1)}%` }} />
-            </div>
-            <p className="bt-status">{progress >= 0.999 ? "Campus ready" : `Loading the campus · ${Math.round(progress * 100)}%`}</p>
-          </div>
-        </div>
-      )}
-
-      {phase === "safety" && (
-        <div className="bt-safety">
-          <div className="al-card al-light" role="alertdialog" aria-labelledby="bt-safety-title" aria-describedby="bt-safety-body">
-            <SafetyMark />
-            <h2 id="bt-safety-title" className="al-title">
-              Stay aware of your surroundings
-            </h2>
-            <p id="bt-safety-body" className="al-body">
-              Look up when you cross a campus road, and keep out of fenced or restricted groves while you play
-              Magisphere.
-            </p>
-            <button
-              type="button"
-              className="al-button"
-              onClick={() => {
-                setPhase("done");
-                onDone();
-              }}
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      )}
+      {is_fading && leaving && screen(leaving, false)}
+      {screen(phase, true)}
     </div>
   );
 }

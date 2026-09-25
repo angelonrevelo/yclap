@@ -1,18 +1,33 @@
 /* ── Boot: splash → loading → safety ───────────────────────────────────────
  *
  * The genre's cold start, cut from Magisphere's own kit: the stacked lockup on
- * white, the brand's trail scene with the Sprout cast standing in it, a tip
+ * the scene's pale sky, the brand's trail scene with the Sprout cast standing in it, a tip
  * and a progress bar in the sparkle orange, and a safety card on the
  * sky-to-lagoon gradient the posters fade through.
+ *
+ * Nothing in the boot is ever white. The root, the splash and the inline
+ * splash in `index.html` share one sky (--bt-scene — keep index.html's copy in
+ * step), and a change of screen fades the new layer in over the old one.
  */
 
 .bt-root {
+  --bt-scene: linear-gradient(180deg, #9fd3f6 0%, #cdebff 55%, #eaf7fe 100%);
   position: fixed;
   inset: 0;
   z-index: 200;
   overflow: hidden;
-  background: #fff;
+  background: #cdebff;
+  background-image: var(--bt-scene);
   font-family: var(--mg-heading);
+}
+
+/* Every screen is a full-bleed layer; only the incoming one animates. */
+.bt-layer {
+  position: absolute;
+  inset: 0;
+}
+.bt-layer-in {
+  animation: bt-fade-in 420ms ease both;
 }
 
 /* 1 · splash */
@@ -24,8 +39,11 @@
   align-items: center;
   justify-content: center;
   gap: 9vh;
-  background: #fff;
-  animation: bt-fade-in 420ms ease both;
+  background: var(--bt-scene);
+}
+/* Warm: index.html already drew this lockup in this spot, so it stays put. */
+.bt-splash[data-warm] .bt-splash-logo {
+  animation: none;
 }
 .bt-splash-logo {
   width: min(78vw, 420px);
@@ -62,9 +80,7 @@
 
 /* 2 · loading */
 .bt-load {
-  position: absolute;
-  inset: 0;
-  animation: bt-fade-in 380ms ease both;
+  background: var(--bt-scene);
 }
 .bt-scene {
   position: absolute;
@@ -172,7 +188,6 @@
   place-items: center;
   padding: 24px;
   background: linear-gradient(165deg, #7cc84a 0%, #3e9a4a 30%, #279cad 68%, #11646c 100%);
-  animation: bt-fade-in 380ms ease both;
 }
 
 /* ── Alert cards: every interruption the game is allowed to make ───────── */
@@ -357,7 +372,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bt-splash,
+  .bt-layer-in,
   .bt-splash-logo,
   .bt-partner,
   .bt-load,

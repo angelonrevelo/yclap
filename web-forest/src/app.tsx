@@ -30,10 +30,12 @@ import {
 import { type SkylineStyle } from "./skyline";
 import PlayMap, { PLAY_MAX_ZOOM, PLAY_MIN_ZOOM } from "./play-map";
 import Boot, { isBootSkipped } from "./boot";
+import { navigateTo } from "./nav";
 import { AlertCard, WeatherChip, type AlertSpec } from "./alert";
 import { fetchWeather, pinnedWeather, weatherBody, weatherCaption, WEATHER_TITLE, type Weather } from "./weather";
 import { pinKindOf, type PinKind } from "./pin";
 import Character, { stageFor, STAGE_LABEL, type Stage } from "./character";
+import { stageLine } from "./stage";
 /* The 3D character (T4.1) — lazy so the model-viewer chunk is fetched only
    where the 3D character renders. The SVG `Character` stays as the Suspense
    fallback and on the map, whose billboard must cost no bundle. */
@@ -536,7 +538,7 @@ function TrainerSheet({
             <div style={{ fontSize: 13, opacity: 0.75 }}>{walker_name}</div>
             <div className="flex items-center gap-2" style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>
               <StreakFlame weeks={snap.streak_weeks} size={26} />
-              <span style={{ opacity: 0.8 }}>· {snap.buddy.label}</span>
+              <span style={{ opacity: 0.8 }}>· {STAGE_LABEL[stage]}</span>
             </div>
             <div style={{ fontSize: 11, marginTop: 4, letterSpacing: "0.08em", fontWeight: 800 }}>
               {live_label ? `LIVE · ${live_label}` : is_live ? "LIVE" : "OFFLINE"} · {join_code}
@@ -854,16 +856,10 @@ function ChallengesCard({ snap }: { snap: GamifySnapshot }) {
   );
 }
 
-function BuddyLine({ snap }: { snap: GamifySnapshot }) {
-  const next = snap.buddy.next;
-  const next_label = next ? next.stage.replace(/_/g, " ") : "";
+function GrowLine({ sector_seen }: { sector_seen: number }) {
   return (
     <p style={{ fontSize: 12, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 8, lineHeight: 1.4 }}>
-      Biodiversity Buddy: <strong>{snap.buddy.label}</strong>
-      {next
-        ? ` · ${next.remaining} more week${next.remaining === 1 ? "" : "s"} toward ${next_label}`
-        : " · fully grown"}
-      . Grows with weekly participation.
+      {stageLine(sector_seen)}
     </p>
   );
 }
@@ -1529,6 +1525,7 @@ function CameraSheet({
   onClose,
   rarity,
   pool_count,
+  hunt_code = null,
 }: {
   pick_code: string;
   where: string;
@@ -1540,6 +1537,8 @@ function CameraSheet({
    *  Null for an ordinary log, where there is no rarity claim to make. */
   rarity?: Rarity | null;
   pool_count?: ReadonlyMap<string, number | null>;
+  /** Today's hunt species, while it is still open — its tile says so. */
+  hunt_code?: string | null;
 }) {
   const [shot, setShot] = useState<Shot | null>(null);
   const [note, setNote] = useState("");
@@ -1740,7 +1739,16 @@ function CameraSheet({
               <span style={{ display: "block", fontWeight: 800, fontSize: 11, marginTop: 6, lineHeight: 1.2 }}>
                 <SpeciesName common_name={wild_pick.common_name} scientific_name={wild_pick.scientific_name} />
               </span>
-              <span style={{ display: "block", fontSize: 10, color: "var(--mg-green-text)", marginTop: 2 }}>Sweep</span>
+              {/* Plain English for where this tile came from. It used to say
+                  "Sweep" — the name of our iNaturalist data pull, which means
+                  nothing to a student holding the phone. */}
+              <span style={{ display: "block", fontSize: 10, color: "var(--mg-green-text)", marginTop: 2 }}>
+                {wild_pick.species_code === hunt_code
+                  ? "Today's hunt"
+                  : rarity
+                    ? "The find you walked to"
+                    : "On the campus list"}
+              </span>
             </button>
           )}
           {picker_order.map((species_code) => {
@@ -2670,7 +2678,7 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
             />
           </div>
         </div>
-        <BuddyLine snap={gamify} />
+        <GrowLine sector_seen={p.sector_seen_count} />
     </>
   );
 
@@ -3615,7 +3623,21 @@ export default function App() {
       return;
     }
     setFollowing(false);
-    setView((prev) => ({ ...prev, lat: place.label_point[0], lon: place.label_point[1], zoom: Math.max(prev.zoom, 17) }));
+    /* Fly to the hunt's finds, not the sector's label. The label is the
+       middle of the area, and the playtest found the pins you were sent to
+       left at the screen's edge (x ≈ 12 on a 375 px phone). The hunt species
+       itself when this window has spawned it; otherwise the middle of the
+       finds standing in the hunt's sector; the label only when it has none. */
+    const same = spawn_world.spawn.find((s) => s.species_code === daily.species_code && s.sector_code === daily.sector_code);
+    const in_sector = spawn_world.spawn.filter((s) => s.sector_code === daily.sector_code);
+    const focus = same
+      ? [same]
+      : in_sector.length > 0
+        ? in_sector
+        : [{ lat: place.label_point[0], lon: place.label_point[1] }];
+    const lat = focus.reduce((sum, f) => sum + f.lat, 0) / focus.length;
+    const lon = focus.reduce((sum, f) => sum + f.lon, 0) / focus.length;
+    setView((prev) => ({ ...prev, lat, lon, zoom: Math.max(prev.zoom, 17) }));
   };
   /* The day's first open shows today's hunt once, big, after boot and after
      any safety card. Keyed by the hunt's own day. */
@@ -3841,7 +3863,7 @@ export default function App() {
     setBearing(0);
     setFollowing(true);
     if (route !== "/" && route !== "/map") {
-      window.history.pushState({}, "", "/");
+      navigateTo("/");
       setRoute("/");
     }
     const here = geo.fix ?? CAMPUS_CENTER;
@@ -3850,9 +3872,7 @@ export default function App() {
   };
 
   const go = (next: Route) => {
-    if (window.location.pathname !== next) {
-      window.history.pushState({}, "", next);
-    }
+    if (window.location.pathname !== next) navigateTo(next);
     setRoute(next);
     setTrainerOpen(false);
     setNearbyOpen(false);
@@ -3865,9 +3885,7 @@ export default function App() {
   useEffect(() => {
     const onPop = () => setRoute(pathToRoute(window.location.pathname));
     window.addEventListener("popstate", onPop);
-    if (window.location.pathname !== route) {
-      window.history.replaceState({}, "", route);
-    }
+    if (window.location.pathname !== route) navigateTo(route, "replace");
     /* Production only. Under `vite dev` every module is an unhashed same-origin
        GET, so a caching worker pins the app to a stale revision — that produced
        a white screen and a bogus "does not provide an export named" once. */
@@ -4651,6 +4669,7 @@ export default function App() {
             where={camera_where ?? sel.where}
             rarity={camera_rarity}
             pool_count={spawn_world.pool_count}
+            hunt_code={daily && !daily.is_done ? daily.species_code : null}
             fix_line={fix_line}
             onPick={setPickCode}
             onSave={saveSighting}
@@ -4689,7 +4708,7 @@ export default function App() {
         {level_up !== null && !reveal && (
           <LevelUpCard level={level_up} stage={stage} onDismiss={() => setLevelUp(null)} />
         )}
-        {toast && <GameToast msg={toast} />}
+        {toast && <GameToast msg={toast} band={route === "/" || route === "/map" ? "top" : "bottom"} />}
         {is_booted && alert_queue[0] && (
           <AlertCard
             key={alert_queue[0].alert_id}

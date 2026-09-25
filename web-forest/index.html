@@ -7,6 +7,24 @@
     <link rel="apple-touch-icon" href="/brand/icon-192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#3E9A4A" />
+    <!-- Critical boot paint. The app is one ~700 kB script, and until it runs
+         the page was an empty white root, so every cold start opened on white.
+         This paints the boot scene's sky and the splash lockup at the exact
+         spot boot.tsx draws them, so React takes over without a visible seam.
+         Keep the colours in step with --bt-scene in src/boot.css. -->
+    <style>
+      html:has(#bt-pre) { background: #cdebff; }
+      #bt-pre {
+        position: fixed; inset: 0; z-index: 200;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9vh;
+        background: linear-gradient(180deg, #9fd3f6 0%, #cdebff 55%, #eaf7fe 100%);
+        font-family: "Nunito", system-ui, sans-serif;
+      }
+      #bt-pre img { width: min(78vw, 420px); height: auto; aspect-ratio: 714 / 330; animation: bt-pre-in 700ms ease both; }
+      #bt-pre p { margin: 0; height: 38px; }
+      @keyframes bt-pre-in { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: none; } }
+      @media (prefers-reduced-motion: reduce) { #bt-pre img { animation: none; } }
+    </style>
     <meta
       name="description"
       content="Magisphere — Ateneo Loyola Heights. A student-led campus-forest walk: find what is out right now, log it, learn it. Youth CLAP 2026 · Ateneo CCC."
@@ -22,7 +40,7 @@
     />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div id="bt-pre" aria-label="Magisphere"><img src="/brand/magi/lockup-stacked.svg" alt="Magisphere — Rediscovering home." /><p aria-hidden="true"></p></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

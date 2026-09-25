@@ -209,34 +209,49 @@ export default function RemoteWalkerLayer({
         );
       })}
 
-      {hall.callout.map(({ find }) => {
-        if (find.lat === null || find.lon === null) return null;
-        const at = projection.toScreen(projection.project({ lat: find.lat, lon: find.lon }));
-        return (
-          <div
-            key={`find-${find.sighting_id}`}
-            style={{
-              position: "absolute",
-              left: Math.max(90, Math.min(width - 90, at.x)),
-              top: Math.max(120, Math.min(height - 200, at.y)),
-              transform: "translate(-50%, -100%)",
-              pointerEvents: "none",
-              zIndex: 7,
-              whiteSpace: "nowrap",
-              fontSize: 12,
-              fontWeight: 800,
-              color: "#1B2E16",
-              background: "rgba(255,246,222,0.97)",
-              border: "1.5px solid #F0B429",
-              borderRadius: 999,
-              padding: "4px 11px",
-              boxShadow: "0 3px 10px rgba(24,38,20,0.25)",
-            }}
-          >
-            {find.player_name} logged {find.common_name || find.species_code}
-          </div>
-        );
-      })}
+      {/* The live feed ("Ana logged Molave") reads as a band under the player
+          card, stacked, never pinned to the find: a find is usually a few
+          metres from the walker, so a callout drawn at it sat across your own
+          walker and the pet painted over it. zIndex 9 keeps it over the pet. */}
+      {hall.callout.length > 0 && (
+        <div
+          aria-live="polite"
+          style={{
+            position: "absolute",
+            left: 12,
+            top: "calc(env(safe-area-inset-top, 0px) + 212px)",
+            maxWidth: "calc(100% - 88px)",
+            zIndex: 9,
+            pointerEvents: "none",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: 6,
+          }}
+        >
+          {hall.callout.slice(0, 3).map(({ find }) => (
+            <div
+              key={`find-${find.sighting_id}`}
+              style={{
+                maxWidth: "100%",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                fontSize: 12,
+                fontWeight: 800,
+                color: "#1B2E16",
+                background: "rgba(255,246,222,0.97)",
+                border: "1.5px solid #F0B429",
+                borderRadius: 999,
+                padding: "4px 11px",
+                boxShadow: "0 3px 10px rgba(24,38,20,0.25)",
+              }}
+            >
+              {find.player_name} logged {find.common_name || find.species_code}
+            </div>
+          ))}
+        </div>
+      )}
     </>
   );
 }
