@@ -194,7 +194,10 @@ export function isLocalVerified(input: {
   photo_data: string | null | undefined;
   species_code: string | null | undefined;
   entry_kind?: "badge" | "contribution" | null;
+  /** Picked off the recorded demo reply — never verified, whatever else holds. */
+  is_demo_id?: boolean;
 }): boolean {
+  if (input.is_demo_id) return false;
   const photo = typeof input.photo_data === "string" && input.photo_data.length > 0;
   const species = typeof input.species_code === "string" && input.species_code.trim().length > 0;
   if (!photo || !species) return false;
@@ -207,6 +210,7 @@ export function isLocalVerified(input: {
 export function observeAwardKind(input: {
   photo_data: string | null | undefined;
   species_code: string | null | undefined;
+  is_demo_id?: boolean;
 }): PointKind {
   return isLocalVerified(input) ? "verified_discovery" : "observe";
 }
@@ -507,6 +511,7 @@ export function localObsStatus(input: {
   species_code: string | null | undefined;
   /** Prior sightings of the same species on this device. */
   prior_same_species?: number;
+  is_demo_id?: boolean;
 }): LocalObsStatus {
   if ((input.prior_same_species ?? 0) > 0) return "duplicate";
   if (isLocalVerified(input)) return "verified";

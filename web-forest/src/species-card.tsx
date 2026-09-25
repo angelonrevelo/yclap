@@ -22,7 +22,7 @@ import { RarityPill } from "./live";
 import { SpeciesPortrait } from "./portrait";
 import type { SpawnPoolEntry } from "./spawn";
 import { cardFact, chooseVisual, type ModelState } from "./species-card-core";
-import { Pill } from "./ui";
+import { Pill, SheetClose } from "./ui";
 
 export interface SpeciesCardAction {
   label: string;
@@ -61,7 +61,20 @@ function prefersReducedMotion(): boolean {
     : false;
 }
 
-export default function SpeciesCard({ species_code, pool, is_seen, learn, action, onClose }: Props) {
+/**
+ * The turning model with its portrait stand-in and the line under it. Shared
+ * by the card and the map's pin sheet, so a pin opens on the same 3D species
+ * the card shows rather than a flat drawing.
+ */
+export function SpeciesHero({
+  species_code,
+  pool,
+  height = 240,
+}: {
+  species_code: string;
+  pool: SpawnPoolEntry[];
+  height?: number;
+}) {
   const curated = species[species_code];
   const entry = pool.find((e) => e.species_code === species_code);
   const fact = cardFact(species_code, curated, entry);
@@ -72,8 +85,8 @@ export default function SpeciesCard({ species_code, pool, is_seen, learn, action
   const choice = chooseVisual({ model_path: fact.model_path, is_online, model_state });
   const is_model = choice.visual === "model" && fact.model_path !== null;
 
-  /* One card per species: app.tsx keys this component by species_code, so
-     `model_state` starts fresh for each species without a reset effect. */
+  /* One hero per species: callers key this by species_code, so `model_state`
+     starts fresh for each species without a reset effect. */
 
   useEffect(() => {
     const el = viewer_ref.current;
@@ -88,14 +101,7 @@ export default function SpeciesCard({ species_code, pool, is_seen, learn, action
     };
   }, [is_model, fact.model_path]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
+  const portrait_size = Math.round(Math.min(160, height * 0.66));
   const portrait = (size: number) => (
     <SpeciesPortrait
       scientific_name={fact.scientific_name}
@@ -108,6 +114,57 @@ export default function SpeciesCard({ species_code, pool, is_seen, learn, action
   /* Motion is opt-out: no turntable and no idle clip under reduced motion. The
      model still loads and can be turned by hand. */
   const motion = is_reduced ? {} : { "auto-rotate": true, autoplay: true };
+
+  return (
+    <>
+      <div
+        style={{
+          height,
+          borderRadius: 14,
+          background: "linear-gradient(180deg, rgba(62,154,74,0.10), rgba(62,154,74,0.02))",
+          display: "grid",
+          placeItems: "center",
+          overflow: "hidden",
+        }}
+      >
+        {is_model ? (
+          <model-viewer
+            key={fact.model_path}
+            ref={viewer_ref}
+            src={fact.model_path!}
+            alt={`A 3D model of ${fact.common_name}`}
+            camera-controls
+            interaction-prompt="none"
+            loading="eager"
+            shadow-intensity="1"
+            shadow-softness="0.8"
+            {...motion}
+            style={{ width: "100%", height: "100%", "--poster-color": "transparent" } as CSSProperties}
+          >
+            {/* Shown until the model is in: the same portrait the fallback uses. */}
+            <div slot="poster" style={{ width: "100%", height: "100%", display: "grid", placeItems: "center" }}>
+              {portrait(portrait_size - 10)}
+            </div>
+          </model-viewer>
+        ) : (
+          portrait(portrait_size)
+        )}
+      </div>
+      <div style={{ fontSize: 11, fontWeight: 700, textAlign: "center", marginTop: 6, color: "rgb(var(--mg-ink-rgb) / 0.6)", minHeight: 14 }}>
+        {choice.note ?? (model_state === "loaded" ? "Drag to turn it" : "Loading the 3D model…")}
+      </div>
+    </>
+  );
+}
+
+export default function SpeciesCard({ species_code, pool, is_seen, learn, action, onClose }: Props) {
+  const curated = species[species_code];
+  const entry = pool.find((e) => e.species_code === species_code);
+  const fact = cardFact(species_code, curated, entry);
+  const is_reduced = prefersReducedMotion();
+
+  /* Escape is handled once, in app.tsx, for every sheet — so it closes the
+     top one only. */
 
   return (
     <div
@@ -130,52 +187,31 @@ export default function SpeciesCard({ species_code, pool, is_seen, learn, action
           borderTopLeftRadius: 16,
           borderTopRightRadius: 16,
           boxShadow: "var(--mg-shadow-up)",
-          padding: "8px 22px 28px",
+          padding: "0 22px 28px",
           animation: is_reduced ? undefined : "fgup .3s cubic-bezier(.2,.8,.2,1)",
         }}
       >
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          style={{ display: "block", width: 42, height: 5, borderRadius: 999, background: "rgb(var(--mg-ink-rgb) / 0.28)", margin: "4px auto 8px" }}
-        />
-
+        {/* Sticky: the close stays in reach however far the card is scrolled. */}
         <div
           style={{
-            height: 240,
-            borderRadius: 14,
-            background: "linear-gradient(180deg, rgba(62,154,74,0.10), rgba(62,154,74,0.02))",
-            display: "grid",
-            placeItems: "center",
-            overflow: "hidden",
+            position: "sticky",
+            top: 0,
+            zIndex: 2,
+            margin: "0 -22px",
+            padding: "6px 10px 4px",
+            background: "var(--mg-surface)",
+            display: "flex",
+            justifyContent: "flex-end",
           }}
         >
-          {is_model ? (
-            <model-viewer
-              key={fact.model_path}
-              ref={viewer_ref}
-              src={fact.model_path!}
-              alt={`A 3D model of ${fact.common_name}`}
-              camera-controls
-              interaction-prompt="none"
-              loading="eager"
-              shadow-intensity="1"
-              shadow-softness="0.8"
-              {...motion}
-              style={{ width: "100%", height: "100%", "--poster-color": "transparent" } as CSSProperties}
-            >
-              {/* Shown until the model is in: the same portrait the fallback uses. */}
-              <div slot="poster" style={{ width: "100%", height: "100%", display: "grid", placeItems: "center" }}>
-                {portrait(150)}
-              </div>
-            </model-viewer>
-          ) : (
-            portrait(160)
-          )}
+          <span
+            aria-hidden="true"
+            style={{ position: "absolute", left: "50%", top: 10, width: 42, height: 5, marginLeft: -21, borderRadius: 999, background: "rgb(var(--mg-ink-rgb) / 0.28)" }}
+          />
+          <SheetClose onClose={onClose} />
         </div>
-        <div style={{ fontSize: 11, fontWeight: 700, textAlign: "center", marginTop: 6, color: "rgb(var(--mg-ink-rgb) / 0.6)", minHeight: 14 }}>
-          {choice.note ?? (model_state === "loaded" ? "Drag to turn it" : "Loading the 3D model…")}
-        </div>
+
+        <SpeciesHero species_code={species_code} pool={pool} />
 
         <div style={{ textAlign: "center", marginTop: 10 }}>
           <div style={{ fontWeight: 800, fontSize: 26, lineHeight: 1.15, letterSpacing: "-0.02em" }}>{fact.common_name}</div>

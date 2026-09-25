@@ -15,6 +15,7 @@
  * map keeps the SVG billboard — the spec says the map stays 2D raster + fills.
  */
 import "@google/model-viewer";
+import { stage_sticker } from "./asset/kit";
 import type { Stage } from "./stage.ts";
 import { STAGE_LABEL } from "./stage.ts";
 
@@ -50,7 +51,17 @@ export default function CharacterModel({ stage, size = 108 }: Props) {
         height: size,
         "--poster-color": "transparent",
       } as CSSProperties}
-    />
+    >
+      {/* The flat sticker stands in until the .glb is in — the pot used to be
+          blank for a second and a half on a cold load. */}
+      <img
+        slot="poster"
+        src={stage_sticker[stage]}
+        alt=""
+        aria-hidden="true"
+        style={{ width: "100%", height: "100%", objectFit: "contain" }}
+      />
+    </model-viewer>
   );
 }
 

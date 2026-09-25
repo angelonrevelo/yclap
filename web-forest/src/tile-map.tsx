@@ -1002,30 +1002,44 @@ function Credit({ text, offset, is_dim }: { text: string; offset: number; is_dim
         aria-label="Map data credits"
         title={text}
         onClick={() => setOpen(true)}
+        /* A 44 px hit area around a small disc: the disc stays quiet, the
+           thumb still lands. Parked in the corner, clear of the pet. */
         style={{
           position: "absolute",
-          right: 8,
-          bottom: offset + 6,
+          right: 0,
+          bottom: offset - 4,
           zIndex: 21,
-          width: 22,
-          height: 22,
-          borderRadius: 999,
-          border: "1px solid rgba(31,32,34,0.16)",
-          background: "rgba(249,249,249,0.86)",
-          color: "rgba(31,32,34,0.68)",
-          fontSize: 12,
-          fontWeight: 800,
-          fontStyle: "italic",
-          fontFamily: "Georgia, serif",
-          lineHeight: 1,
+          width: 44,
+          height: 44,
           display: "grid",
           placeItems: "center",
           cursor: "pointer",
           opacity: is_dim ? 0.72 : 1,
           padding: 0,
+          background: "transparent",
+          border: "none",
         }}
       >
-        i
+        <span
+          aria-hidden="true"
+          style={{
+            width: 24,
+            height: 24,
+            borderRadius: 999,
+            border: "1px solid rgba(31,32,34,0.16)",
+            background: "rgba(249,249,249,0.86)",
+            color: "rgba(31,32,34,0.68)",
+            fontSize: 12,
+            fontWeight: 800,
+            fontStyle: "italic",
+            fontFamily: "Georgia, serif",
+            lineHeight: 1,
+            display: "grid",
+            placeItems: "center",
+          }}
+        >
+          i
+        </span>
       </button>
     );
   }
@@ -1069,10 +1083,13 @@ function Credit({ text, offset, is_dim }: { text: string; offset: number; is_dim
             border: "none",
             background: "transparent",
             color: "rgba(31,32,34,0.5)",
-            fontSize: 16,
+            fontSize: 18,
             lineHeight: 1,
             cursor: "pointer",
-            padding: "0 2px",
+            width: 44,
+            height: 44,
+            margin: "-12px -10px -12px 0",
+            padding: 0,
             flexShrink: 0,
           }}
         >

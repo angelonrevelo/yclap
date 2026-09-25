@@ -421,12 +421,16 @@
   opacity: 1;
   transform: translateY(-2px) scale(1.08);
 }
+/* The underline hangs BELOW the label, out of flow: in flow it pushed the
+   active label 6 px up against its neighbours. */
 .gm-dock-btn[data-active="true"] .gm-dock-label::after {
   content: "";
-  display: block;
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
   width: 18px;
   height: 4px;
-  margin: 2px auto 0;
+  margin-left: -9px;
   border-radius: 99px;
   background: var(--mg-leaf);
 }
@@ -440,6 +444,7 @@
 }
 
 .gm-dock-label {
+  position: relative;
   font-family: var(--mg-heading);
   font-size: 12px;
   font-weight: 600;
@@ -452,7 +457,6 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  margin-bottom: -2px;
 }
 
 /* The camera: a flat lagoon disc with a white ring — Pokémon GO's one big button. */
@@ -477,9 +481,12 @@
   height: 50px;
 }
 
+/* Same size and line box as the other four labels, so all five sit on one
+   baseline (it was 12.5 px on a taller default line box, off by a few px). */
 .gm-go-tag {
   font-family: var(--mg-heading);
-  font-size: 12.5px;
+  font-size: 12px;
+  line-height: 1.1;
   font-weight: 700;
   color: var(--mg-forest);
 }
@@ -615,8 +622,10 @@
   background: #fff;
   box-shadow: var(--mg-sticker);
 }
+/* No pale panel behind a locked card's grey disc: the disc alone says
+   "silhouette", and the rounded rectangle behind it read as a stray shape. */
 .gm-card[data-locked="true"]::before {
-  background: #f4f5f3;
+  display: none;
 }
 
 .gm-card-no {
