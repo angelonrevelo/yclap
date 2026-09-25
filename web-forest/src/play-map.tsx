@@ -23,6 +23,7 @@ import TileMap, { type Projection, type View } from "./tile-map";
 import { RARITY_ORDER, type Spawn } from "./spawn";
 import { kindOf } from "./kind";
 import { KindPath, KIND_TONE } from "./kind-mark";
+import RemoteWalkerLayer, { HallCount, useHall } from "./remote-walker";
 
 /**
  * The play view — the map as the owner asked for it on 09-03: "simple pokemon
@@ -178,6 +179,8 @@ interface Props {
   is_camera_locked?: boolean;
   /** How much of a building to draw — see `SkylineStyle`. */
   skyline_style?: SkylineStyle;
+  /** Level shown to the other walkers in the hall — see `multiplayer.ts`. */
+  level?: number;
 }
 
 type Project = Projection["project"];
@@ -283,7 +286,10 @@ export default function PlayMap({
   onWalkTo,
   is_camera_locked = false,
   skyline_style,
+  level = 1,
 }: Props) {
+  /* The hall: other phones' walkers, live. Only while this view is mounted. */
+  const hall = useHall({ fix, stage, level });
   const here = useMemo(() => (fix ? sectorAt(fix) : null), [fix]);
 
   /* Heading and gait come from the fix actually MOVING, not from a flag
@@ -364,6 +370,8 @@ export default function PlayMap({
                 below every marker — see `skyline.tsx` on why it cannot live
                 in the tilted plane with the rest of the map. */}
             <Skyline projection={projection} centre={view} style={skyline_style} />
+            <RemoteWalkerLayer hall={hall} projection={projection} bearing_degree={bearing_degree} is_desktop={is_desktop} />
+            <HallCount hall={hall} />
 
             {/* The walker, drawn on the glass rather than in the ground.
                 It used to live inside the tilted plane and counter-rotate out

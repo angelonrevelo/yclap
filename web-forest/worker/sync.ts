@@ -10,6 +10,8 @@ import {
   worldFrom,
   type SightingRow,
 } from "../src/campus-world.ts";
+import { freshFindOf } from "../src/multiplayer.ts";
+import { LIVE_PATH, LiveHall } from "./live-socket.ts";
 
 export interface Env {
   CAMPUS: DurableObjectNamespace;
@@ -21,7 +23,7 @@ const SYNC_PATH = new Set(["/world", "/sync", "/live", "/health", "/join", "/min
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-    if (SYNC_PATH.has(url.pathname)) {
+    if (SYNC_PATH.has(url.pathname) || LIVE_PATH.has(url.pathname)) {
       const id = env.CAMPUS.idFromName("loyola");
       return env.CAMPUS.get(id).fetch(request);
     }
@@ -32,9 +34,24 @@ export default {
 export class CampusWorld {
   ctx: DurableObjectState;
   listener: Set<(chunk: string) => void> = new Set();
+  hall: LiveHall;
 
   constructor(ctx: DurableObjectState) {
     this.ctx = ctx;
+    this.hall = new LiveHall(ctx, (headers) => this.cors(headers));
+  }
+
+  /* Hibernation API entry points — the runtime calls these by name. */
+  webSocketMessage(ws: WebSocket, data: string | ArrayBuffer): void {
+    this.hall.message(ws, data);
+  }
+
+  webSocketClose(ws: WebSocket): void {
+    this.hall.close(ws);
+  }
+
+  webSocketError(ws: WebSocket): void {
+    this.hall.close(ws);
   }
 
   async store(): Promise<MemoryCampusStore> {
@@ -70,6 +87,9 @@ export class CampusWorld {
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: this.cors() });
     }
+
+    const live = await this.hall.handle(request, url);
+    if (live) return live;
 
     if (request.method === "GET" && (url.pathname === "/health" || url.pathname === "/world")) {
       return this.json(worldFrom(await this.store()));
@@ -133,9 +153,11 @@ export class CampusWorld {
         const one = sanitizeSighting((raw ?? {}) as Record<string, unknown>, player.player_id);
         if (one) row.push(one);
       }
+      const fresh = freshFindOf(new Set(store.sighting.map((s) => s.sighting_id)), row, player);
       const { merged } = mergeSync(store, player, row);
       await this.persist(store);
       this.broadcast(store);
+      this.hall.announce(fresh);
       return this.json({ ok: true, merged, world: worldFrom(store) });
     }
 

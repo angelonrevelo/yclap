@@ -1,5 +1,5 @@
 /**
- * LAN campus world — same HTTP + SSE contract as worker/sync.ts.
+ * LAN campus world — same HTTP + SSE + hall-socket contract as worker/sync.ts.
  *
  * node server/sync-server.mjs [--port 8788] [--db server/yclap-sync.db]
  */
@@ -20,6 +20,9 @@ mkdirSync(dirname(DB_PATH), { recursive: true });
 const { MemoryCampusStore, mergeSync, sanitizePlayer, sanitizeSighting, worldFrom } = await import(
   pathToFileURL(resolve(process.cwd(), "src/campus-world.ts")).href
 );
+const multiplayer = await import(pathToFileURL(resolve(process.cwd(), "src/multiplayer.ts")).href);
+const { createHall } = await import("./hall.mjs");
+const hall = createHall(multiplayer);
 
 function loadStore() {
   try {
@@ -86,6 +89,25 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === "GET" && url.pathname === "/live/walker") {
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify(hall.snapshot()));
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/live/pose") {
+    let body;
+    try {
+      body = await readJson(req);
+    } catch {
+      body = null;
+    }
+    const snap = body ? hall.pose(body) : null;
+    res.writeHead(snap ? 200 : 400, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify(snap ?? { error: "pose needs player_id and a lat/lon inside the campus frame" }));
+    return;
+  }
+
   if (req.method === "GET" && url.pathname === "/join") {
     const row = store.playerByJoin(url.searchParams.get("code") ?? "");
     if (!row) {
@@ -137,16 +159,22 @@ const server = createServer(async (req, res) => {
       const one = sanitizeSighting(raw ?? {}, player.player_id);
       if (one) row.push(one);
     }
+    const fresh = multiplayer.freshFindOf(new Set(store.sighting.map((s) => s.sighting_id)), row, player);
     const { merged } = mergeSync(store, player, row);
     persist();
     broadcast();
+    hall.announce(fresh);
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true, merged, world: worldFrom(store) }));
     return;
   }
 
   res.writeHead(404, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ error: "not found", route: ["GET /world", "GET /live", "GET /join", "GET /mine", "POST /sync"] }));
+  res.end(JSON.stringify({ error: "not found", route: ["GET /world", "GET /live", "GET /live/socket", "POST /live/pose", "GET /live/walker", "GET /join", "GET /mine", "POST /sync"] }));
+});
+
+server.on("upgrade", (req, socket) => {
+  if (!hall.upgrade(req, socket)) socket.destroy();
 });
 
 server.listen(PORT, () => {
@@ -159,4 +187,5 @@ server.listen(PORT, () => {
   console.log(`  local   http://localhost:${PORT}`);
   for (const a of addr) console.log(`  lan     ${a}`);
   console.log(`  world   GET /world · GET /live · POST /sync · GET /join · GET /mine`);
+  console.log(`  hall    WS /live/socket · POST /live/pose · GET /live/walker`);
 });
