@@ -174,14 +174,27 @@ export interface SyncResult {
   world: World;
 }
 
+/**
+ * How a /sync push went. `too_large` is the server's 413 — this journal is
+ * over the body cap, and retrying will not help — which is not the same thing
+ * as `offline` (no answer at all, or no usable one); `refused` is any other
+ * HTTP error. `none` means no sync server is configured.
+ */
+export type SyncOutcome =
+  | { status: "ok"; result: SyncResult }
+  | { status: "too_large" }
+  | { status: "refused"; http_status: number }
+  | { status: "offline" }
+  | { status: "none" };
+
 export async function syncJournal(
   player: PlayerIdentity,
   wire: SightingWire[],
   summary: PlayerSummary,
   fetch_impl: typeof fetch = globalThis.fetch,
   base_url: string | null = syncUrl(),
-): Promise<SyncResult | null> {
-  if (base_url === null) return null;
+): Promise<SyncOutcome> {
+  if (base_url === null) return { status: "none" };
   try {
     const res = await fetch_impl(`${base_url}/sync`, {
       method: "POST",
@@ -191,11 +204,12 @@ export async function syncJournal(
         sighting: wire,
       }),
     });
-    if (!res.ok) return null;
+    if (res.status === 413) return { status: "too_large" };
+    if (!res.ok) return { status: "refused", http_status: res.status };
     const body = (await res.json()) as SyncResult;
-    return body?.world ? body : null;
+    return body?.world ? { status: "ok", result: body } : { status: "offline" };
   } catch {
-    return null;
+    return { status: "offline" };
   }
 }
 

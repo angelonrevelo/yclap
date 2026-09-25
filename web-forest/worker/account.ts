@@ -18,6 +18,10 @@
  *   GET  /account/save          → { save | null, updated_at | null }
  *   PUT  /account/save          { save, base_updated_at } → { updated_at }
  *
+ * Every answer carries `X-Save-Protocol` (SAVE_PROTOCOL): the client compares
+ * it with its own build's number and, on a mismatch, says "Update available —
+ * reload" instead of a failure it cannot act on (src/account.ts).
+ *
  * The save is compare-and-swap on a stamp only the server writes: a PUT names
  * the `updated_at` it last read (`base_updated_at`, null for "there was none")
  * and is refused with 409 + the stored save if that has moved. A phone with a
@@ -35,6 +39,8 @@ import {
   LOGIN_WINDOW_MS,
   LoginLimit,
   SAVE_MAX_BYTE,
+  SAVE_PROTOCOL,
+  SAVE_PROTOCOL_HEADER,
   SIGNUP_IP_MAX,
   SIGNUP_WINDOW_MS,
   SESSION_COOKIE,
@@ -237,7 +243,21 @@ export class AccountService {
     }
   }
 
+  /** Every route, stamped with the save protocol this server speaks. */
   async handle(request: Request): Promise<Response> {
+    const response = await this.route(request);
+    try {
+      response.headers.set(SAVE_PROTOCOL_HEADER, String(SAVE_PROTOCOL));
+      return response;
+    } catch {
+      /* Immutable headers (a passed-through Response): copy them. */
+      const headers = new Headers(response.headers);
+      headers.set(SAVE_PROTOCOL_HEADER, String(SAVE_PROTOCOL));
+      return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+    }
+  }
+
+  async route(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const is_secure = url.protocol === "https:";
     const route = `${request.method} ${url.pathname}`;

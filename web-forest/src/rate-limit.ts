@@ -1,9 +1,9 @@
 /**
  * Small, host-neutral brakes the Worker, the Durable Object and the LAN server
  * share: a sliding-window counter per key with a bounded key map, the client
- * IP a request came from, the Origin rule for the hall socket and for the POST
- * routes that spend something (the iNat token, a hall seat), and a byte cap on a
- * streamed body.
+ * IP a request came from, the Origin rule (and its CORS answer) for the hall
+ * socket and for the POST routes that spend something (the iNat token, a hall
+ * seat), and a byte cap on a streamed body.
  *
  * In memory on purpose. A Durable Object eviction or a Worker isolate recycle
  * forgets every count — that is a brake on abuse, not a ledger anybody should
@@ -98,11 +98,68 @@ export function clientIp(request: Request): string | null {
 const LOCAL_HOST = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 
 /**
- * The hall socket accepts a browser page from this same host, or from a local
- * dev server. A missing Origin is a non-browser client (no cookie to ride, so
- * nothing to forge) and is let through.
+ * A hostname only a local network can reach: loopback, the RFC 1918 ranges,
+ * CGNAT / Tailscale (100.64/10), IPv4 link-local, IPv6 unique-local and
+ * link-local, and mDNS `.local` names. Nobody on the internet can be served a
+ * page from one of these, so two ports on the same such host are one box.
  */
-export function isHallOrigin(origin: string | null, host: string): boolean {
+export function isPrivateHostname(hostname: string): boolean {
+  const name = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (LOCAL_HOST.has(name) || name.endsWith(".local")) return true;
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(name);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    if (a === 10 || a === 127) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 169 && b === 254) return true;
+    return a === 100 && b >= 64 && b <= 127;
+  }
+  if (!name.includes(":")) return false;
+  if (name === "::1") return true;
+  return /^f[cd][0-9a-f]{0,2}:/.test(name) || /^fe[89ab][0-9a-f]?:/.test(name);
+}
+
+/**
+ * `HALL_PAGE_ORIGIN` — a comma-separated list of page origins the hall also
+ * answers (a page served from somewhere the other rules do not cover). Each is
+ * normalised to its URL origin; anything unparseable is dropped.
+ */
+export function pageOriginListOf(raw: string | null | undefined): string[] {
+  const list: string[] = [];
+  for (const part of String(raw ?? "").split(",")) {
+    const one = part.trim();
+    if (!one) continue;
+    try {
+      const origin = new URL(one).origin;
+      if (origin !== "null") list.push(origin);
+    } catch {
+      /* not an origin */
+    }
+  }
+  return list;
+}
+
+function hostnameOf(host: string): string | null {
+  try {
+    return new URL(`http://${host}`).hostname;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The hall socket accepts a browser page from:
+ * - this same host (scheme-blind, port included);
+ * - a local dev server (`localhost`, loopback);
+ * - the same hostname on another port, when that hostname is a LAN or
+ *   loopback address (`isPrivateHostname`) — the handset build served from
+ *   :4177 talking to the sync server on :8788 (script/handset.md);
+ * - an origin named in `allow` (HALL_PAGE_ORIGIN).
+ * A missing Origin is a non-browser client (no cookie to ride, so nothing to
+ * forge) and is let through.
+ */
+export function isHallOrigin(origin: string | null, host: string, allow: readonly string[] = []): boolean {
   if (!origin) return true;
   let from: URL;
   try {
@@ -112,19 +169,50 @@ export function isHallOrigin(origin: string | null, host: string): boolean {
   }
   if (from.protocol !== "https:" && from.protocol !== "http:") return false;
   if (from.host === host) return true;
-  return LOCAL_HOST.has(from.hostname);
+  if (LOCAL_HOST.has(from.hostname)) return true;
+  if (allow.includes(from.origin)) return true;
+  const host_name = hostnameOf(host);
+  return host_name !== null && from.hostname === host_name && isPrivateHostname(host_name);
 }
 
 /**
  * A POST that spends something (the iNat token, a polled hall seat) must come
- * from this host's own page, a localhost dev server, or no browser at all.
+ * from a page `isHallOrigin` accepts, or no browser at all.
  * No CORS header only stops a foreign page READING the answer: a `no-cors`
  * form POST still arrives. Browsers send Origin on every POST, and
- * Sec-Fetch-Site on every fetch, so either one naming another site refuses it.
+ * Sec-Fetch-Site on every fetch, so either one naming another site refuses it
+ * — unless the Origin is one `allow` names outright.
  */
-export function isOwnPage(request: Request, host: string = new URL(request.url).host): boolean {
+export function isOwnPage(
+  request: Request,
+  host: string = new URL(request.url).host,
+  allow: readonly string[] = [],
+): boolean {
+  const origin = request.headers.get("Origin");
+  if (origin && allow.includes(origin)) return true;
   if (request.headers.get("Sec-Fetch-Site")?.toLowerCase() === "cross-site") return false;
-  return isHallOrigin(request.headers.get("Origin"), host);
+  return isHallOrigin(origin, host, allow);
+}
+
+/**
+ * CORS headers for /live/pose: only for a page `isHallOrigin` accepts that is
+ * on another origin than this host (a same-origin page needs none), and never
+ * `*`. Empty for everyone else, so a foreign page's preflight fails and it
+ * cannot read the roster.
+ */
+export function pageCorsOf(origin: string | null, host: string, allow: readonly string[] = []): Record<string, string> {
+  if (!origin || !isHallOrigin(origin, host, allow)) return {};
+  try {
+    if (new URL(origin).host === host) return {};
+  } catch {
+    return {};
+  }
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "content-type",
+    Vary: "Origin",
+  };
 }
 
 /** The error a capped stream fails with once it has passed its byte cap. */

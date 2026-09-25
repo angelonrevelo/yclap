@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { demoWalkAt, distanceMeter, isInsideCampus, type Fix, type GeoState, type LatLon } from "./geo";
 import {
   PLAY_START,
+  stickSeedOf,
   stickStartOf,
   PLAY_TICK_MS,
   headingFromKey,
@@ -225,7 +226,8 @@ export function useGeo(
     stick.current = IDLE_STICK;
     is_run.current = false;
     destination.current = null;
-    const seed = last_fix.current && isWalkable(last_fix.current) ? last_fix.current : play_at.current;
+    /* From a fix: this player's own ring spot around it, so two phones on one fix do not stack. */
+    const seed = stickSeedOf(last_fix.current, readPlayer().player_id) ?? play_at.current;
     publishPlay(isWalkable(seed) ? seed : PLAY_START);
     last_tick.current = Date.now();
 

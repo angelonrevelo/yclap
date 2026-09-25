@@ -34,12 +34,42 @@ const PATTERN = {
 
 export type HapticKind = keyof typeof PATTERN;
 
+/**
+ * Set by the first pointerdown / keydown anywhere — the fallback for browsers
+ * without `navigator.userActivation`.
+ */
+let is_activated = false;
+if (typeof window !== "undefined") {
+  const mark = () => {
+    is_activated = true;
+    window.removeEventListener("pointerdown", mark, true);
+    window.removeEventListener("keydown", mark, true);
+  };
+  window.addEventListener("pointerdown", mark, true);
+  window.addEventListener("keydown", mark, true);
+}
+
+/**
+ * Has the user touched the page yet? Chrome refuses (and logs a console error
+ * for) any `navigator.vibrate` before the first user gesture — which a buzz on
+ * a sector change or a find coming into reach would hit on every load.
+ */
+export function hasUserActivation(
+  nav: { userActivation?: { hasBeenActive?: boolean } } | undefined = typeof navigator === "undefined" ? undefined : navigator,
+): boolean {
+  const seen = nav?.userActivation?.hasBeenActive;
+  if (typeof seen === "boolean") return seen || is_activated;
+  return is_activated;
+}
+
 function isAllowed(): boolean {
   /* The device preference wins over everything. Read from a module cache, not
      from storage: this runs inside a pointer handler. */
   if (!isHapticEnabled()) return false;
   if (typeof navigator === "undefined") return false;
   if (typeof navigator.vibrate !== "function") return false;
+  /* No-op until the user has touched the page: a vibrate before that is refused. */
+  if (!hasUserActivation()) return false;
   try {
     /* A device that shakes in the hand is motion, and someone who has asked for
        less of it has asked for less of this too. */
@@ -68,7 +98,7 @@ export function haptic(kind: HapticKind = "tap"): void {
 
 /** Stop any pattern in flight — used when a control is released or torn down. */
 export function hapticStop(): void {
-  if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
+  if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function" || !hasUserActivation()) return;
   try {
     navigator.vibrate(0);
   } catch {

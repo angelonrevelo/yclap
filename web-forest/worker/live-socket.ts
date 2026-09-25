@@ -11,18 +11,21 @@
  * them to an eviction costs one poll, not a walker. Nothing here touches
  * storage: presence is never persisted.
  *
- * Brakes: the upgrade and POST /live/pose must come from this host's page (or
- * a localhost dev server), and /live/pose answers with no CORS header; at most
- * HALL_WALKER_MAX sockets and polled walkers, and at most POLL_IP_WALKER_MAX
- * polled walkers per IP, so one address cannot hold every seat; poses are
- * dropped past POSE_PER_SECOND per socket / polled walker and
- * POSE_IP_PER_SECOND per IP. A socket's IP and id ride in its tags, so they
- * survive hibernation too.
+ * Brakes: the upgrade and POST /live/pose must come from a page isHallOrigin
+ * takes (this host, a localhost dev server, or HALL_PAGE_ORIGIN), and
+ * /live/pose sends CORS headers only to such a page on another origin
+ * (pageCorsOf), never `*`; at most HALL_WALKER_MAX sockets and polled walkers,
+ * and at most EDGE_IP_SOCKET_MAX sockets and EDGE_POLL_IP_WALKER_MAX polled
+ * walkers per IP, so one address cannot hold every seat — sized for a booth
+ * sharing one public IP (see src/multiplayer.ts); poses are dropped past
+ * POSE_PER_SECOND per socket / polled walker and POSE_IP_PER_SECOND per IP. A
+ * socket's IP and id ride in its tags, so they survive hibernation too.
  */
 import type { WorldFind } from "../src/campus-world.ts";
 import {
+  EDGE_IP_SOCKET_MAX,
+  EDGE_POLL_IP_WALKER_MAX,
   HALL_WALKER_MAX,
-  POLL_IP_WALKER_MAX,
   POSE_IP_PER_SECOND,
   POSE_PER_SECOND,
   rosterOf,
@@ -31,7 +34,7 @@ import {
   type HallMessage,
   type Pose,
 } from "../src/multiplayer.ts";
-import { RateWindow, clientIp, isHallOrigin, isOwnPage } from "../src/rate-limit.ts";
+import { RateWindow, clientIp, isHallOrigin, isOwnPage, pageCorsOf } from "../src/rate-limit.ts";
 
 export const LIVE_PATH = new Set(["/live/socket", "/live/pose", "/live/walker"]);
 
@@ -44,10 +47,13 @@ export class LiveHall {
   recent_find: { at: number; find: WorldFind }[] = [];
   pose_limit: RateWindow = new RateWindow(POSE_PER_SECOND, 1000);
   ip_limit: RateWindow = new RateWindow(POSE_IP_PER_SECOND, 1000);
+  /** HALL_PAGE_ORIGIN, parsed: extra page origins the hall answers. */
+  page_origin: readonly string[];
 
-  constructor(ctx: DurableObjectState, cors: (headers?: HeadersInit) => Headers) {
+  constructor(ctx: DurableObjectState, cors: (headers?: HeadersInit) => Headers, page_origin: readonly string[] = []) {
     this.ctx = ctx;
     this.cors = cors;
+    this.page_origin = page_origin;
   }
 
   socketPose(): Pose[] {
@@ -60,6 +66,13 @@ export class LiveHall {
       this.polled.delete(id);
       this.polled_ip.delete(id);
     }
+  }
+
+  /** Open sockets this IP holds right now (the IP rides in tag 1). */
+  socketsOf(ip: string): number {
+    let count = 0;
+    for (const ws of this.ctx.getWebSockets()) if (this.ctx.getTags(ws)[1] === ip) count += 1;
+    return count;
   }
 
   /** Polled walkers this IP holds right now. */
@@ -100,11 +113,15 @@ export class LiveHall {
     });
   }
 
-  /** /live/pose answers its own page only: no Access-Control-Allow-Origin. */
-  plainJson(body: unknown, status = 200): Response {
+  /**
+   * /live/pose answers its own page only: `cors` is pageCorsOf — empty for a
+   * same-origin page or a foreign one, the page's own origin (never `*`) for
+   * an allowed page on another port or in HALL_PAGE_ORIGIN.
+   */
+  plainJson(body: unknown, status = 200, cors: Record<string, string> = {}): Response {
     return new Response(JSON.stringify(body), {
       status,
-      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...cors },
     });
   }
 
@@ -124,16 +141,20 @@ export class LiveHall {
       if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
         return this.json({ error: "expected a WebSocket upgrade" }, 426);
       }
-      if (!isHallOrigin(request.headers.get("Origin"), url.host)) {
+      if (!isHallOrigin(request.headers.get("Origin"), url.host, this.page_origin)) {
         return this.json({ error: "this hall only opens to its own page" }, 403);
       }
       if (this.ctx.getWebSockets().length >= HALL_WALKER_MAX) {
         return this.json({ error: "the hall is full — polling still shows who is here" }, 503);
       }
+      const ip = clientIp(request);
+      if (ip && this.socketsOf(ip) >= EDGE_IP_SOCKET_MAX) {
+        return this.json({ error: "too many hall sockets from one address" }, 429);
+      }
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
       /* Tags: [socket id, ip]. Read back with getTags, which survives hibernation. */
-      this.ctx.acceptWebSocket(server, [crypto.randomUUID(), clientIp(request) ?? ""]);
+      this.ctx.acceptWebSocket(server, [crypto.randomUUID(), ip ?? ""]);
       server.serializeAttachment(null);
       server.send(JSON.stringify(this.snapshot()));
       return new Response(null, { status: 101, webSocket: client });
@@ -143,37 +164,41 @@ export class LiveHall {
       return this.json(this.snapshot());
     }
 
+    const cors = pageCorsOf(request.headers.get("Origin"), url.host, this.page_origin);
+
     if (url.pathname === "/live/pose" && request.method === "OPTIONS") {
-      return new Response(null, { status: 204 });
+      return new Response(null, { status: 204, headers: cors });
     }
 
     if (url.pathname === "/live/pose" && request.method === "POST") {
-      if (!isOwnPage(request, url.host)) return this.plainJson({ error: "this hall only takes poses from its own page" }, 403);
+      if (!isOwnPage(request, url.host, this.page_origin)) {
+        return this.plainJson({ error: "this hall only takes poses from its own page" }, 403);
+      }
       let raw: unknown;
       try {
         raw = await request.json();
       } catch {
-        return this.plainJson({ error: "bad json" }, 400);
+        return this.plainJson({ error: "bad json" }, 400, cors);
       }
       const now = Date.now();
       const pose = sanitizePose(raw, now);
-      if (!pose) return this.plainJson({ error: "pose needs player_id and a lat/lon inside the campus frame" }, 400);
+      if (!pose) return this.plainJson({ error: "pose needs player_id and a lat/lon inside the campus frame" }, 400, cors);
       const ip = clientIp(request);
       if (!this.allowPose(`poll:${pose.walker_id}`, ip, now)) {
-        return this.plainJson({ error: "too many poses" }, 429);
+        return this.plainJson({ error: "too many poses" }, 429, cors);
       }
       this.prunePolled(now);
       if (!this.polled.has(pose.walker_id)) {
-        if (ip && this.polledBy(ip) >= POLL_IP_WALKER_MAX) {
-          return this.plainJson({ error: "too many walkers from one address" }, 429);
+        if (ip && this.polledBy(ip) >= EDGE_POLL_IP_WALKER_MAX) {
+          return this.plainJson({ error: "too many walkers from one address" }, 429, cors);
         }
-        if (this.polled.size >= HALL_WALKER_MAX) return this.plainJson({ error: "the hall is full" }, 503);
+        if (this.polled.size >= HALL_WALKER_MAX) return this.plainJson({ error: "the hall is full" }, 503, cors);
       }
       this.polled.set(pose.walker_id, pose);
       if (ip) this.polled_ip.set(pose.walker_id, ip);
       else this.polled_ip.delete(pose.walker_id);
       this.broadcast({ type: "pose", walker: pose });
-      return this.plainJson(this.snapshot());
+      return this.plainJson(this.snapshot(), 200, cors);
     }
 
     return this.json({ error: "not found" }, 404);

@@ -336,13 +336,19 @@ The play layer, wired in `src/live.tsx`:
   other phones (the hall keys walkers by a one-way hash), and presence is held
   in memory only, never stored. Brakes, the same on the Worker and the LAN
   hall: the socket upgrade and `POST /live/pose` must come from the hall's own
-  host's page (or localhost dev) — 403 otherwise — and `/live/pose` sends no
-  CORS header; the hall holds at most 200 walkers, one IP at most 4 polled
-  walkers (so one script cannot hold every seat; on Cloudflare a booth wifi is
-  one IP, but phones there use the socket, and polling is only its fallback),
-  and poses past 2 a second per socket or polled walker (60 per IP) are
-  dropped; the LAN hall caps a fragmented message at 64 KB and a `/sync` or
-  `/live/pose` body at 2 MB, dropping the request past it. `npm run sync`
+  page — this host, localhost dev, the same LAN/loopback hostname on another
+  port (the handset build on :4177 or :4178 talking to `npm run sync` on :8788),
+  or an origin listed in `HALL_PAGE_ORIGIN` (comma-separated; env on the LAN
+  server, a var on the Worker) — 403 otherwise. `/live/pose` sends CORS headers
+  (its preflight included) only to such a page on another origin, echoing that
+  origin, never `*`. The hall holds at most 200 walkers; per IP the LAN hall
+  seats at most 4 sockets and 4 polled walkers, the Worker 40 of each —
+  because on Cloudflare the IP is the public one and a whole booth's wifi
+  shares it, while on the LAN every phone has its own. Poses past 2 a second
+  per socket or polled walker (60 per IP) are dropped; the LAN hall caps a
+  fragmented message at 64 KB and a `/sync` or `/live/pose` body at 2 MB,
+  answering 413 (`Connection: close`) and only then dropping the request —
+  the client's `/sync` reports "too large", not "offline". `npm run sync`
   reads each phone's address from the socket, or behind the Vite proxy (which
   runs `xfwd: true`) from the last `X-Forwarded-For` entry — trusted only from
   loopback. The same-origin Worker is the path that works
@@ -442,9 +448,13 @@ If the project outgrows one Durable Object, the SQL moves to Neon unchanged.
   `base_updated_at` it read and only lands if that is still the stored stamp
   (compare-and-swap in one conditional SQL statement). Otherwise 409 plus the
   server's copy, which the client merges and retries once. No phone's clock is
-  ever read, so a phone set to 2099 can neither win nor lock the others out. A
-  tab from before `base_updated_at` gets a 400 and shows "Update available —
-  reload" instead of "Sync failed"; the service worker is at `magisphere-v8`
+  ever read, so a phone set to 2099 can neither win nor lock the others out.
+  Every `/auth/*` and `/account/*` answer carries `X-Save-Protocol` (now 2,
+  `SAVE_PROTOCOL` in `account-core.ts`); a tab whose build speaks another
+  number pushes nothing and shows "Update available — reload" with a Reload
+  button. Any other failure — a malformed save included — is "Sync failed: …"
+  with a Retry button. (A tab built before the header existed cannot know to
+  look for it, so it still shows "Sync failed".) The service worker is at `magisphere-v8`
   and serves the page network-first, so a reload picks up the new build. Known
   limit: no tombstones, so a find deleted on one phone comes back from the
   account.
@@ -509,6 +519,11 @@ This is the project's own server, not an Ateneo login, and the panel says so.
   (`STICK_START`), not on the empty football field — each player on their own
   walkable spot 10–25 m around it, seeded by `player_id` (`spreadStartOf`), so a
   hall of phones does not pile onto one point. `?at=` still pins exactly.
+  Switching to the stick from a GPS fix does the same around the fix
+  (`stickSeedOf`), so two players standing together do not start stacked.
+- Haptics are a no-op until the first tap or key on the page
+  (`navigator.userActivation`, or a first-gesture flag), so a load no longer
+  logs Chrome's blocked-vibrate error.
 
 Projector parameters: `?boot=off` skips the boot, `?weather=storm|rain|heat|clear|night`
 pins a reading (the card says it is pinned), `?time=day|night` pins the sky,

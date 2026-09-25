@@ -284,6 +284,17 @@ export const SAVE_MAX_SIGHTING = 5000;
 export const SAVE_MAX_POINT_EVENT = 20000;
 export const SAVE_MAX_BYTE = 1_500_000;
 
+/**
+ * The /account/save wire protocol this build speaks. 2 = compare-and-swap
+ * (a PUT names `base_updated_at`). Bump it whenever the save request or answer
+ * changes in a way an older tab cannot follow. The server sends its number as
+ * `X-Save-Protocol` on every /auth and /account answer; a tab whose own number
+ * differs is running another build and is told to reload rather than that its
+ * sync "failed".
+ */
+export const SAVE_PROTOCOL = 2;
+export const SAVE_PROTOCOL_HEADER = "X-Save-Protocol";
+
 export function emptySave(): AccountSave {
   return { sighting: [], point_event: [] };
 }

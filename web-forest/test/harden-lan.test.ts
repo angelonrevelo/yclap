@@ -263,9 +263,9 @@ const workerPose = (hall: LiveHall, walker: string, ip: string, origin?: string)
   );
 };
 
-test("the Worker hall holds at most POLL_IP_WALKER_MAX polled walkers per IP", async () => {
+test("the Worker hall holds at most EDGE_POLL_IP_WALKER_MAX polled walkers per IP", async () => {
   const hall = workerHall();
-  const max = multiplayer.POLL_IP_WALKER_MAX;
+  const max = multiplayer.EDGE_POLL_IP_WALKER_MAX;
   for (let i = 0; i < max; i++) assert.equal((await workerPose(hall, `fake-${i}`, "203.0.113.70"))?.status, 200);
   assert.equal((await workerPose(hall, "fake-extra", "203.0.113.70"))?.status, 429);
   assert.equal((await workerPose(hall, "real-phone", "198.51.100.70"))?.status, 200, "another address still gets a seat");

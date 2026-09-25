@@ -15,6 +15,7 @@ import {
   refreshAccount,
   signUp,
   syncSave,
+  UPDATE_AVAILABLE,
   useAccount,
 } from "./account.ts";
 import { PASSWORD_MIN } from "./account-core.ts";
@@ -232,9 +233,15 @@ function SignedIn() {
         </div>
         {account.error && <p style={{ ...NOTE, color: "#B3261E", fontWeight: 700 }}>{account.error}</p>}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <button type="button" style={BTN} disabled={account.is_syncing} onClick={() => void syncSave()}>
-            Sync now
-          </button>
+          {account.error === UPDATE_AVAILABLE ? (
+            <button type="button" style={BTN} onClick={() => location.reload()}>
+              Reload
+            </button>
+          ) : (
+            <button type="button" style={BTN} disabled={account.is_syncing} onClick={() => void syncSave()}>
+              {account.error ? "Retry" : "Sync now"}
+            </button>
+          )}
           <button type="button" style={GHOST} onClick={() => void logOut()}>
             Log out
           </button>

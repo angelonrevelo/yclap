@@ -14,12 +14,18 @@ import { AccountService, isAccountPath, type AccountEnv, type SqlValue } from ".
 import { handleIdentify, IDENTIFY_PATH } from "./inat.ts";
 import { freshFindOf } from "../src/multiplayer.ts";
 import { LIVE_PATH, LiveHall } from "./live-socket.ts";
+import { pageOriginListOf } from "../src/rate-limit.ts";
 
 export interface Env extends AccountEnv {
   CAMPUS: DurableObjectNamespace;
   ASSETS: Fetcher;
   /** iNat API token. `wrangler secret put INAT_API_TOKEN` — never a VITE_ var. */
   INAT_API_TOKEN?: string;
+  /**
+   * Extra page origins the hall answers, comma-separated — a page served from
+   * another host than this Worker (a preview deploy pointing `?sync=` here).
+   */
+  HALL_PAGE_ORIGIN?: string;
 }
 
 const SYNC_PATH = new Set(["/world", "/sync", "/live", "/health", "/join", "/mine"]);
@@ -46,7 +52,7 @@ export class CampusWorld {
   constructor(ctx: DurableObjectState, env: Env) {
     this.ctx = ctx;
     this.env = env;
-    this.hall = new LiveHall(ctx, (headers) => this.cors(headers));
+    this.hall = new LiveHall(ctx, (headers) => this.cors(headers), pageOriginListOf(env.HALL_PAGE_ORIGIN));
   }
 
   /** Accounts live in this object's SQLite — see worker/account.ts. */

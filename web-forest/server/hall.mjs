@@ -8,14 +8,22 @@
  * text frames, unmasked server text frames, ping → pong, close. No
  * extensions, no binary. That is all the hall speaks.
  *
- * Brakes, as on the Worker: the upgrade must come from this host's page or a
- * localhost dev server (403 otherwise); at most HALL_WALKER_MAX sockets and
- * polled walkers, at most POLL_IP_WALKER_MAX polled walkers per IP; poses past
- * POSE_PER_SECOND per socket / polled walker and POSE_IP_PER_SECOND per IP are
- * dropped.
+ * Brakes, as on the Worker: the upgrade must come from a page isHallOrigin
+ * takes — this host, a localhost dev server, the same LAN hostname on another
+ * port, or HALL_PAGE_ORIGIN (403 otherwise); at most HALL_WALKER_MAX sockets
+ * and polled walkers; at most LAN_IP_SOCKET_MAX sockets and POLL_IP_WALKER_MAX
+ * polled walkers per IP; poses past POSE_PER_SECOND per socket / polled walker
+ * and POSE_IP_PER_SECOND per IP are dropped.
+ *
+ * The per-IP caps are tight here (4) and loose on the Worker (40): on the
+ * wifi every phone has its own address, so four seats is already more than
+ * one person needs, while behind Cloudflare a whole booth shares one public IP.
+ * A loopback caller with no forwarded address (a local script) has no IP and
+ * no per-IP cap.
  */
 import { createHash } from "node:crypto";
 import { RateWindow, isHallOrigin } from "../src/rate-limit.ts";
+import { pageOrigin, remoteIp } from "./request.mjs";
 
 const GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 const MAX_FRAME = 64 * 1024;
@@ -137,14 +145,18 @@ class LiteSocket {
   }
 }
 
-/** `lib` is src/multiplayer.ts, loaded by the caller (it owns the TS import). */
-export function createHall(lib) {
+/**
+ * `lib` is src/multiplayer.ts, loaded by the caller (it owns the TS import).
+ * `page_origin` is the HALL_PAGE_ORIGIN allow-list (request.mjs pageOrigin).
+ */
+export function createHall(lib, page_origin = pageOrigin) {
   const socket = new Set();
   const polled = new Map();
   let recent_find = [];
   const walker_max = lib.HALL_WALKER_MAX ?? 200;
   const pose_per_second = lib.POSE_PER_SECOND ?? 2;
   const poll_ip_walker_max = lib.POLL_IP_WALKER_MAX ?? 4;
+  const socket_ip_max = lib.LAN_IP_SOCKET_MAX ?? 4;
   /** walker_id → the IP polling it, for the per-IP seat cap. */
   const polled_ip = new Map();
   const poll_limit = new RateWindow(pose_per_second, 1000);
@@ -152,6 +164,11 @@ export function createHall(lib) {
   const polledBy = (ip) => {
     let count = 0;
     for (const holder of polled_ip.values()) if (holder === ip) count += 1;
+    return count;
+  };
+  const socketsOf = (ip) => {
+    let count = 0;
+    for (const s of socket) if (s.ip === ip) count += 1;
     return count;
   };
 
@@ -211,8 +228,11 @@ export function createHall(lib) {
   };
 
   return {
-    /** node:http `upgrade` handler. Returns false when the path is not the hall's. */
-    upgrade(req, raw_socket) {
+    /**
+     * node:http `upgrade` handler. Returns false when the path is not the
+     * hall's. `ip` is the caller (remoteIp); null means no per-IP cap.
+     */
+    upgrade(req, raw_socket, ip = remoteIp(req)) {
       const url = new URL(req.url, "http://local");
       if (url.pathname !== "/live/socket") return false;
       const key = req.headers["sec-websocket-key"];
@@ -220,12 +240,16 @@ export function createHall(lib) {
         raw_socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
         return true;
       }
-      if (!isHallOrigin(req.headers.origin ?? null, req.headers.host ?? "")) {
+      if (!isHallOrigin(req.headers.origin ?? null, req.headers.host ?? "", page_origin)) {
         raw_socket.end("HTTP/1.1 403 Forbidden\r\n\r\n");
         return true;
       }
       if (socket.size >= walker_max) {
         raw_socket.end("HTTP/1.1 503 Service Unavailable\r\n\r\n");
+        return true;
+      }
+      if (ip && socketsOf(ip) >= socket_ip_max) {
+        raw_socket.end("HTTP/1.1 429 Too Many Requests\r\n\r\n");
         return true;
       }
       raw_socket.write(
@@ -236,6 +260,7 @@ export function createHall(lib) {
       );
       raw_socket.setNoDelay(true);
       const s = new LiteSocket(raw_socket, onText, onClose);
+      s.ip = ip;
       socket.add(s);
       s.send(JSON.stringify(snapshot()));
       return true;

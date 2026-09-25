@@ -162,9 +162,53 @@ cd web-forest
 node server/sync-server.mjs --port 8788
 ```
 
-Point the app at it by building with `VITE_SYNC_URL=http://<mac-lan-ip>:8788`.
-Two phones on the same wifi then share a world. No auth — it is a demo hall
-server, not a service; do not run it on a public tunnel.
+Then point the phones at it one of two ways. Both keep every phone on the same
+wifi in one world. No auth on the hall — it is a demo server, not a service; do
+not run it on a public tunnel.
+
+**1. Same-origin through Vite (preferred).** No build flag. Vite's dev server
+(:4177) and `npm run preview` (:4178) both proxy `/sync /live /world /join
+/mine /auth/ /account/ /inat/identify` — and the hall socket — to :8788:
+
+```
+MAGISPHERE_HOST=0.0.0.0 npm run dev          # or: npm run build && MAGISPHERE_HOST=0.0.0.0 npm run preview
+```
+
+Phones open `http://<mac-lan-ip>:4177/` (or `:4178`). Everything is one
+origin, so accounts and the iNat proxy work too, and the sync server still
+tells the phones apart (it reads the proxy's `X-Forwarded-For`, trusted from
+loopback only).
+
+**2. `VITE_SYNC_URL` straight at :8788.** Build with the sync server's address
+baked in, and serve the page from the SAME host:
+
+```
+VITE_SYNC_URL=http://<mac-lan-ip>:8788 npm run build
+MAGISPHERE_HOST=0.0.0.0 npm run preview      # page on http://<mac-lan-ip>:4178
+```
+
+The page (`:4178`) and the hall (`:8788`) are different origins. The hall
+takes that page because its hostname equals the hall's own `Host` and is a
+LAN/loopback address (10/8, 172.16/12, 192.168/16, 100.64/10 Tailscale,
+link-local, `.local`), on any port — so open the page by the **same name**
+that is in `VITE_SYNC_URL` (IP with IP, `.local` with `.local`), or the socket
+is refused 403 and no other walkers ever appear. `/live/pose` answers that
+page's preflight with its origin in `Access-Control-Allow-Origin` (plus
+`Access-Control-Allow-Headers: content-type`), and nobody else. A page served
+from anywhere else — another box, a tunnel — must be named explicitly:
+
+```
+HALL_PAGE_ORIGIN=https://preview.example,http://192.168.1.30:4178 node server/sync-server.mjs --port 8788
+```
+
+(On the Worker, the same `HALL_PAGE_ORIGIN` is a Worker var.)
+Accounts and the iNat proxy do not follow `VITE_SYNC_URL`: they always call
+the page's own origin, which on `npm run preview` is proxied to :8788 anyway.
+
+Per-IP seat caps on the LAN are tight — 4 sockets and 4 polled walkers per
+address — because every phone on the wifi has its own; a test with more than
+four tabs on ONE laptop will turn the fifth away (429). The Worker allows 40 of
+each, since a booth behind one public IP is one address to Cloudflare.
 
 **Gotcha that will bite on Path B:** an HTTPS page cannot `fetch` an HTTP
 endpoint — the browser blocks it as mixed content, silently, and the world strip

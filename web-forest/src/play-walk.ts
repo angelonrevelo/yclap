@@ -46,23 +46,40 @@ function startHashOf(text: string): number {
 }
 
 /**
- * This player's own start: a spot on a 10–25 m ring around `STICK_START`,
- * seeded by `player_id`, so every phone at the showcase hall does not pile its
- * walker onto one point. Same id, same spot, every load. If the seeded spot is
- * not walkable (the same `isWalkable` rule the stick obeys) the ring is walked
- * round in 30° steps; if none of it is, `STICK_START` itself.
+ * This player's own spot on a 10–25 m ring around `center`, seeded by
+ * `player_id`, so phones that start from the same point do not pile their
+ * walkers onto it. Same id, same offset, every time. If the seeded spot is not
+ * walkable (the same `isWalkable` rule the stick obeys) the ring is walked
+ * round in 30° steps; if none of it is, `center` itself.
  */
-export function spreadStartOf(player_id: string): LatLon {
-  if (!player_id) return STICK_START;
+export function spreadAround(center: LatLon, player_id: string): LatLon {
+  if (!player_id) return center;
   const h = startHashOf(`start:${player_id}`);
   const angle = h % 360;
   const span = START_SPREAD_MAX_M - START_SPREAD_MIN_M;
   const meter = START_SPREAD_MIN_M + ((h >>> 9) % 1000) / 1000 * span;
   for (let step = 0; step < 12; step += 1) {
-    const at = offsetMeter(STICK_START, (angle + step * 30) % 360, meter);
+    const at = offsetMeter(center, (angle + step * 30) % 360, meter);
     if (isWalkable(at)) return at;
   }
-  return STICK_START;
+  return center;
+}
+
+/** This player's own start near `STICK_START` (`spreadAround`). */
+export function spreadStartOf(player_id: string): LatLon {
+  return spreadAround(STICK_START, player_id);
+}
+
+/**
+ * Where the stick picks up when you switch to it with a GPS fix. Two players
+ * standing together share one fix, so each takes their own ring offset from
+ * it (`spreadAround`) — same rule as the stick start — instead of both walkers
+ * landing on one point. A fix off the walkable campus gives null: the caller
+ * keeps its own start.
+ */
+export function stickSeedOf(fix: LatLon | null, player_id: string): LatLon | null {
+  if (!fix || !isWalkable(fix)) return null;
+  return spreadAround(fix, player_id);
 }
 
 /**
