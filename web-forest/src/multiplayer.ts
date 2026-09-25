@@ -244,6 +244,46 @@ export function isNearbyFind(
   return distanceMeter(me.at, { lat: find.lat, lon: find.lon }) <= radius_m;
 }
 
+/* ── who is out, said once ─────────────────────────────────────────────── */
+
+/**
+ * How many walkers are out RIGHT NOW, you included — the one number every
+ * surface prints (the map pill, the trainer sheet, the Dex strip).
+ *
+ * It is read off the hall's tracks, which `pruneTrack` keeps to walkers heard
+ * in the last `STALE_MS`, plus you once your own pose has gone out. It is NOT
+ * the synced world's `walker` list: that one remembers anybody who synced in
+ * the last fifteen minutes, which is how one phone used to show three counts.
+ */
+export function walkerOutCount(other_count: number, is_sharing: boolean): number {
+  return Math.max(0, other_count) + (is_sharing ? 1 : 0);
+}
+
+/** "N walkers out" — counting you, and saying so. Null when never measured. */
+export function walkerOutLabel(count: number | null, is_sharing: boolean): string | null {
+  if (count === null) return null;
+  if (count <= 0) return "No walkers out";
+  if (count === 1 && is_sharing) return "Just you out";
+  return `${count} walker${count === 1 ? "" : "s"} out${is_sharing ? ", incl. you" : ""}`;
+}
+
+/**
+ * The name the hall shows for this phone. A signed-in account's display name
+ * wins, then the name typed in Settings, then the generated walker name —
+ * signing in as "Hall One" must not leave the room seeing "Molave Walker 8".
+ */
+export function liveNameOf(input: {
+  account_name?: string | null;
+  preference_name?: string | null;
+  player_name: string;
+}): string {
+  for (const one of [input.account_name, input.preference_name, input.player_name]) {
+    const name = (one ?? "").trim().slice(0, 40);
+    if (name) return name;
+  }
+  return "Walker";
+}
+
 export const SOURCE_LABEL: Record<FixSource, string> = {
   gps: "GPS",
   demo: "demo walk",
@@ -278,6 +318,28 @@ export function applyHall(track: Map<string, Track>, message: HallMessage, me: s
     next.set(pose.walker_id, receivePose(prev, pose, now));
   }
   return next;
+}
+
+/**
+ * Close a hall socket without the browser's "closed before the connection is
+ * established" warning: one still CONNECTING is closed the moment it opens
+ * instead, and its handlers are dropped so it cannot report back.
+ */
+export function closeQuietly(socket: WebSocket, is_open: boolean): void {
+  socket.onmessage = null;
+  socket.onclose = null;
+  try {
+    if (socket.readyState === 0) {
+      socket.onopen = () => socket.close();
+      socket.onerror = null;
+      return;
+    }
+    socket.onopen = null;
+    if (is_open) socket.send(JSON.stringify({ type: "bye" }));
+    socket.close();
+  } catch {
+    /* already gone */
+  }
 }
 
 export type HallMode = "connecting" | "socket" | "poll" | "off";
@@ -407,7 +469,11 @@ export function openHall(
   };
 
   onMode("connecting");
-  connect();
+  /* Deferred a tick: React StrictMode mounts, unmounts and remounts an effect
+     synchronously, and a socket created on the first mount would be closed
+     while still CONNECTING — which is what logged "WebSocket is closed before
+     the connection is established" on every page load. */
+  retry_timer = setTimeout(connect, 0);
 
   return {
     sendPose(pose) {
@@ -427,15 +493,9 @@ export function openHall(
       is_closed = true;
       stopPoll();
       if (retry_timer) clearTimeout(retry_timer);
-      if (ws) {
-        try {
-          if (is_socket_open) ws.send(JSON.stringify({ type: "bye" }));
-          ws.close();
-        } catch {
-          /* already gone */
-        }
-      }
+      const socket = ws;
       ws = null;
+      if (socket) closeQuietly(socket, is_socket_open);
     },
   };
 }

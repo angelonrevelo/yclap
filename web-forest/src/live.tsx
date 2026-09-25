@@ -595,16 +595,18 @@ export function WildShelf({
 export function useLiveWorld(input: {
   sighting: Sighting[];
   summary: PlayerSummary;
+  /** The name the campus sees — the account's when signed in (`liveNameOf`). */
+  name: string;
 }): { world: World | null; is_live: boolean } {
   const [world, setWorld] = useState<World | null>(null);
   const sighting_key = input.sighting.map((s) => s.sighting_id).join(",");
-  const summary_key = `${input.summary.stage}:${input.summary.level}:${input.summary.total_points}:${input.summary.streak_weeks}`;
+  const summary_key = `${input.summary.stage}:${input.summary.level}:${input.summary.total_points}:${input.summary.streak_weeks}:${input.name}`;
 
   useEffect(() => {
     if (!syncUrl()) return;
     let alive = true;
     const push = () => {
-      const me = readPlayer();
+      const me = { ...readPlayer(), name: input.name };
       const wire = input.sighting.map((s) =>
         toWire(s, species[s.species_code]?.common_name ?? s.inat_common_name ?? s.species_code),
       );
@@ -633,8 +635,22 @@ export function useLiveWorld(input: {
  * Who else is out. Renders only when a sync server actually answered — with no
  * server configured this returns null rather than an empty "0 walkers" box,
  * because a zero we never measured is worse than nothing on screen.
+ *
+ * The walker count is `walker_label`, the hall's live count (`hallLabelOf`),
+ * never the world's `walker` list: that one keeps anybody who synced in the
+ * last fifteen minutes and so disagreed with the map pill.
  */
-export function WorldStrip({ sighting, world: given }: { sighting: Sighting[]; world?: World | null }) {
+export function WorldStrip({
+  sighting,
+  world: given,
+  walker_label = null,
+  name,
+}: {
+  sighting: Sighting[];
+  world?: World | null;
+  walker_label?: string | null;
+  name?: string;
+}) {
   const [world, setWorld] = useState<World | null>(given ?? null);
 
   useEffect(() => {
@@ -658,18 +674,17 @@ export function WorldStrip({ sighting, world: given }: { sighting: Sighting[]; w
   }, [given]);
 
   if (!world) return null;
-  const me = readPlayer();
-  const other = world.walker.filter((w) => w.player_id !== me.player_id);
+  const me_name = name ?? readPlayer().name;
   const mine = sighting.filter(isBadge).length;
 
   return (
     <Card padding={14}>
       <div className="flex items-baseline justify-between gap-3">
         <Eyebrow>THE CAMPUS RIGHT NOW</Eyebrow>
-        <span style={{ fontSize: 11.5, fontWeight: 700, color: "rgb(var(--mg-ink-rgb) / 0.6)" }}>you are {me.name}</span>
+        <span style={{ fontSize: 11.5, fontWeight: 700, color: "rgb(var(--mg-ink-rgb) / 0.6)" }}>you are {me_name}</span>
       </div>
       <div className="flex flex-wrap gap-2" style={{ marginTop: 10 }}>
-        <Pill tone="info">{other.length} other walker{other.length === 1 ? "" : "s"} out</Pill>
+        {walker_label && <Pill tone="info">{walker_label}</Pill>}
         <Pill tone="neutral">{world.totals.sighting_count} finds shared</Pill>
         <Pill tone="native">{mine} of them yours</Pill>
       </div>

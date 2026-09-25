@@ -276,7 +276,14 @@ The play layer, wired in `src/live.tsx`:
   on the play view sees the other walkers — their stage sticker, name, level
   and position source — moving live, a callout when somebody logs a find within
   150 m, and an "N walkers out" pill (hidden until the hall has actually
-  answered). Transport is a WebSocket on the Durable Object (hibernation API,
+  answered). That count includes you once your pose is out ("3 walkers out,
+  incl. you") and is the ONLY walker count: the trainer sheet's `LIVE · …` and
+  the Dex strip read the same hall roster (walkers heard in the last 60 s), not
+  the synced world's 15-minute `walker` list. The app opens the hall once, so it
+  stays live off the play view. Your live name is the signed-in account's
+  display name, else the Settings name, else the generated one; your level is
+  the HUD's (`levelOf(total_points)`), for the hall and the sync alike. Remote
+  walkers are drawn at your own walker's size (`avatarPx`). Transport is a WebSocket on the Durable Object (hibernation API,
   `GET /live/socket`); when an upgrade fails the client polls `POST /live/pose`
   / `GET /live/walker` every 2 s and keeps retrying the socket. Poses go out at
   most once a second, only on a ≥3 m move or a look change, plus a 10 s
@@ -428,7 +435,9 @@ This is the project's own server, not an Ateneo login, and the panel says so.
   of wall. It reads as built without hiding the path behind it. `solid` still
   draws real heights.
 - The stick walk now starts on the footpath by Schmitt Hall and the Zen Garden
-  (`STICK_START`), not on the empty football field.
+  (`STICK_START`), not on the empty football field — each player on their own
+  walkable spot 10–25 m around it, seeded by `player_id` (`spreadStartOf`), so a
+  hall of phones does not pile onto one point. `?at=` still pins exactly.
 
 Projector parameters: `?boot=off` skips the boot, `?weather=storm|rain|heat|clear|night`
 pins a reading (the card says it is pinned), `?time=day|night` pins the sky,

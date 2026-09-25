@@ -14,10 +14,13 @@ import {
   shouldSend,
   SOURCE_LABEL,
   walkerIdOf,
+  walkerOutCount,
+  walkerOutLabel,
   type HallMode,
   type SentPose,
   type Track,
 } from "./multiplayer";
+import { avatarPx } from "./camera-feel";
 import { screenAngleOf, signedAngle } from "./play-walk";
 import { readPlayer, syncUrl } from "./sync";
 import type { Projection } from "./tile-map";
@@ -35,7 +38,25 @@ export interface Hall {
   is_sharing: boolean;
 }
 
-export function useHall(input: { fix: Fix | null | undefined; stage: Stage; level: number }): Hall {
+/**
+ * Walkers out right now, you included, or null while the hall has not
+ * answered. Every "N walkers out" on screen reads this and nothing else.
+ */
+export function hallCountOf(hall: Hall): number | null {
+  if (hall.mode !== "socket" && hall.mode !== "poll") return null;
+  return walkerOutCount(hall.track.size, hall.is_sharing);
+}
+
+export function hallLabelOf(hall: Hall): string | null {
+  return walkerOutLabel(hallCountOf(hall), hall.is_sharing);
+}
+
+/**
+ * Open the hall once, for the whole app — the map, the trainer sheet and the
+ * Dex all count off this one connection. `name` and `level` are read fresh on
+ * every send, so signing in re-announces you under the account's name.
+ */
+export function useHall(input: { fix: Fix | null | undefined; stage: Stage; level: number; name: string }): Hall {
   const [track, setTrack] = useState<Map<string, Track>>(() => new Map());
   const [callout, setCallout] = useState<{ find: WorldFind; until: number }[]>([]);
   const [mode, setMode] = useState<HallMode>("off");
@@ -77,9 +98,9 @@ export function useHall(input: { fix: Fix | null | undefined; stage: Stage; leve
     );
 
     const send = () => {
-      const { fix, stage, level } = latest.current;
+      const { fix, stage, level, name } = latest.current;
       if (!fix || !isInsideCampus(fix)) return;
-      const next = { lat: fix.lat, lon: fix.lon, level, stage, name: me.name };
+      const next = { lat: fix.lat, lon: fix.lon, level, stage, name };
       const now = Date.now();
       if (!shouldSend(last, next, now)) return;
       last = { ...next, at: now };
@@ -125,22 +146,26 @@ export default function RemoteWalkerLayer({
   projection,
   bearing_degree,
   is_desktop,
+  zoom,
 }: {
   hall: Hall;
   projection: Projection;
   bearing_degree: number;
   is_desktop: boolean;
+  /** The camera zoom — remote walkers are drawn at your own walker's size. */
+  zoom: number;
 }) {
   const now = useGlideClock(hall.track);
   const { width, height } = projection;
-  const size = is_desktop ? 96 : 80;
+  const size = avatarPx(zoom, is_desktop);
 
   return (
     <>
       {[...hall.track.values()].map((one) => {
         const at = projection.toScreen(projection.project(positionOf(one, now)));
         if (at.x < -80 || at.y < -120 || at.x > width + 80 || at.y > height + 120) return null;
-        const scale = Math.max(0.55, Math.min(1.25, at.scale));
+        /* Same clamp as your own walker, so two phones side by side agree. */
+        const scale = Math.max(0.6, Math.min(1.35, at.scale));
         return (
           <div
             key={one.pose.walker_id}
@@ -218,13 +243,13 @@ export default function RemoteWalkerLayer({
 }
 
 /**
- * "N walkers out". Hidden until the hall has actually answered: with no server
- * there is no count, and a zero we never measured is worse than nothing.
+ * "N walkers out", you included. Hidden until the hall has actually answered:
+ * with no server there is no count, and a zero we never measured is worse than
+ * nothing.
  */
 export function HallCount({ hall }: { hall: Hall }) {
-  if (hall.mode !== "socket" && hall.mode !== "poll") return null;
-  const n = hall.track.size + (hall.is_sharing ? 1 : 0);
-  const label = n === 0 ? "No walkers out" : n === 1 && hall.is_sharing ? "Just you out" : `${n} walker${n === 1 ? "" : "s"} out`;
+  const label = hallLabelOf(hall);
+  if (label === null) return null;
   return (
     <div
       role="status"

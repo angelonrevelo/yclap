@@ -16,6 +16,7 @@ import {
   type PlayStick,
 } from "./play-walk";
 import { filterFix, type FixFilter } from "./fix-filter";
+import { readPlayer } from "./sync";
 
 const DEMO_LOOP_MS = 42000;
 const DEMO_TICK_MS = 120;
@@ -93,7 +94,11 @@ export function useGeo(
 } {
   const [state, setState] = useState<GeoState>({ status: "idle", fix: null, message: null });
   const started_at = useRef<number>(Date.now());
-  const play_at = useRef<LatLon>(stickStartOf(typeof window === "undefined" ? "" : window.location.search));
+  /* Computed once: the start is seeded by the player id, read from storage. */
+  const [start_at] = useState<LatLon>(() =>
+    stickStartOf(typeof window === "undefined" ? "" : window.location.search, readPlayer().player_id),
+  );
+  const play_at = useRef<LatLon>(start_at);
   const held = useRef<PlayHeld>(IDLE_HELD);
   const stick = useRef<PlayStick>(IDLE_STICK);
   const is_run = useRef(false);

@@ -17,7 +17,10 @@ import { joinCodeOf } from "./campus-world";
 import { haptic } from "./haptic";
 import StreakFlame from "./streak-flame";
 import SettingsScreen, { type SettingsIcon } from "./settings";
-import { useAccountSync } from "./account";
+import { useAccount, useAccountSync } from "./account";
+import { levelOf } from "./level";
+import { liveNameOf } from "./multiplayer";
+import { hallLabelOf, useHall } from "./remote-walker";
 import {
   readPreference,
   setHapticEnabled,
@@ -439,7 +442,7 @@ function TrainerSheet({
   join_code,
   walker_name,
   is_live,
-  live_count,
+  live_label,
   friend,
   group,
   onAddPartner,
@@ -459,7 +462,8 @@ function TrainerSheet({
   join_code: string;
   walker_name: string;
   is_live: boolean;
-  live_count: number;
+  /** The hall's "N walkers out", or null before it answers. */
+  live_label: string | null;
   friend: Friend[];
   group: GroupStreak;
   onAddPartner: (code: string) => void;
@@ -499,7 +503,7 @@ function TrainerSheet({
               <span style={{ opacity: 0.8 }}>· {snap.buddy.label}</span>
             </div>
             <div style={{ fontSize: 11, marginTop: 4, letterSpacing: "0.08em", fontWeight: 800 }}>
-              {is_live ? `LIVE · ${live_count} out` : "OFFLINE"} · {join_code}
+              {live_label ? `LIVE · ${live_label}` : is_live ? "LIVE" : "OFFLINE"} · {join_code}
             </div>
           </div>
         </div>
@@ -2421,6 +2425,8 @@ function JournalScreen({
   is_seeded = false,
   gamify,
   world = null,
+  walker_label = null,
+  walker_name,
 }: {
   sighting: Sighting[];
   seen: Set<string>;
@@ -2433,6 +2439,9 @@ function JournalScreen({
   is_seeded?: boolean;
   gamify: GamifySnapshot;
   world?: World | null;
+  /** The hall's live "N walkers out" — the same count as the map pill. */
+  walker_label?: string | null;
+  walker_name?: string;
 }) {
   const summary = summarize(sighting);
   const wild_line =
@@ -2471,7 +2480,7 @@ function JournalScreen({
           <JournalGrid seen={seen} is_desktop={is_desktop} />
         </div>
         <div style={{ marginTop: 18 }}>
-          <WorldStrip sighting={sighting} world={world} />
+          <WorldStrip sighting={sighting} world={world} walker_label={walker_label} name={walker_name} />
         </div>
         {seen.size > 0 && (
           <>
@@ -3309,15 +3318,10 @@ export default function App() {
   };
   const stage = stageFor(seen_sector.size);
   const vigor = useMemo(() => vigorOf(sighting), [sighting]);
-  const live = useLiveWorld({
-    sighting,
-    summary: {
-      stage,
-      level: seen_sector.size + 1,
-      total_points: gamify.total_points,
-      streak_weeks: gamify.streak_weeks,
-    },
-  });
+  /* One level everywhere: the HUD's, off the same points. It used to be
+     `seen_sector.size + 1` for the server and the hall, so the room saw Lv 2
+     while the HUD said 1. */
+  const level = levelOf(gamify.total_points).level;
   const me = readPlayer();
   /* Device preferences. `setHapticEnabled` mirrors the flag into a module
      cache because the haptic path runs inside pointer handlers and must not
@@ -3327,6 +3331,27 @@ export default function App() {
     setHapticEnabled(row.is_haptic);
     return row;
   });
+  /* The name the campus sees: the account's when signed in. */
+  const account = useAccount();
+  const live_name = liveNameOf({
+    account_name: account.status === "signed_in" ? account.account?.display_name : null,
+    preference_name: preference.walker_name,
+    player_name: me.name,
+  });
+  const live = useLiveWorld({
+    sighting,
+    summary: {
+      stage,
+      level,
+      total_points: gamify.total_points,
+      streak_weeks: gamify.streak_weeks,
+    },
+    name: live_name,
+  });
+  /* The hall, opened once for the whole app: the map pill, the trainer sheet
+     and the Dex strip all count off this one roster (`hallLabelOf`). */
+  const hall = useHall({ fix: geo.fix, stage, level, name: live_name });
+  const hall_label = hallLabelOf(hall);
   /* Section art. Filled from `asset/kit.ts` once the generated set is keyed and
      committed; every section renders headed-but-unillustrated until then, which
      is why `SettingsIcon` is all-optional. */
@@ -3838,7 +3863,7 @@ export default function App() {
         seen_sector={seen_sector}
         stage={stage}
         vigor={vigor}
-        level={seen_sector.size + 1}
+        hall={hall}
         is_desktop={is_desktop}
         /* Both the map's own toggle and the device preference have to agree
            before the hatch is drawn. Neither of them makes the ground
@@ -4105,6 +4130,8 @@ export default function App() {
             is_seeded={is_seeded}
             gamify={live_snap}
             world={live.world}
+            walker_label={hall_label}
+            walker_name={live_name}
           />
         )}
         {route === "/settings" && (
@@ -4142,9 +4169,9 @@ export default function App() {
             geo_mode={geo_mode}
             geo_status={geo.status}
             join_code={me.join_code}
-            walker_name={me.name}
+            walker_name={live_name}
             is_live={live.is_live}
-            live_count={live.world?.walker.length ?? 0}
+            live_label={hall_label}
             friend={friend}
             group={group_streak}
             onAddPartner={addPartner}

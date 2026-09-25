@@ -25,7 +25,7 @@ import Flora, { type Tuft } from "./flora";
 import { RARITY_ORDER, type Spawn } from "./spawn";
 import { kindOf } from "./kind";
 import { KindPath, KIND_TONE } from "./kind-mark";
-import RemoteWalkerLayer, { HallCount, useHall } from "./remote-walker";
+import RemoteWalkerLayer, { HallCount, type Hall } from "./remote-walker";
 import PetEagle from "./pet-eagle";
 import { avatarPx, clampPitch, pitchForZoom, roadCasingPx, roadWidthPx } from "./camera-feel";
 import FrameProbe from "./frame-probe";
@@ -192,8 +192,9 @@ interface Props {
   is_camera_locked?: boolean;
   /** How much of a building to draw — see `SkylineStyle`. */
   skyline_style?: SkylineStyle;
-  /** Level shown to the other walkers in the hall — see `multiplayer.ts`. */
-  level?: number;
+  /** The hall — other phones' walkers, live. Opened once by the app, so the
+   *  pill here and every other "walkers out" count read the same roster. */
+  hall: Hall;
   /** Night sky, darker ground. From the weather reading's `is_day`, or the clock. */
   is_night?: boolean;
 }
@@ -581,11 +582,9 @@ export default function PlayMap({
   onWalkTo,
   is_camera_locked = false,
   skyline_style,
-  level = 1,
+  hall,
   is_night = false,
 }: Props) {
-  /* The hall: other phones' walkers, live. Only while this view is mounted. */
-  const hall = useHall({ fix, stage, level });
   const here = useMemo(() => (fix ? sectorAt(fix) : null), [fix]);
   /* Every find, and the walker: painted scenery keeps off all of them. */
   const keep_clear = useMemo<LatLon[]>(
@@ -662,7 +661,13 @@ export default function PlayMap({
                 below every marker — see `skyline.tsx` on why it cannot live
                 in the tilted plane with the rest of the map. */}
             <Skyline projection={projection} centre={view} style={skyline_style} avoid={walker_at} is_night={is_night} />
-            <RemoteWalkerLayer hall={hall} projection={projection} bearing_degree={bearing_degree} is_desktop={is_desktop} />
+            <RemoteWalkerLayer
+              hall={hall}
+              projection={projection}
+              bearing_degree={bearing_degree}
+              is_desktop={is_desktop}
+              zoom={view.zoom}
+            />
             <HallCount hall={hall} />
             <Flora
               tuft={tuft}
