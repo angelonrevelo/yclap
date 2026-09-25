@@ -78,7 +78,10 @@ token expired and falls back to the labelled recorded reply. Repeat steps 1–2
 each day it must be live. The token in the local `.env` expired 2026-09-08.
 
 Error states the sheet shows: `needs_token` (503, no secret), `token_expired`
-(401), `rate_limited` (429), `offline` (iNat unreachable or no network).
+(401), `rate_limited` (429 — iNat's throttle, or ours: 40 photos a minute per
+IP), `offline` (iNat unreachable or no network). The proxy is same-origin only
+(no CORS header), refuses a body declared over ~5 MB before parsing it (413),
+and a part that is not `image/*` (415).
 
 Matching (`src/inat-match.ts`) maps each suggestion to the nine campus species
 by iNat taxon id and ancestry: **exact** (the taxon, or below it — any fig is
@@ -289,7 +292,10 @@ The play layer, wired in `src/live.tsx`:
   inside the campus frame tagged `gps` / `demo` / `play`. A position outside
   the campus box is refused on both ends. The `player_id` is never sent to
   other phones (the hall keys walkers by a one-way hash), and presence is held
-  in memory only, never stored. The same-origin Worker is the path that works
+  in memory only, never stored. Brakes: the Worker's socket upgrade must come
+  from its own host's page (or localhost dev), the hall holds at most 200
+  walkers, and poses past 2 a second per socket (60 per IP) are dropped; the
+  LAN hall caps a fragmented message at 64 KB. The same-origin Worker is the path that works
   on phones; `?sync=` to an `http://` LAN box is blocked as mixed content on the
   HTTPS handset build.
 - **Gestures and haptics.** A tap on the play ground means GO THERE, not "show
@@ -357,21 +363,34 @@ If the project outgrows one Durable Object, the SQL moves to Neon unchanged.
   `POST /auth/signup` `/auth/login` `/auth/logout` `/auth/password`,
   `GET /auth/me`, `GET /auth/google` + `/auth/google/callback`,
   `GET|PUT /account/save`. Same-origin only; POSTs must be JSON.
-- **Passwords:** PBKDF2-SHA256, 100,000 iterations (the Workers ceiling),
-  16-byte per-account salt, constant-time compare. **Sessions:** 32 random
+- **Passwords:** PBKDF2-SHA256, 100,000 iterations — the most the Workers
+  runtime accepts, and short of OWASP's 600,000 for this hash, which the rate
+  limits below partly make up for — 16-byte per-account salt, constant-time
+  compare. **Sessions:** 32 random
   bytes in an `HttpOnly; SameSite=Lax; Secure` cookie (Secure is dropped only
   on plain-http localhost), stored server-side as a SHA-256 hash, 30 days.
-  Changing the password signs out every other device.
-- **Login rate limit:** 5 wrong passwords per username per 15 minutes → 429.
-  In memory, so it resets if the Durable Object is evicted.
+  Changing the password signs out every other device. Expired sessions are
+  swept from the table at most once an hour.
+- **Rate limits** (429 + `Retry-After`): 5 failed logins per username per 15
+  minutes, the attempt counted *before* the password hash runs so a parallel
+  burst cannot slip past; per IP (`CF-Connecting-IP`), 50 failed logins per 15
+  minutes and 40 signups an hour — generous because a booth of phones shares
+  one public IP. `npm run sync` sets the IP from the socket and skips per-IP
+  limits for loopback (the Vite proxy). All in memory, bounded to 10,000 keys,
+  so they reset if the Durable Object is evicted. Account bodies over 1.5 MB
+  are refused before they are buffered; `Content-Type` must be exactly
+  `application/json` (parameters allowed).
 - **The save:** journal rows + the point ledger (the streak is computed from
   it). **Photos never leave the phone** — `photo_data` is nulled before upload
   and again on the server. On sign-in, on load and a few seconds after each new
   find, the device pulls the account copy, **unions** it in (every local find
   survives; server-only rows are appended with a fresh catalogue number if
   theirs is taken; the same point subject is never paid twice), then pushes the
-  union back. The server is last-write-wins on `updated_at` and answers a stale
-  upload with 409 plus its copy, which the client merges and retries. Known
+  union back. The server stamps `updated_at` itself; a PUT carries back the
+  `base_updated_at` it read and only lands if that is still the stored stamp
+  (compare-and-swap in one conditional SQL statement). Otherwise 409 plus the
+  server's copy, which the client merges and retries once. No phone's clock is
+  ever read, so a phone set to 2099 can neither win nor lock the others out. Known
   limit: no tombstones, so a find deleted on one phone comes back from the
   account.
 - **Google:** on only when both secrets exist. Without them `/auth/google` is a

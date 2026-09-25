@@ -11,9 +11,12 @@ import {
   cleanUsername,
   fromBase64Url,
   hashPassword,
-  isNewerOrSame,
+  LOGIN_IP_MAX,
+  SIGNUP_IP_MAX,
   isSessionLive,
   mergeSave,
+  nextSaveStamp,
+  reconcileSave,
   readCookie,
   sanitizeSave,
   sessionExpiry,
@@ -22,6 +25,7 @@ import {
   usernameSeed,
   verifyPassword,
   type AccountSave,
+  type SaveTransport,
 } from "../src/account-core.ts";
 import { AccountService, isAccountPath, type SqlRun } from "../worker/account.ts";
 import type { Sighting } from "../src/journal.ts";
@@ -204,12 +208,14 @@ test("sanitizeSave drops photos and rows without ids", () => {
   assert.equal(sanitizeSave({ sighting: "x" }), null);
 });
 
-test("isNewerOrSame is last-write-wins on timestamps", () => {
-  assert.equal(isNewerOrSame("2026-09-26T00:00:01Z", "2026-09-26T00:00:00Z"), true);
-  assert.equal(isNewerOrSame("2026-09-26T00:00:00Z", "2026-09-26T00:00:00Z"), true);
-  assert.equal(isNewerOrSame("2026-09-25T23:59:59Z", "2026-09-26T00:00:00Z"), false);
-  assert.equal(isNewerOrSame("2026-09-25T23:59:59Z", null), true);
-  assert.equal(isNewerOrSame("garbage", null), true);
+test("nextSaveStamp is the server's now, always strictly after the stamp it replaces", () => {
+  const now = Date.parse("2026-09-26T00:00:00.000Z");
+  assert.equal(nextSaveStamp(now, null), "2026-09-26T00:00:00.000Z");
+  assert.equal(nextSaveStamp(now, "2026-09-25T00:00:00.000Z"), "2026-09-26T00:00:00.000Z");
+  /* Same millisecond, or a server clock that stepped back: still moves forward. */
+  assert.equal(nextSaveStamp(now, "2026-09-26T00:00:00.000Z"), "2026-09-26T00:00:00.001Z");
+  assert.equal(nextSaveStamp(now, "2026-09-27T00:00:00.000Z"), "2026-09-27T00:00:00.001Z");
+  assert.equal(nextSaveStamp(now, "garbage"), "2026-09-26T00:00:00.000Z");
 });
 
 /* ── the service, end to end on node:sqlite ──────────────────────────── */
@@ -222,10 +228,11 @@ function service(env = {}, fetcher: typeof fetch = fetch) {
 
 const ORIGIN = "https://magi.example";
 
-function req(path: string, method = "GET", body?: unknown, cookie_jar = ""): Request {
+function req(path: string, method = "GET", body?: unknown, cookie_jar = "", ip = ""): Request {
   const headers = new Headers();
   if (body !== undefined) headers.set("Content-Type", "application/json");
   if (cookie_jar) headers.set("Cookie", cookie_jar);
+  if (ip) headers.set("CF-Connecting-IP", ip);
   return new Request(`${ORIGIN}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
 }
 
@@ -292,6 +299,72 @@ test("login is rate-limited per username", async () => {
   assert.equal(blocked.status, 429);
 });
 
+test("parallel wrong guesses cannot outrun the login limit while PBKDF2 runs", async () => {
+  const svc = service();
+  await svc.handle(req("/auth/signup", "POST", { username: "burst", password: "narra-tree-42" }));
+  const burst = await Promise.all(
+    Array.from({ length: 20 }, (_, i) => svc.handle(req("/auth/login", "POST", { username: "burst", password: `guess-${i}-xx` }))),
+  );
+  const status = burst.map((r) => r.status);
+  assert.equal(status.filter((n) => n === 401).length, LOGIN_FAIL_MAX, "only the allowed tries reach the hash");
+  assert.equal(status.filter((n) => n === 429).length, 20 - LOGIN_FAIL_MAX);
+  assert.ok(burst.find((r) => r.status === 429)?.headers.get("Retry-After"));
+});
+
+test("login and signup are rate-limited per IP too, and a good login is not counted", async () => {
+  const svc = service();
+  await svc.handle(req("/auth/signup", "POST", { username: "okay", password: "narra-tree-42" }));
+  /* Successful logins from one IP never add up. */
+  for (let i = 0; i < LOGIN_IP_MAX + 5; i++) {
+    assert.equal((await svc.handle(req("/auth/login", "POST", { username: "okay", password: "narra-tree-42" }, "", "203.0.113.9"))).status, 200);
+  }
+  /* Failures spread over many usernames from one IP do. */
+  svc.limit.clear("okay");
+  for (let i = 0; i < LOGIN_IP_MAX; i++) {
+    const res = await svc.handle(req("/auth/login", "POST", { username: `nobody-${i}`, password: "wrong-pass-1" }, "", "203.0.113.7"));
+    assert.equal(res.status, 401);
+  }
+  const blocked = await svc.handle(req("/auth/login", "POST", { username: "okay", password: "narra-tree-42" }, "", "203.0.113.7"));
+  assert.equal(blocked.status, 429);
+  const other_ip = await svc.handle(req("/auth/login", "POST", { username: "okay", password: "narra-tree-42" }, "", "203.0.113.8"));
+  assert.equal(other_ip.status, 200);
+
+  svc.signup_ip_limit.max = 2; /* the real cap is SIGNUP_IP_MAX; 2 keeps the test fast */
+  assert.ok(SIGNUP_IP_MAX > 2);
+  assert.equal((await svc.handle(req("/auth/signup", "POST", { username: "s-one", password: "narra-tree-42" }, "", "198.51.100.1"))).status, 201);
+  assert.equal((await svc.handle(req("/auth/signup", "POST", { username: "s-two", password: "narra-tree-42" }, "", "198.51.100.1"))).status, 201);
+  assert.equal((await svc.handle(req("/auth/signup", "POST", { username: "s-three", password: "narra-tree-42" }, "", "198.51.100.1"))).status, 429);
+  assert.equal((await svc.handle(req("/auth/signup", "POST", { username: "s-three", password: "narra-tree-42" }, "", "198.51.100.2"))).status, 201);
+});
+
+test("the JSON check reads the MIME essence, not a substring", async () => {
+  const svc = service();
+  const post = (content_type: string) =>
+    svc.handle(
+      new Request(`${ORIGIN}/auth/signup`, {
+        method: "POST",
+        body: JSON.stringify({ username: "mime", password: "narra-tree-42" }),
+        headers: { "Content-Type": content_type },
+      }),
+    );
+  assert.equal((await post("text/plain; x=application/json")).status, 400);
+  assert.equal((await post("application/jsonx")).status, 400);
+  assert.equal((await post("Application/JSON; charset=utf-8")).status, 201);
+});
+
+test("expired sessions of every account are swept, not only the one that asks", async () => {
+  let now = Date.parse("2026-09-26T00:00:00Z");
+  const db = new DatabaseSync(":memory:");
+  const sql: SqlRun = (query, ...bind) => db.prepare(query).all(...bind) as ReturnType<SqlRun>;
+  const svc = new AccountService(sql, {}, fetch, () => now);
+  await svc.handle(req("/auth/signup", "POST", { username: "gone-a", password: "narra-tree-42" }));
+  await svc.handle(req("/auth/signup", "POST", { username: "gone-b", password: "narra-tree-42" }));
+  assert.equal(sql("SELECT COUNT(*) AS n FROM session")[0].n, 2);
+  now += SESSION_MS + 1;
+  await svc.handle(req("/auth/me"));
+  assert.equal(sql("SELECT COUNT(*) AS n FROM session")[0].n, 0);
+});
+
 test("a login POST that is not JSON is refused", async () => {
   const svc = service();
   const res = await svc.handle(
@@ -300,29 +373,137 @@ test("a login POST that is not JSON is refused", async () => {
   assert.equal(res.status, 400);
 });
 
-test("/account/save stores a photo-free save, last write wins", async () => {
-  const svc = service();
+type Stored = { save: AccountSave | null; updated_at: string | null; error?: string };
+
+async function putSave(svc: AccountService, jar: string, save: AccountSave, base_updated_at: string | null, extra = {}) {
+  const res = await svc.handle(req("/account/save", "PUT", { save, base_updated_at, ...extra }, jar));
+  return { status: res.status, body: (await res.json()) as Stored };
+}
+
+async function getSave(svc: AccountService, jar: string): Promise<Stored> {
+  return (await (await svc.handle(req("/account/save", "GET", undefined, jar))).json()) as Stored;
+}
+
+test("/account/save stores a photo-free save under a stamp the server chose", async () => {
+  let now = Date.parse("2026-09-26T01:00:00Z");
+  const db = new DatabaseSync(":memory:");
+  const svc = new AccountService((q, ...b) => db.prepare(q).all(...b) as ReturnType<SqlRun>, {}, fetch, () => now);
   const jar = sessionCookie(await svc.handle(req("/auth/signup", "POST", { username: "mar", password: "narra-tree-42" })));
   assert.equal((await svc.handle(req("/account/save"))).status, 401);
 
-  const empty = (await (await svc.handle(req("/account/save", "GET", undefined, jar))).json()) as { save: unknown };
+  const empty = await getSave(svc, jar);
   assert.equal(empty.save, null);
+  assert.equal(empty.updated_at, null);
 
   const save: AccountSave = { sighting: [sighting("narra-1", 1, "data:image/jpeg;base64,AAA")], point_event: [] };
-  const put = await svc.handle(req("/account/save", "PUT", { save, updated_at: "2026-09-26T01:00:00Z" }, jar));
+  /* The client's own clock (a stray updated_at) is ignored. */
+  const put = await putSave(svc, jar, save, null, { updated_at: "2099-01-01T00:00:00Z" });
   assert.equal(put.status, 200);
-  const got = (await (await svc.handle(req("/account/save", "GET", undefined, jar))).json()) as {
-    save: AccountSave;
-    updated_at: string;
-  };
-  assert.equal(got.save.sighting.length, 1);
-  assert.equal(got.save.sighting[0].photo_data, null);
-  assert.equal(got.updated_at, "2026-09-26T01:00:00Z");
+  assert.equal(put.body.updated_at, "2026-09-26T01:00:00.000Z");
+  const got = await getSave(svc, jar);
+  assert.equal(got.save?.sighting.length, 1);
+  assert.equal(got.save?.sighting[0].photo_data, null);
+  assert.equal(got.updated_at, "2026-09-26T01:00:00.000Z");
 
-  const stale = await svc.handle(req("/account/save", "PUT", { save: { sighting: [], point_event: [] }, updated_at: "2026-09-26T00:00:00Z" }, jar));
-  assert.equal(stale.status, 409);
-  const still = (await (await svc.handle(req("/account/save", "GET", undefined, jar))).json()) as { save: AccountSave };
-  assert.equal(still.save.sighting.length, 1);
+  now += 1000;
+  const next = await putSave(svc, jar, { sighting: [], point_event: [] }, got.updated_at);
+  assert.equal(next.status, 200);
+  assert.equal(next.body.updated_at, "2026-09-26T01:00:01.000Z");
+
+  /* No base at all is a bad request, not a blind overwrite. */
+  const res = await svc.handle(req("/account/save", "PUT", { save, updated_at: "2026-09-26T09:00:00Z" }, jar));
+  assert.equal(res.status, 400);
+});
+
+test("a stale writer gets 409 with the stored save, and nothing is overwritten", async () => {
+  const svc = service();
+  const jar = sessionCookie(await svc.handle(req("/auth/signup", "POST", { username: "two-phone", password: "narra-tree-42" })));
+  const first = await putSave(svc, jar, { sighting: [sighting("narra-1", 1)], point_event: [] }, null);
+  assert.equal(first.status, 200);
+  const base = first.body.updated_at;
+
+  /* Phone A and phone B both read `base`. A writes first. */
+  const a = await putSave(svc, jar, { sighting: [sighting("narra-1", 1), sighting("acacia-2", 2)], point_event: [] }, base);
+  assert.equal(a.status, 200);
+  const b = await putSave(svc, jar, { sighting: [sighting("narra-1", 1)], point_event: [] }, base);
+  assert.equal(b.status, 409);
+  assert.equal(b.body.error, "stale");
+  assert.equal(b.body.updated_at, a.body.updated_at);
+  assert.deepEqual(b.body.save?.sighting.map((s) => s.sighting_id), ["narra-1", "acacia-2"]);
+
+  /* A second "first ever" upload is stale too — there is a save now. */
+  assert.equal((await putSave(svc, jar, { sighting: [], point_event: [] }, null)).status, 409);
+  assert.equal((await getSave(svc, jar)).save?.sighting.length, 2);
+});
+
+test("a phone with a skewed clock cannot lock the other phones out", async () => {
+  const svc = service();
+  const jar = sessionCookie(await svc.handle(req("/auth/signup", "POST", { username: "skew", password: "narra-tree-42" })));
+  /* The skewed phone claims the year 2099 in every field it can. */
+  const skewed = await putSave(svc, jar, { sighting: [sighting("narra-1", 1)], point_event: [] }, null, {
+    updated_at: "2099-12-31T23:59:59Z",
+  });
+  assert.equal(skewed.status, 200);
+  assert.ok(Date.parse(skewed.body.updated_at!) < Date.parse("2090-01-01T00:00:00Z"), "the server's clock, not the phone's");
+  /* A phone with an honest clock that read that save writes straight after it. */
+  const honest = await putSave(svc, jar, { sighting: [sighting("narra-1", 1), sighting("molave-3", 3)], point_event: [] }, skewed.body.updated_at);
+  assert.equal(honest.status, 200);
+  /* And a forged future base does not match anything, so it cannot win either. */
+  const forged = await putSave(svc, jar, { sighting: [], point_event: [] }, "2099-12-31T23:59:59.000Z");
+  assert.equal(forged.status, 409);
+  assert.equal((await getSave(svc, jar)).save?.sighting.length, 2);
+});
+
+test("reconcileSave: on 409 it re-pulls, merges without dropping a local find, and retries once", async () => {
+  const svc = service();
+  const jar = sessionCookie(await svc.handle(req("/auth/signup", "POST", { username: "phones", password: "narra-tree-42" })));
+  const seed = await putSave(svc, jar, { sighting: [sighting("narra-1", 1)], point_event: [] }, null);
+  assert.equal(seed.status, 200);
+
+  let is_raced = false;
+  const transport: SaveTransport = {
+    get: async () => {
+      const res = await svc.handle(req("/account/save", "GET", undefined, jar));
+      return { status: res.status, data: await res.json() };
+    },
+    put: async (body) => {
+      if (!is_raced) {
+        /* Another phone saves between our GET and our PUT. */
+        is_raced = true;
+        const other = await getSave(svc, jar);
+        await putSave(svc, jar, { sighting: [...other.save!.sighting, sighting("molave-7", 7)], point_event: [] }, other.updated_at);
+      }
+      const res = await svc.handle(req("/account/save", "PUT", body, jar));
+      return { status: res.status, data: await res.json() };
+    },
+  };
+  let device: AccountSave = { sighting: [sighting("acacia-2", 2, "data:image/jpeg;base64,AAA")], point_event: [] };
+  const done = await reconcileSave(
+    transport,
+    () => device,
+    (save) => {
+      device = save;
+    },
+  );
+  assert.deepEqual(new Set(device.sighting.map((s) => s.sighting_id)), new Set(["acacia-2", "narra-1", "molave-7"]));
+  assert.equal(device.sighting.find((s) => s.sighting_id === "acacia-2")?.photo_data, "data:image/jpeg;base64,AAA");
+  assert.equal(done.added_sighting_count, 2);
+  const server = await getSave(svc, jar);
+  assert.deepEqual(new Set(server.save!.sighting.map((s) => s.sighting_id)), new Set(["acacia-2", "narra-1", "molave-7"]));
+  assert.equal(server.updated_at, done.updated_at);
+});
+
+test("reconcileSave gives up after one retry when the server stays ahead", async () => {
+  let put_count = 0;
+  const transport: SaveTransport = {
+    get: async () => ({ status: 200, data: { save: null, updated_at: null } }),
+    put: async () => {
+      put_count += 1;
+      return { status: 409, data: { error: "stale", save: { sighting: [], point_event: [] }, updated_at: `t${put_count}` } };
+    },
+  };
+  await assert.rejects(reconcileSave(transport, () => ({ sighting: [], point_event: [] }), () => {}), /another device/);
+  assert.equal(put_count, 2);
 });
 
 test("an expired session reads as signed out and is deleted", async () => {

@@ -12,6 +12,8 @@ import { createHash } from "node:crypto";
 
 const GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 const MAX_FRAME = 64 * 1024;
+/** A message split over continuation frames may not add up past this either. */
+export const MAX_MESSAGE = 64 * 1024;
 
 export function acceptKeyOf(key) {
   return createHash("sha1").update(key + GUID).digest("base64");
@@ -72,7 +74,10 @@ class LiteSocket {
     this.socket = socket;
     this.buf = Buffer.alloc(0);
     this.part = [];
+    this.part_byte = 0;
     this.is_open = true;
+    /** Times of this socket's recent poses, for the per-socket rate. */
+    this.pose_at = [];
     this.pose = null;
     socket.on("data", (chunk) => {
       this.buf = Buffer.concat([this.buf, chunk]);
@@ -85,10 +90,13 @@ class LiteSocket {
           continue;
         }
         if (frame.opcode === 0x1 || frame.opcode === 0x0) {
+          this.part_byte += frame.payload.length;
+          if (this.part_byte > MAX_MESSAGE) return this.close();
           this.part.push(frame.payload);
           if (frame.fin) {
             const text = Buffer.concat(this.part).toString("utf8");
             this.part = [];
+            this.part_byte = 0;
             onText(this, text);
           }
         }
@@ -127,6 +135,16 @@ export function createHall(lib) {
   const socket = new Set();
   const polled = new Map();
   let recent_find = [];
+  const walker_max = lib.HALL_WALKER_MAX ?? 200;
+  const pose_per_second = lib.POSE_PER_SECOND ?? 2;
+
+  /** Same per-socket brake as worker/live-socket.ts: at most N poses a second. */
+  const isPoseAllowed = (s, now) => {
+    s.pose_at = s.pose_at.filter((at) => now - at < 1000);
+    if (s.pose_at.length >= pose_per_second) return false;
+    s.pose_at.push(now);
+    return true;
+  };
 
   const snapshot = () => {
     const now = Date.now();
@@ -135,7 +153,7 @@ export function createHall(lib) {
     const live_pose = [...socket].map((s) => s.pose).filter(Boolean);
     return {
       type: "roster",
-      walker: lib.rosterOf([...live_pose, ...polled.values()], now),
+      walker: lib.rosterOf([...live_pose, ...polled.values()], now).slice(0, walker_max),
       find: recent_find.map((f) => f.find),
       server_time: now,
     };
@@ -155,7 +173,9 @@ export function createHall(lib) {
       return;
     }
     if (body?.type === "pose") {
-      const pose = lib.sanitizePose(body, Date.now());
+      const now = Date.now();
+      if (!isPoseAllowed(s, now)) return;
+      const pose = lib.sanitizePose(body, now);
       if (!pose) return;
       s.pose = pose;
       broadcast({ type: "pose", walker: pose }, s);
@@ -179,6 +199,10 @@ export function createHall(lib) {
         raw_socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
         return true;
       }
+      if (socket.size >= walker_max) {
+        raw_socket.end("HTTP/1.1 503 Service Unavailable\r\n\r\n");
+        return true;
+      }
       raw_socket.write(
         "HTTP/1.1 101 Switching Protocols\r\n" +
           "Upgrade: websocket\r\n" +
@@ -196,6 +220,10 @@ export function createHall(lib) {
     pose(raw) {
       const pose = lib.sanitizePose(raw, Date.now());
       if (!pose) return null;
+      if (!polled.has(pose.walker_id)) {
+        snapshot(); /* drops stale polled walkers first */
+        if (polled.size >= walker_max) return null;
+      }
       polled.set(pose.walker_id, pose);
       broadcast({ type: "pose", walker: pose });
       return snapshot();

@@ -14,9 +14,14 @@
  *   401 token_expired   iNat refused the token (its JWTs last 24 h)
  *   429 rate_limited    iNat throttled us
  *   502 upstream        iNat answered with some other failure, or not at all
- *   400 / 405 / 413     bad request from the client
+ *   429 too_many        this IP sent more than IDENTIFY_IP_MAX a minute
+ *   400 / 405 / 413 / 415  bad request from the client
+ *
+ * Same-origin only: the app is served from the same host, so there is no
+ * CORS header and a foreign page cannot spend our iNat quota from a browser.
  */
 import { DEMO_PIN } from "../src/data.ts";
+import { RateWindow, clientIp } from "../src/rate-limit.ts";
 
 export const IDENTIFY_PATH = "/inat/identify";
 export const SCORE_IMAGE_URL = "https://api.inaturalist.org/v1/computervision/score_image";
@@ -24,19 +29,22 @@ export const TOKEN_URL = "https://www.inaturalist.org/users/api_token";
 
 /** A phone photo re-encoded by the camera sheet is well under this. */
 const MAX_IMAGE_BYTE = 5 * 1024 * 1024;
+/** Room for the multipart boundaries and the lat/lng fields around the photo. */
+const MAX_FORM_BYTE = MAX_IMAGE_BYTE + 64 * 1024;
+/**
+ * Per IP, per minute. A booth of phones shares one public IP, and iNat itself
+ * throttles the token well before this, so it is a brake on scripts, not on
+ * a crowd.
+ */
+export const IDENTIFY_IP_MAX = 40;
+const identify_limit = new RateWindow(IDENTIFY_IP_MAX, 60_000);
 const UPSTREAM_TIMEOUT_MS = 15000;
 const VIA = "yclap-field-guide/0.1 (Youth CLAP Ateneo CCC; campus proxy)";
-
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
 
 function json(status: number, body: unknown, extra?: Record<string, string>): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...CORS, ...extra },
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...extra },
   });
 }
 
@@ -50,9 +58,21 @@ export async function handleIdentify(
   request: Request,
   token: string | undefined,
   fetch_impl: typeof fetch = globalThis.fetch,
+  limit: RateWindow = identify_limit,
 ): Promise<Response> {
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
-  if (request.method !== "POST") return json(405, { error: "method_not_allowed", allow: "POST" });
+  if (request.method !== "POST") return json(405, { error: "method_not_allowed", allow: "POST" }, { Allow: "POST" });
+
+  /* Before anything is read: the size the client declared, then this IP's rate. */
+  const declared = Number(request.headers.get("Content-Length"));
+  if (Number.isFinite(declared) && declared > MAX_FORM_BYTE) {
+    return json(413, { error: "image_too_large", max_byte: MAX_IMAGE_BYTE });
+  }
+  const ip = clientIp(request);
+  const wait = ip ? limit.take(ip) : 0;
+  if (wait > 0) {
+    const retry_after = String(Math.ceil(wait / 1000));
+    return json(429, { error: "too_many", retry_after }, { "Retry-After": retry_after });
+  }
 
   const secret = token?.trim();
   if (!secret) {
@@ -72,6 +92,7 @@ export async function handleIdentify(
   const image = form.get("image");
   if (!image || typeof image === "string") return json(400, { error: "no_image" });
   if (image.size > MAX_IMAGE_BYTE) return json(413, { error: "image_too_large", max_byte: MAX_IMAGE_BYTE });
+  if (!image.type.toLowerCase().startsWith("image/")) return json(415, { error: "not_an_image", type: image.type });
 
   const upstream_form = new FormData();
   upstream_form.append("image", image, (image as File).name || "plant.jpg");
@@ -117,6 +138,6 @@ export async function handleIdentify(
   }
   return new Response(body, {
     status: 200,
-    headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "X-Inat-Via": "proxy", ...CORS },
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "X-Inat-Via": "proxy" },
   });
 }

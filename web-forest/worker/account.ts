@@ -16,11 +16,23 @@
  *   GET  /auth/google           → 302 to Google, or 503 when not configured
  *   GET  /auth/google/callback  → 302 back to /settings
  *   GET  /account/save          → { save | null, updated_at | null }
- *   PUT  /account/save          { save, updated_at } — last write wins
+ *   PUT  /account/save          { save, base_updated_at } → { updated_at }
+ *
+ * The save is compare-and-swap on a stamp only the server writes: a PUT names
+ * the `updated_at` it last read (`base_updated_at`, null for "there was none")
+ * and is refused with 409 + the stored save if that has moved. A phone with a
+ * wrong clock can neither win nor lock anybody out — its clock is never read.
+ *
+ * Signup and login are rate-limited per IP (CF-Connecting-IP), and login also
+ * per username, the attempt counted before the password hash is computed.
  */
 import {
+  LOGIN_IP_MAX,
+  LOGIN_WINDOW_MS,
   LoginLimit,
   SAVE_MAX_BYTE,
+  SIGNUP_IP_MAX,
+  SIGNUP_WINDOW_MS,
   SESSION_COOKIE,
   SESSION_MS,
   STATE_COOKIE,
@@ -29,10 +41,10 @@ import {
   cookie,
   googleAuthUrl,
   hashPassword,
-  isNewerOrSame,
   isSessionLive,
   newAccountCode,
   newToken,
+  nextSaveStamp,
   passwordProblem,
   readCookie,
   sanitizeSave,
@@ -41,9 +53,14 @@ import {
   timingSafeEqual,
   usernameSeed,
   verifyPassword,
+  type AccountSave,
   type GoogleIdentity,
   type PublicAccount,
 } from "../src/account-core.ts";
+import { RateWindow, clientIp, mimeEssence } from "../src/rate-limit.ts";
+
+/** Expired sessions are swept at most this often. */
+const SESSION_SWEEP_MS = 60 * 60 * 1000;
 
 export type SqlValue = string | number | null;
 export type SqlRow = Record<string, SqlValue>;
@@ -111,6 +128,13 @@ function json(body: unknown, status = 200, set_cookie: string[] = []): Response 
   return new Response(JSON.stringify(body), { status, headers });
 }
 
+function tooMany(wait_ms: number): Response {
+  const retry_after_s = Math.ceil(wait_ms / 1000);
+  const res = json({ error: "too many tries — wait and try again", retry_after_s }, 429);
+  res.headers.set("Retry-After", String(retry_after_s));
+  return res;
+}
+
 function redirect(location: string, set_cookie: string[] = []): Response {
   const headers = new Headers({ Location: location, "Cache-Control": "no-store" });
   for (const c of set_cookie) headers.append("Set-Cookie", c);
@@ -123,6 +147,9 @@ export class AccountService {
   fetcher: typeof fetch;
   now: () => number;
   limit: LoginLimit = new LoginLimit();
+  login_ip_limit: RateWindow = new RateWindow(LOGIN_IP_MAX, LOGIN_WINDOW_MS);
+  signup_ip_limit: RateWindow = new RateWindow(SIGNUP_IP_MAX, SIGNUP_WINDOW_MS);
+  swept_at = 0;
 
   /* The default wraps fetch: in Workers a bare `fetch` stored on an object and
      called as a method throws "Illegal invocation". */
@@ -178,10 +205,23 @@ export class AccountService {
     return account ? { account, token_hash } : null;
   }
 
+  /** Delete every expired session, at most once per SESSION_SWEEP_MS. */
+  sweepSession(): void {
+    const now = this.now();
+    if (now - this.swept_at < SESSION_SWEEP_MS) return;
+    this.swept_at = now;
+    /* Every expires_at is a toISOString(), so text order is time order. */
+    this.sql("DELETE FROM session WHERE expires_at <= ?", new Date(now).toISOString());
+  }
+
   async readBody(request: Request): Promise<Record<string, unknown> | null> {
     /* JSON only. A cross-site HTML form cannot send application/json without
-       a preflight, which is one more brake on CSRF beside SameSite=Lax. */
-    if (!(request.headers.get("Content-Type") ?? "").includes("application/json")) return null;
+       a preflight, which is one more brake on CSRF beside SameSite=Lax. The
+       MIME essence must match exactly — `text/plain; x=application/json`
+       does not pass. */
+    if (mimeEssence(request.headers.get("Content-Type")) !== "application/json") return null;
+    const declared = Number(request.headers.get("Content-Length"));
+    if (Number.isFinite(declared) && declared > SAVE_MAX_BYTE) return null;
     const text = await request.text();
     if (text.length > SAVE_MAX_BYTE) return null;
     try {
@@ -196,6 +236,8 @@ export class AccountService {
     const url = new URL(request.url);
     const is_secure = url.protocol === "https:";
     const route = `${request.method} ${url.pathname}`;
+    const ip = clientIp(request);
+    this.sweepSession();
 
     if (route === "GET /auth/me") {
       const session = await this.sessionOf(request);
@@ -209,8 +251,14 @@ export class AccountService {
       if (!username) return json({ error: "username: 3–32 of a-z 0-9 . _ -" }, 400);
       const problem = passwordProblem(body.password);
       if (problem) return json({ error: problem }, 400);
+      /* Counted before the lookup and the hash, so neither a burst nor a
+         username-probing loop gets past it. */
+      const wait = ip ? this.signup_ip_limit.take(ip, this.now()) : 0;
+      if (wait > 0) return tooMany(wait);
       if (this.accountBy("username", username)) return json({ error: "that username is taken" }, 409);
       const { password_hash, password_salt } = await hashPassword(body.password as string);
+      /* A parallel signup may have taken the name while the hash ran. */
+      if (this.accountBy("username", username)) return json({ error: "that username is taken" }, 409);
       const display_name =
         typeof body.display_name === "string" && body.display_name.trim()
           ? body.display_name.trim().slice(0, 40)
@@ -236,9 +284,15 @@ export class AccountService {
       const body = await this.readBody(request);
       if (!body) return json({ error: "send JSON" }, 400);
       const username = cleanUsername(body.username) ?? "";
-      const wait = this.limit.retryAfter(username, this.now());
+      /* Reserve the attempt BEFORE the awaited PBKDF2: check and count are one
+         synchronous step, so parallel requests cannot all pass the check. */
+      const now = this.now();
+      const ip_wait = ip ? this.login_ip_limit.take(ip, now) : 0;
+      if (ip_wait > 0) return tooMany(ip_wait);
+      const wait = this.limit.take(username, now);
       if (wait > 0) {
-        return json({ error: "too many tries — wait and try again", retry_after_s: Math.ceil(wait / 1000) }, 429);
+        if (ip) this.login_ip_limit.refund(ip);
+        return tooMany(wait);
       }
       const row = username ? this.accountBy("username", username) : null;
       const password = typeof body.password === "string" ? body.password : "";
@@ -246,11 +300,9 @@ export class AccountService {
         !!row?.password_hash &&
         !!row.password_salt &&
         (await verifyPassword(password, row.password_hash, row.password_salt));
-      if (!row || !is_ok) {
-        this.limit.noteFail(username, this.now());
-        return json({ error: "wrong username or password" }, 401);
-      }
+      if (!row || !is_ok) return json({ error: "wrong username or password" }, 401);
       this.limit.clear(username);
+      if (ip) this.login_ip_limit.refund(ip);
       const set = await this.openSession(row.account_code, is_secure);
       return json({ account: publicOf(row) }, 200, [set]);
     }
@@ -329,35 +381,49 @@ export class AccountService {
       const session = await this.sessionOf(request);
       if (!session) return json({ error: "sign in first" }, 401);
       const account_code = session.account.account_code;
-      const stored = this.sql("SELECT save_json, updated_at FROM save WHERE account_code = ?", account_code)[0];
-      const stored_save = stored ? sanitizeSave(JSON.parse(String(stored.save_json))) : null;
-      const stored_at = stored ? String(stored.updated_at) : null;
 
-      if (request.method === "GET") return json({ save: stored_save, updated_at: stored_at });
+      if (request.method === "GET") return json(this.storedSave(account_code));
 
       if (request.method === "PUT") {
         const body = await this.readBody(request);
         if (!body) return json({ error: "send JSON under 1.5 MB" }, 400);
         const save = sanitizeSave(body.save);
-        const updated_at = typeof body.updated_at === "string" ? body.updated_at : "";
-        if (!save || !Number.isFinite(Date.parse(updated_at))) {
-          return json({ error: "save { sighting[], point_event[] } and updated_at required" }, 400);
+        const base = body.base_updated_at;
+        if (!save || !(base === null || typeof base === "string")) {
+          return json({ error: "save { sighting[], point_event[] } and base_updated_at (string or null) required" }, 400);
         }
-        if (!isNewerOrSame(updated_at, stored_at)) {
-          return json({ error: "stale", save: stored_save, updated_at: stored_at }, 409);
-        }
-        this.sql(
-          `INSERT INTO save (account_code, save_json, updated_at) VALUES (?, ?, ?)
-           ON CONFLICT (account_code) DO UPDATE SET save_json = excluded.save_json, updated_at = excluded.updated_at`,
-          account_code,
-          JSON.stringify(save),
-          updated_at,
-        );
+        /* Read, stamp and write with no await in between, and the write itself
+           only lands if the stored stamp is still the one the client read. */
+        const updated_at = nextSaveStamp(this.now(), this.storedSave(account_code).updated_at);
+        const save_json = JSON.stringify(save);
+        const written =
+          base === null
+            ? this.sql(
+                `INSERT INTO save (account_code, save_json, updated_at) VALUES (?, ?, ?)
+                 ON CONFLICT (account_code) DO NOTHING RETURNING updated_at`,
+                account_code,
+                save_json,
+                updated_at,
+              )
+            : this.sql(
+                "UPDATE save SET save_json = ?, updated_at = ? WHERE account_code = ? AND updated_at = ? RETURNING updated_at",
+                save_json,
+                updated_at,
+                account_code,
+                base,
+              );
+        if (!written.length) return json({ error: "stale", ...this.storedSave(account_code) }, 409);
         return json({ ok: true, updated_at, sighting_count: save.sighting.length });
       }
     }
 
     return json({ error: "not found" }, 404);
+  }
+
+  storedSave(account_code: string): { save: AccountSave | null; updated_at: string | null } {
+    const stored = this.sql("SELECT save_json, updated_at FROM save WHERE account_code = ?", account_code)[0];
+    if (!stored) return { save: null, updated_at: null };
+    return { save: sanitizeSave(JSON.parse(String(stored.save_json))), updated_at: String(stored.updated_at) };
   }
 
   /** Code → tokens at Google, then the id_token's claims via tokeninfo. */

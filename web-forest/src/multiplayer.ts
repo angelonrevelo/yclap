@@ -41,6 +41,15 @@ export const SNAP_M = 150;
 export const NEARBY_FIND_M = 150;
 /** How long a find stays called out. */
 export const FIND_SHOW_MS = 10_000;
+/** The hall holds at most this many walkers (sockets, and polled walkers). */
+export const HALL_WALKER_MAX = 200;
+/** Poses one socket (or one polled walker) may send per second; clients send ≤ 1. */
+export const POSE_PER_SECOND = 2;
+/**
+ * Poses one IP may send per second across all its sockets. High, because a
+ * booth of phones on one wifi is one public IP.
+ */
+export const POSE_IP_PER_SECOND = 60;
 
 const STAGE = new Set(["egg", "sprout", "sapling", "tree"]);
 const SOURCE = new Set<FixSource>(["gps", "demo", "play"]);

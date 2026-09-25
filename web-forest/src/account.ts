@@ -7,7 +7,7 @@
  * Photos stay on the device; only journal rows and the point ledger sync.
  */
 import { useEffect, useSyncExternalStore } from "react";
-import { mergeSave, withoutPhoto, type AccountSave, type PublicAccount } from "./account-core.ts";
+import { reconcileSave, type AccountSave, type PublicAccount } from "./account-core.ts";
 import { readSighting, writeSighting, type Sighting } from "./journal.ts";
 import { readPointEvents, writePointEvents, type PointEvent } from "./gamify.ts";
 
@@ -167,45 +167,35 @@ function localSave(): AccountSave {
 
 /**
  * Pull the account's save, union it into this device (never dropping a local
- * find), then push the union back up. One retry if another phone wrote in
- * between (HTTP 409).
+ * find), then push the union back up naming the server stamp it read. If
+ * another phone wrote in between, the server answers 409 with what it now
+ * holds; that is merged in the same way and pushed once more. This device's
+ * clock is never sent — the server stamps every save itself.
  */
 export async function syncSave(): Promise<SyncReport | null> {
   if (state.status !== "signed_in" || state.is_syncing) return null;
   set({ is_syncing: true });
   try {
-    let added_sighting_count = 0;
-    let added_point_count = 0;
-    const got = await call<{ save: AccountSave | null } & ErrorBody>("/account/save");
-    if (got.status !== 200) throw new Error(got.data.error ?? `HTTP ${got.status}`);
-    let remote = got.data.save;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const merged = mergeSave(localSave(), remote ?? { sighting: [], point_event: [] });
-      if (merged.added_sighting_count || merged.added_point_count) {
-        writeSighting(merged.save.sighting);
-        writePointEvents(merged.save.point_event);
-        added_sighting_count += merged.added_sighting_count;
-        added_point_count += merged.added_point_count;
+    const done = await reconcileSave(
+      {
+        get: () => call("/account/save"),
+        put: (body) => call("/account/save", "PUT", body),
+      },
+      localSave,
+      (save) => {
+        writeSighting(save.sighting);
+        writePointEvents(save.point_event);
         window.dispatchEvent(new Event(SAVE_MERGED_EVENT));
-      }
-      const put = await call<{ save?: AccountSave | null } & ErrorBody>("/account/save", "PUT", {
-        save: withoutPhoto(merged.save),
-        updated_at: new Date().toISOString(),
-      });
-      if (put.status === 200) {
-        const report: SyncReport = {
-          at: new Date().toISOString(),
-          added_sighting_count,
-          added_point_count,
-          sighting_count: merged.save.sighting.length,
-        };
-        set({ is_syncing: false, last_sync: report, error: null });
-        return report;
-      }
-      if (put.status !== 409) throw new Error(put.data.error ?? `HTTP ${put.status}`);
-      remote = put.data.save ?? null;
-    }
-    throw new Error("another device kept saving at the same moment");
+      },
+    );
+    const report: SyncReport = {
+      at: new Date().toISOString(),
+      added_sighting_count: done.added_sighting_count,
+      added_point_count: done.added_point_count,
+      sighting_count: done.sighting_count,
+    };
+    set({ is_syncing: false, last_sync: report, error: null });
+    return report;
   } catch (e) {
     set({ is_syncing: false, error: `Sync failed: ${e instanceof Error ? e.message : String(e)}` });
     return null;

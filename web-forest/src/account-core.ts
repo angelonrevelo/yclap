@@ -8,9 +8,12 @@
  * Passwords are PBKDF2-SHA256 at 100,000 iterations with a per-account 16-byte
  * salt. 100,000 is not a round number picked for comfort — it is the ceiling
  * the Workers runtime accepts for PBKDF2; asking for more throws there.
+ * OWASP's 2023 figure for PBKDF2-SHA256 is 600,000, so this is a known
+ * shortfall the rate limits in worker/account.ts partly make up for.
  */
 import type { Sighting } from "./journal.ts";
 import type { PointEvent } from "./gamify.ts";
+import { RateWindow } from "./rate-limit.ts";
 
 export const PBKDF2_ITERATION = 100_000;
 export const SESSION_DAY = 30;
@@ -181,36 +184,30 @@ export function cookie(name: string, value: string, max_age_s: number, is_secure
   return flag.join("; ");
 }
 
-/* ── login rate limit ─────────────────────────────────────────────────── */
+/* ── rate limits ──────────────────────────────────────────────────── */
 
 /**
- * Failed-login counter per username. In memory — it resets when the Durable
- * Object is evicted, which is acceptable for a brake on password guessing but
- * is not a lockout anybody should rely on.
+ * Per IP, on top of the per-username brake. Generous on purpose: a booth full
+ * of phones on one wifi reaches us from one public IP.
  */
-export class LoginLimit {
-  fail: Map<string, number[]> = new Map();
+export const LOGIN_IP_MAX = 50;
+export const SIGNUP_IP_MAX = 40;
+export const SIGNUP_WINDOW_MS = 60 * 60 * 1000;
 
-  recent(username: string, now: number): number[] {
-    const kept = (this.fail.get(username) ?? []).filter((at) => now - at < LOGIN_WINDOW_MS);
-    if (kept.length) this.fail.set(username, kept);
-    else this.fail.delete(username);
-    return kept;
-  }
-
-  /** Milliseconds until another attempt is allowed; 0 when allowed now. */
-  retryAfter(username: string, now: number = Date.now()): number {
-    const kept = this.recent(username, now);
-    if (kept.length < LOGIN_FAIL_MAX) return 0;
-    return Math.max(0, kept[kept.length - LOGIN_FAIL_MAX] + LOGIN_WINDOW_MS - now);
+/**
+ * Login attempts per username. An attempt is counted BEFORE the password is
+ * checked (`take`), so a burst of parallel guesses cannot all pass the check
+ * while PBKDF2 is still running; a correct password clears the count. In
+ * memory — it resets when the Durable Object is evicted, which is acceptable
+ * for a brake on password guessing but is not a lockout anybody should rely on.
+ */
+export class LoginLimit extends RateWindow {
+  constructor() {
+    super(LOGIN_FAIL_MAX, LOGIN_WINDOW_MS);
   }
 
   noteFail(username: string, now: number = Date.now()): void {
-    this.fail.set(username, [...this.recent(username, now), now]);
-  }
-
-  clear(username: string): void {
-    this.fail.delete(username);
+    this.note(username, now);
   }
 }
 
@@ -378,15 +375,72 @@ export function mergeSave(local: AccountSave, remote: AccountSave): SaveMerge {
 }
 
 /**
- * Last-write-wins on the server: an upload stamped older than what is stored
- * is refused, so a stale phone cannot overwrite a newer save. The client then
- * pulls, merges and retries with a fresh stamp.
+ * The server's own stamp for a save it is about to store: now, but always
+ * strictly after the stamp it replaces, so every write gets a fresh
+ * compare-and-swap token even if two land in the same millisecond or the
+ * server clock steps back. Client clocks never enter into it.
  */
-export function isNewerOrSame(incoming_at: string, stored_at: string | null): boolean {
-  if (!stored_at) return true;
-  const a = Date.parse(incoming_at);
-  const b = Date.parse(stored_at);
-  if (!Number.isFinite(a)) return false;
-  if (!Number.isFinite(b)) return true;
-  return a >= b;
+export function nextSaveStamp(now: number, stored_at: string | null): string {
+  const before = stored_at ? Date.parse(stored_at) : NaN;
+  const at = Number.isFinite(before) && before >= now ? before + 1 : now;
+  return new Date(at).toISOString();
+}
+
+/** GET / PUT /account/save as plain status + JSON, so tests can plug a server in. */
+export interface SaveTransport {
+  get(): Promise<{ status: number; data: unknown }>;
+  put(body: { save: AccountSave; base_updated_at: string | null }): Promise<{ status: number; data: unknown }>;
+}
+
+export interface SaveReconcile {
+  added_sighting_count: number;
+  added_point_count: number;
+  sighting_count: number;
+  updated_at: string;
+}
+
+type StoredBody = { save?: unknown; updated_at?: unknown; error?: unknown };
+
+function storedOf(data: unknown): { save: AccountSave | null; updated_at: string | null; error: string | null } {
+  const d = (data && typeof data === "object" ? data : {}) as StoredBody;
+  return {
+    save: sanitizeSave(d.save),
+    updated_at: typeof d.updated_at === "string" ? d.updated_at : null,
+    error: typeof d.error === "string" ? d.error : null,
+  };
+}
+
+/**
+ * Pull, union into the device (never dropping a local find), push back naming
+ * the server stamp that was read. On 409 the answer carries what the server
+ * now holds: merge that too and push once more. `readLocal` is re-read on the
+ * retry so a find made meanwhile is not lost; `writeLocal` is only called when
+ * the server brought rows this device did not have.
+ */
+export async function reconcileSave(
+  transport: SaveTransport,
+  readLocal: () => AccountSave,
+  writeLocal: (save: AccountSave) => void,
+): Promise<SaveReconcile> {
+  const got = await transport.get();
+  let remote = storedOf(got.data);
+  if (got.status !== 200) throw new Error(remote.error ?? `HTTP ${got.status}`);
+  let added_sighting_count = 0;
+  let added_point_count = 0;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const merged = mergeSave(readLocal(), remote.save ?? emptySave());
+    if (merged.added_sighting_count || merged.added_point_count) {
+      writeLocal(merged.save);
+      added_sighting_count += merged.added_sighting_count;
+      added_point_count += merged.added_point_count;
+    }
+    const put = await transport.put({ save: withoutPhoto(merged.save), base_updated_at: remote.updated_at });
+    const answer = storedOf(put.data);
+    if (put.status === 200 && answer.updated_at) {
+      return { added_sighting_count, added_point_count, sighting_count: merged.save.sighting.length, updated_at: answer.updated_at };
+    }
+    if (put.status !== 409) throw new Error(answer.error ?? `HTTP ${put.status}`);
+    remote = answer;
+  }
+  throw new Error("another device kept saving at the same moment");
 }
