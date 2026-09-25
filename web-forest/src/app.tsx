@@ -3691,6 +3691,7 @@ export default function App() {
         seen_sector={seen_sector}
         stage={stage}
         vigor={vigor}
+        level={seen_sector.size + 1}
         is_desktop={is_desktop}
         /* Both the map's own toggle and the device preference have to agree
            before the hatch is drawn. Neither of them makes the ground

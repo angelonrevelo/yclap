@@ -12,6 +12,8 @@ import {
 } from "../src/campus-world.ts";
 import { AccountService, isAccountPath, type AccountEnv, type SqlValue } from "./account.ts";
 import { handleIdentify, IDENTIFY_PATH } from "./inat.ts";
+import { freshFindOf } from "../src/multiplayer.ts";
+import { LIVE_PATH, LiveHall } from "./live-socket.ts";
 
 export interface Env extends AccountEnv {
   CAMPUS: DurableObjectNamespace;
@@ -26,7 +28,7 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === IDENTIFY_PATH) return handleIdentify(request, env.INAT_API_TOKEN);
-    if (SYNC_PATH.has(url.pathname) || isAccountPath(url.pathname)) {
+    if (SYNC_PATH.has(url.pathname) || LIVE_PATH.has(url.pathname) || isAccountPath(url.pathname)) {
       const id = env.CAMPUS.idFromName("loyola");
       return env.CAMPUS.get(id).fetch(request);
     }
@@ -39,10 +41,12 @@ export class CampusWorld {
   env: Env;
   listener: Set<(chunk: string) => void> = new Set();
   account_service: AccountService | null = null;
+  hall: LiveHall;
 
   constructor(ctx: DurableObjectState, env: Env) {
     this.ctx = ctx;
     this.env = env;
+    this.hall = new LiveHall(ctx, (headers) => this.cors(headers));
   }
 
   /** Accounts live in this object's SQLite — see worker/account.ts. */
@@ -52,6 +56,19 @@ export class CampusWorld {
       this.env,
     );
     return this.account_service;
+  }
+
+  /* Hibernation API entry points — the runtime calls these by name. */
+  webSocketMessage(ws: WebSocket, data: string | ArrayBuffer): void {
+    this.hall.message(ws, data);
+  }
+
+  webSocketClose(ws: WebSocket): void {
+    this.hall.close(ws);
+  }
+
+  webSocketError(ws: WebSocket): void {
+    this.hall.close(ws);
   }
 
   async store(): Promise<MemoryCampusStore> {
@@ -88,6 +105,9 @@ export class CampusWorld {
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: this.cors() });
     }
+
+    const live = await this.hall.handle(request, url);
+    if (live) return live;
 
     if (request.method === "GET" && (url.pathname === "/health" || url.pathname === "/world")) {
       return this.json(worldFrom(await this.store()));
@@ -151,9 +171,11 @@ export class CampusWorld {
         const one = sanitizeSighting((raw ?? {}) as Record<string, unknown>, player.player_id);
         if (one) row.push(one);
       }
+      const fresh = freshFindOf(new Set(store.sighting.map((s) => s.sighting_id)), row, player);
       const { merged } = mergeSync(store, player, row);
       await this.persist(store);
       this.broadcast(store);
+      this.hall.announce(fresh);
       return this.json({ ok: true, merged, world: worldFrom(store) });
     }
 

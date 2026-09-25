@@ -22,7 +22,8 @@ export default defineConfig({
     proxy: {
       "/world": "http://127.0.0.1:8788",
       "/sync": "http://127.0.0.1:8788",
-      "/live": "http://127.0.0.1:8788",
+      /* `ws` so the hall socket (/live/socket) upgrades through the proxy too. */
+      "/live": { target: "http://127.0.0.1:8788", ws: true },
       "/health": "http://127.0.0.1:8788",
       "/join": "http://127.0.0.1:8788",
       "/mine": "http://127.0.0.1:8788",

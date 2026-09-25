@@ -32,7 +32,7 @@ chose ourselves is flagged `is_named_by_us`.
 ```
 npm install
 npm run dev        # http://127.0.0.1:4177
-npm run sync       # live campus world + accounts on :8788 (Vite proxies /sync /live /world /auth/ /account/)
+npm run sync       # live campus world + accounts + hall socket on :8788 (Vite proxies /sync /live /world /auth/ /account/, ws too)
 npm run build      # tsc --noEmit && vite build
 npm test           # node --test
 npm run lint
@@ -203,6 +203,27 @@ The play layer, wired in `src/live.tsx`:
   reachable the world strip renders nothing rather than an unmeasured zero.
 - **`account-core.ts` + `account.ts` + `account-panel.tsx` + `worker/account.ts`**
   — optional accounts and the per-account save; see *Accounts* below.
+- **The hall — live multiplayer on the play map** (`multiplayer.ts`,
+  `remote-walker.tsx`, `worker/live-socket.ts`, `server/hall.mjs`). Every phone
+  on the play view sees the other walkers — their stage sticker, name, level
+  and position source — moving live, a callout when somebody logs a find within
+  150 m, and an "N walkers out" pill (hidden until the hall has actually
+  answered). Transport is a WebSocket on the Durable Object (hibernation API,
+  `GET /live/socket`); when an upgrade fails the client polls `POST /live/pose`
+  / `GET /live/walker` every 2 s and keeps retrying the socket. Poses go out at
+  most once a second, only on a ≥3 m move or a look change, plus a 10 s
+  heartbeat; remote walkers glide from where they are drawn to each new pose
+  (no teleport jitter; a >150 m jump snaps) and are dropped after 60 s unheard.
+  Works in stick/demo mode — that is the point, the showcase hall is off
+  campus. `npm run sync` serves the same socket with a hand-rolled RFC 6455
+  server (no `ws` dependency). **What is shared, and nothing else:** a display
+  name, a level, the growth stage the avatar is drawn from, and a position
+  inside the campus frame tagged `gps` / `demo` / `play`. A position outside
+  the campus box is refused on both ends. The `player_id` is never sent to
+  other phones (the hall keys walkers by a one-way hash), and presence is held
+  in memory only, never stored. The same-origin Worker is the path that works
+  on phones; `?sync=` to an `http://` LAN box is blocked as mixed content on the
+  HTTPS handset build.
 - **Gestures and haptics.** A tap on the play ground means GO THERE, not "show
   me this area's statistics" — the sector card moved to the field view, where a
   survey belongs. A drag never becomes a tap: `TileMap` traps the click in the
