@@ -6,3 +6,4 @@ a.json
 script/cert/
 server/yclap-account.db
 server/yclap-account.db-*
+.dev.vars

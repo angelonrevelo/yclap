@@ -105,15 +105,13 @@ import { demoJournal, isSeededJournal } from "./demo-seed";
 import { fetchJoin, fetchMine, readPlayer, writePlayer, type World } from "./sync";
 
 import {
-  campusCodeForScientific,
   demoIdentify,
-  hasInatToken,
+  identifyPlant,
   loadInatNearby,
-  scorePlantImage,
   type InatIdentifyState,
   type InatNearbyState,
-  type InatSuggestion,
 } from "./inat";
+import { bestCampusMatch, matchCampus } from "./inat-match";
 import InatStrip from "./inat-strip";
 import { Card, Chip, Eyebrow, Fab, GlyphDisc, Pill, PrimaryPill, RADIUS, SpeciesPill, TaxonName, TaxonThumb } from "./ui";
 import { DexCard, DexHeader, GameDock, GameToast, PlayerHud, QuestBanner } from "./hud";
@@ -1231,8 +1229,13 @@ function identifyCaption(state: InatIdentifyState): string {  if (state.status =
   if (state.status === "needs_token") {
     return "iNaturalist computer vision needs a signed-in token on this build. Identification is iNaturalist’s, not this app’s — pick from the list or open Seek.";
   }
+  if (state.status === "token_expired") {
+    return "iNaturalist refused this server’s token — it expired (they last 24 hours). Pick from the campus list for now.";
+  }
+  if (state.status === "rate_limited") return "iNaturalist is rate-limiting us. Wait a minute and retake, or pick from the campus list.";
   if (state.status === "demo") {
-    return "RECORDED RESPONSE — this build has no iNaturalist token, so it is replaying a saved reply for a Narra photo. It has not looked at your photo.";
+    const why = state.reason === "token_expired" ? "the server’s iNaturalist token has expired" : "this server has no iNaturalist token";
+    return `RECORDED RESPONSE — ${why}, so it is replaying a saved reply for a Narra photo. It has not looked at your photo.`;
   }
   if (state.status === "ready") return "iNaturalist is identifying — not this app. Tap a suggestion to fill the campus list, or pick yourself.";
   return "Photo is optional. A memory for your journal. Nothing is uploaded to iNaturalist as an observation.";
@@ -1250,7 +1253,10 @@ function SuggestionList({
   return (
     <ul style={{ listStyle: "none", margin: "10px 0 0", padding: 0, display: "flex", gap: 10, overflowX: "auto" }}>
       {state.suggestion.slice(0, 3).map((row) => {
-        const match = campusCodeForScientific(row.scientific_name);
+        /* Exact → that species. A genus/family roll-up is labelled partial and
+           is only tappable when it narrows to one campus species. */
+        const campus = matchCampus(row);
+        const match = campus && campus.species_code.length === 1 ? campus.species_code[0]! : null;
         return (
           <li key={`${row.rank}-${row.scientific_name}`} style={{ flexShrink: 0, width: 88, textAlign: "center" }}>
             <button
@@ -1262,7 +1268,7 @@ function SuggestionList({
             >
               <SpeciesPortrait
                 scientific_name={row.scientific_name}
-                species_code={match ?? undefined}
+                species_code={campus && !campus.is_partial ? (match ?? undefined) : undefined}
                 size={64}
                 style={{ margin: "0 auto" }}
               />
@@ -1272,6 +1278,11 @@ function SuggestionList({
               <span style={{ display: "block", fontSize: 10, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 2 }}>
                 {is_demo ? "recorded" : `${row.score.toFixed(2)}`}
               </span>
+              {campus?.is_partial && (
+                <span style={{ display: "block", fontSize: 10, color: "var(--mg-gold)", marginTop: 2 }}>
+                  partial · {campus.match_kind} {campus.matched_name}
+                </span>
+              )}
             </button>
           </li>
         );
@@ -1353,19 +1364,18 @@ function CameraSheet({
     }
     let is_alive = true;
     setIdentify({ status: "loading" });
-    scorePlantImage({ image: shot.blob, filename: "sighting.jpg" }).then((next) => {
+    identifyPlant({ image: shot.blob, filename: "sighting.jpg" }).then((next) => {
       if (!is_alive) return;
-      /* No token in this build — replay the recorded reply so the walk still
-         shows the identify step, labelled as recorded. */
-      const shown = next.status === "needs_token" ? demoIdentify() : next;
+      /* No usable token on the server — replay the recorded reply so the walk
+         still shows the identify step, labelled as recorded and saying why. */
+      const shown =
+        next.status === "needs_token" || next.status === "token_expired" ? demoIdentify(next.status) : next;
       setIdentify(shown);
-      /* Only a LIVE identification may pre-fill the student's pick. A recorded
-         reply is shown and tappable, never applied on their behalf. */
+      /* Only a LIVE, EXACT identification may pre-fill the student's pick. A
+         recorded reply or a genus/family roll-up is shown, never applied. */
       if (shown.status === "ready") {
-        const match = shown.suggestion
-          .map((row: InatSuggestion) => campusCodeForScientific(row.scientific_name))
-          .find((code): code is string => Boolean(code));
-        if (match) onPick(match);
+        const best = bestCampusMatch(shown.suggestion);
+        if (best && !best.match.is_partial && best.match.species_code.length === 1) onPick(best.match.species_code[0]!);
       }
     });
     return () => {
@@ -1423,9 +1433,9 @@ function CameraSheet({
           <div style={{ fontSize: 11, color: "rgb(var(--mg-ink-rgb) / 0.62)", lineHeight: 1.4 }}>{identifyCaption(identify)}</div>
         </div>
         <SuggestionList state={identify} onPick={onPick} />
-        {!hasInatToken() && (
+        {identify.status === "demo" && (
           <div style={{ fontSize: 11, color: "rgb(var(--mg-ink-rgb) / 0.5)", marginTop: 6 }}>
-            Set <code>VITE_INAT_API_TOKEN</code> before building to run live iNaturalist computer vision instead.
+            Live identification runs once the server holds a fresh <code>INAT_API_TOKEN</code> (web-forest README, “iNaturalist identify”).
           </div>
         )}
 

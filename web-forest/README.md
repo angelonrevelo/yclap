@@ -36,12 +36,71 @@ npm run sync       # live campus world + accounts on :8788 (Vite proxies /sync /
 npm run build      # tsc --noEmit && vite build
 npm test           # node --test
 npm run lint
+npm run smoke:detect  # plant-detection smoke suite (replay unless a token is set)
 npm run handset    # build, then serve over HTTPS on the LAN for a real phone
 npm run deploy     # build, then wrangler deploy (needs `wrangler login` first)
 ```
 
 Port 4177 is claimed with `strictPort`, so a collision fails loudly rather than
 silently moving.
+
+## iNaturalist identify
+
+The camera sheet sends the photo to **`POST /inat/identify`** on our own
+origin (`worker/inat.ts`). That proxy forwards it to iNaturalist's
+`/v1/computervision/score_image` with the campus lat/lng (iNat's geo prior) and
+the **`INAT_API_TOKEN` secret, which lives only on the server** — it is not in
+the bundle. The client (`identifyPlant` in `src/inat.ts`) tries the proxy
+first. Under `npm run dev` only, if no proxy answers, it falls back to a direct
+call with `VITE_INAT_API_TOKEN` from `.env`; a production build compiles that
+read away (checked: the token is not in `dist/` even with it in `.env`). With
+neither, the sheet replays a recorded Narra reply labelled **RECORDED
+RESPONSE**, never presented as an identification of your photo.
+
+**Making it live — do this right before the demo:**
+
+1. Signed in to iNaturalist, open <https://www.inaturalist.org/users/api_token>
+   and copy the token.
+2. Deployed Worker: `npx wrangler secret put INAT_API_TOKEN` and paste it (no
+   redeploy needed). Local: `INAT_API_TOKEN=… npm run sync` (Vite proxies
+   `/inat/identify` to it), or put `INAT_API_TOKEN=…` in `.dev.vars` for
+   `wrangler dev`.
+3. Check it: `INAT_API_TOKEN=… npm run smoke:detect`, or
+   `npm run smoke:detect -- --url https://<deployed host>` to test the
+   deployed secret itself.
+
+**The honest caveat: iNat API tokens expire after 24 hours.** There is no
+long-lived key for this endpoint. A token set tonight stops working tomorrow
+night; after that the proxy answers `401 token_expired`, the sheet says the
+token expired and falls back to the labelled recorded reply. Repeat steps 1–2
+each day it must be live. The token in the local `.env` expired 2026-09-08.
+
+Error states the sheet shows: `needs_token` (503, no secret), `token_expired`
+(401), `rate_limited` (429), `offline` (iNat unreachable or no network).
+
+Matching (`src/inat-match.ts`) maps each suggestion to the nine campus species
+by iNat taxon id and ancestry: **exact** (the taxon, or below it — any fig is
+Balete, whose row is genus *Ficus*), or a **genus / family roll-up** flagged
+*partial* ("Vitex" is Molave *or* Lagundi). Only a live exact match pre-fills
+the pick.
+
+### Detection smoke suite
+
+`test/detect-smoke/` holds nine CC-BY / CC0 iNaturalist photos, one per campus
+species, resized under 100 KB, with licence and attribution in
+`manifest.json`. They are **not photos taken on campus** — the same species
+photographed elsewhere, mostly the Philippines. `npm run smoke:detect` runs
+each through the same `identifyPlant → /inat/identify → matchCampus` path as
+the app and reports exact top-1 / top-5 (exit 1 below `--min-top1 0.6` /
+`--min-top5 0.8`, exit 2 if it cannot run live).
+
+With no token it runs in **REPLAY mode** and prints so in a banner. The saved
+replies in `response/` are currently **constructed** (real taxon ids and
+ancestry, hand-written order and scores) because the only token available on
+2026-09-25 had expired, so the replay numbers measure our plumbing and
+matching, **not iNaturalist's accuracy**. With a fresh token,
+`INAT_API_TOKEN=… npm run smoke:detect -- --record` replaces them with real
+recorded replies (`is_recorded: true`). `npm test` runs the replay.
 
 ## The species-model pack
 
@@ -321,3 +380,6 @@ Sector boundaries, basemap geometry and the path network are
 © OpenStreetMap contributors, ODbL. Vegetation is measured from Esri World
 Imagery (© Esri, Maxar, Earthstar Geographics). Inventory figures are AIS,
 SY 2025–2026. These credits are licence terms, not chrome — they render.
+Plant identification is iNaturalist's computer vision, not this app's. The
+smoke-suite photos carry per-photo CC-BY / CC0 attribution in
+`test/detect-smoke/manifest.json`.

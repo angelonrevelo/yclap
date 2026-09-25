@@ -1,0 +1,6 @@
+{
+  "is_recorded": true,
+  "provenance": "Real reply from POST https://api.inaturalist.org/v1/computervision/score_image on 2026-09-25 with a token whose JWT exp was 2026-09-08 — what an expired token looks like.",
+  "status": 401,
+  "body": { "error": "Unauthorized", "status": 401 }
+}

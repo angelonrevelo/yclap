@@ -1,4 +1,5 @@
 import { DEMO_PIN, species } from "./data.ts";
+import { matchCampus } from "./inat-match.ts";
 
 export interface InatNearby {
   observation_id: number;
@@ -22,18 +23,32 @@ export interface InatSuggestion {
   scientific_name: string;
   common_name: string;
   score: number;
+  /** 1-based position in iNat's list. Not the taxonomic rank — see taxon_rank. */
   rank: number;
+  /** "species", "genus", "family"… as iNat sent it; null when absent. */
+  taxon_rank: string | null;
+  /** iNat lineage, root first. Empty when the response carried none. */
+  ancestor_ids: number[];
 }
+
+/** Which road the photo took: the server proxy, or a dev-only direct call. */
+export type IdentifyVia = "proxy" | "direct";
+
+/** Why the recorded demo is on screen instead of a live answer. */
+export type DemoReason = "needs_token" | "token_expired";
 
 export type InatIdentifyState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "ready"; suggestion: InatSuggestion[] }
+  | { status: "ready"; suggestion: InatSuggestion[]; via: IdentifyVia }
   | { status: "empty" }
   | { status: "offline" }
   | { status: "needs_token" }
+  /** iNat refused the server's token. iNat API tokens last 24 hours. */
+  | { status: "token_expired" }
+  | { status: "rate_limited" }
   /** Recorded iNat response replayed on stage. Never a live read of the photo. */
-  | { status: "demo"; suggestion: InatSuggestion[] };
+  | { status: "demo"; suggestion: InatSuggestion[]; reason: DemoReason };
 
 export interface InatObservation {
   id?: number;
@@ -64,6 +79,9 @@ const SUGGEST_COUNT = 10;
 const VIA = "yclap-field-guide/0.1 (Youth CLAP Ateneo CCC; local PWA)";
 const OBSERVATION_URL = "https://api.inaturalist.org/v1/observations";
 const SCORE_IMAGE_URL = "https://api.inaturalist.org/v1/computervision/score_image";
+/** Same-origin proxy (worker/inat.ts). Holds the token so the bundle never does. */
+export const IDENTIFY_PATH = "/inat/identify";
+export const TOKEN_URL = "https://www.inaturalist.org/users/api_token";
 
 const campus_scientific = Object.values(species).map((s) => s.scientific_name.toLowerCase());
 
@@ -202,6 +220,17 @@ function numericScore(row: Record<string, unknown>): number | null {
   return null;
 }
 
+/** iNat sends `ancestor_ids`, or only the `ancestry` "48460/47126/…" string. */
+function ancestorIds(taxon: Record<string, unknown> | null): number[] {
+  if (Array.isArray(taxon?.ancestor_ids)) {
+    return taxon.ancestor_ids.filter((n): n is number => typeof n === "number");
+  }
+  if (typeof taxon?.ancestry === "string") {
+    return taxon.ancestry.split("/").map(Number).filter((n) => Number.isInteger(n) && n > 0);
+  }
+  return [];
+}
+
 /** iNat CV JSON → suggestion list. Reads taxon.name; does not invent taxa. */
 export function mapScoreImage(body: unknown): InatSuggestion[] {
   const root = asRecord(body);
@@ -222,24 +251,41 @@ export function mapScoreImage(body: unknown): InatSuggestion[] {
         ? taxon.preferred_common_name.trim()
         : scientific_name;
     const taxon_id = typeof taxon?.id === "number" ? taxon.id : null;
-    suggestion.push({ taxon_id, scientific_name, common_name: common, score, rank });
+    const taxon_rank = typeof taxon?.rank === "string" ? taxon.rank : null;
+    suggestion.push({
+      taxon_id,
+      scientific_name,
+      common_name: common,
+      score,
+      rank,
+      taxon_rank,
+      ancestor_ids: ancestorIds(taxon),
+    });
     if (suggestion.length >= SUGGEST_COUNT) break;
   }
   return suggestion;
 }
 
+/**
+ * The client-side token, for `npm run dev` ONLY. Vite inlines VITE_* vars into
+ * the bundle, which is how the 09-23 dist ended up carrying a live token. In a
+ * build `import.meta.env.DEV` is the literal `false`, so this read folds away
+ * and the string never reaches dist/. Production goes through the proxy.
+ */
+function devToken(): string | undefined {
+  try {
+    const token: unknown = import.meta.env.DEV ? import.meta.env.VITE_INAT_API_TOKEN : undefined;
+    return typeof token === "string" && token.trim() ? token.trim() : undefined;
+  } catch {
+    return undefined; /* Node: no import.meta.env */
+  }
+}
+
 function readToken(explicit?: string): string | undefined {
   const from_arg = explicit?.trim();
   if (from_arg) return from_arg;
-  try {
-    /* Vite inlines this at build time. `process` does not exist in a browser
-       bundle, so reading only `process.env` made every browser needs_token. */
-    const vite_token = (import.meta as { env?: Record<string, string | undefined> }).env
-      ?.VITE_INAT_API_TOKEN;
-    if (vite_token?.trim()) return vite_token.trim();
-  } catch {
-    /* no import.meta.env */
-  }
+  const dev_token = devToken();
+  if (dev_token) return dev_token;
   try {
     const env_token = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process
       ?.env?.INAT_API_TOKEN;
@@ -285,13 +331,91 @@ export async function scorePlantImage(input: {
 
   try {
     const res = await fetch_impl(SCORE_IMAGE_URL, { method: "POST", headers: header, body: form });
+    if (res.status === 401 || res.status === 403) return { status: "token_expired" };
+    if (res.status === 429) return { status: "rate_limited" };
     if (!res.ok) return { status: "offline" };
     const body: unknown = await res.json();
     const suggestion = mapScoreImage(body);
-    return suggestion.length ? { status: "ready", suggestion } : { status: "empty" };
+    return suggestion.length ? { status: "ready", suggestion, via: "direct" } : { status: "empty" };
   } catch {
     return { status: "offline" };
   }
+}
+
+/**
+ * What the proxy said, or null when nothing that looks like the proxy answered
+ * (a static host's 404, Vite's 502 with no sync server running, an HTML page).
+ * `needs_token` from the proxy is also null: the proxy exists but cannot help.
+ */
+async function readProxy(res: Response): Promise<InatIdentifyState | null> {
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    return null;
+  }
+  const rec = asRecord(body);
+  if (res.ok && rec && Array.isArray(rec.results)) {
+    const suggestion = mapScoreImage(body);
+    return suggestion.length ? { status: "ready", suggestion, via: "proxy" } : { status: "empty" };
+  }
+  const error = typeof rec?.error === "string" ? rec.error : "";
+  if (error === "token_expired") return { status: "token_expired" };
+  if (error === "rate_limited") return { status: "rate_limited" };
+  if (error === "upstream" || error === "upstream_unreachable") return { status: "offline" };
+  return null;
+}
+
+function isOffline(): boolean {
+  const nav = (globalThis as { navigator?: { onLine?: boolean } }).navigator;
+  return nav?.onLine === false;
+}
+
+/**
+ * The app's identify call. Proxy first, so the token stays on the server. If no
+ * proxy answers: a dev-only direct call with VITE_INAT_API_TOKEN. Else
+ * needs_token, which the camera sheet turns into the labelled recorded demo.
+ */
+export async function identifyPlant(input: {
+  image: Blob | ArrayBuffer | Uint8Array;
+  filename?: string;
+  /** Direct-call token. Tests only; the app passes none. */
+  token?: string;
+  fetch?: typeof fetch;
+  lat?: number;
+  lng?: number;
+}): Promise<InatIdentifyState> {
+  const filename = input.filename ?? "plant.jpg";
+  const fetch_impl = input.fetch ?? globalThis.fetch;
+  const form = new FormData();
+  form.append("image", asBlob(input.image, filename), filename);
+  form.append("lat", String(input.lat ?? DEMO_PIN.lat));
+  form.append("lng", String(input.lng ?? DEMO_PIN.lon));
+
+  let is_unreachable = false;
+  try {
+    const res = await fetch_impl(IDENTIFY_PATH, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+      body: form,
+    });
+    const verdict = await readProxy(res);
+    if (verdict) return verdict;
+  } catch {
+    is_unreachable = true;
+  }
+  if (is_unreachable && isOffline()) return { status: "offline" };
+  if (!readToken(input.token)) return { status: "needs_token" };
+  return scorePlantImage({ ...input, filename, fetch: fetch_impl });
+}
+
+/**
+ * The campus species a suggestion lands on EXACTLY, by taxon id and ancestry
+ * (see inat-match.ts). Null for a genus/family roll-up or no match.
+ */
+export function campusCodeForSuggestion(row: InatSuggestion): string | null {
+  const match = matchCampus(row);
+  return match && !match.is_partial && match.species_code.length === 1 ? match.species_code[0]! : null;
 }
 
 /** Match an iNat suggestion to a curated campus species_code, if any. */
@@ -304,16 +428,17 @@ export function campusCodeForScientific(scientific_name: string): string | null 
   return null;
 }
 
-/** True when this build carries a CV token, i.e. detection can run for real. */
+/** True when this DEV build carries a direct CV token. Always false in a production build. */
 export function hasInatToken(): boolean {
   return Boolean(readToken());
 }
 
 /**
- * Recorded top-3 from a real POST /v1/computervision/score_image for a
- * Pterocarpus indicus photo (observation 36874701). Replayed only when the
- * build has no token, and always labelled on screen as a recorded response —
- * it is not an identification of the photo in the viewfinder.
+ * Top-3 in the shape of POST /v1/computervision/score_image for a Pterocarpus
+ * indicus photo (observation 36874701). Replayed only when live identification
+ * is unavailable, and always labelled on screen as a recorded response — it is
+ * not an identification of the photo in the viewfinder. Taxon ids re-checked
+ * against /v1/taxa on 2026-09-25 (Samanea saman is 281371; 47122 is Fabaceae).
  */
 const DEMO_SCORE_BODY = {
   results: [
@@ -327,12 +452,12 @@ const DEMO_SCORE_BODY = {
     },
     {
       combined_score: 0.0189,
-      taxon: { id: 47122, name: "Samanea saman", preferred_common_name: "Rain Tree", rank: "species" },
+      taxon: { id: 281371, name: "Samanea saman", preferred_common_name: "Rain Tree", rank: "species" },
     },
   ],
 };
 
-export function demoIdentify(): InatIdentifyState {
+export function demoIdentify(reason: DemoReason = "needs_token"): InatIdentifyState {
   const suggestion = mapScoreImage(DEMO_SCORE_BODY);
-  return suggestion.length ? { status: "demo", suggestion } : { status: "empty" };
+  return suggestion.length ? { status: "demo", suggestion, reason } : { status: "empty" };
 }

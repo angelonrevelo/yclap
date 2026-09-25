@@ -7,7 +7,7 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/world", "/sync", "/live", "/health", "/join", "/mine", "/auth/*", "/account/*"]
+    "run_worker_first": ["/world", "/sync", "/live", "/health", "/join", "/mine", "/auth/*", "/account/*", "/inat/identify"]
   },
   "durable_objects": {
     "bindings": [

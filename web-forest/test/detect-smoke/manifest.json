@@ -1,0 +1,116 @@
+{
+  "about": "Detection smoke photos: one iNaturalist research-grade photo per campus species, CC-BY or CC0 only, resized to <=560 px and re-encoded as JPEG (changes made; originals at photo_url). These are NOT photos taken on the Ateneo campus; they are the same species photographed elsewhere (mostly the Philippines). Downloaded 2026-09-25 via /v1/observations?taxon_id=…&photo_license=cc-by,cc0.",
+  "photo": [
+    {
+      "file": "photo/narra.jpg",
+      "species_code": "narra",
+      "expected_scientific_name": "Pterocarpus indicus",
+      "expected_taxon_id": 348101,
+      "observed_taxon": "Pterocarpus indicus",
+      "place_guess": "Estefania, Bacolod, Negros Occidental, Philippines",
+      "observation_url": "https://www.inaturalist.org/observations/284492421",
+      "photo_url": "https://www.inaturalist.org/photos/511293438",
+      "license_code": "cc0",
+      "attribution": "no rights reserved"
+    },
+    {
+      "file": "photo/molave.jpg",
+      "species_code": "molave",
+      "expected_scientific_name": "Vitex parviflora",
+      "expected_taxon_id": 170274,
+      "observed_taxon": "Vitex parviflora",
+      "place_guess": "Haleiwa, HI 96712, USA",
+      "observation_url": "https://www.inaturalist.org/observations/337497813",
+      "photo_url": "https://www.inaturalist.org/photos/613544266",
+      "license_code": "cc0",
+      "attribution": "no rights reserved",
+      "note": "Photographed outside the Philippines; the geo prior in live mode still uses the campus pin."
+    },
+    {
+      "file": "photo/katmon.jpg",
+      "species_code": "katmon",
+      "expected_scientific_name": "Dillenia philippinensis",
+      "expected_taxon_id": 191498,
+      "observed_taxon": "Dillenia philippinensis",
+      "place_guess": "Philippines",
+      "observation_url": "https://www.inaturalist.org/observations/357871768",
+      "photo_url": "https://www.inaturalist.org/photos/652776209",
+      "license_code": "cc-by",
+      "attribution": "(c) Nielbert Raner, some rights reserved (CC BY)"
+    },
+    {
+      "file": "photo/dao.jpg",
+      "species_code": "dao",
+      "expected_scientific_name": "Dracontomelon dao",
+      "expected_taxon_id": 427556,
+      "observed_taxon": "Dracontomelon dao",
+      "place_guess": "Davao City, PH-DS, PH",
+      "observation_url": "https://www.inaturalist.org/observations/71695257",
+      "photo_url": "https://www.inaturalist.org/photos/116767250",
+      "license_code": "cc-by",
+      "attribution": "(c) Greg III Espera, some rights reserved (CC BY)"
+    },
+    {
+      "file": "photo/mahogany.jpg",
+      "species_code": "mahogany",
+      "expected_scientific_name": "Swietenia macrophylla",
+      "expected_taxon_id": 169442,
+      "observed_taxon": "Swietenia macrophylla",
+      "place_guess": "Philippines",
+      "observation_url": "https://www.inaturalist.org/observations/221063403",
+      "photo_url": "https://www.inaturalist.org/photos/391456412",
+      "license_code": "cc-by",
+      "attribution": "(c) Chet Burrier, some rights reserved (CC BY)"
+    },
+    {
+      "file": "photo/raintree.jpg",
+      "species_code": "raintree",
+      "expected_scientific_name": "Samanea saman",
+      "expected_taxon_id": 281371,
+      "observed_taxon": "Samanea saman",
+      "place_guess": "Calle 56 No. 4 Esq, Av Concordia, 24180 Cdad. del Carmen, Camp., México",
+      "observation_url": "https://www.inaturalist.org/observations/391230956",
+      "photo_url": "https://www.inaturalist.org/photos/716845252",
+      "license_code": "cc-by",
+      "attribution": "(c) Douglas Caro Lopez, some rights reserved (CC BY)",
+      "note": "Photographed outside the Philippines; the geo prior in live mode still uses the campus pin."
+    },
+    {
+      "file": "photo/teak.jpg",
+      "species_code": "teak",
+      "expected_scientific_name": "Tectona grandis",
+      "expected_taxon_id": 62887,
+      "observed_taxon": "Tectona grandis",
+      "place_guess": "Mindanao, Tagum City, Davao Del Norte, PH",
+      "observation_url": "https://www.inaturalist.org/observations/211157578",
+      "photo_url": "https://www.inaturalist.org/photos/373364092",
+      "license_code": "cc-by",
+      "attribution": "(c) Vreni Gem O. Caasi, some rights reserved (CC BY)"
+    },
+    {
+      "file": "photo/balete.jpg",
+      "species_code": "balete",
+      "expected_scientific_name": "Ficus",
+      "expected_taxon_id": 50999,
+      "observed_taxon": "Ficus septica",
+      "place_guess": "Batong Malake, Los Baños, Laguna, Philippinen",
+      "observation_url": "https://www.inaturalist.org/observations/329050938",
+      "photo_url": "https://www.inaturalist.org/photos/596389583",
+      "license_code": "cc0",
+      "attribution": "no rights reserved",
+      "note": "Balete is the genus-level campus row (Ficus sp.); this photo is Ficus septica, not a strangler fig — no CC-BY/CC0 Philippine strangler-fig photo was found."
+    },
+    {
+      "file": "photo/lagundi.jpg",
+      "species_code": "lagundi",
+      "expected_scientific_name": "Vitex negundo",
+      "expected_taxon_id": 170273,
+      "observed_taxon": "Vitex negundo",
+      "place_guess": "Panabo City, PH-DV, PH",
+      "observation_url": "https://www.inaturalist.org/observations/64914016",
+      "photo_url": "https://www.inaturalist.org/photos/104437090",
+      "license_code": "cc-by",
+      "attribution": "(c) Greg III Espera, some rights reserved (CC BY)"
+    }
+  ]
+}
