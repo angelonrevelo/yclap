@@ -24,10 +24,14 @@
  * wrong clock can neither win nor lock anybody out — its clock is never read.
  *
  * Signup and login are rate-limited per IP (CF-Connecting-IP), and login also
- * per username, the attempt counted before the password hash is computed.
+ * per username + IP (strict) and per username from everywhere (loose), the
+ * attempt counted before the password hash is computed. The strict limit is
+ * keyed on the pair so five wrong guesses from a stranger cannot lock the
+ * owner out.
  */
 import {
   LOGIN_IP_MAX,
+  LOGIN_USER_MAX,
   LOGIN_WINDOW_MS,
   LoginLimit,
   SAVE_MAX_BYTE,
@@ -148,6 +152,7 @@ export class AccountService {
   now: () => number;
   limit: LoginLimit = new LoginLimit();
   login_ip_limit: RateWindow = new RateWindow(LOGIN_IP_MAX, LOGIN_WINDOW_MS);
+  login_user_limit: RateWindow = new RateWindow(LOGIN_USER_MAX, LOGIN_WINDOW_MS);
   signup_ip_limit: RateWindow = new RateWindow(SIGNUP_IP_MAX, SIGNUP_WINDOW_MS);
   swept_at = 0;
 
@@ -289,10 +294,17 @@ export class AccountService {
       const now = this.now();
       const ip_wait = ip ? this.login_ip_limit.take(ip, now) : 0;
       if (ip_wait > 0) return tooMany(ip_wait);
-      const wait = this.limit.take(username, now);
+      const pair = `${username}|${ip ?? ""}`;
+      const wait = this.limit.take(pair, now);
       if (wait > 0) {
         if (ip) this.login_ip_limit.refund(ip);
         return tooMany(wait);
+      }
+      const user_wait = this.login_user_limit.take(username, now);
+      if (user_wait > 0) {
+        if (ip) this.login_ip_limit.refund(ip);
+        this.limit.refund(pair);
+        return tooMany(user_wait);
       }
       const row = username ? this.accountBy("username", username) : null;
       const password = typeof body.password === "string" ? body.password : "";
@@ -301,7 +313,8 @@ export class AccountService {
         !!row.password_salt &&
         (await verifyPassword(password, row.password_hash, row.password_salt));
       if (!row || !is_ok) return json({ error: "wrong username or password" }, 401);
-      this.limit.clear(username);
+      this.limit.clear(pair);
+      this.login_user_limit.refund(username);
       if (ip) this.login_ip_limit.refund(ip);
       const set = await this.openSession(row.account_code, is_secure);
       return json({ account: publicOf(row) }, 200, [set]);
@@ -394,7 +407,7 @@ export class AccountService {
         }
         /* Read, stamp and write with no await in between, and the write itself
            only lands if the stored stamp is still the one the client read. */
-        const updated_at = nextSaveStamp(this.now(), this.storedSave(account_code).updated_at);
+        const updated_at = nextSaveStamp(this.now(), this.storedStamp(account_code));
         const save_json = JSON.stringify(save);
         const written =
           base === null
@@ -418,6 +431,12 @@ export class AccountService {
     }
 
     return json({ error: "not found" }, 404);
+  }
+
+  /** Just the stamp — the CAS path needs no parsed save. */
+  storedStamp(account_code: string): string | null {
+    const stored = this.sql("SELECT updated_at FROM save WHERE account_code = ?", account_code)[0];
+    return stored ? String(stored.updated_at) : null;
   }
 
   storedSave(account_code: string): { save: AccountSave | null; updated_at: string | null } {

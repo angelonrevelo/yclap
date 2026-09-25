@@ -86,9 +86,14 @@ each day it must be live. The token in the local `.env` expired 2026-09-08.
 
 Error states the sheet shows: `needs_token` (503, no secret), `token_expired`
 (401), `rate_limited` (429 — iNat's throttle, or ours: 40 photos a minute per
-IP), `offline` (iNat unreachable or no network). The proxy is same-origin only
-(no CORS header), refuses a body declared over ~5 MB before parsing it (413),
-and a part that is not `image/*` (415).
+IP), `offline` (iNat unreachable or no network). The proxy is same-origin only:
+no CORS header, and a POST whose `Origin` is another site (or whose
+`Sec-Fetch-Site` is `cross-site`) is refused 403 before the token is touched,
+since a `no-cors` form POST would otherwise still spend it. It counts the body
+as it streams and cuts it past ~5 MB (413), declared length or chunked — on the
+LAN server that drops the upload — and refuses a part that is not `image/*`
+(415). The 40-a-minute brake is in memory, so on Workers it is **per isolate**:
+a brake on scripts, not a quota.
 
 Matching (`src/inat-match.ts`) maps each suggestion to the nine campus species
 by iNat taxon id and ancestry: **exact** (the taxon, or below it — any fig is
@@ -329,10 +334,18 @@ The play layer, wired in `src/live.tsx`:
   inside the campus frame tagged `gps` / `demo` / `play`. A position outside
   the campus box is refused on both ends. The `player_id` is never sent to
   other phones (the hall keys walkers by a one-way hash), and presence is held
-  in memory only, never stored. Brakes: the Worker's socket upgrade must come
-  from its own host's page (or localhost dev), the hall holds at most 200
-  walkers, and poses past 2 a second per socket (60 per IP) are dropped; the
-  LAN hall caps a fragmented message at 64 KB. The same-origin Worker is the path that works
+  in memory only, never stored. Brakes, the same on the Worker and the LAN
+  hall: the socket upgrade and `POST /live/pose` must come from the hall's own
+  host's page (or localhost dev) — 403 otherwise — and `/live/pose` sends no
+  CORS header; the hall holds at most 200 walkers, one IP at most 4 polled
+  walkers (so one script cannot hold every seat; on Cloudflare a booth wifi is
+  one IP, but phones there use the socket, and polling is only its fallback),
+  and poses past 2 a second per socket or polled walker (60 per IP) are
+  dropped; the LAN hall caps a fragmented message at 64 KB and a `/sync` or
+  `/live/pose` body at 2 MB, dropping the request past it. `npm run sync`
+  reads each phone's address from the socket, or behind the Vite proxy (which
+  runs `xfwd: true`) from the last `X-Forwarded-For` entry — trusted only from
+  loopback. The same-origin Worker is the path that works
   on phones; `?sync=` to an `http://` LAN box is blocked as mixed content on the
   HTTPS handset build.
 - **Gestures and haptics.** A tap on the play ground means GO THERE, not "show
@@ -408,12 +421,14 @@ If the project outgrows one Durable Object, the SQL moves to Neon unchanged.
   on plain-http localhost), stored server-side as a SHA-256 hash, 30 days.
   Changing the password signs out every other device. Expired sessions are
   swept from the table at most once an hour.
-- **Rate limits** (429 + `Retry-After`): 5 failed logins per username per 15
-  minutes, the attempt counted *before* the password hash runs so a parallel
-  burst cannot slip past; per IP (`CF-Connecting-IP`), 50 failed logins per 15
-  minutes and 40 signups an hour — generous because a booth of phones shares
-  one public IP. `npm run sync` sets the IP from the socket and skips per-IP
-  limits for loopback (the Vite proxy). All in memory, bounded to 10,000 keys,
+- **Rate limits** (429 + `Retry-After`): 5 failed logins per username *from
+  one IP* per 15 minutes (so a stranger's guesses cannot lock the owner out),
+  and 50 per username from all addresses together, the attempt counted
+  *before* the password hash runs so a parallel burst cannot slip past; per IP
+  (`CF-Connecting-IP`), 50 failed logins per 15 minutes and 40 signups an hour
+  — generous because a booth of phones shares one public IP. `npm run sync`
+  sets the IP from the socket, or behind the Vite proxy from the forwarded
+  address, and skips per-IP limits only for a local script. All in memory, bounded to 10,000 keys,
   so they reset if the Durable Object is evicted. Account bodies over 1.5 MB
   are refused before they are buffered; `Content-Type` must be exactly
   `application/json` (parameters allowed).

@@ -15,13 +15,22 @@
  *   429 rate_limited    iNat throttled us
  *   502 upstream        iNat answered with some other failure, or not at all
  *   429 too_many        this IP sent more than IDENTIFY_IP_MAX a minute
+ *   403 foreign_origin  the POST came from another site's page
  *   400 / 405 / 413 / 415  bad request from the client
  *
- * Same-origin only: the app is served from the same host, so there is no
- * CORS header and a foreign page cannot spend our iNat quota from a browser.
+ * Same-origin only. There is no CORS header, so a foreign page cannot READ an
+ * answer — but a `no-cors` multipart POST from any site still arrives, so the
+ * Origin / Sec-Fetch-Site check (isOwnPage) refuses it before the rate window,
+ * the body or the token is touched. The body is counted as it streams and cut
+ * at MAX_FORM_BYTE, so a chunked upload with no Content-Length cannot get past
+ * the size cap either.
+ *
+ * `identify_limit` is in memory: on Workers it is per isolate, so the real
+ * ceiling is IDENTIFY_IP_MAX × however many isolates Cloudflare runs. It is a
+ * brake, not a quota; iNat's own throttle is the hard one.
  */
 import { DEMO_PIN } from "../src/data.ts";
-import { RateWindow, clientIp } from "../src/rate-limit.ts";
+import { BodyTooLarge, RateWindow, capStream, clientIp, isOwnPage } from "../src/rate-limit.ts";
 
 export const IDENTIFY_PATH = "/inat/identify";
 export const SCORE_IMAGE_URL = "https://api.inaturalist.org/v1/computervision/score_image";
@@ -30,7 +39,7 @@ export const TOKEN_URL = "https://www.inaturalist.org/users/api_token";
 /** A phone photo re-encoded by the camera sheet is well under this. */
 const MAX_IMAGE_BYTE = 5 * 1024 * 1024;
 /** Room for the multipart boundaries and the lat/lng fields around the photo. */
-const MAX_FORM_BYTE = MAX_IMAGE_BYTE + 64 * 1024;
+export const MAX_FORM_BYTE = MAX_IMAGE_BYTE + 64 * 1024;
 /**
  * Per IP, per minute. A booth of phones shares one public IP, and iNat itself
  * throttles the token well before this, so it is a brake on scripts, not on
@@ -61,6 +70,7 @@ export async function handleIdentify(
   limit: RateWindow = identify_limit,
 ): Promise<Response> {
   if (request.method !== "POST") return json(405, { error: "method_not_allowed", allow: "POST" }, { Allow: "POST" });
+  if (!isOwnPage(request)) return json(403, { error: "foreign_origin" });
 
   /* Before anything is read: the size the client declared, then this IP's rate. */
   const declared = Number(request.headers.get("Content-Length"));
@@ -83,10 +93,17 @@ export async function handleIdentify(
     });
   }
 
+  /* Counted as it streams: a chunked body declares no Content-Length. */
+  const counted = new Response(request.body ? capStream(request.body, MAX_FORM_BYTE) : null, {
+    headers: { "Content-Type": request.headers.get("Content-Type") ?? "" },
+  });
   let form: FormData;
   try {
-    form = await request.formData();
-  } catch {
+    form = await counted.formData();
+  } catch (e) {
+    if (e instanceof BodyTooLarge || (e as { cause?: unknown })?.cause instanceof BodyTooLarge) {
+      return json(413, { error: "image_too_large", max_byte: MAX_IMAGE_BYTE });
+    }
     return json(400, { error: "bad_form", detail: "Send multipart/form-data with an `image` field." });
   }
   const image = form.get("image");

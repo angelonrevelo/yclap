@@ -9,8 +9,13 @@
  * in the environment.
  *
  * Per-IP rate limits read CF-Connecting-IP, as on Cloudflare. Here that header
- * is always overwritten with the socket's remote address, so a LAN client
- * cannot pick its own. Account bodies are capped before they are buffered.
+ * is always overwritten with the caller's address (server/request.mjs
+ * remoteIp: the socket, or behind the Vite proxy the address it forwards), so
+ * a LAN client cannot pick its own. Every body is capped as it streams; past
+ * the cap the request is answered 413 or dropped, never buffered further.
+ *
+ * POST /live/pose and POST /inat/identify take their own page only (Origin /
+ * Sec-Fetch-Site), and /live/pose answers with no CORS header.
  */
 import { createServer } from "node:http";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -18,7 +23,7 @@ import { dirname, resolve } from "node:path";
 import { networkInterfaces } from "node:os";
 import { pathToFileURL } from "node:url";
 import { DatabaseSync } from "node:sqlite";
-import { Readable } from "node:stream";
+import { isOwnPageReq, readJson, remoteIp, webRequestOf } from "./request.mjs";
 
 const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -38,35 +43,14 @@ const hall = createHall(multiplayer);
 
 /* POST /inat/identify — the same proxy function the Worker runs. The token
    comes from this process's env (INAT_API_TOKEN), never from the bundle. */
-const { handleIdentify, IDENTIFY_PATH } = await import(
+const { handleIdentify, IDENTIFY_PATH, MAX_FORM_BYTE } = await import(
   pathToFileURL(resolve(process.cwd(), "worker/inat.ts")).href
 );
 
-/**
- * The socket's address, as the Worker would see it in CF-Connecting-IP. Null
- * for loopback: that is the Vite dev proxy carrying every phone on the LAN
- * under one address, so per-IP limits would lump the whole booth together.
- * (Per-username login limits still apply.)
- */
-function remoteIp(req) {
-  const ip = String(req.socket.remoteAddress ?? "").replace(/^::ffff:/, "");
-  if (!ip || ip === "::1" || ip.startsWith("127.")) return null;
-  return ip;
-}
-
+/* The body streams through a byte cap: a chunked upload past it destroys the
+   request instead of reaching formData(). */
 async function serveIdentify(req, res) {
-  const headers = Object.entries(req.headers).flatMap(([k, v]) =>
-    v === undefined || k === "cf-connecting-ip" ? [] : [[k, String(v)]],
-  );
-  const ip = remoteIp(req);
-  if (ip) headers.push(["cf-connecting-ip", ip]);
-  const request = new Request(`http://local${req.url}`, {
-    method: req.method,
-    headers,
-    body: req.method === "POST" ? Readable.toWeb(req) : undefined,
-    duplex: "half",
-  });
-  const response = await handleIdentify(request, process.env.INAT_API_TOKEN);
+  const response = await handleIdentify(webRequestOf(req, MAX_FORM_BYTE), process.env.INAT_API_TOKEN);
   res.writeHead(response.status, Object.fromEntries(response.headers));
   res.end(Buffer.from(await response.arrayBuffer()));
 }
@@ -147,22 +131,12 @@ function broadcast() {
   }
 }
 
-function readJson(req) {
-  return new Promise((resolve_json, reject) => {
-    let body = "";
-    req.on("data", (chunk) => {
-      body += chunk;
-      if (body.length > 2_000_000) reject(new Error("body too large"));
-    });
-    req.on("end", () => {
-      try {
-        resolve_json(body ? JSON.parse(body) : {});
-      } catch (e) {
-        reject(e);
-      }
-    });
-    req.on("error", reject);
-  });
+/** A readJson failure as a response. A 413's request is already destroyed. */
+function refuseBody(res, e) {
+  if (res.destroyed || res.headersSent) return;
+  const status = e?.status === 413 ? 413 : 400;
+  res.writeHead(status, { "Content-Type": "application/json", Connection: "close" });
+  res.end(JSON.stringify({ error: status === 413 ? "body too large" : "bad json" }));
 }
 
 function cors(res) {
@@ -192,6 +166,33 @@ const server = createServer(async (req, res) => {
     }
     return;
   }
+  /* Its own page only, and no CORS header — not even on the preflight. */
+  if (url.pathname === "/live/pose") {
+    if (req.method === "OPTIONS") {
+      res.writeHead(204).end();
+      return;
+    }
+    if (req.method === "POST") {
+      if (!isOwnPageReq(req)) {
+        res.writeHead(403, { "Content-Type": "application/json", Connection: "close" });
+        res.end(JSON.stringify({ error: "this hall only takes poses from its own page" }));
+        req.resume();
+        return;
+      }
+      let body;
+      try {
+        body = await readJson(req);
+      } catch (e) {
+        refuseBody(res, e);
+        return;
+      }
+      const { status, body: out } = hall.pose(body, remoteIp(req));
+      res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      res.end(JSON.stringify(out));
+      return;
+    }
+  }
+
   cors(res);
 
   if (req.method === "OPTIONS") {
@@ -208,19 +209,6 @@ const server = createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/live/walker") {
     res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
     res.end(JSON.stringify(hall.snapshot()));
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/live/pose") {
-    let body;
-    try {
-      body = await readJson(req);
-    } catch {
-      body = null;
-    }
-    const snap = body ? hall.pose(body) : null;
-    res.writeHead(snap ? 200 : 400, { "Content-Type": "application/json", "Cache-Control": "no-store" });
-    res.end(JSON.stringify(snap ?? { error: "pose needs player_id and a lat/lon inside the campus frame" }));
     return;
   }
 
@@ -259,9 +247,8 @@ const server = createServer(async (req, res) => {
     let body;
     try {
       body = await readJson(req);
-    } catch {
-      res.writeHead(400, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "bad json" }));
+    } catch (e) {
+      refuseBody(res, e);
       return;
     }
     const player = sanitizePlayer(body?.player ?? {});

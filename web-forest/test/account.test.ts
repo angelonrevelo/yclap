@@ -12,6 +12,7 @@ import {
   fromBase64Url,
   hashPassword,
   LOGIN_IP_MAX,
+  LOGIN_USER_MAX,
   SIGNUP_IP_MAX,
   isSessionLive,
   mergeSave,
@@ -576,4 +577,43 @@ test("Google code flow: state cookie, code exchange, tokeninfo, account made", a
   /* A Google-only account sets its first password without an old one. */
   const set = await svc.handle(req("/auth/password", "POST", { new_password: "narra-tree-42" }, jar));
   assert.equal(set.status, 200);
+});
+
+test("a stranger's wrong guesses cannot lock the owner out: the strict limit is per username + IP", async () => {
+  const svc = service();
+  await svc.handle(req("/auth/signup", "POST", { username: "owner", password: "narra-tree-42" }));
+  for (let i = 0; i < LOGIN_FAIL_MAX; i++) {
+    const res = await svc.handle(req("/auth/login", "POST", { username: "owner", password: `bad-${i}-xx` }, "", "203.0.113.50"));
+    assert.equal(res.status, 401);
+  }
+  const stranger = await svc.handle(req("/auth/login", "POST", { username: "owner", password: "narra-tree-42" }, "", "203.0.113.50"));
+  assert.equal(stranger.status, 429, "the guessing address is locked");
+  const owner = await svc.handle(req("/auth/login", "POST", { username: "owner", password: "narra-tree-42" }, "", "198.51.100.60"));
+  assert.equal(owner.status, 200, "the owner, elsewhere, still signs in");
+});
+
+test("a guessing run spread over many addresses still hits the loose per-username total", async () => {
+  const svc = service();
+  await svc.handle(req("/auth/signup", "POST", { username: "target", password: "narra-tree-42" }));
+  svc.login_user_limit.max = 6; /* the real cap is LOGIN_USER_MAX; 6 keeps the PBKDF2 count low */
+  assert.ok(LOGIN_USER_MAX > LOGIN_FAIL_MAX);
+  for (let i = 0; i < 6; i++) {
+    const res = await svc.handle(req("/auth/login", "POST", { username: "target", password: `bad-${i}-xx` }, "", `203.0.113.${100 + i}`));
+    assert.equal(res.status, 401);
+  }
+  const blocked = await svc.handle(req("/auth/login", "POST", { username: "target", password: "narra-tree-42" }, "", "203.0.113.200"));
+  assert.equal(blocked.status, 429);
+  assert.equal(svc.limit.retryAfter("target|203.0.113.200"), 0, "the refused try is not counted on its own address");
+});
+
+test("storedStamp reads the stamp alone, matching storedSave", async () => {
+  const svc = service();
+  assert.equal(svc.storedStamp("nobody"), null);
+  const signup = await svc.handle(req("/auth/signup", "POST", { username: "stamp", password: "narra-tree-42" }));
+  const jar = sessionCookie(signup);
+  const put = await svc.handle(req("/account/save", "PUT", { save: { sighting: [], point_event: [] }, base_updated_at: null }, jar));
+  assert.equal(put.status, 200);
+  const code = svc.accountBy("username", "stamp")!.account_code;
+  assert.equal(svc.storedStamp(code), svc.storedSave(code).updated_at);
+  assert.ok(svc.storedStamp(code));
 });

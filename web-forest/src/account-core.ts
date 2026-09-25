@@ -21,7 +21,7 @@ export const SESSION_MS = SESSION_DAY * 24 * 60 * 60 * 1000;
 export const SESSION_COOKIE = "mg_session";
 export const STATE_COOKIE = "mg_oauth_state";
 
-/** Five wrong passwords per username inside fifteen minutes, then a wait. */
+/** Five wrong passwords per username from one IP inside fifteen minutes, then a wait. */
 export const LOGIN_FAIL_MAX = 5;
 export const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
@@ -191,11 +191,19 @@ export function cookie(name: string, value: string, max_age_s: number, is_secure
  * of phones on one wifi reaches us from one public IP.
  */
 export const LOGIN_IP_MAX = 50;
+/**
+ * Failed logins per username from ALL addresses together, per LOGIN_WINDOW_MS.
+ * The strict LOGIN_FAIL_MAX is per username AND IP, so five wrong guesses from
+ * somewhere else cannot lock the owner out; this looser total still stops a
+ * spread-out guessing run on one name.
+ */
+export const LOGIN_USER_MAX = 50;
 export const SIGNUP_IP_MAX = 40;
 export const SIGNUP_WINDOW_MS = 60 * 60 * 1000;
 
 /**
- * Login attempts per username. An attempt is counted BEFORE the password is
+ * Login attempts per username + IP (the key is `username|ip`, so a stranger's
+ * guesses never lock the owner out). An attempt is counted BEFORE the password is
  * checked (`take`), so a burst of parallel guesses cannot all pass the check
  * while PBKDF2 is still running; a correct password clears the count. In
  * memory — it resets when the Durable Object is evicted, which is acceptable

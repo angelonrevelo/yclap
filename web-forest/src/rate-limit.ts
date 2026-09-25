@@ -1,7 +1,9 @@
 /**
  * Small, host-neutral brakes the Worker, the Durable Object and the LAN server
  * share: a sliding-window counter per key with a bounded key map, the client
- * IP a request came from, and the Origin rule for the hall socket.
+ * IP a request came from, the Origin rule for the hall socket and for the POST
+ * routes that spend something (the iNat token, a hall seat), and a byte cap on a
+ * streamed body.
  *
  * In memory on purpose. A Durable Object eviction or a Worker isolate recycle
  * forgets every count — that is a brake on abuse, not a ledger anybody should
@@ -111,6 +113,58 @@ export function isHallOrigin(origin: string | null, host: string): boolean {
   if (from.protocol !== "https:" && from.protocol !== "http:") return false;
   if (from.host === host) return true;
   return LOCAL_HOST.has(from.hostname);
+}
+
+/**
+ * A POST that spends something (the iNat token, a polled hall seat) must come
+ * from this host's own page, a localhost dev server, or no browser at all.
+ * No CORS header only stops a foreign page READING the answer: a `no-cors`
+ * form POST still arrives. Browsers send Origin on every POST, and
+ * Sec-Fetch-Site on every fetch, so either one naming another site refuses it.
+ */
+export function isOwnPage(request: Request, host: string = new URL(request.url).host): boolean {
+  if (request.headers.get("Sec-Fetch-Site")?.toLowerCase() === "cross-site") return false;
+  return isHallOrigin(request.headers.get("Origin"), host);
+}
+
+/** The error a capped stream fails with once it has passed its byte cap. */
+export class BodyTooLarge extends Error {
+  max_byte: number;
+  constructor(max_byte: number) {
+    super(`body over ${max_byte} bytes`);
+    this.max_byte = max_byte;
+  }
+}
+
+/**
+ * The same bytes, counted as they arrive: past `max_byte` the source is
+ * cancelled (on the LAN server that destroys the socket's request) and the
+ * reader fails with BodyTooLarge. A chunked body declares no Content-Length,
+ * so this is the only cap that holds for it.
+ */
+export function capStream(source: ReadableStream<Uint8Array>, max_byte: number): ReadableStream<Uint8Array> {
+  const reader = source.getReader();
+  let byte = 0;
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      const { done, value } = await reader.read();
+      if (done) {
+        controller.close();
+        return;
+      }
+      byte += value.byteLength;
+      if (byte > max_byte) {
+        const error = new BodyTooLarge(max_byte);
+        controller.error(error);
+        await reader.cancel(error).catch(() => {});
+        return;
+      }
+      controller.enqueue(value);
+    },
+    cancel(reason) {
+      return reader.cancel(reason);
+    },
+  });
 }
 
 /** MIME essence: `application/json; charset=utf-8` → `application/json`. */

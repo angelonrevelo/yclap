@@ -246,8 +246,8 @@ test("two phones on the LAN hall see each other over a real WebSocket, and polli
     }
     let body = "";
     for await (const chunk of req) body += chunk;
-    const snap = hall.pose(JSON.parse(body));
-    res.writeHead(snap ? 200 : 400).end(JSON.stringify(snap ?? {}));
+    const { status, body: out } = hall.pose(JSON.parse(body));
+    res.writeHead(status).end(JSON.stringify(out));
   });
   server.on("upgrade", (req, socket) => {
     if (!hall.upgrade(req, socket)) socket.destroy();
