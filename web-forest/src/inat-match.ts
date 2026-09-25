@@ -159,3 +159,27 @@ export function exactPosition(suggestion: MatchInput[], species_code: string, wi
   }
   return null;
 }
+
+/**
+ * The campus species an identification should pick for the student, or null.
+ *
+ * The daily hunt opens the log sheet with its own target already chosen, so a
+ * photo of a Narra used to leave the pick on the hunt's species and Save logged
+ * the wrong tree. Now the first EXACT, single-species match in iNat's list is
+ * selected — visibly, with "suggested by iNaturalist" beside it — unless the
+ * student has already chosen by hand since taking the photo. A genus or family
+ * roll-up never picks: "Vitex" could be Molave or Lagundi.
+ *
+ * The recorded (demo) reply picks too, because the booth runs on it; the sheet
+ * still says it is a recorded reply and not a read of this photo.
+ */
+export function suggestedPick(
+  state: { status: string; suggestion?: MatchInput[] },
+  is_manual: boolean,
+): string | null {
+  if (is_manual) return null;
+  if (state.status !== "ready" && state.status !== "demo") return null;
+  const best = bestCampusMatch(state.suggestion ?? []);
+  if (!best || best.match.is_partial || best.match.species_code.length !== 1) return null;
+  return best.match.species_code[0]!;
+}

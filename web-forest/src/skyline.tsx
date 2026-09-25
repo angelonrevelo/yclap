@@ -204,7 +204,10 @@ export default function Skyline({
           /* Not above the raked plane's far edge (~a third of the glass): a
              name up there sits in the sky, over the horizon, naming nothing. */
           y > height * 0.36 &&
-          y < height - LABEL_MARGIN_PX;
+          y < height - LABEL_MARGIN_PX &&
+          /* Not under the right-hand map controls: a name sitting behind the
+             locate button read as a rendering fault on the desktop. */
+          !(c.x > width - 150 && y < 300);
         if (fits) label = { x: c.x, y, width: span };
       }
 

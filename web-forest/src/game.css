@@ -384,7 +384,10 @@
   grid-template-columns: 1fr 1fr 88px 1fr 1fr;
   align-items: end;
   height: 74px;
-  padding: 0 6px 10px;
+  /* The five slots stay a phone's width on a desktop. Stretched to 1366 px
+     the outer gaps ran ~316 px against ~203 px in the middle; centring a
+     560 px row keeps every gap the same at any width. */
+  padding: 0 max(6px, calc((100% - 560px) / 2)) 10px;
   border-radius: 24px 24px 0 0;
   background: #fff;
   box-shadow: 0 -1px 0 0 rgba(24, 32, 28, 0.08), var(--mg-shadow-up);
@@ -596,7 +599,7 @@
   top: 6px;
   height: 56%;
   border-radius: 15px;
-  background: #eef4ec;
+  background: var(--mg-surface-2);
   z-index: 0;
 }
 .gm-card > * {
@@ -606,12 +609,14 @@
 .gm-card:active {
   transform: scale(0.97);
 }
+/* Locked is still a white card — the lock, the "???" and the greyed tree say
+   locked; a grey-green panel on top of that read as the old neumorphic set. */
 .gm-card[data-locked="true"] {
-  background: #f7f8f6;
-  box-shadow: 0 0 0 1px rgba(24, 32, 28, 0.08);
+  background: #fff;
+  box-shadow: var(--mg-sticker);
 }
 .gm-card[data-locked="true"]::before {
-  background: var(--mg-neutral);
+  background: #f4f5f3;
 }
 
 .gm-card-no {
@@ -889,4 +894,11 @@
   .gm-today-card {
     animation: none;
   }
+}
+
+/* ── Stage reveal ───────────────────────────────────────────────────────── */
+
+/* model-viewer's default loading bar drew a stray grey rule across the card. */
+.gm-reveal-card model-viewer::part(default-progress-bar) {
+  display: none;
 }

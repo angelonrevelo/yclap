@@ -263,6 +263,10 @@ function ringPath(ring: [number, number][], project: Project, close: boolean): s
   return close ? `${d} Z` : d;
 }
 
+/** The right-hand map controls, as a screen-space box labels stay out of. */
+const CONTROL_KEEP_OUT_X = 76;
+const CONTROL_KEEP_OUT_Y = 300;
+
 /**
  * Which sectors get to speak.
  *
@@ -314,6 +318,9 @@ function pickLabel(
     /* Not up in the haze, and not down where the stage card and the shutter
        live — a pill behind a button is a pill nobody reads. */
     if (p.y < height * 0.3 || p.y > height * 0.84) continue;
+    /* Not under the right-hand control column (weather, layers, locate,
+       compass and the walker count — ~300 px tall on every screen size). */
+    if (p.x + half_w > width - CONTROL_KEEP_OUT_X && p.y < CONTROL_KEEP_OUT_Y) continue;
     /* Not on top of the walker. `avoid` is their FEET, and the figure stands
        ~110 px up from there, so the keep-out box runs up the whole body. */
     if (avoid && Math.abs(p.x - avoid.x) < half_w + 40 && p.y > avoid.y - 150 && p.y < avoid.y + 24) continue;

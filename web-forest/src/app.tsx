@@ -50,7 +50,7 @@ import {
   AT_TREE_RADIUS_M,
   consult,
   encounter,
-  journal_order,
+  dex_order,
   picker_order,
   SEEK_URL,
   species,
@@ -122,7 +122,8 @@ import {
   type InatIdentifyState,
   type InatNearbyState,
 } from "./inat";
-import { bestCampusMatch, matchCampus } from "./inat-match";
+import { matchCampus, suggestedPick } from "./inat-match";
+import { pinReply } from "./pin-reply";
 import InatStrip from "./inat-strip";
 import { Card, Chip, Eyebrow, Fab, GlyphDisc, Pill, PrimaryPill, RADIUS, SpeciesPill, TaxonName, TaxonThumb } from "./ui";
 import { DexCard, DexHeader, GameDock, GameToast, PlayerHud, QuestBanner, TodayHuntCard } from "./hud";
@@ -135,7 +136,6 @@ import {
   ShutterIcon,
   WalkIcon,
   CheckIcon,
-  CloseIcon,
   PinIcon,
   RestrictedIcon,
 } from "./icon";
@@ -602,52 +602,75 @@ function NearbySightTray({
   onClose: () => void;
 }) {
   const row = spawn.slice(0, 8);
+  /* A card with a header and a four-column grid, sat just above the dock.
+     It was one horizontal strip at bottom 148 — the last find cut off at the
+     right edge with nothing saying it scrolled, and the strip parked right
+     under the walker's eagle. Eight finds fit in two rows of four. */
   return (
-    <div className="absolute inset-x-3" style={{ bottom: 148, zIndex: 48 }} onClick={onClose}>
+    <div className="absolute inset-x-3" style={{ bottom: 116, zIndex: 49 }} onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex gap-3"
         style={{
-          overflowX: "auto",
-          padding: "12px 14px",
+          maxWidth: 420,
+          margin: "0 auto",
+          padding: "8px 12px 12px",
           borderRadius: 16,
-          background: "var(--mg-surface-glass)",
+          background: "var(--mg-surface)",
           color: "rgb(var(--mg-ink-rgb) / 0.92)",
-          boxShadow: "var(--mg-shadow)",
-          border: "1px solid rgb(var(--mg-ink-rgb) / 0.1)",
+          boxShadow: "var(--mg-sticker)",
         }}
       >
+        <div className="flex items-center justify-between">
+          <span className="mg-heading" style={{ fontSize: 15, color: "var(--mg-forest)" }}>
+            Nearby{row.length ? ` · ${row.length}` : ""}
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close nearby"
+            style={{ width: 44, height: 44, marginRight: -10, display: "grid", placeItems: "center", color: "var(--mg-ink)" }}
+          >
+            <svg width="14" height="14" viewBox="0 0 18 18" aria-hidden="true">
+              <path d="M4 4 L14 14 M14 4 L4 14" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
         {row.length === 0 ? (
-          <div style={{ fontSize: 12, fontWeight: 700, padding: "8px 6px", color: "rgb(var(--mg-ink-rgb) / 0.62)" }}>None nearby</div>
+          <div style={{ fontSize: 12, fontWeight: 700, padding: "4px 2px 6px", color: "rgb(var(--mg-ink-rgb) / 0.62)" }}>
+            None nearby yet — finds appear as the world loads and as you walk.
+          </div>
         ) : (
-          row.map((s) => (
-            <button
-              key={s.spawn_id}
-              type="button"
-              onClick={() => onPick(s)}
-              style={{ width: 64, flexShrink: 0, textAlign: "center" }}
-            >
-              <SpeciesPortrait
-                scientific_name={s.scientific_name}
-                species_code={s.species_code}
-                kind={kindOf(s.iconic_taxon_name, s.archetype)}
-                size={56}
-              />
-              <div
-                style={{
-                  fontSize: 9,
-                  fontWeight: 800,
-                  marginTop: 4,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  color: seen.has(s.species_code) ? "var(--mg-green-text)" : "rgb(var(--mg-ink-rgb) / 0.78)",
-                }}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "10px 8px" }}>
+            {row.map((s) => (
+              <button
+                key={s.spawn_id}
+                type="button"
+                onClick={() => onPick(s)}
+                style={{ minWidth: 0, textAlign: "center" }}
               >
-                {s.common_name}
-              </div>
-            </button>
-          ))
+                <SpeciesPortrait
+                  scientific_name={s.scientific_name}
+                  species_code={s.species_code}
+                  kind={kindOf(s.iconic_taxon_name, s.archetype)}
+                  size={52}
+                  style={{ margin: "0 auto", background: "var(--mg-surface-2)" }}
+                />
+                <div
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 800,
+                    marginTop: 4,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    color: seen.has(s.species_code) ? "var(--mg-green-text)" : "rgb(var(--mg-ink-rgb) / 0.78)",
+                  }}
+                >
+                  {s.common_name}
+                </div>
+              </button>
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -1445,7 +1468,22 @@ function CameraSheet({
   }, [is_wild, pool]);
   const wild_pick = is_wild ? (pool?.find((e) => e.species_code === pick_code) ?? null) : null;
 
+  /* The species iNaturalist's answer picked, and whether the student has
+     chosen by hand since the photo. A hand pick always wins — including one
+     made while the identification was still in flight, hence the ref. */
+  const [suggested_code, setSuggestedCode] = useState<string | null>(null);
+  const is_manual_ref = useRef(false);
+  const [is_manual, setManual] = useState(false);
+  const pickByHand = (species_code: string) => {
+    is_manual_ref.current = true;
+    setManual(true);
+    onPick(species_code);
+  };
+
   useEffect(() => {
+    is_manual_ref.current = false;
+    setManual(false);
+    setSuggestedCode(null);
     if (!shot) {
       setIdentify({ status: "idle" });
       return;
@@ -1459,11 +1497,13 @@ function CameraSheet({
       const shown =
         next.status === "needs_token" || next.status === "token_expired" ? demoIdentify(next.status) : next;
       setIdentify(shown);
-      /* Only a LIVE, EXACT identification may pre-fill the student's pick. A
-         recorded reply or a genus/family roll-up is shown, never applied. */
-      if (shown.status === "ready") {
-        const best = bestCampusMatch(shown.suggestion);
-        if (best && !best.match.is_partial && best.match.species_code.length === 1) onPick(best.match.species_code[0]!);
+      /* An EXACT campus match picks the species (`suggestedPick`), so a photo
+         of a Narra no longer saves as the daily target the sheet opened on. A
+         genus/family roll-up is shown, never applied. */
+      const code = suggestedPick(shown, is_manual_ref.current);
+      if (code) {
+        setSuggestedCode(code);
+        onPick(code);
       }
     });
     return () => {
@@ -1471,6 +1511,9 @@ function CameraSheet({
     };
     // onPick is setState — stable. Do not re-score when the campus pick changes.
   }, [shot]);
+
+  const is_suggested = suggested_code !== null && suggested_code === pick_code && !is_manual;
+  const suggested_name = suggested_code ? (species[suggested_code]?.common_name ?? suggested_code) : null;
 
   /* Saved as attribution only when iNaturalist actually looked at the photo. */
   const top = identify.status === "ready" ? identify.suggestion[0] : null;
@@ -1505,8 +1548,26 @@ function CameraSheet({
               </div>
             )}
           </div>
-          <button onClick={onClose} aria-label="Close">
-            <CloseIcon />
+          {/* 44 px hit area, flat: the kit's glossy close glyph at 22 px was
+              the smallest target on the sheet and read as a stray button. */}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              width: 44,
+              height: 44,
+              flexShrink: 0,
+              display: "grid",
+              placeItems: "center",
+              borderRadius: 999,
+              background: "var(--mg-surface-2)",
+              color: "var(--mg-ink)",
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+              <path d="M4 4 L14 14 M14 4 L4 14" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+            </svg>
           </button>
         </div>
 
@@ -1520,7 +1581,26 @@ function CameraSheet({
           </span>
           <div style={{ fontSize: 11, color: "rgb(var(--mg-ink-rgb) / 0.62)", lineHeight: 1.4 }}>{identifyCaption(identify)}</div>
         </div>
-        <SuggestionList state={identify} onPick={onPick} />
+        <SuggestionList state={identify} onPick={pickByHand} />
+        {is_suggested && suggested_name && (
+          <div
+            role="status"
+            style={{
+              marginTop: 10,
+              padding: "8px 12px",
+              borderRadius: 10,
+              background: "rgba(62,154,74,0.1)",
+              border: "1px solid rgba(62,154,74,0.35)",
+              fontSize: 12,
+              lineHeight: 1.4,
+              color: "var(--mg-green-text)",
+              fontWeight: 700,
+            }}
+          >
+            {suggested_name} picked below — suggested by iNaturalist
+            {identify.status === "demo" ? " (recorded reply, not a read of your photo)" : ""}. Tap another species to change it.
+          </div>
+        )}
         {identify.status === "demo" && (
           <div style={{ fontSize: 11, color: "rgb(var(--mg-ink-rgb) / 0.5)", marginTop: 6 }}>
             Live identification runs once the server holds a fresh <code>INAT_API_TOKEN</code> (web-forest README, “iNaturalist identify”).
@@ -1546,7 +1626,7 @@ function CameraSheet({
           {wild_pick && (
             <button
               type="button"
-              onClick={() => onPick(wild_pick.species_code)}
+              onClick={() => pickByHand(wild_pick.species_code)}
               style={{ textAlign: "center" }}
             >
               <SpeciesPortrait
@@ -1572,7 +1652,7 @@ function CameraSheet({
               <button
                 key={species_code}
                 type="button"
-                onClick={() => onPick(species_code)}
+                onClick={() => pickByHand(species_code)}
                 style={{ textAlign: "center" }}
               >
                 <SpeciesPortrait
@@ -1590,6 +1670,11 @@ function CameraSheet({
                 <span style={{ display: "block", fontStyle: "italic", fontSize: 10, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 2 }}>
                   {sp.scientific_name}
                 </span>
+                {is_active && is_suggested && (
+                  <span style={{ display: "block", fontSize: 10, fontWeight: 800, color: "var(--mg-green-text)", marginTop: 3 }}>
+                    suggested by iNaturalist
+                  </span>
+                )}
               </button>
             );
           })}
@@ -1744,7 +1829,7 @@ function JournalGrid({
       className="grid gap-x-3 gap-y-5"
       style={{ gridTemplateColumns: `repeat(${is_desktop ? 5 : 3}, minmax(0, 1fr))` }}
     >
-      {journal_order.map((species_code, index) => (
+      {dex_order.map((species_code, index) => (
         <DexCard
           key={species_code}
           index={index}
@@ -2181,12 +2266,17 @@ function BlindBoxReveal({ stage, onDismiss }: { stage: Stage; onDismiss: () => v
   const show_character = phase === "done";
 
   return (
+    /* Fixed and at 90, over the dock (50), the sheets (60) and the toast (70):
+       the reveal is the one thing on screen. It used to be a light green wash
+       with the text floating straight on the Dex grid behind it. */
     <div
-      className="absolute inset-0"
-      style={{ zIndex: 80, display: "grid", placeItems: "center" }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Your buddy grew"
+      style={{ position: "fixed", inset: 0, zIndex: 90, display: "grid", placeItems: "center" }}
       onClick={onDismiss}
     >
-      <div className="absolute inset-0" style={{ background: "rgba(17,75,47,0.28)" }} />
+      <div className="absolute inset-0" style={{ background: "rgba(14,32,24,0.6)" }} />
       <div
         onClick={(e) => e.stopPropagation()}
         style={{ position: "relative", textAlign: "center", padding: 20 }}
@@ -2251,15 +2341,23 @@ function BlindBoxReveal({ stage, onDismiss }: { stage: Stage; onDismiss: () => v
         )}
         {show_character && (
           <div
-            className={prefers_reduced ? "" : "yc-reveal-in"}
+            className={prefers_reduced ? "gm-reveal-card" : "yc-reveal-in gm-reveal-card"}
             style={{
               animation: prefers_reduced ? undefined : "yc-reveal-in 0.6s ease-out forwards",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               gap: 10,
+              width: "min(84vw, 320px)",
+              padding: "24px 22px 22px",
+              borderRadius: 20,
+              background: "var(--mg-surface)",
+              boxShadow: "0 12px 32px rgba(14,32,24,0.28)",
             }}
           >
+            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", color: "var(--mg-green-text)" }}>
+              YOUR BUDDY GREW
+            </div>
             <Suspense fallback={<Character stage={stage} vigor={1} size={120} is_idle_animated />}>
               <CharacterModel stage={stage} size={120} />
             </Suspense>
@@ -3591,9 +3689,13 @@ export default function App() {
     };
   }, [route]);
 
+  /* One timer at a time: an older toast's timer used to clear a newer toast
+     early, so a line that landed right after another flashed and vanished. */
+  const toast_timer = useRef<number | null>(null);
   const showToast = (m: string) => {
     setToast(m);
-    window.setTimeout(() => setToast(null), 2600);
+    if (toast_timer.current !== null) window.clearTimeout(toast_timer.current);
+    toast_timer.current = window.setTimeout(() => setToast(null), 2600);
   };
 
   const joinWalker = async (code: string) => {
@@ -3670,8 +3772,16 @@ export default function App() {
    * record of nothing, and this app's one useful output is the location.
    */
   const walkToSpawn = (row: Spawn) => {
-    const reach = reachableSpawn(spawn_world.spawn, geo.fix).some((r) => r.spawn_id === row.spawn_id);
-    if (reach) {
+    const is_reach = reachableSpawn(spawn_world.spawn, geo.fix).some((r) => r.spawn_id === row.spawn_id);
+    const reply = pinReply({
+      target: row,
+      common_name: row.common_name,
+      sector_name: sectorByCode(row.sector_code)?.name ?? null,
+      fix: geo.fix,
+      is_reach,
+      is_walk_mode: geo_mode === "play",
+    });
+    if (reply.kind === "log") {
       /* You are close enough and the camera is opening — the moment the whole
          walk is for. */
       haptic("bump");
@@ -3681,16 +3791,15 @@ export default function App() {
     haptic("tap");
     setPickedSector(null);
     setPinnedId(null);
-    if (geo_mode === "play") {
+    if (reply.kind === "walk") {
       geo.walkTo(row);
       setFollowing(true);
-      showToast(`Walking to ${row.common_name}`);
+      showToast(reply.line);
       return;
     }
-    setFollowing(false);
-    setView((prev) => ({ ...prev, lat: row.lat, lon: row.lon, zoom: Math.max(prev.zoom, PLAY_ZOOM) }));
-    go("/map");
-    showToast(`${row.common_name} is out in ${sectorByCode(row.sector_code)?.name ?? row.sector_code}. Walk to it.`);
+    /* GPS: the find is already on screen — that is how it was tapped — so the
+       camera stays on the walker and the answer is how far, and which way. */
+    showToast(reply.line);
   };
 
   const saveSighting = ({ photo_data, inat: id, note, entry_kind, reported_name }: SaveInput) => {
@@ -4140,8 +4249,13 @@ export default function App() {
     setTrainerOpen(false);
     setNearbyOpen(false);
     if (!is_play) {
+      /* One tap from the Dex or About opens the log, not just the map. `go`
+         closes the camera, so the open below has to come after it — both
+         land in the same render. Walking to a find is left for the map. */
       setMode("play");
       go("/");
+      if (daily && !daily.is_done) openCamera(daily.species_code, daily.sector_name);
+      else openCamera(here_sector?.species_code[0] ?? pick_code, here_sector?.name);
       return;
     }
     if (daily && !daily.is_done) {
@@ -4336,7 +4450,7 @@ export default function App() {
             }}
           />
         )}
-        {is_booted && !alert_queue[0] && daily && !daily.is_done && today_seen !== daily.day_key && route === "/" && (
+        {is_booted && !alert_queue[0] && !is_camera_open && daily && !daily.is_done && today_seen !== daily.day_key && route === "/" && (
           <TodayHuntCard
             daily={daily}
             reward={POINT_VALUE.challenge}

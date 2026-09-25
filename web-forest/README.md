@@ -59,6 +59,13 @@ read away (checked: the token is not in `dist/` even with it in `.env`). With
 neither, the sheet replays a recorded Narra reply labelled **RECORDED
 RESPONSE**, never presented as an identification of your photo.
 
+When the answer's first **exact** campus match is one species, the sheet picks
+it in "What did you see?" and says so ("suggested by iNaturalist", plus
+"recorded reply" when it is the replay) — the sheet opens on the daily target,
+and a Narra photo used to save as that target. A pick made by hand after the
+photo always wins; a genus/family roll-up never picks (`suggestedPick` in
+`src/inat-match.ts`).
+
 **Making it live — do this right before the demo:**
 
 1. Signed in to iNaturalist, open <https://www.inaturalist.org/users/api_token>
@@ -526,7 +533,15 @@ illustration, not chrome, and keep their gradients.
 - **`src/hud.tsx`** — the play layer's chrome: player card (level, points,
   weekly streak), the daily hunt as a wood-plank tab, the plain white tab bar
   (Buddy · Nearby · Go · Dex · About) with the camera as a raised lagoon-ringed disc,
-  reward toast, and the Dex field-guide cards.
+  reward toast, and the Dex field-guide cards. The bar's five slots stay a
+  560 px row centred on a desktop, so the gaps are even. **Go** is one tap from
+  any screen: from the Dex or About it returns to the map *and* opens the log.
+  The Dex grid draws the nine curated species (`dex_order`), the same set its
+  "n / 9" counter counts.
+- **Tapping a find** always answers (`src/pin-reply.ts`): in reach → the log
+  opens; walk mode → "Walking to …"; GPS mode out of reach → a toast with the
+  distance and compass direction, and the camera stays on the walker (it used
+  to pan away to the find, which read as nothing happening).
 - **`src/character.tsx`** — the walker. It draws the stage **sticker** (seed →
   seedling → sapling → tree) and keeps the billboard, contact shadow, bob and
   walking gait. Vigor greys the sticker; it never changes the stage.
