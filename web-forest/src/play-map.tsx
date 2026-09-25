@@ -21,7 +21,7 @@ import {
 } from "./sector";
 import TileMap, { type Projection, type View } from "./tile-map";
 import Horizon from "./horizon";
-import Flora, { type Tuft } from "./flora";
+import Flora, { type GlassFind, type Tuft } from "./flora";
 import { RARITY_ORDER, type Spawn } from "./spawn";
 import { kindOf } from "./kind";
 import { KindPath, KIND_TONE } from "./kind-mark";
@@ -569,6 +569,117 @@ function Ripple({
   );
 }
 
+/**
+ * The two find markers, as components of their own so the overlay — which
+ * re-renders every camera frame — reuses them instead of rebuilding the
+ * botanical drawing and the sticker on every frame.
+ */
+const ResidentOrb = memo(function ResidentOrb({
+  species_code,
+  is_logged,
+  model,
+  label,
+}: {
+  species_code: string;
+  is_logged: boolean;
+  model: number;
+  label: string;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: model }}>
+      <div
+        style={{
+          width: model,
+          height: model,
+          borderRadius: 999,
+          background: is_logged ? "rgba(47,107,58,0.14)" : "rgba(255,255,255,0.92)",
+          border: `2.5px solid ${is_logged ? "#2F6B3A" : "rgba(47,107,58,0.55)"}`,
+          boxShadow: "var(--mg-shadow-sm)",
+          display: "grid",
+          placeItems: "center",
+          overflow: "hidden",
+        }}
+        aria-label={label}
+      >
+        <div style={{ width: "86%" }}>
+          <Botanical species_code={species_code} is_silhouette={is_logged} />
+        </div>
+      </div>
+      <div style={{ width: 3, height: 10, background: "rgba(47,107,58,0.55)", borderRadius: 2, marginTop: 1 }} />
+      <div style={{ width: 14, height: 4, borderRadius: 999, background: "rgba(28,74,34,0.28)" }} />
+    </div>
+  );
+});
+
+/**
+ * A sticker on a stalk, in the kit's grammar: white border, a disc in the
+ * taxon's tone, the kind mark, and the rarity as a count of sparkles (a SHAPE,
+ * so it survives greyscale — the same rule the rarity pill keeps). It bobs,
+ * because a find that sits still reads as a pin.
+ */
+const SpawnSticker = memo(function SpawnSticker({
+  row,
+  kind,
+  is_logged,
+  in_range,
+}: {
+  row: Spawn;
+  kind: ReturnType<typeof kindOf>;
+  is_logged: boolean;
+  in_range: boolean;
+}) {
+  const tone = KIND_TONE[kind];
+  const tick = row.rarity ? RARITY_ORDER.indexOf(row.rarity) + 1 : 0;
+  return (
+    <svg
+      className="pm-find"
+      width="58"
+      height="76"
+      viewBox="0 0 58 76"
+      style={{ overflow: "visible", animationDelay: `${-(row.spawn_id.length % 7) * 0.31}s` }}
+      aria-label={`${row.common_name} — ${kind}${row.rarity ? `, ${row.rarity}` : ""}`}
+    >
+      <ellipse cx="29" cy="71" rx="13" ry="4.6" fill="rgba(20,60,30,0.26)" />
+      {in_range && <ellipse cx="29" cy="71" rx="22" ry="7.5" fill="none" stroke="#fff" strokeWidth="2" opacity="0.9" />}
+      <path d="M29 68 L29 46" stroke="#fff" strokeWidth="5" strokeLinecap="round" />
+      <path d="M29 68 L29 46" stroke={tone} strokeWidth="2.2" strokeLinecap="round" />
+      <g className="pm-find-head">
+        <circle cx="29" cy="24" r="21" fill="#fff" />
+        <circle cx="29" cy="24" r="17.5" fill={is_logged ? tone : "#FFFFFF"} stroke={tone} strokeWidth="2.6" />
+        <circle cx="23" cy="17" r="5" fill="#fff" opacity={is_logged ? 0.35 : 0} />
+        <g
+          transform="translate(15.2 10.2) scale(1.15)"
+          fill="none"
+          stroke={is_logged ? "#FFFFFF" : tone}
+          strokeWidth="1.9"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <KindPath kind={kind} />
+        </g>
+        {tick >= 2 && (
+          <g transform="translate(29 -2)">
+            {Array.from({ length: tick - 1 }, (_, i) => {
+              const x = (i - (tick - 2) / 2) * 11;
+              return (
+                <path
+                  key={i}
+                  transform={`translate(${x} 0)`}
+                  d="M0 -6 Q1 -1 6 0 Q1 1 0 6 Q-1 1 -6 0 Q-1 -1 0 -6 Z"
+                  fill={tick === 4 ? "#F5C842" : "#F59A23"}
+                  stroke="#fff"
+                  strokeWidth="1.6"
+                  strokeLinejoin="round"
+                />
+              );
+            })}
+          </g>
+        )}
+      </g>
+    </svg>
+  );
+});
+
 export default function PlayMap({
   view,
   onView,
@@ -661,6 +772,94 @@ export default function PlayMap({
       overlay={(projection) => {
         /* Only real biomes speak. A car park does not get a pill. */
         const walker_at = fix ? projection.toScreen(projection.project(fix)) : null;
+        /* A find's spot on the glass, its size, and whether it stands in front
+           of the walker. Null when it is past the plane's far edge or off the
+           glass, so nothing floats in the sky. The size is the perspective
+           scale alone — what the plane's rake gave a find when it lived there —
+           so moving it up here does not shrink a tap target. */
+        const toScreenFind = (point: LatLon) => {
+          const at = projection.toScreen(projection.project(point));
+          if (at.scale <= 0 || at.y < projection.height * 0.34 || at.y > projection.height + 40) return null;
+          if (at.x < -60 || at.x > projection.width + 60) return null;
+          const k = Math.min(1.3, Math.max(0.5, at.scale));
+          return { x: at.x, y: at.y, k, is_front: walker_at !== null && at.y > walker_at.y };
+        };
+        /* Finds, on the GLASS rather than in the ground.
+           They used to live in the tilted plane, which welded them to their
+           spot for free — and put them under everything on the glass, because
+           the plane paints below the whole overlay: every tree covered every
+           find, even a tree behind it, and a find behind a building vanished.
+           Up here they are sized by the same perspective scale as the trees,
+           and `Flora` paints them in one depth order with the trees. */
+        const glass_find: GlassFind[] = [];
+        /* Resident finds: large botanical model, tiny stem chrome — not a map pin. */
+        for (const e of marker) {
+          const sp = species[e.species_code];
+          const pin_kind = pinKindOf(sp);
+          if (pin_filter && pin_filter.size > 0 && !pin_filter.has(pin_kind)) continue;
+          const p = toScreenFind({ lat: e.lat, lon: e.lon });
+          if (!p) continue;
+          const is_logged = seen_species.has(e.species_code);
+          const in_range = fix ? distanceMeter(fix, e) <= AT_TREE_RADIUS_M : false;
+          const model = is_desktop ? 64 : 56;
+          glass_find.push({
+            key: `pin-${e.encounter_id}`,
+            x: p.x,
+            y: p.y,
+            w: model * p.k,
+            h: (model + 15) * p.k,
+            node: (
+              <div
+                data-play-marker="1"
+                onClick={() => onSelectEncounter(e)}
+                title={sp ? `${sp.common_name} — demo-map position` : e.where}
+                style={{
+                  position: "absolute",
+                  left: p.x,
+                  top: p.y,
+                  transform: `translate(-50%, -100%) scale(${p.k.toFixed(3)})`,
+                  transformOrigin: "50% 100%",
+                  cursor: "pointer",
+                  filter: in_range ? "drop-shadow(0 0 10px rgba(255,255,255,0.65))" : undefined,
+                }}
+              >
+                <ResidentOrb species_code={e.species_code} is_logged={is_logged} model={model} label={`${sp?.common_name ?? "A find"} — ${pin_kind}`} />
+              </div>
+            ),
+          });
+        }
+        /* Temporary world finds: a sticker on a stalk, same kind mark. */
+        for (const row of spawn) {
+          const p = toScreenFind(row);
+          if (!p) continue;
+          const kind = kindOf(row.iconic_taxon_name, row.archetype);
+          const in_range = fix ? distanceMeter(fix, row) <= AT_TREE_RADIUS_M : false;
+          glass_find.push({
+            key: row.spawn_id,
+            x: p.x,
+            y: p.y,
+            w: 58 * p.k,
+            h: 76 * p.k,
+            node: (
+              <div
+                data-play-marker="1"
+                onClick={onSelectSpawn ? () => onSelectSpawn(row) : undefined}
+                title={`${row.common_name}${row.rarity ? ` — ${row.rarity}` : ""}, out until ${new Date(row.ends_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`}
+                style={{
+                  position: "absolute",
+                  left: p.x,
+                  top: p.y,
+                  transform: `translate(-50%, -100%) scale(${p.k.toFixed(3)})`,
+                  transformOrigin: "50% 100%",
+                  cursor: onSelectSpawn ? "pointer" : undefined,
+                  filter: in_range ? "drop-shadow(0 0 8px rgba(255,255,255,0.55))" : undefined,
+                }}
+              >
+                <SpawnSticker row={row} kind={kind} is_logged={seen_species.has(row.species_code)} in_range={in_range} />
+              </div>
+            ),
+          });
+        }
         const label = pickLabel(biome_sector, here, projection, walker_at);
         return (
           <>
@@ -672,6 +871,7 @@ export default function PlayMap({
             <HallCount hall={hall} />
             <Flora
               tuft={tuft}
+              find={glass_find}
               projection={projection}
               centre={view}
               keep_clear={keep_clear}
@@ -824,12 +1024,12 @@ export default function PlayMap({
                 top: 0,
                 overflow: "visible",
                 pointerEvents: "none",
-                /* Night is the same ground under a blue dusk. The data keeps its
-                   order of light to dark, which is what has to survive. By day
-                   the same ramp is taken down in saturation only: the posters'
-                   greens are soft, and a lawn at full chroma filled the screen
-                   with one loud colour. Lightness, the channel the data is in,
-                   is untouched. */
+                /* No `filter` here, by day or night. Both grades are done on
+                   the numbers inside `Ground` — `gradeFill` takes the sector
+                   ramp to a blue dusk at night and down in saturation only by
+                   day, and the paths carry their own night colours — because
+                   Chrome drops the grass pattern and the buildings under a
+                   filter on this plane. */
               }}
               width={width}
               height={height}
@@ -964,140 +1164,6 @@ export default function PlayMap({
               const p = project(fix);
               return <Ripple x={p.x} y={p.y} r={Math.max(14, r) * 0.72} duration_s={2.2} is_faint />;
             })()}
-
-            {/* Finds: large botanical model, tiny stem chrome — not a map pin. */}
-            {marker.map((e) => {
-              const p = project({ lat: e.lat, lon: e.lon });
-              const sp = species[e.species_code];
-              const is_logged = seen_species.has(e.species_code);
-              const pin_kind = pinKindOf(sp);
-              if (pin_filter && pin_filter.size > 0 && !pin_filter.has(pin_kind)) return null;
-              const in_range = fix ? distanceMeter(fix, e) <= AT_TREE_RADIUS_M : false;
-              const model = is_desktop ? 64 : 56;
-              return (
-                <div
-                  key={`pin-${e.encounter_id}`}
-                  data-play-marker="1"
-                  onClick={() => onSelectEncounter(e)}
-                  title={sp ? `${sp.common_name} — demo-map position` : e.where}
-                  style={{
-                    position: "absolute",
-                    left: p.x,
-                    top: p.y,
-                    transform: `translate(-50%, -100%) rotateZ(${-bearing_degree}deg) rotateX(${-tilt_degree}deg)`,
-                    transformOrigin: "50% 100%",
-                    transformStyle: "preserve-3d",
-                    cursor: "pointer",
-                    zIndex: in_range ? 6 : 4,
-                    filter: in_range ? "drop-shadow(0 0 10px rgba(255,255,255,0.65))" : undefined,
-                  }}
-                >
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: model }}>
-                    <div
-                      style={{
-                        width: model,
-                        height: model,
-                        borderRadius: 999,
-                        background: is_logged ? "rgba(47,107,58,0.14)" : "rgba(255,255,255,0.92)",
-                        border: `2.5px solid ${is_logged ? "#2F6B3A" : "rgba(47,107,58,0.55)"}`,
-                        boxShadow: "var(--mg-shadow-sm)",
-                        display: "grid",
-                        placeItems: "center",
-                        overflow: "hidden",
-                      }}
-                      aria-label={`${sp?.common_name ?? "A find"} — ${pin_kind}`}
-                    >
-                      <div style={{ width: "86%" }}>
-                        <Botanical species_code={e.species_code} is_silhouette={is_logged} />
-                      </div>
-                    </div>
-                    <div style={{ width: 3, height: 10, background: "rgba(47,107,58,0.55)", borderRadius: 2, marginTop: 1 }} />
-                    <div style={{ width: 14, height: 4, borderRadius: 999, background: "rgba(28,74,34,0.28)" }} />
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Temporary world finds: larger disc, lighter stem, same kind mark. */}
-            {spawn.map((row) => {
-              const p = project(row);
-              const kind = kindOf(row.iconic_taxon_name, row.archetype);
-              const tone = KIND_TONE[kind];
-              const tick = row.rarity ? RARITY_ORDER.indexOf(row.rarity) + 1 : 0;
-              const is_logged = seen_species.has(row.species_code);
-              const in_range = fix ? distanceMeter(fix, row) <= AT_TREE_RADIUS_M : false;
-              return (
-                <div
-                  key={row.spawn_id}
-                  data-play-marker="1"
-                  onClick={onSelectSpawn ? () => onSelectSpawn(row) : undefined}
-                  title={`${row.common_name}${row.rarity ? ` — ${row.rarity}` : ""}, out until ${new Date(row.ends_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`}
-                  style={{
-                    position: "absolute",
-                    left: p.x,
-                    top: p.y,
-                    transform: `translate(-50%, -100%) rotateZ(${-bearing_degree}deg) rotateX(${-tilt_degree}deg)`,
-                    transformOrigin: "50% 100%",
-                    transformStyle: "preserve-3d",
-                    cursor: onSelectSpawn ? "pointer" : undefined,
-                    zIndex: in_range ? 5 : 3,
-                    filter: in_range ? "drop-shadow(0 0 8px rgba(255,255,255,0.55))" : undefined,
-                  }}
-                >
-                  {/* A sticker on a stalk, in the kit's grammar: white
-                      border, a disc in the taxon's tone, the kind mark, and
-                      the rarity as a count of sparkles (a SHAPE, so it survives
-                      greyscale — the same rule the rarity pill keeps). It
-                      bobs, because a find that sits still reads as a pin. */}
-                  <svg
-                    className="pm-find"
-                    width="58"
-                    height="76"
-                    viewBox="0 0 58 76"
-                    style={{ overflow: "visible", animationDelay: `${-(row.spawn_id.length % 7) * 0.31}s` }}
-                    aria-label={`${row.common_name} — ${kind}${row.rarity ? `, ${row.rarity}` : ""}`}
-                  >
-                    <ellipse cx="29" cy="71" rx="13" ry="4.6" fill="rgba(20,60,30,0.26)" />
-                    {in_range && <ellipse cx="29" cy="71" rx="22" ry="7.5" fill="none" stroke="#fff" strokeWidth="2" opacity="0.9" />}
-                    <path d="M29 68 L29 46" stroke="#fff" strokeWidth="5" strokeLinecap="round" />
-                    <path d="M29 68 L29 46" stroke={tone} strokeWidth="2.2" strokeLinecap="round" />
-                    <g className="pm-find-head">
-                      <circle cx="29" cy="24" r="21" fill="#fff" />
-                      <circle cx="29" cy="24" r="17.5" fill={is_logged ? tone : "#FFFFFF"} stroke={tone} strokeWidth="2.6" />
-                      <circle cx="23" cy="17" r="5" fill="#fff" opacity={is_logged ? 0.35 : 0} />
-                      <g
-                        transform="translate(15.2 10.2) scale(1.15)"
-                        fill="none"
-                        stroke={is_logged ? "#FFFFFF" : tone}
-                        strokeWidth="1.9"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <KindPath kind={kind} />
-                      </g>
-                      {tick >= 2 && (
-                        <g transform="translate(29 -2)">
-                          {Array.from({ length: tick - 1 }, (_, i) => {
-                            const x = (i - (tick - 2) / 2) * 11;
-                            return (
-                              <path
-                                key={i}
-                                transform={`translate(${x} 0)`}
-                                d="M0 -6 Q1 -1 6 0 Q1 1 0 6 Q-1 1 -6 0 Q-1 -1 0 -6 Z"
-                                fill={tick === 4 ? "#F5C842" : "#F59A23"}
-                                stroke="#fff"
-                                strokeWidth="1.6"
-                                strokeLinejoin="round"
-                              />
-                            );
-                          })}
-                        </g>
-                      )}
-                    </g>
-                  </svg>
-                </div>
-              );
-            })}
 
           </>
         );
