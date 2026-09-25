@@ -32,6 +32,7 @@ import {
   syncUrl,
   toWire,
   type PlayerSummary,
+  type SyncOutcome,
   type World,
 } from "./sync";
 import { Card, Eyebrow, Pill, RADIUS } from "./ui";
@@ -597,8 +598,14 @@ export function useLiveWorld(input: {
   summary: PlayerSummary;
   /** The name the campus sees — the account's when signed in (`liveNameOf`). */
   name: string;
-}): { world: World | null; is_live: boolean } {
+}): {
+  world: World | null;
+  is_live: boolean;
+  /** The last push's outcome when it did not land ("too_large", "offline"…), else null. */
+  sync_problem: Exclude<SyncOutcome["status"], "ok" | "none"> | null;
+} {
   const [world, setWorld] = useState<World | null>(null);
+  const [sync_problem, setSyncProblem] = useState<Exclude<SyncOutcome["status"], "ok" | "none"> | null>(null);
   const sighting_key = input.sighting.map((s) => s.sighting_id).join(",");
   const summary_key = `${input.summary.stage}:${input.summary.level}:${input.summary.total_points}:${input.summary.streak_weeks}:${input.name}`;
 
@@ -610,8 +617,18 @@ export function useLiveWorld(input: {
       const wire = input.sighting.map((s) =>
         toWire(s, species[s.species_code]?.common_name ?? s.inat_common_name ?? s.species_code),
       );
-      void syncJournal(me, wire, input.summary).then((result) => {
-        if (alive && result?.world) setWorld(result.world);
+      void syncJournal(me, wire, input.summary).then((outcome) => {
+        if (!alive) return;
+        if (outcome.status === "ok") {
+          setWorld(outcome.result.world);
+          setSyncProblem(null);
+          return;
+        }
+        if (outcome.status === "none") return;
+        /* Too large is not offline: the server answered, and a retry sends the
+           same too-big journal again. Say which it was. */
+        if (outcome.status === "too_large") console.warn("[sync] journal too large for the campus server — not synced");
+        setSyncProblem(outcome.status);
       });
     };
     const stop_live = openLiveWorld((next) => {
@@ -628,7 +645,7 @@ export function useLiveWorld(input: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sighting_key, summary_key]);
 
-  return { world, is_live: world !== null };
+  return { world, is_live: world !== null, sync_problem };
 }
 
 /**

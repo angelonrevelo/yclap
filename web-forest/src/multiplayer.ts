@@ -51,11 +51,26 @@ export const POSE_PER_SECOND = 2;
  */
 export const POSE_IP_PER_SECOND = 60;
 /**
- * Distinct polled walkers one IP may hold in the hall at once. Polling is the
- * fallback when a socket will not open, so a real phone holds one; without
- * this, one script re-posing 200 made-up walker ids keeps every seat taken.
+ * Per-IP seat caps. Without them one script (no Origin, so the page check lets
+ * it in) opens 200 sockets or re-poses 200 made-up walker ids and keeps every
+ * seat taken. The right cap depends on what one IP MEANS:
+ *
+ * - On the LAN box (server/hall.mjs) every phone on the wifi has its own
+ *   address, and a real phone holds one seat — four is already generous.
+ * - On Cloudflare (worker/live-socket.ts) CF-Connecting-IP is the PUBLIC
+ *   address, and a booth of phones behind one venue wifi / NAT shares it. A
+ *   cap of four there would seat four visitors and turn the fifth away, so the
+ *   edge caps are sized for a busy booth (40) — still well short of the 200
+ *   seats, so one address cannot fill the hall.
  */
+/** Distinct polled walkers one IP may hold at once on the LAN box. */
 export const POLL_IP_WALKER_MAX = 4;
+/** Open hall sockets one IP may hold at once on the LAN box. */
+export const LAN_IP_SOCKET_MAX = 4;
+/** Distinct polled walkers one (shared, public) IP may hold on the Worker. */
+export const EDGE_POLL_IP_WALKER_MAX = 40;
+/** Open hall sockets one (shared, public) IP may hold on the Worker. */
+export const EDGE_IP_SOCKET_MAX = 40;
 
 const STAGE = new Set(["egg", "sprout", "sapling", "tree"]);
 const SOURCE = new Set<FixSource>(["gps", "demo", "play"]);

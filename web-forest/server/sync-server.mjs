@@ -15,7 +15,11 @@
  * the cap the request is answered 413 or dropped, never buffered further.
  *
  * POST /live/pose and POST /inat/identify take their own page only (Origin /
- * Sec-Fetch-Site), and /live/pose answers with no CORS header.
+ * Sec-Fetch-Site). "Own page" includes the same LAN hostname on another port
+ * — the handset build on :4177 talking to this server on :8788 — and any
+ * origin in HALL_PAGE_ORIGIN (comma-separated). /live/pose sends CORS headers
+ * only to such a page on another origin (its own origin, never `*`), and its
+ * preflight answers nobody else.
  */
 import { createServer } from "node:http";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -23,7 +27,7 @@ import { dirname, resolve } from "node:path";
 import { networkInterfaces } from "node:os";
 import { pathToFileURL } from "node:url";
 import { DatabaseSync } from "node:sqlite";
-import { isOwnPageReq, readJson, remoteIp, webRequestOf } from "./request.mjs";
+import { isOwnPageReq, pageOrigin, readBody, readJson, remoteIp, webRequestOf } from "./request.mjs";
 
 const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -67,6 +71,7 @@ const { AccountService, isAccountPath } = await import(
   pathToFileURL(resolve(process.cwd(), "worker/account.ts")).href
 );
 const { SAVE_MAX_BYTE } = await import(pathToFileURL(resolve(process.cwd(), "src/account-core.ts")).href);
+const { pageCorsOf } = await import(pathToFileURL(resolve(process.cwd(), "src/rate-limit.ts")).href);
 /** Largest account body buffered: a full save plus a little JSON around it. */
 const ACCOUNT_BODY_MAX = SAVE_MAX_BYTE + 16 * 1024;
 const account_db = new DatabaseSync(ACCOUNT_DB_PATH);
@@ -87,20 +92,13 @@ async function serveAccount(req, res, url) {
   if (ip) headers.set("cf-connecting-ip", ip);
   let body;
   if (req.method !== "GET" && req.method !== "HEAD") {
-    const too_big = () => {
-      res.writeHead(413, { "Content-Type": "application/json", Connection: "close" });
-      res.end(JSON.stringify({ error: "body too large", max_byte: ACCOUNT_BODY_MAX }));
-      req.resume();
-    };
-    if (Number(req.headers["content-length"]) > ACCOUNT_BODY_MAX) return too_big();
-    const chunk = [];
-    let byte = 0;
-    for await (const c of req) {
-      byte += c.length;
-      if (byte > ACCOUNT_BODY_MAX) return too_big();
-      chunk.push(c);
+    try {
+      /* Past the cap readBody answers 413 itself, then drops the request. */
+      body = await readBody(req, ACCOUNT_BODY_MAX, res);
+    } catch (e) {
+      refuseBody(res, e);
+      return;
     }
-    body = Buffer.concat(chunk);
   }
   const response = await account.handle(new Request(url, { method: req.method, headers, body }));
   const out = {};
@@ -131,7 +129,7 @@ function broadcast() {
   }
 }
 
-/** A readJson failure as a response. A 413's request is already destroyed. */
+/** A readJson failure as a response. A 413 given `res` is already answered. */
 function refuseBody(res, e) {
   if (res.destroyed || res.headersSent) return;
   const status = e?.status === 413 ? 413 : 400;
@@ -166,28 +164,31 @@ const server = createServer(async (req, res) => {
     }
     return;
   }
-  /* Its own page only, and no CORS header — not even on the preflight. */
+  /* Its own page only. CORS headers go to an allowed page on another origin
+     (another port of this LAN host, or HALL_PAGE_ORIGIN) and nobody else —
+     not even on the preflight. */
   if (url.pathname === "/live/pose") {
+    const page_cors = pageCorsOf(req.headers.origin ?? null, req.headers.host ?? "", pageOrigin);
     if (req.method === "OPTIONS") {
-      res.writeHead(204).end();
+      res.writeHead(204, page_cors).end();
       return;
     }
     if (req.method === "POST") {
       if (!isOwnPageReq(req)) {
         res.writeHead(403, { "Content-Type": "application/json", Connection: "close" });
-        res.end(JSON.stringify({ error: "this hall only takes poses from its own page" }));
-        req.resume();
+        /* Answer, then drop: resume() would keep reading whatever it sends. */
+        res.end(JSON.stringify({ error: "this hall only takes poses from its own page" }), () => req.destroy());
         return;
       }
       let body;
       try {
-        body = await readJson(req);
+        body = await readJson(req, undefined, res);
       } catch (e) {
         refuseBody(res, e);
         return;
       }
       const { status, body: out } = hall.pose(body, remoteIp(req));
-      res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store", ...page_cors });
       res.end(JSON.stringify(out));
       return;
     }
@@ -246,7 +247,7 @@ const server = createServer(async (req, res) => {
   if (req.method === "POST" && url.pathname === "/sync") {
     let body;
     try {
-      body = await readJson(req);
+      body = await readJson(req, undefined, res);
     } catch (e) {
       refuseBody(res, e);
       return;
@@ -293,4 +294,5 @@ server.listen(PORT, () => {
   console.log(`  account ${ACCOUNT_DB_PATH} · /auth/* · /account/save · google ${account.isGoogle ? "on" : "off"}`);
   console.log(`  inat    POST /inat/identify · token ${process.env.INAT_API_TOKEN ? "set" : "MISSING (503 needs_token)"}`);
   console.log(`  hall    WS /live/socket · POST /live/pose · GET /live/walker`);
+  if (pageOrigin.length) console.log(`  pages   HALL_PAGE_ORIGIN ${pageOrigin.join(", ")}`);
 });

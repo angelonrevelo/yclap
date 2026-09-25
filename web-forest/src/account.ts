@@ -7,7 +7,13 @@
  * Photos stay on the device; only journal rows and the point ledger sync.
  */
 import { useEffect, useSyncExternalStore } from "react";
-import { reconcileSave, type AccountSave, type PublicAccount } from "./account-core.ts";
+import {
+  SAVE_PROTOCOL,
+  SAVE_PROTOCOL_HEADER,
+  reconcileSave,
+  type AccountSave,
+  type PublicAccount,
+} from "./account-core.ts";
 import { readSighting, writeSighting, type Sighting } from "./journal.ts";
 import { readPointEvents, writePointEvents, type PointEvent } from "./gamify.ts";
 
@@ -66,7 +72,11 @@ export function useAccount(): AccountState {
   return snap;
 }
 
-async function call<T>(path: string, method = "GET", body?: unknown): Promise<{ status: number; data: T }> {
+async function call<T>(
+  path: string,
+  method = "GET",
+  body?: unknown,
+): Promise<{ status: number; data: T; protocol: string | null }> {
   const res = await fetch(path, {
     method,
     credentials: "same-origin",
@@ -79,7 +89,7 @@ async function call<T>(path: string, method = "GET", body?: unknown): Promise<{ 
   } catch {
     /* 502 from the dev proxy when the sync server is not running, etc. */
   }
-  return { status: res.status, data };
+  return { status: res.status, data, protocol: res.headers.get(SAVE_PROTOCOL_HEADER) };
 }
 
 type ErrorBody = { error?: string };
@@ -165,17 +175,22 @@ function localSave(): AccountSave {
   return { sighting: readSighting(), point_event: readPointEvents() };
 }
 
-/** The sentence the Settings panel shows when a sync does not land. */
+/** The sentence the Settings panel shows when the server speaks another save protocol. */
 export const UPDATE_AVAILABLE = "Update available — reload";
 
-/** The server's 400 for a save without the fields this build's protocol requires. */
-export function isShapeRefusal(data: unknown): boolean {
-  const error = (data as ErrorBody | null)?.error;
-  return typeof error === "string" && error.includes("base_updated_at");
+/**
+ * The server named a save protocol (`X-Save-Protocol`) other than this
+ * build's SAVE_PROTOCOL: this tab is running another build than the server.
+ * No header (an older server, a proxy that dropped it) is not a mismatch —
+ * only a number the server actually sent can say so.
+ */
+export function isProtocolMismatch(server_protocol: string | null): boolean {
+  return server_protocol !== null && server_protocol.trim() !== String(SAVE_PROTOCOL);
 }
 
-export function syncErrorOf(error: unknown, is_stale_build: boolean): string {
-  if (is_stale_build) return UPDATE_AVAILABLE;
+/** "Update available — reload" on a protocol mismatch; otherwise "Sync failed: …". */
+export function syncErrorOf(error: unknown, server_protocol: string | null): string {
+  if (isProtocolMismatch(server_protocol)) return UPDATE_AVAILABLE;
   return `Sync failed: ${error instanceof Error ? error.message : String(error)}`;
 }
 
@@ -189,20 +204,21 @@ export function syncErrorOf(error: unknown, is_stale_build: boolean): string {
 export async function syncSave(): Promise<SyncReport | null> {
   if (state.status !== "signed_in" || state.is_syncing) return null;
   set({ is_syncing: true });
-  /* A 400 naming the save's shape is the server refusing a shape it no longer
-     takes — this tab is running an older build than the server. That is not a
-     failed sync, it is an update, and reloading fixes it. (The other 400, a
-     save over the size limit, stays a failure.) */
-  let is_stale_build = false;
+  /* Every account answer names the server's save protocol. If it is not this
+     build's, this tab is another build than the server: nothing is pushed (the
+     server may not read this build's save the same way), and the panel says
+     "Update available — reload" — reloading fixes it, retrying never would. */
+  let server_protocol: string | null = null;
+  const noteProtocol = <T extends { protocol: string | null }>(answer: T): T => {
+    server_protocol = answer.protocol ?? server_protocol;
+    if (isProtocolMismatch(server_protocol)) throw new Error(`save protocol ${server_protocol}, this build speaks ${SAVE_PROTOCOL}`);
+    return answer;
+  };
   try {
     const done = await reconcileSave(
       {
-        get: () => call("/account/save"),
-        put: async (body) => {
-          const answer = await call("/account/save", "PUT", body);
-          if (answer.status === 400 && isShapeRefusal(answer.data)) is_stale_build = true;
-          return answer;
-        },
+        get: async () => noteProtocol(await call("/account/save")),
+        put: async (body) => noteProtocol(await call("/account/save", "PUT", body)),
       },
       localSave,
       (save) => {
@@ -220,7 +236,7 @@ export async function syncSave(): Promise<SyncReport | null> {
     set({ is_syncing: false, last_sync: report, error: null });
     return report;
   } catch (e) {
-    set({ is_syncing: false, error: syncErrorOf(e, is_stale_build) });
+    set({ is_syncing: false, error: syncErrorOf(e, server_protocol) });
     return null;
   }
 }
