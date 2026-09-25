@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { WorldFind } from "./campus-world";
 import Character, { type Stage } from "./character";
+import { avatarPx, REMOTE_WALKER_SHARE } from "./camera-feel";
 import { isInsideCampus, type Fix } from "./geo";
 import {
   applyHall,
@@ -124,16 +125,15 @@ export default function RemoteWalkerLayer({
   hall,
   projection,
   bearing_degree,
-  is_desktop,
 }: {
   hall: Hall;
   projection: Projection;
   bearing_degree: number;
-  is_desktop: boolean;
 }) {
   const now = useGlideClock(hall.track);
   const { width, height } = projection;
-  const size = is_desktop ? 96 : 80;
+  /* Same source as your own walker, a size down — present, but plainly not you. */
+  const size = Math.round(avatarPx(projection.zoom, Math.min(width, height)) * REMOTE_WALKER_SHARE);
 
   return (
     <>

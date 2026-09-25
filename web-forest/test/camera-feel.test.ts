@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  AVATAR_CAP_CLOSE,
+  AVATAR_FLOOR,
   avatarPx,
   clampPitch,
+  isTickLerpDone,
+  tickLerpAt,
+  tickLerpNext,
+  TICK_LERP_DEFAULT_MS,
+  type TickLerp,
   glideStep,
   pitchAfterDrag,
   pitchForZoom,
@@ -124,10 +131,69 @@ describe("big roads", () => {
 });
 
 describe("the walker", () => {
-  it("is bigger than the old flat 108 px at the street camera and grows with zoom", () => {
-    assert.ok(avatarPx(22, false) > 108);
-    assert.ok(avatarPx(22, false) > avatarPx(19, false));
-    assert.ok(avatarPx(22, true) > avatarPx(22, false));
-    assert.equal(avatarPx(30, false), avatarPx(22, false));
+  it("takes 22–28% of a phone's short side, not 40% of it", () => {
+    /* The playtest phone: 375 px wide. The flat 112–140 px walker was 30–37%
+       of it and read as the character eating the map. */
+    for (const zoom of [19, 20, 21, 22]) {
+      const share = avatarPx(zoom, 375) / 375;
+      assert.ok(share >= 0.215 && share <= 0.285, `z${zoom}: ${(share * 100).toFixed(1)}%`);
+    }
+  });
+
+  it("still grows as the camera closes, and stops growing past the band", () => {
+    assert.ok(avatarPx(22, 390) > avatarPx(19, 390));
+    assert.ok(avatarPx(21, 390) >= avatarPx(20, 390));
+    assert.equal(avatarPx(30, 390), avatarPx(22, 390));
+    assert.equal(avatarPx(10, 390), avatarPx(19, 390));
+  });
+
+  it("is capped on a big window and floored before the map has a size", () => {
+    assert.equal(avatarPx(22, 1080), AVATAR_CAP_CLOSE);
+    assert.equal(avatarPx(22, 0), AVATAR_FLOOR);
+    assert.equal(avatarPx(Number.NaN, Number.NaN), AVATAR_FLOOR);
+  });
+});
+
+describe("tick interpolation — the camera between stick ticks", () => {
+  const a = { lat: 0, lon: 0 };
+  const b = { lat: 0, lon: 1 };
+  const c = { lat: 1, lon: 1 };
+
+  it("starts at rest on the first position", () => {
+    const s = tickLerpNext(null, a, 1000);
+    assert.deepEqual(tickLerpAt(s, 1000), a);
+    assert.equal(isTickLerpDone(s, 1000), true);
+  });
+
+  it("slides over the cadence the positions arrive at, every frame, not in steps", () => {
+    let s: TickLerp = tickLerpNext(null, a, 0);
+    s = tickLerpNext(s, b, 50);
+    s = tickLerpNext(s, { lat: 0, lon: 2 }, 100);
+    assert.equal(s.span_ms, 50);
+    /* Four frames inside one tick each move, and by the same amount. */
+    const lon = [108, 116, 124, 132].map((t) => tickLerpAt(s, t).lon);
+    const step = lon.slice(1).map((v, i) => v - lon[i]);
+    for (const d of step) assert.ok(d > 0 && Math.abs(d - step[0]) < 1e-9);
+    assert.equal(isTickLerpDone(s, 149), false);
+    assert.deepEqual(tickLerpAt(s, 150), { lat: 0, lon: 2 });
+  });
+
+  it("bends on a turn instead of jumping: a new target starts from where it is", () => {
+    let s: TickLerp = tickLerpNext(null, a, 0);
+    s = tickLerpNext(s, b, 50);
+    const before = tickLerpAt(s, 75);
+    s = tickLerpNext(s, c, 75);
+    const after = tickLerpAt(s, 75);
+    assert.deepEqual(after, before);
+  });
+
+  it("treats a long pause as a fresh walk at the stick's cadence, and clamps odd gaps", () => {
+    let s: TickLerp = tickLerpNext(null, a, 0);
+    s = tickLerpNext(s, b, 5000);
+    assert.equal(s.span_ms, TICK_LERP_DEFAULT_MS);
+    s = tickLerpNext(s, c, 5001);
+    assert.ok(s.span_ms >= 16);
+    s = tickLerpNext(s, a, 5200);
+    assert.ok(s.span_ms <= 120);
   });
 });

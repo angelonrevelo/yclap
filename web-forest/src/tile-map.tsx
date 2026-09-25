@@ -22,7 +22,16 @@ import {
   ZOOM_BUTTON_DELTA,
   zoomScaleOf,
 } from "./zoom";
-import { glideStep, pitchAfterDrag, PITCH_DEADZONE_PX, type Glide } from "./camera-feel";
+import {
+  glideStep,
+  isTickLerpDone,
+  pitchAfterDrag,
+  PITCH_DEADZONE_PX,
+  tickLerpAt,
+  tickLerpNext,
+  type Glide,
+  type TickLerp,
+} from "./camera-feel";
 
 /**
  * A real slippy map, with no map library.
@@ -320,6 +329,14 @@ export default function TileMap({
     lon: { value: view.lon, velocity: 0 },
   });
   const glide_frame = useRef<number | null>(null);
+  /* The point the spring chases: slides between position updates rather than
+     stepping to each — see "tick interpolation" in `camera-feel.ts`. */
+  const glide_lerp = useRef<TickLerp>({
+    from: { lat: view.lat, lon: view.lon },
+    to: { lat: view.lat, lon: view.lon },
+    at: -Infinity,
+    span_ms: 0,
+  });
   const centre: LatLon = is_glide ? glide : view;
 
   const center_world = toWorld(centre, zoom);
@@ -457,23 +474,30 @@ export default function TileMap({
     if (!is_glide || glide_frame.current !== null) return;
     let last = performance.now();
     const step = (now: number) => {
-      const target = view_ref.current;
+      const raw = view_ref.current;
+      if (glide_lerp.current.to.lat !== raw.lat || glide_lerp.current.to.lon !== raw.lon) {
+        glide_lerp.current = tickLerpNext(glide_lerp.current, raw, now);
+      }
+      const target = tickLerpAt(glide_lerp.current, now);
       const dt = (now - last) / 1000;
       last = now;
       const g = glide_state.current;
+      /* Judged on the RAW target: a teleport is not something to slide to. */
       const is_far =
-        Math.abs(target.lat - g.lat.value) > GLIDE_SNAP_DEGREE ||
-        Math.abs(target.lon - g.lon.value) > GLIDE_SNAP_DEGREE;
+        Math.abs(raw.lat - g.lat.value) > GLIDE_SNAP_DEGREE ||
+        Math.abs(raw.lon - g.lon.value) > GLIDE_SNAP_DEGREE;
       /* A hand panning the map gets the map under the hand, not behind it. */
       const is_panning = drag.current !== null && !drag.current.is_rotate;
       if (is_far || is_panning) {
-        g.lat = { value: target.lat, velocity: 0 };
-        g.lon = { value: target.lon, velocity: 0 };
+        glide_lerp.current = { from: { lat: raw.lat, lon: raw.lon }, to: { lat: raw.lat, lon: raw.lon }, at: now, span_ms: 0 };
+        g.lat = { value: raw.lat, velocity: 0 };
+        g.lon = { value: raw.lon, velocity: 0 };
       } else {
         g.lat = glideStep(g.lat, target.lat, dt);
         g.lon = glideStep(g.lon, target.lon, dt);
       }
       const is_rest =
+        isTickLerpDone(glide_lerp.current, now) &&
         Math.abs(target.lat - g.lat.value) < GLIDE_REST_DEGREE &&
         Math.abs(target.lon - g.lon.value) < GLIDE_REST_DEGREE &&
         Math.abs(g.lat.velocity) < GLIDE_REST_DEGREE * 10 &&

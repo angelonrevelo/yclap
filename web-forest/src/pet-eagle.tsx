@@ -9,8 +9,11 @@ import {
   followStep,
   isSettled,
   PET_BOND_STEP,
+  PET_LEASH_AVATAR,
   PET_NAME_MAX,
   petBond,
+  petOffset,
+  petPx,
   petState,
   petStatusLine,
   readPetName,
@@ -33,13 +36,6 @@ import type { Projection } from "./tile-map";
  */
 
 const ART: Record<PetPose, string> = { fly: fly_svg, perch: perch_svg, sleep: sleep_svg };
-
-/** Where it sits relative to the walker's feet, in screen px, per pose. */
-const OFFSET: Record<PetPose, { x: number; y: number }> = {
-  fly: { x: 40, y: -74 },
-  perch: { x: 46, y: 4 },
-  sleep: { x: 46, y: 4 },
-};
 
 const TICK_MS = 1000;
 
@@ -131,11 +127,17 @@ function useActivity(fix: PetPoint): { is_walking: boolean; idle_ms: number; hou
   };
 }
 
-/** Ground-space lag behind the walker; under reduced motion it is simply there. */
-function useFollow(target: PetPoint): PetPoint {
+/**
+ * Ground-space lag behind the walker, on a leash of `max_meter`; under reduced
+ * motion it is simply there. The leash is read through a ref because it moves
+ * with every zoom frame and must not restart the follow loop.
+ */
+function useFollow(target: PetPoint, max_meter: number): PetPoint {
   const [is_reduced] = useState(isReducedMotion);
   const [pet, setPet] = useState<PetPoint>(target);
   const pet_ref = useRef<PetPoint | null>(target);
+  const leash_ref = useRef(max_meter);
+  leash_ref.current = max_meter;
   const { lat, lon } = target;
   useEffect(() => {
     if (is_reduced) return;
@@ -143,7 +145,7 @@ function useFollow(target: PetPoint): PetPoint {
     let frame = 0;
     let last = performance.now();
     const step = (t: number) => {
-      const next = followStep(pet_ref.current, goal, t - last);
+      const next = followStep(pet_ref.current, goal, t - last, undefined, leash_ref.current);
       last = t;
       pet_ref.current = next;
       setPet(next);
@@ -158,21 +160,35 @@ function useFollow(target: PetPoint): PetPoint {
 export default function PetEagle({
   projection,
   fix,
-  size = 64,
+  anchor,
+  avatar_px,
 }: {
   projection: Projection;
+  /** The walker's position — what the eagle follows and what wakes it. */
   fix: PetPoint;
-  size?: number;
+  /**
+   * Where the walker is DRAWN this frame (the gliding camera centre when the
+   * camera is welded to it). The eagle is drawn at its lag relative to this,
+   * so it stays beside the figure on screen instead of beside a fix the
+   * figure is still gliding toward.
+   */
+  anchor: PetPoint;
+  /** The walker's drawn size (`avatarPx`) — the perch and the leash scale off it. */
+  avatar_px: number;
 }) {
   const [name, setName] = useState(() => readPetName(storage()));
   const [is_open, setOpen] = useState(false);
   const { is_walking, idle_ms, hour } = useActivity(fix);
   const state = petState({ is_walking, idle_ms, hour });
-  const pet = useFollow({ lat: fix.lat, lon: fix.lon });
+  const leash_m = PET_LEASH_AVATAR * avatar_px * projection.meter_per_pixel;
+  const pet = useFollow({ lat: fix.lat, lon: fix.lon }, leash_m);
+  const size = petPx(avatar_px);
 
-  const at = projection.toScreen(projection.project(pet));
+  const at = projection.toScreen(
+    projection.project({ lat: anchor.lat + (pet.lat - fix.lat), lon: anchor.lon + (pet.lon - fix.lon) }),
+  );
   const scale = Math.max(0.6, Math.min(1.35, at.scale));
-  const offset = OFFSET[state.pose];
+  const offset = petOffset(state.pose, avatar_px, size);
 
   return (
     <>
