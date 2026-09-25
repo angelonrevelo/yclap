@@ -27,6 +27,25 @@ const STAGE_MODEL: Record<Stage, string> = {
   tree: "/model/character-tree.glb",
 };
 
+/**
+ * Where the camera looks, per stage, in the model's own metres.
+ *
+ * model-viewer's automatic framing fits the WHOLE bounding box, and every stage
+ * stands on a soil disc about half a metre across. For the seedling that disc
+ * is most of the box, so "fit everything" drew a tiny figure on a large brown
+ * plate. This frames the height instead — target at the figure's middle, the
+ * radius that fits the model's height in the 30° field of view with a little
+ * air — and lets the disc run off the sides, which is how a figurine is shot.
+ * The numbers are the measured bounds of the four .glb files (`getDimensions`,
+ * `getBoundingBoxCenter`); re-measure if a model is replaced.
+ */
+const STAGE_FRAME: Record<Stage, { target_y: number; radius: number }> = {
+  egg: { target_y: 0.25, radius: 1.12 },
+  sprout: { target_y: 0.235, radius: 0.4 },
+  sapling: { target_y: 0.31, radius: 1.34 },
+  tree: { target_y: 0.46, radius: 2.1 },
+};
+
 interface Props {
   stage: Stage;
   /** Pixel size of the square viewport. */
@@ -44,6 +63,12 @@ export default function CharacterModel({ stage, size = 108 }: Props) {
       alt={`Your ${STAGE_LABEL[stage].toLowerCase()}`}
       auto-rotate={!prefers_reduced}
       camera-controls={false}
+      camera-target={`0m ${STAGE_FRAME[stage].target_y}m 0m`}
+      camera-orbit={`0deg 78deg ${STAGE_FRAME[stage].radius}m`}
+      /* The default floor is the auto radius, which would clamp the close
+         seedling frame straight back out to the whole-disc view. */
+      min-camera-orbit={`auto auto ${STAGE_FRAME[stage].radius}m`}
+      field-of-view="30deg"
       shadow-intensity="1"
       shadow-softness="0.8"
       style={{

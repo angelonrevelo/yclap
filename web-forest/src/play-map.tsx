@@ -500,17 +500,20 @@ const Ground = memo(function Ground({
       {/* 4 · ambient life now stands up — see `flora.tsx`, drawn in screen
              space over the skyline. Nothing flat is painted here. */}
 
-      {/* 4 · restricted ground: quiet flat gray, drawn over the green
+      {/* 4 · restricted ground: quiet dry ground, drawn over the green
              and its tufts so nothing living seems to grow there. No
-             hatch, no dashed fence, no label — gray ground you cannot
+             hatch, no dashed fence, no label — faded ground you cannot
              walk onto says it without a paragraph (ROADMAP "quiet
-             restricted-area treatment"). */}
+             restricted-area treatment"). It was a flat gray, and gray
+             sits beside the walker's start: under the rake it read as a
+             hole in the map rather than as ground, so it stays in the
+             ground family — the lawn with the life taken out of it. */}
       {is_restricted_on && (
         <path
           d={ringPath(RESTRICTED_POLYGON.map((p) => [p.lat, p.lon] as [number, number]), project, true)}
-          fill={is_night ? "#4A4F57" : "#9A9E99"}
+          fill={is_night ? "#3A4B4C" : "#B9C39E"}
           fillOpacity={0.92}
-          stroke={is_night ? "#3A3E45" : "#80847F"}
+          stroke={is_night ? "#2E3C3D" : "#9CA682"}
           strokeWidth="1.5"
           strokeLinejoin="round"
         />

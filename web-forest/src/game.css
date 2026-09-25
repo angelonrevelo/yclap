@@ -258,6 +258,8 @@
 .gm-quest {
   display: inline-flex;
   align-items: center;
+  /* A 44 px target, like every other control on the map. */
+  min-height: 44px;
   gap: 8px;
   max-width: min(100%, 74vw);
   padding: 5px 6px 5px 5px;
@@ -922,7 +924,19 @@
 
 /* ── Stage reveal ───────────────────────────────────────────────────────── */
 
-/* model-viewer's default loading bar drew a stray grey rule across the card. */
-.gm-reveal-card model-viewer::part(default-progress-bar) {
+/* model-viewer's default loading bar drew a stray grey rule across the card —
+   and across the top of the Journal buddy, the pin sheet and the species card,
+   where it stayed as a dark strip. Every viewer here has a poster standing in
+   while it loads, so none of them needs the bar. */
+model-viewer::part(default-progress-bar) {
   display: none;
+}
+
+/* A link inside a sentence ("Open Seek") is one line of 12 px type — a 15 px
+   target. Padding on an inline box grows its hit area without moving the line;
+   the matching negative margin keeps the words where they were. */
+.gm-inline-link {
+  display: inline-block;
+  padding: 14px 6px;
+  margin: -14px -6px;
 }

@@ -21,6 +21,11 @@ interface ModelViewerAttributes extends HTMLAttributes<HTMLElement> {
   autoplay?: boolean;
   /** "none" hides the hand-wave hint that model-viewer shows over a still model. */
   "interaction-prompt"?: string;
+  /** Framing — see `STAGE_FRAME` in character-model.tsx. */
+  "camera-target"?: string;
+  "camera-orbit"?: string;
+  "min-camera-orbit"?: string;
+  "field-of-view"?: string;
   /** "eager" | "lazy" | "auto". */
   loading?: string;
   /** Listeners for `load` / `error` are attached through the ref (see SpeciesCard). */

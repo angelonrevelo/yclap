@@ -429,6 +429,10 @@ export default function SettingsScreen({
                           <summary
                             style={{
                               cursor: "pointer",
+                              /* A 44 px row to tap, not an 18 px line of type. */
+                              minHeight: 44,
+                              boxSizing: "border-box",
+                              padding: "12px 0",
                               fontWeight: 800,
                               fontSize: 13,
                               color: "var(--mg-text-boldest)",
@@ -705,7 +709,9 @@ export default function SettingsScreen({
                   <summary
                     style={{
                       cursor: "pointer",
-                      padding: "10px 12px",
+                      minHeight: 44,
+                      boxSizing: "border-box",
+                      padding: "12px 12px",
                       borderRadius: RADIUS.tile,
                       border: `1px solid ${TONE.edge}`,
                       background: TONE.card,

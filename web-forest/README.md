@@ -158,6 +158,11 @@ How the models LOOK is a separate gate: `node script/species-model/audit.mjs`.
 The character's four stages render through a self-hosted `<model-viewer>`
 (`src/character-model.tsx`, lazy-loaded) and their `.glb` files are precached,
 which is spec T4.1 and closes the "3D character offline" blocker.
+Each stage is framed on the figure's height, not the whole bounding box
+(`STAGE_FRAME`), so the seedling fills its box instead of standing small on
+its soil disc. No viewer shows model-viewer's loading bar (it left a dark
+strip on the pin sheet and the species card). The stage reveal headlines the
+stage its sticker shows ("Sprout") and names the cosmetic it unlocked under it.
 
 **The 3D species card** (`src/species-card.tsx`, lazy-loaded; pure half in
 `src/species-card-core.ts`) is where the pack is actually shown. It opens from
@@ -253,7 +258,9 @@ The play layer, wired in `src/live.tsx`:
   - *Tilt* rests at 46° pulled back and eases to 58° at z22; two fingers dragged
     vertically (desktop: shift- or right-drag) adjust it within 40–64°. A
     12 px deadzone keeps a pinch or a swing from nodding the camera.
-  - *Restricted ground* is flat quiet gray. No hatch, no label.
+  - *Restricted ground* is quiet dry ground — a faded sage, the lawn with the
+    life taken out. No hatch, no label. (It was flat gray, which beside the
+    walker's start read as a hole in the map.)
 - **`zoom.ts` — continuous zoom**, ported from the fix in `tripi`
   (`apps/web/public/map.html`, which gets it from Leaflet's `zoomSnap: 0` plus
   an inlined SmoothWheelZoom). This repo has no Leaflet on purpose, so the
