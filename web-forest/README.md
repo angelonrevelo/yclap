@@ -136,7 +136,8 @@ and without it offline the "Out right now" strip renders nothing at all.
 `npm run audit:model` (`script/audit-model.mjs`) checks every `.glb` the app
 can ask for — the manifest plus the five character slots — as files: glTF 2.0
 binary, chunks and accessors in range, at least one mesh, not over 1.5 MB, not
-zero-size, standing on y=0, manifest `bytes` matching disk, no orphans or
+zero-size, standing on y=0, manifest `bytes` matching disk, every animation
+channel aimed at a node the scene draws (`dangling_track`), no orphans or
 duplicates. `test/model-audit.test.ts` runs it, so a regression fails
 `npm test`. Current state: 1,103 files, all clean, median 2,452 triangles,
 largest 114 kB. On 09-25 it found 110 models floating over or sunk through the
@@ -144,8 +145,13 @@ ground plane (a cat 14 cm up, spiders' legs through the floor); the builder now
 measures the rest pose and wraps such a model in a `ground` node, using the
 same `groundOffset` rule the audit checks. Flying poses (butterflies, moths,
 dragonflies, flies, bees, wasps) may hover but not sink; the companion's soil
-mound is half-buried on purpose. How the models LOOK is a separate gate:
-`node script/species-model/audit.mjs`.
+mound is half-buried on purpose. Until 09-26 every file's idle clip animated
+a `root` node that was never in the scene, so three.js warned "No target node
+found for track: root.scale" and nothing breathed; the builder now puts the
+root in the scene. A flowering tree's blossoms sit on the crown's surface at
+their own height rather than at the footprint's full reach, which had hung
+top-of-crown flowers in the air on a bare stick (the Narra's stray branch).
+How the models LOOK is a separate gate: `node script/species-model/audit.mjs`.
 
 The character's four stages render through a self-hosted `<model-viewer>`
 (`src/character-model.tsx`, lazy-loaded) and their `.glb` files are precached,
@@ -217,7 +223,11 @@ The play layer, wired in `src/live.tsx`:
     1.8 m stationary dead-band (`fix-filter.ts`), so standing still publishes
     nothing. The raked camera glides toward the walker on a
     `requestAnimationFrame` critically damped spring (`glideStep`) and the walker
-    is drawn at that glide centre (locked or merely following), so 50 ms stick
+    is drawn at that glide centre (locked or merely following). While following,
+    the camera's target is DERIVED from the fix during render (`camera_view` in
+    `app.tsx`), not copied into state by an effect, so a walk costs one render
+    per tick and React's "Maximum update depth" warning has nothing to count;
+    `view` state changes only on a zoom, a gesture, a recentre or a jump. 50 ms stick
     steps and 1 s GPS steps come out as one continuous move. The spring chases
     a point that slides between position updates over the cadence they arrive
     at (`tickLerpNext`), not the raw steps — so a walk starts smoothly instead
@@ -589,7 +599,12 @@ illustration, not chrome, and keep their gradients.
   to pan away to the find, which read as nothing happening).
 - **`src/character.tsx`** — the walker. It draws the stage **sticker** (seed →
   seedling → sapling → tree) and keeps the billboard, contact shadow, bob and
-  walking gait. Vigor greys the sticker; it never changes the stage.
+  walking gait. Vigor greys the sticker; it never changes the stage. On the
+  play map the gait is switched off by a timer once the fix stops moving
+  (`walkStopMs`: 450 ms for the stick and demo, 2.5 s for GPS) — it used to wait
+  for a render that never came, so the walker marched on the spot forever — and
+  the lean into the heading eases over 260 ms (`.pm-walker` in `game.css`)
+  instead of flipping up to 28° in a frame when you turn round.
 - **`src/level.ts`** — trainer level is a way of *displaying* points, not a
   second score: level L starts at 50·L·(L−1) points. Nothing awards "XP".
 

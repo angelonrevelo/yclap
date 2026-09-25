@@ -656,6 +656,15 @@ export class Cute {
     const roots = this.nodes
       .filter((n) => n.parent === this.root && n !== this.root)
       .map((n) => nodeIndex.get(n));
+    /* The root is IN the scene, holding every top-level part. It used to be
+       written as a detached node while the scene listed its children directly
+       — and every archetype animates the root (the whole-model breathe and
+       bob), so every file in the pack carried a `root.scale` track with no
+       target: three.js logged "PropertyBinding: No target node found for
+       track: root.scale" and the model never breathed. The root has no
+       transform of its own, so the rest pose is unchanged. */
+    const root_index = nodeIndex.get(this.root);
+    if (roots.length) gltfNodes[root_index].children = roots;
 
     // animations
     const samplers = [];
@@ -678,9 +687,9 @@ export class Cute {
     }
 
     /* Appended last so every node index an animation channel targets stays put. */
-    let scene_root = roots;
+    let scene_root = [root_index];
     if (this.ground_offset) {
-      gltfNodes.push({ name: "ground", translation: [0, this.ground_offset, 0], children: roots });
+      gltfNodes.push({ name: "ground", translation: [0, this.ground_offset, 0], children: [root_index] });
       scene_root = [gltfNodes.length - 1];
     }
 

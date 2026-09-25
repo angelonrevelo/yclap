@@ -764,6 +764,21 @@
   }
 }
 
+/* ── The walker's lean ──────────────────────────────────────────────────────
+   The walker leans into its heading, up to 14° either way, and the heading
+   arrives with each position tick — so turning round flipped the figure
+   through up to 28° in a single frame. Its body (the wrapper's child, whatever
+   draws the walker) eases between leans instead. The wrapper itself moves
+   every frame with the camera and must NOT get a transition. */
+.pm-walker > * {
+  transition: transform 260ms cubic-bezier(0.25, 0.8, 0.35, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pm-walker > * {
+    transition: none;
+  }
+}
+
 /* ── Today's hunt: the day's first open ─────────────────────────────────── */
 
 .gm-today {
