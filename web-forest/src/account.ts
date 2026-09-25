@@ -165,6 +165,20 @@ function localSave(): AccountSave {
   return { sighting: readSighting(), point_event: readPointEvents() };
 }
 
+/** The sentence the Settings panel shows when a sync does not land. */
+export const UPDATE_AVAILABLE = "Update available — reload";
+
+/** The server's 400 for a save without the fields this build's protocol requires. */
+export function isShapeRefusal(data: unknown): boolean {
+  const error = (data as ErrorBody | null)?.error;
+  return typeof error === "string" && error.includes("base_updated_at");
+}
+
+export function syncErrorOf(error: unknown, is_stale_build: boolean): string {
+  if (is_stale_build) return UPDATE_AVAILABLE;
+  return `Sync failed: ${error instanceof Error ? error.message : String(error)}`;
+}
+
 /**
  * Pull the account's save, union it into this device (never dropping a local
  * find), then push the union back up naming the server stamp it read. If
@@ -175,11 +189,20 @@ function localSave(): AccountSave {
 export async function syncSave(): Promise<SyncReport | null> {
   if (state.status !== "signed_in" || state.is_syncing) return null;
   set({ is_syncing: true });
+  /* A 400 naming the save's shape is the server refusing a shape it no longer
+     takes — this tab is running an older build than the server. That is not a
+     failed sync, it is an update, and reloading fixes it. (The other 400, a
+     save over the size limit, stays a failure.) */
+  let is_stale_build = false;
   try {
     const done = await reconcileSave(
       {
         get: () => call("/account/save"),
-        put: (body) => call("/account/save", "PUT", body),
+        put: async (body) => {
+          const answer = await call("/account/save", "PUT", body);
+          if (answer.status === 400 && isShapeRefusal(answer.data)) is_stale_build = true;
+          return answer;
+        },
       },
       localSave,
       (save) => {
@@ -197,7 +220,7 @@ export async function syncSave(): Promise<SyncReport | null> {
     set({ is_syncing: false, last_sync: report, error: null });
     return report;
   } catch (e) {
-    set({ is_syncing: false, error: `Sync failed: ${e instanceof Error ? e.message : String(e)}` });
+    set({ is_syncing: false, error: syncErrorOf(e, is_stale_build) });
     return null;
   }
 }

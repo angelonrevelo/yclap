@@ -1,4 +1,5 @@
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
+import { byDepth, isCovering } from "./depth";
 import type { LatLon } from "./geo";
 import type { Projection } from "./tile-map";
 
@@ -14,7 +15,14 @@ import type { Projection } from "./tile-map";
  * `tuft` scatter the play map always had, densest where vegetation was
  * MEASURED highest. They are not surveyed trees, they carry no species and no
  * id, they take no pointer, and they are culled around every find and around
- * the walker so a painted tree can never hide something you can tap.
+ * the walker so a painted tree never grows out of something you can tap.
+ *
+ * The finds are painted HERE too, in one list with the trees, sorted by where
+ * each meets the ground (`depth.ts`). They used to sit inside the tilted
+ * plane, and the plane paints under this whole overlay, so every tree covered
+ * every find — even a tree fifty metres behind it. Now a find behind a tree is
+ * behind it and one in front is in front, and a tree that stands in front of a
+ * find goes see-through where it covers it, the way it does for the walker.
  */
 
 export interface Tuft extends LatLon {
@@ -47,10 +55,43 @@ function heightOf(shape: Shape, t: Tuft): number {
   return 5 + (t.r - 3.4) * 0.5;
 }
 
-const Glyph = memo(function Glyph({ shape, dark }: { shape: Shape; dark: boolean }) {
-  const back = dark ? "#2F7A3A" : "#3E9A4A";
-  const front = dark ? "#4FA84A" : "#6CC04F";
-  const lit = dark ? "#7CC84A" : "#9BDB6A";
+/**
+ * A colour under the night grade: darker and a little greyer.
+ *
+ * Night used to be a CSS `filter` on every tree's wrapper — up to 90 filtered
+ * layers, each its own offscreen pass, on a phone. The same grade done once on
+ * the numbers costs nothing per frame, and it is how the ground is graded too
+ * (`gradeFill` in `play-map.tsx`).
+ */
+function dusk(hex: string): string {
+  const n = Number.parseInt(hex.slice(1), 16);
+  const rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => c * 0.62);
+  const grey = rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+  return `#${rgb
+    .map((c) => Math.round(grey + (c - grey) * 0.85))
+    .map((c) => Math.max(0, Math.min(255, c)).toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+const DAY_TONE = {
+  back: { dark: "#2F7A3A", light: "#3E9A4A" },
+  front: { dark: "#4FA84A", light: "#6CC04F" },
+  lit: { dark: "#7CC84A", light: "#9BDB6A" },
+  trunk: "#8A5A34",
+};
+const NIGHT_TONE = {
+  back: { dark: dusk(DAY_TONE.back.dark), light: dusk(DAY_TONE.back.light) },
+  front: { dark: dusk(DAY_TONE.front.dark), light: dusk(DAY_TONE.front.light) },
+  lit: { dark: dusk(DAY_TONE.lit.dark), light: dusk(DAY_TONE.lit.light) },
+  trunk: dusk(DAY_TONE.trunk),
+};
+
+const Glyph = memo(function Glyph({ shape, dark, is_night }: { shape: Shape; dark: boolean; is_night: boolean }) {
+  const tone = is_night ? NIGHT_TONE : DAY_TONE;
+  const back = dark ? tone.back.dark : tone.back.light;
+  const front = dark ? tone.front.dark : tone.front.light;
+  const lit = dark ? tone.lit.dark : tone.lit.light;
+  const trunk = tone.trunk;
   if (shape === "bush") {
     return (
       <svg viewBox="0 0 100 60" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block", overflow: "visible" }}>
@@ -65,7 +106,7 @@ const Glyph = memo(function Glyph({ shape, dark }: { shape: Shape; dark: boolean
     return (
       <svg viewBox="0 0 60 120" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block", overflow: "visible" }}>
         <ellipse cx="30" cy="117" rx="20" ry="4" fill="rgba(20,60,30,0.24)" />
-        <rect x="26" y="84" width="8" height="34" rx="3" fill="#8A5A34" />
+        <rect x="26" y="84" width="8" height="34" rx="3" fill={trunk} />
         <path d="M30 4 Q52 30 50 62 Q56 88 30 94 Q4 88 10 62 Q8 30 30 4 Z" fill={back} />
         <path d="M30 18 Q46 38 44 62 Q48 82 30 86 Q16 82 18 62 Q16 38 30 18 Z" fill={front} />
         <path d="M24 36 Q28 28 34 30" fill="none" stroke={lit} strokeWidth="4" strokeLinecap="round" />
@@ -75,7 +116,7 @@ const Glyph = memo(function Glyph({ shape, dark }: { shape: Shape; dark: boolean
   return (
     <svg viewBox="0 0 100 110" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block", overflow: "visible" }}>
       <ellipse cx="50" cy="107" rx="30" ry="5" fill="rgba(20,60,30,0.24)" />
-      <path d="M44 106 L46 66 Q40 58 32 56 L36 52 Q44 56 48 60 L50 48 L54 48 L54 62 Q60 54 68 54 L68 58 Q58 62 56 70 L58 106 Z" fill="#8A5A34" />
+      <path d="M44 106 L46 66 Q40 58 32 56 L36 52 Q44 56 48 60 L50 48 L54 48 L54 62 Q60 54 68 54 L68 58 Q58 62 56 70 L58 106 Z" fill={trunk} />
       <circle cx="30" cy="46" r="24" fill={back} />
       <circle cx="70" cy="44" r="24" fill={back} />
       <circle cx="50" cy="28" r="26" fill={back} />
@@ -93,8 +134,24 @@ function meterBetween(a: LatLon, b: LatLon): number {
   return Math.hypot(dx, dy);
 }
 
+/**
+ * A find, already placed on the glass by the play map (`toScreenFind`): its
+ * foot at (`x`, `y`), its drawn size, and the marker itself. Flora only decides
+ * WHEN it paints relative to the trees.
+ */
+export interface GlassFind {
+  key: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  node: ReactNode;
+}
+
 interface Props {
   tuft: readonly Tuft[];
+  /** The finds on screen, painted in depth order with the trees. */
+  find: readonly GlassFind[];
   projection: Projection;
   centre: LatLon;
   /** Finds and the walker: nothing is painted on top of these. */
@@ -104,7 +161,7 @@ interface Props {
   is_night: boolean;
 }
 
-export default function Flora({ tuft, projection, centre, keep_clear, walker_screen_y, walker_x, is_night }: Props) {
+export default function Flora({ tuft, find, projection, centre, keep_clear, walker_screen_y, walker_x, is_night }: Props) {
   const { project, toScreen, width, height, meter_per_pixel } = projection;
   const drawn: { key: number; x: number; y: number; w: number; h: number; shape: Shape; dark: boolean }[] = [];
   const lat_span = DRAW_RADIUS_M / 111_320;
@@ -127,35 +184,54 @@ export default function Flora({ tuft, projection, centre, keep_clear, walker_scr
     drawn.push({ key: i, x: at.x, y: at.y, w, h, shape, dark: t.dark });
     if (drawn.length >= MAX_DRAWN) break;
   }
-  /* Painter's order: further up the glass is further away. */
-  drawn.sort((a, b) => a.y - b.y);
+  /* Painter's order, trees and finds together: further up the glass is
+     further away, and paints first. */
+  const standee: ({ kind: "tree"; tree: (typeof drawn)[number]; y: number } | { kind: "find"; find: GlassFind; y: number })[] = [
+    ...drawn.map((tree) => ({ kind: "tree" as const, tree, y: tree.y })),
+    ...find.map((f) => ({ kind: "find" as const, find: f, y: f.y })),
+  ];
+  standee.sort(byDepth);
+  /* In front of the walker when nearer the camera than them. Finds and trees
+     share the two bands so the painter's order above holds inside each. */
+  const zOf = (y: number) => (walker_screen_y !== null && y > walker_screen_y ? 7 : 5);
   return (
     /* No z-index, opacity or filter on this wrapper: any of them would make it
        a stacking context, and then no tree could stand in front of the walker. */
-    <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }} aria-hidden>
-      {drawn.map((d) => {
+    <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+      {standee.map((s) => {
+        if (s.kind === "find") {
+          const f = s.find;
+          return (
+            <div key={`find-${f.key}`} style={{ position: "absolute", left: 0, top: 0, zIndex: zOf(f.y), pointerEvents: "auto" }}>
+              {f.node}
+            </div>
+          );
+        }
+        const d = s.tree;
         const is_front = walker_screen_y !== null && d.y > walker_screen_y;
         /* A tree between the camera and the walker goes see-through where it
            would cover them. You never lose yourself behind scenery. */
         const is_over_walker =
           is_front && walker_x !== null && Math.abs(d.x - walker_x) < d.w / 2 + 40 && d.y - d.h < (walker_screen_y ?? 0);
+        /* And the same for a find: a tree nearer the camera than a find, and
+           over it, lets it show through. */
+        const is_over_find = find.some((f) => isCovering(d, f));
         return (
         <div
           key={d.key}
+          aria-hidden
           style={{
             position: "absolute",
             left: d.x - d.w / 2,
             top: d.y - d.h,
             width: d.w,
             height: d.h,
-            /* In front of the walker when nearer the camera than them. */
-            zIndex: is_front ? 7 : 5,
+            zIndex: zOf(d.y),
             /* A distant tree is also a hazier one. */
-            opacity: is_over_walker ? 0.4 : Math.min(1, 0.55 + (d.y / height) * 0.6),
-            filter: is_night ? "brightness(0.62) saturate(0.85)" : undefined,
+            opacity: is_over_walker || is_over_find ? 0.4 : Math.min(1, 0.55 + (d.y / height) * 0.6),
           }}
         >
-          <Glyph shape={d.shape} dark={d.dark} />
+          <Glyph shape={d.shape} dark={d.dark} is_night={is_night} />
         </div>
         );
       })}

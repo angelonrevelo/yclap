@@ -86,3 +86,21 @@ describe("basemap sources", () => {
     }
   });
 });
+
+describe("service worker upgrade", () => {
+  it("is at least v8: the save protocol changed (base_updated_at), so old shells must go", () => {
+    const version = Number(sw.match(/CACHE_VERSION = "magisphere-v(\d+)"/)?.[1]);
+    assert.ok(version >= 8, `CACHE_VERSION is v${version}`);
+  });
+
+  it("serves the page network-first, so a reload picks up the new build", () => {
+    const navigate = sw.match(/function handleNavigate\(request\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
+    assert.match(navigate, /^\s*return fetch\(request\)/);
+    assert.match(navigate, /\.catch\(\(\) => caches\.match\("\/index\.html"\)/);
+  });
+
+  it("only keeps a good page as the offline shell", () => {
+    const navigate = sw.match(/function handleNavigate\(request\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
+    assert.match(navigate, /if \(response\.ok && response\.type === "basic"\)/);
+  });
+});

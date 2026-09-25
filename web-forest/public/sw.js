@@ -22,9 +22,14 @@
  *
  * `main.tsx` additionally refuses to register this at all under `dev`.
  *
- * Bump CACHE_VERSION whenever the shell needs to be re-fetched.
+ * Bump CACHE_VERSION whenever the shell needs to be re-fetched — and whenever a
+ * client/server contract changes. v8: a save now names the server stamp it
+ * read (`base_updated_at`), and the server answers an old tab's save with 400.
+ * The bump makes every device drop the old shell on its next visit; the page
+ * itself (`/`, `/index.html`) is always network-first, so a reload is enough
+ * to pick up the new build.
  */
-const CACHE_VERSION = "magisphere-v7";
+const CACHE_VERSION = "magisphere-v8";
 /* Deliberately NOT renamed with the shell. The cache key is what a device's
    warmed campus is stored under; renaming it on the Magisphere rename would
    have thrown away every tile banked by "Save offline" on the eve of the
@@ -159,12 +164,20 @@ function put(request, response) {
   return response;
 }
 
-/** Same-origin navigation → cached shell when the network is gone. */
+/**
+ * Same-origin navigation → network first, cached shell when the network is gone.
+ *
+ * The page is never served from cache while the network answers: it names the
+ * hashed bundle, so a stale page pins a stale app. Only a good page is kept —
+ * this used to store whatever came back, so one 502 became the offline shell.
+ */
 function handleNavigate(request) {
   return fetch(request)
     .then((response) => {
-      const copy = response.clone();
-      caches.open(CACHE_VERSION).then((cache) => cache.put("/index.html", copy));
+      if (response.ok && response.type === "basic") {
+        const copy = response.clone();
+        caches.open(CACHE_VERSION).then((cache) => cache.put("/index.html", copy));
+      }
       return response;
     })
     .catch(() => caches.match("/index.html").then((hit) => hit || Response.error()));

@@ -442,7 +442,10 @@ If the project outgrows one Durable Object, the SQL moves to Neon unchanged.
   `base_updated_at` it read and only lands if that is still the stored stamp
   (compare-and-swap in one conditional SQL statement). Otherwise 409 plus the
   server's copy, which the client merges and retries once. No phone's clock is
-  ever read, so a phone set to 2099 can neither win nor lock the others out. Known
+  ever read, so a phone set to 2099 can neither win nor lock the others out. A
+  tab from before `base_updated_at` gets a 400 and shows "Update available —
+  reload" instead of "Sync failed"; the service worker is at `magisphere-v8`
+  and serves the page network-first, so a reload picks up the new build. Known
   limit: no tombstones, so a find deleted on one phone comes back from the
   account.
 - **Google:** on only when both secrets exist. Without them `/auth/google` is a
@@ -494,7 +497,11 @@ This is the project's own server, not an Ateneo login, and the panel says so.
 - **Standing flora** (`src/flora.tsx`). Cartoon trees and bushes on the same
   deterministic, vegetation-weighted scatter as before. Lawns and pitches get
   bushes only. Nothing is painted within 6 m of a find or the walker, and a tree
-  in front of the walker goes see-through.
+  in front of the walker goes see-through. Finds are drawn on the glass with
+  the trees (`toScreenFind`) and painted in one depth order with them
+  (`src/depth.ts`: further up the screen paints first), so a tree covers only
+  the finds behind it, and goes see-through over one. Night recolours the
+  trees in JS; there is no per-tree CSS filter.
 - **Buildings default to `block`**: every building gets a low plinth of 3.2 m
   of wall. It reads as built without hiding the path behind it. `solid` still
   draws real heights.
