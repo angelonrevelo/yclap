@@ -351,3 +351,57 @@ export function playMeterForTick(
   const top = stickTopPaceMs(span_m) * (is_run ? PLAY_RUN_MULTIPLIER : 1);
   return top * (dt_ms / 1000) * Math.max(0, Math.min(1, throttle));
 }
+
+/* ── following a planned route (route.ts) ───────────────────────────────── */
+
+/** A walk-to in progress: the route's waypoints and how far along them the walker is. */
+export interface RouteWalk {
+  waypoint: LatLon[];
+  index: number;
+  /** Ticks in a row that closed in on the current waypoint by less than a fifth of a step. */
+  stall: number;
+}
+
+export type RouteStepStatus = "walking" | "arrived" | "stuck";
+
+/** Ticks a route walk may go without closing in before it counts as stuck (~1 s). */
+export const ROUTE_STALL_TICK = Math.round(1000 / PLAY_TICK_MS);
+
+/** Within this of a waypoint, it is reached and the walker turns for the next. */
+const WAYPOINT_REACH_M = 0.6;
+
+/** Within this of the last waypoint, the walk is over. */
+const ARRIVE_M = 0.05;
+
+/**
+ * One tick of a walk-to along a route: `meter` of walking toward the current
+ * waypoint through `stepToward`, so the stick's rules — refuse a wall, slide
+ * along it — hold for a routed walk too. What is left of the step after a
+ * waypoint carries on toward the next, so a corner costs no pace. `walk` is
+ * advanced in place.
+ */
+export function stepRoute(from: LatLon, walk: RouteWalk, meter: number): { at: LatLon; status: RouteStepStatus } {
+  let at = from;
+  let left = meter;
+  while (walk.index < walk.waypoint.length) {
+    const target = walk.waypoint[walk.index];
+    const gap = distanceMeter(at, target);
+    /* A corner is reached near enough; the end is stood on. */
+    const reach = walk.index === walk.waypoint.length - 1 ? ARRIVE_M : WAYPOINT_REACH_M;
+    if (gap < reach) {
+      walk.index += 1;
+      continue;
+    }
+    if (left <= 0) break;
+    const next = stepToward(at, target, Math.min(left, gap));
+    const after = distanceMeter(next, target);
+    const gained = gap - after;
+    walk.stall = gained < Math.min(left, gap) * 0.2 ? walk.stall + 1 : 0;
+    at = next;
+    if (walk.stall >= ROUTE_STALL_TICK) return { at, status: "stuck" };
+    if (after >= reach || gained <= 0) break;
+    left -= gained;
+    walk.index += 1;
+  }
+  return { at, status: walk.index >= walk.waypoint.length ? "arrived" : "walking" };
+}
