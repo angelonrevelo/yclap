@@ -14,6 +14,7 @@ import {
   type PlayHeld,
   type PlayStick,
 } from "./play-walk";
+import { filterFix, type FixFilter } from "./fix-filter";
 
 const DEMO_LOOP_MS = 42000;
 const DEMO_TICK_MS = 120;
@@ -173,16 +174,27 @@ export function useGeo(
       fix: prev.fix,
       message: "Asking this device for a position…",
     }));
+    /* Raw fixes wander by metres standing still; see `fix-filter.ts`. A fix
+       the dead-band holds in place is not published at all, so standing still
+       costs no render and no camera move. */
+    let filter: FixFilter | null = null;
     const watch_id = navigator.geolocation.watchPosition(
       (position) => {
-        const fix: Fix = {
+        const raw: Fix = {
           lat: position.coords.latitude,
           lon: position.coords.longitude,
           accuracy_m: position.coords.accuracy,
           at: position.timestamp,
           source: "gps",
         };
-        setState({ status: "watching", fix, message: null });
+        const was_shown = filter?.shown ?? null;
+        const next = filterFix(filter, raw);
+        filter = next.state;
+        setState((prev) =>
+          prev.status === "watching" && next.fix === was_shown && prev.fix === was_shown
+            ? prev
+            : { status: "watching", fix: next.fix, message: null },
+        );
       },
       (err) => {
         setState({
