@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { demoWalkAt, distanceMeter, isInsideCampus, type Fix, type GeoState, type LatLon } from "./geo";
 import {
   PLAY_START,
+  stickStartOf,
   PLAY_TICK_MS,
   headingFromKey,
   headingFromStick,
@@ -91,7 +92,7 @@ export function useGeo(
 } {
   const [state, setState] = useState<GeoState>({ status: "idle", fix: null, message: null });
   const started_at = useRef<number>(Date.now());
-  const play_at = useRef<LatLon>(PLAY_START);
+  const play_at = useRef<LatLon>(stickStartOf(typeof window === "undefined" ? "" : window.location.search));
   const held = useRef<PlayHeld>(IDLE_HELD);
   const stick = useRef<PlayStick>(IDLE_STICK);
   const is_run = useRef(false);

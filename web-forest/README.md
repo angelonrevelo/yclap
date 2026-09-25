@@ -185,6 +185,48 @@ the iNaturalist sweep never requested `establishment_means`. The intended 1.5×
 bias toward native species therefore reaches 0.8% of the world today.
 `spawn.test.ts` holds that number so improving it fails loudly.
 
+## First open, warnings, and the landscape
+
+- **Boot** (`src/boot.tsx`, `src/boot.css`). The genre's cold start, cut from the
+  brand kit: the stacked lockup on white with the Youth CLAP and Ateneo credits,
+  then the trail scene with the Sprout cast, a rotating tip and a progress bar,
+  then a safety card ("Stay aware of your surroundings"). The bar counts real
+  work (fonts, the species pool, the art), with a dwell floor so a warm cache
+  does not flash past. Every tip is a rule the build enforces.
+- **Alerts** (`src/alert.tsx`). One card for every interruption. Light for
+  "before you start" (no position here, off campus), dark over a dimmed map for
+  "stop" (weather, going too fast). Each shows once per launch.
+- **Weather** (`src/weather.ts`). Open-Meteo's current conditions at Loyola
+  Heights, no key. Thunder, heavy rain, or a PAGASA "danger" heat index (≥42°C
+  feels-like) raises the dark card. The chip at the top right always shows the
+  sky and reopens the card. Offline there is no chip at all, never an
+  unmeasured all-clear. The card says it is a model, not a PAGASA bulletin.
+- **Speed.** Two GPS fixes more than 7 m/s apart raise "You are going too
+  fast". Stick and demo walks are exempt.
+- **Today's hunt.** The day's first open shows the daily hunt as a ribbon card.
+  It is not a login bonus: the +40 is the hunt's own, paid only when the species
+  is logged.
+- **Horizon** (`src/horizon.tsx`). A 360° panorama keyed to camera bearing, with
+  the Sierra Madre foothills east, Ortigas and Cubao south, and QC west. Shapes
+  are schematic, directions are real. At night there are stars, lit windows
+  and a blue dusk grade.
+- **Paths are metres, not pixels.** Roads draw ≈6 m wide with a dashed centre
+  line and footpaths ≈2 m, so they are ribbons at z22 instead of hairlines.
+- **Standing flora** (`src/flora.tsx`). Cartoon trees and bushes on the same
+  deterministic, vegetation-weighted scatter as before. Lawns and pitches get
+  bushes only. Nothing is painted within 6 m of a find or the walker, and a tree
+  in front of the walker goes see-through.
+- **Buildings default to `block`**: every building gets a low plinth of 3.2 m
+  of wall. It reads as built without hiding the path behind it. `solid` still
+  draws real heights.
+- The stick walk now starts on the footpath by Schmitt Hall and the Zen Garden
+  (`STICK_START`), not on the empty football field.
+
+Projector parameters: `?boot=off` skips the boot, `?weather=storm|rain|heat|clear|night`
+pins a reading (the card says it is pinned), `?time=day|night` pins the sky,
+`?at=lat,lon` sets the stick start, and `?skyline=block|shadow|hollow|solid`
+sets the building style.
+
 ## Two map views
 
 - **Play** (default) — raked camera, sector fills on one green ramp, your

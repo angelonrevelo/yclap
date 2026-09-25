@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import CampusMap from "./campus-map";
 import Joystick from "./joystick";
 import {
@@ -24,6 +24,9 @@ import {
 } from "./preference";
 import { type SkylineStyle } from "./skyline";
 import PlayMap, { PLAY_MAX_ZOOM, PLAY_MIN_ZOOM } from "./play-map";
+import Boot, { isBootSkipped } from "./boot";
+import { AlertCard, WeatherChip, type AlertSpec } from "./alert";
+import { fetchWeather, pinnedWeather, weatherBody, weatherCaption, WEATHER_TITLE, type Weather } from "./weather";
 import { pinKindOf, type PinKind } from "./pin";
 import Character, { stageFor, STAGE_LABEL, type Stage } from "./character";
 /* The 3D character (T4.1) — lazy so the model-viewer chunk is fetched only
@@ -88,7 +91,7 @@ import {
   type GamifySnapshot,
   type PointEvent,
 } from "./gamify";
-import { CAMPUS_CENTER, formatLatLon, formatMeter, formatWalkMinute, meterPerPixel, WALK_PACE_MS, type GeoState } from "./geo";
+import { CAMPUS_CENTER, distanceMeter, formatLatLon, formatMeter, formatWalkMinute, meterPerPixel, WALK_PACE_MS, type GeoState } from "./geo";
 import { LAYER_ORDER, nextLayer, prefetchCampus, SOURCE, type Layer, type View } from "./tile-map";
 import { geoModeLabel, nextGeoMode, useGeo, type GeoMode } from "./use-geo";
 import { biomePresenceAt, rankEncounter, sectorResident, type BiomePresence } from "./nearby";
@@ -97,7 +100,7 @@ import { BlindboxShelf } from "./blindbox-reveal";
 import { BadgeShelf, loadSpawnPool, RarityPill, reachableSpawn, useLiveWorld, useSpawnWorld, WildShelf, WorldStrip } from "./live";
 import { displayName, kindOf } from "./kind";
 import { SpeciesPortrait } from "./portrait.tsx";
-import { icon, settings_icon as kit_settings_icon } from "./asset/kit";
+import { icon, settings_icon as kit_settings_icon, sticker } from "./asset/kit";
 import type { Rarity, Spawn, SpawnPoolEntry } from "./spawn";
 import { receiptHighlight } from "./collection";
 import { demoJournal, isSeededJournal } from "./demo-seed";
@@ -115,7 +118,7 @@ import {
 } from "./inat";
 import InatStrip from "./inat-strip";
 import { Card, Chip, Eyebrow, Fab, GlyphDisc, Pill, PrimaryPill, RADIUS, SpeciesPill, TaxonName, TaxonThumb } from "./ui";
-import { DexCard, DexHeader, GameDock, GameToast, PlayerHud, QuestBanner } from "./hud";
+import { DexCard, DexHeader, GameDock, GameToast, PlayerHud, QuestBanner, TodayHuntCard } from "./hud";
 import {
   CameraIcon,
   CanopyIcon,
@@ -154,6 +157,69 @@ function pathToRoute(path: string): Route {
   if (path === "/plan") return "/settings";
   if (path === "/map" || path === "/journal" || path === "/settings") return path;
   return "/";
+}
+
+/* ── interruptions ─────────────────────────────────────────────────────────
+ * The cards the game may stop you with. Each shows once per launch (keyed by
+ * `alert_id` in sessionStorage) except the weather card, which the sky chip
+ * can always reopen.
+ */
+const NO_FIX_ALERT: AlertSpec = {
+  alert_id: "no-fix",
+  tone: "light",
+  mark: { sticker: sticker.buddy_map },
+  title: "No position here",
+  body: "This device will not share where it is, so steer a walk with the stick in the corner instead. Tap the ground to walk there.",
+  caption: "Anything you log on a stick walk is tagged as one.",
+  action: "Got it",
+};
+const OFF_CAMPUS_ALERT: AlertSpec = {
+  alert_id: "off-campus",
+  tone: "light",
+  mark: { sticker: sticker.buddy_map },
+  title: "You are off campus",
+  body: "Magisphere is played on the Ateneo Loyola Heights campus. From here, steer a demo walk with the stick in the corner.",
+  caption: "Anything you log on a stick walk is tagged as one, never as a visit.",
+  action: "Start the demo walk",
+};
+const SPEED_ALERT: AlertSpec = {
+  alert_id: "speed",
+  tone: "dark",
+  mark: "speed",
+  title: "You are going too fast",
+  body: "Magisphere is for walking. Do not play while you drive or ride a bike. Finds will not count until you slow down.",
+  action: "I'm a passenger",
+};
+/** Faster than this, sustained between two GPS fixes, is not a walk. */
+const SPEED_WARN_MS = 7;
+
+function weatherAlert(w: Weather): AlertSpec {
+  return {
+    alert_id: w.warn ? `weather-${w.warn}` : "weather",
+    tone: w.warn ? "dark" : "light",
+    mark: w.warn ? "warn" : { sticker: w.is_day ? sticker.buddy_cheer : sticker.buddy_sleep },
+    title: w.warn ? WEATHER_TITLE[w.warn] : "Weather on campus",
+    body: weatherBody(w),
+    caption: weatherCaption(w),
+    action: w.warn ? "I am safe" : "OK",
+  };
+}
+
+function alertSeen(): Set<string> {
+  try {
+    return new Set(JSON.parse(sessionStorage.getItem("magisphere.alert-seen") ?? "[]") as string[]);
+  } catch {
+    return new Set();
+  }
+}
+function markAlertSeen(alert_id: string) {
+  try {
+    const seen = alertSeen();
+    seen.add(alert_id);
+    sessionStorage.setItem("magisphere.alert-seen", JSON.stringify([...seen]));
+  } catch {
+    /* private mode: the card may show again, which is the safe failure */
+  }
 }
 
 function StatTile({ big, line, source }: { big: string; line: string; source: string }) {
@@ -3063,7 +3129,7 @@ export default function App() {
      than argued about from memory. */
   const skyline_url_style = ((): SkylineStyle | undefined => {
     const raw = new URLSearchParams(window.location.search).get("skyline");
-    return raw === "solid" || raw === "hollow" || raw === "shadow" ? raw : undefined;
+    return raw === "block" || raw === "solid" || raw === "hollow" || raw === "shadow" ? raw : undefined;
   })();
   const [view, setView] = useState<View>(() => {
     const raw = new URLSearchParams(window.location.search).get("zoom");
@@ -3115,6 +3181,57 @@ export default function App() {
      for a pace. */
   const view_span_m = meterPerPixel(view.lat, Math.round(view.zoom)) * 800;
   const geo = useGeo(geo_mode, bearing, view_span_m);
+  /* Boot, alerts and weather. The boot overlay sits over everything until the
+     safety card is dismissed; alerts raised meanwhile queue behind it. */
+  const [is_booted, setBooted] = useState(() => isBootSkipped());
+  const [alert_queue, setAlertQueue] = useState<AlertSpec[]>([]);
+  const pushAlert = (spec: AlertSpec, is_forced = false) => {
+    if (!is_forced && alertSeen().has(spec.alert_id)) return;
+    setAlertQueue((q) => (q.some((a) => a.alert_id === spec.alert_id) ? q : [...q, spec]));
+  };
+  const [weather, setWeather] = useState<Weather | null>(() => pinnedWeather(window.location.search));
+  useEffect(() => {
+    if (weather?.is_pinned) return;
+    const ctrl = new AbortController();
+    const pull = () => fetchWeather(ctrl.signal).then((w) => w && setWeather(w));
+    pull();
+    const id = window.setInterval(pull, 15 * 60 * 1000);
+    return () => {
+      ctrl.abort();
+      window.clearInterval(id);
+    };
+  }, []);
+  useEffect(() => {
+    if (weather?.warn) pushAlert(weatherAlert(weather));
+  }, [weather?.warn]);
+  /* Night: `?time=` for a projector, else the weather reading, else the clock
+     (Manila sunset is 5:45–6:30 PM all year, so 6 PM–6 AM is close enough). */
+  const [clock_hour, setClockHour] = useState(() => new Date().getHours());
+  useEffect(() => {
+    const id = window.setInterval(() => setClockHour(new Date().getHours()), 5 * 60 * 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  const time_pin = new URLSearchParams(window.location.search).get("time");
+  const is_night =
+    time_pin === "night" ? true : time_pin === "day" ? false : weather ? !weather.is_day : clock_hour >= 18 || clock_hour < 6;
+  /* Speed: only a real GPS track can be driving. A stick walk is paced by
+     the app, and the demo loop by a script. */
+  const speed_last = useRef<{ lat: number; lon: number; at: number } | null>(null);
+  useEffect(() => {
+    const fix = geo.fix;
+    if (!fix || fix.source !== "gps" || fix.accuracy_m > 40) return;
+    const prev = speed_last.current;
+    const now = fix.at ?? Date.now();
+    if (!prev) {
+      speed_last.current = { lat: fix.lat, lon: fix.lon, at: now };
+      return;
+    }
+    const dt = (now - prev.at) / 1000;
+    if (dt < 3) return;
+    const ms = distanceMeter(prev, fix) / dt;
+    speed_last.current = { lat: fix.lat, lon: fix.lon, at: now };
+    if (ms > SPEED_WARN_MS) pushAlert(SPEED_ALERT);
+  }, [geo.fix?.lat, geo.fix?.lon]);
   const seen_sector = useMemo(() => seenSector(sighting), [sighting]);
   /* The rotating world. One fetch of the real sweep, recomputed when the
      30-minute window rolls — see `live.tsx`. Quiet sectors get more finds, and
@@ -3148,6 +3265,35 @@ export default function App() {
     () => dailyTaskFor(spawn_world.pool, biome_sector, new Date(), readPlayer().player_id, point_events),
     [spawn_world.pool, point_events],
   );
+  const goDaily = () => {
+    if (!daily) return;
+    const place = sectorByCode(daily.sector_code);
+    if (!place) return;
+    if (geo_mode === "play") {
+      geo.walkTo({ lat: place.label_point[0], lon: place.label_point[1] });
+      setFollowing(true);
+      return;
+    }
+    setView((prev) => ({ ...prev, lat: place.label_point[0], lon: place.label_point[1], zoom: Math.max(prev.zoom, 17) }));
+  };
+  /* The day's first open shows today's hunt once, big, after boot and after
+     any safety card. Keyed by the hunt's own day. */
+  const [today_seen, setTodaySeen] = useState(() => {
+    try {
+      return localStorage.getItem("magisphere.today-seen") ?? "";
+    } catch {
+      return "";
+    }
+  });
+  const dismissToday = () => {
+    if (!daily) return;
+    setTodaySeen(daily.day_key);
+    try {
+      localStorage.setItem("magisphere.today-seen", daily.day_key);
+    } catch {
+      /* private mode: it may show again today, which is harmless */
+    }
+  };
   const stage = stageFor(seen_sector.size);
   const vigor = useMemo(() => vigorOf(sighting), [sighting]);
   const live = useLiveWorld({
@@ -3257,13 +3403,13 @@ export default function App() {
     if (!geo.fix) {
       if (geo.status !== "denied" && geo.status !== "unavailable") return;
       setGeoMode("play");
-      showToast("No position here — steer with the stick instead.");
+      pushAlert(NO_FIX_ALERT);
       return;
     }
     if (geo.is_off_campus) {
       setGeoMode("play");
       setFollowing(true);
-      showToast("You are off campus. Steer the demo walk with the stick.");
+      pushAlert(OFF_CAMPUS_ALERT);
     }
   }, [geo_mode, geo.status, geo.fix, geo.is_off_campus]);
 
@@ -3378,7 +3524,7 @@ export default function App() {
 
   const showToast = (m: string) => {
     setToast(m);
-    window.setTimeout(() => setToast(null), 2000);
+    window.setTimeout(() => setToast(null), 2600);
   };
 
   const joinWalker = async (code: string) => {
@@ -3710,6 +3856,7 @@ export default function App() {
         /* `?skyline=` still wins, so a projector can be set to a known style
            without touching the device's saved preference. */
         skyline_style={skyline_url_style ?? preference.skyline_style}
+        is_night={is_night}
       />
 
       {/* The stick. Only in play mode, because in the other two the position
@@ -3735,6 +3882,7 @@ export default function App() {
         }
         control={
           <>
+            {weather && <WeatherChip weather={weather} onOpen={() => pushAlert(weatherAlert(weather), true)} />}
             <ModeSwitch mode={map_mode} onMode={setMode} />
             <GeoModeSwitch
               mode={geo_mode}
@@ -3749,20 +3897,7 @@ export default function App() {
         }
         below={
           daily ? (
-            <QuestBanner
-              daily={daily}
-              reward={POINT_VALUE.challenge}
-              onGo={() => {
-                const place = sectorByCode(daily.sector_code);
-                if (!place) return;
-                if (geo_mode === "play") {
-                  geo.walkTo({ lat: place.label_point[0], lon: place.label_point[1] });
-                  setFollowing(true);
-                  return;
-                }
-                setView((prev) => ({ ...prev, lat: place.label_point[0], lon: place.label_point[1], zoom: Math.max(prev.zoom, 17) }));
-              }}
-            />
+            <QuestBanner daily={daily} reward={POINT_VALUE.challenge} onGo={goDaily} />
           ) : null
         }
       />
@@ -4088,6 +4223,29 @@ export default function App() {
         )}
         {reveal && <BlindBoxReveal stage={reveal} onDismiss={() => setReveal(null)} />}
         {toast && <GameToast msg={toast} />}
+        {is_booted && alert_queue[0] && (
+          <AlertCard
+            key={alert_queue[0].alert_id}
+            spec={alert_queue[0]}
+            onDismiss={() => {
+              markAlertSeen(alert_queue[0].alert_id);
+              setAlertQueue((q) => q.slice(1));
+            }}
+          />
+        )}
+        {is_booted && !alert_queue[0] && daily && !daily.is_done && today_seen !== daily.day_key && route === "/" && (
+          <TodayHuntCard
+            daily={daily}
+            reward={POINT_VALUE.challenge}
+            streak_weeks={live_snap.streak_weeks}
+            onGo={() => {
+              dismissToday();
+              goDaily();
+            }}
+            onLater={dismissToday}
+          />
+        )}
+        {!is_booted && <Boot onDone={() => setBooted(true)} />}
       </div>
     </div>
   );

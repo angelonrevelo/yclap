@@ -101,7 +101,7 @@ describe("preference", () => {
     assert.equal(back.skyline_style, "solid");
   });
 
-  it("refuses a skyline style that is not one of the three", () => {
+  it("refuses a skyline style that is not one of the four", () => {
     const storage = memoryStorage();
     storage.setItem("field-guide.preference", JSON.stringify({ skyline_style: "wireframe" }));
     assert.equal(readPreference(storage).skyline_style, PREFERENCE_DEFAULT.skyline_style);

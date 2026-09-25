@@ -15,7 +15,7 @@ export interface Preference {
   /** Buzz on the actions that matter. Off by default on nothing — see `haptic.ts`. */
   is_haptic: boolean;
   /** How buildings draw: footprint + drop, translucent walls, or full prisms. */
-  skyline_style: "shadow" | "hollow" | "solid";
+  skyline_style: "block" | "shadow" | "hollow" | "solid";
   /** Draw the restricted grove's hatch. Off does NOT make the ground walkable. */
   is_restricted_shown: boolean;
   /** Name shown to other walkers on the live campus. */
@@ -24,7 +24,7 @@ export interface Preference {
 
 export const PREFERENCE_DEFAULT: Preference = {
   is_haptic: true,
-  skyline_style: "shadow",
+  skyline_style: "block",
   is_restricted_shown: true,
   walker_name: "",
 };
@@ -47,7 +47,10 @@ export function readPreference(storage: Storage | null = safeStorage()): Prefere
     return {
       is_haptic: typeof parsed.is_haptic === "boolean" ? parsed.is_haptic : PREFERENCE_DEFAULT.is_haptic,
       skyline_style:
-        parsed.skyline_style === "hollow" || parsed.skyline_style === "solid" || parsed.skyline_style === "shadow"
+        parsed.skyline_style === "block" ||
+        parsed.skyline_style === "hollow" ||
+        parsed.skyline_style === "solid" ||
+        parsed.skyline_style === "shadow"
           ? parsed.skyline_style
           : PREFERENCE_DEFAULT.skyline_style,
       is_restricted_shown:

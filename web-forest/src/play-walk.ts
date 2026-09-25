@@ -18,6 +18,28 @@ import {
 /** First point of the stage loop — already asserted walkable in `geo.test.ts`. */
 export const PLAY_START: LatLon = DEMO_WALK[0];
 
+/**
+ * Where a stick walk begins when nothing better is known.
+ *
+ * Not `PLAY_START`. The stage loop starts on the Moro Lorenzo football field,
+ * which is right for a scripted lap and wrong for a first impression: the stick
+ * is what a judge at the off-campus showcase lands on, and the first screen
+ * they saw was a lawn the width of the phone with nothing on it. This is the
+ * footpath between Schmitt Hall's grounds and the Zen Garden, two of the
+ * greenest MEASURED sectors on campus, with a road junction in view.
+ */
+export const STICK_START: LatLon = { lat: 14.63904, lon: 121.07747 };
+
+/** `?at=lat,lon` pins the start for a projector; anything unwalkable falls back. */
+export function stickStartOf(search: string): LatLon {
+  const raw = new URLSearchParams(search).get("at");
+  if (raw) {
+    const [lat, lon] = raw.split(",").map(Number);
+    if (Number.isFinite(lat) && Number.isFinite(lon) && isWalkable({ lat, lon })) return { lat, lon };
+  }
+  return STICK_START;
+}
+
 export const PLAY_TICK_MS = 50;
 
 /**

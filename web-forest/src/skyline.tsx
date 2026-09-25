@@ -84,7 +84,21 @@ const MAX_SCREEN_COVER = 2.2;
  * `shadow` is the only one of the three with no artefact, because it is the
  * only one that does not claim a volume it cannot depth-sort.
  */
-export type SkylineStyle = "solid" | "hollow" | "shadow";
+export type SkylineStyle = "block" | "solid" | "hollow" | "shadow";
+
+/**
+ * `block` — the default since 09-25: a LOW prism, every building capped at
+ * this many metres of wall whatever its real height.
+ *
+ * It is the genre's building, and it is the honest middle of the three
+ * above. Full walls claim a volume the renderer cannot depth-sort and cover
+ * the path in front of them; a footprint alone read as an empty paved lot —
+ * "Schmitt Hall" was a cream slab you could mistake for a car park. A plinth
+ * this low has visible walls and a roof, so it reads as a building, and the
+ * most it can ever hide is a strip of ground a few metres deep behind it.
+ * Real heights are still in the data and `solid` still draws them.
+ */
+const BLOCK_M = 3.2;
 
 interface Props {
   projection: Projection;
@@ -93,6 +107,10 @@ interface Props {
   /** Names on the big ones. Off while the camera is moving fast. */
   is_labelled?: boolean;
   style?: SkylineStyle;
+  /** The walker's feet on the glass. No building name is printed across them. */
+  avoid?: { x: number; y: number } | null;
+  /** Same dusk grade as the ground, or the roofs glow cream in the dark. */
+  is_night?: boolean;
 }
 
 interface Drawn {
@@ -120,7 +138,9 @@ export default function Skyline({
   projection,
   centre,
   is_labelled = true,
-  style = "shadow",
+  style = "block",
+  avoid = null,
+  is_night = false,
 }: Props) {
   const { project, toScreen, meter_per_pixel, tilt_degree, width, height } = projection;
 
@@ -165,14 +185,15 @@ export default function Skyline({
         continue;
       }
 
-      const prism = extrude(ring, row.height_m, (scale) => rise1 * scale);
+      const drawn_m = style === "block" ? Math.min(row.height_m, BLOCK_M) : row.height_m;
+      const prism = extrude(ring, drawn_m, (scale) => rise1 * scale);
       if (!prism) continue;
 
       const span = Math.max(max_x - min_x, max_y - min_y);
       let label: Drawn["label"] = null;
       if (is_labelled && row.name && span >= LABEL_MIN_PX) {
         const c = toScreen(project(ringCentre(row.point)));
-        const y = c.y - (style === "shadow" ? 0 : rise1 * row.height_m * c.scale) - 6;
+        const y = c.y - (style === "shadow" ? 0 : rise1 * drawn_m * c.scale) - 6;
         /* A name half off the edge reads as a rendering fault, not as a name.
            It is dropped rather than nudged inward, because a nudged label no
            longer points at the building it belongs to. */
@@ -180,6 +201,9 @@ export default function Skyline({
           c.x > LABEL_MARGIN_PX &&
           c.x < width - LABEL_MARGIN_PX &&
           y > LABEL_MARGIN_PX &&
+          /* Not above the raked plane's far edge (~a third of the glass): a
+             name up there sits in the sky, over the horizon, naming nothing. */
+          y > height * 0.36 &&
           y < height - LABEL_MARGIN_PX;
         if (fits) label = { x: c.x, y, width: span };
       }
@@ -216,6 +240,7 @@ export default function Skyline({
           overflow: "visible",
           pointerEvents: "none",
           zIndex: 1,
+          filter: is_night ? "brightness(0.5) saturate(0.7) hue-rotate(200deg)" : undefined,
         }}
         width={width}
         height={height}
@@ -255,8 +280,17 @@ export default function Skyline({
           const colour = roofColour(row);
           return (
             <g key={`${row.building_code ?? "b"}-${i}`}>
-              {style === "solid" &&
-                wall.map((w, j) => <path key={j} d={w.d} fill={shade(colour, w.light)} />)}
+              {(style === "solid" || style === "block") &&
+                wall.map((w, j) => (
+                  <path
+                    key={j}
+                    d={w.d}
+                    fill={shade(colour, w.light)}
+                    stroke={style === "block" ? "rgba(96,84,64,0.35)" : undefined}
+                    strokeWidth={style === "block" ? 0.8 : undefined}
+                    strokeLinejoin="round"
+                  />
+                ))}
               {style === "hollow" &&
                 wall.map((w, j) => (
                   <path
@@ -283,7 +317,8 @@ export default function Skyline({
       </svg>
 
       {drawn.map(({ row, label }, i) =>
-        label === null ? null : (
+        label === null ||
+        (avoid && Math.abs(label.x - avoid.x) < 110 && label.y > avoid.y - 160 && label.y < avoid.y + 30) ? null : (
           <div
             key={`bl-${row.building_code ?? "b"}-${i}`}
             style={{
@@ -292,7 +327,8 @@ export default function Skyline({
               top: label.y,
               transform: "translate(-50%, -100%)",
               pointerEvents: "none",
-              zIndex: 2,
+              /* Over the horizon haze (3): a name is information, not scenery. */
+              zIndex: 4,
               whiteSpace: "nowrap",
               fontSize: 10,
               fontWeight: 700,
