@@ -49,3 +49,18 @@ export function toNextStage(sector_seen: number): { stage: Stage; remaining: num
   const next = STAGE_AT.find((s) => s.sector_seen > sector_seen);
   return next ? { stage: next.stage, remaining: next.sector_seen - sector_seen } : null;
 }
+
+/**
+ * The one sentence every screen uses for "how do I grow", off the one ladder
+ * the character is actually drawn from. The Working Doc's weekly-streak buddy
+ * (`gamify.ts`) used to sit beside it as a second ladder with its own names —
+ * "Seedling", "Young Tree" — so the Journal said "To Sapling" and "2 more weeks
+ * toward young tree" about the same buddy. The streak is still counted and
+ * still shown as the flame; it just does not name a stage any more.
+ */
+export function stageLine(sector_seen: number): string {
+  const next = toNextStage(sector_seen);
+  if (!next) return `Fully grown · a ${STAGE_LABEL.tree}. Every new area still counts toward badges.`;
+  const area = next.remaining === 1 ? "1 more area" : `${next.remaining} more areas`;
+  return `Walk into ${area} of campus to grow into a ${STAGE_LABEL[next.stage]}.`;
+}

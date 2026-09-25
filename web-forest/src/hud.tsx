@@ -131,7 +131,7 @@ export function QuestBanner({
         </span>
       </span>
       <span className="gm-reward">
-        <GameIcon src={game_icon.points} size={15} />+{reward}
+        <GameIcon src={game_icon.points} size={15} />+{reward} pts
       </span>
     </button>
   );
@@ -180,19 +180,24 @@ export function TodayHuntCard({
           </h2>
           <p className="gm-today-where">Out today in {daily.sector_name}</p>
           <span className="gm-today-reward">
-            <GameIcon src={game_icon.points} size={18} />+{reward} when you log it
+            <GameIcon src={game_icon.points} size={18} />+{reward} pts when you log it
           </span>
           {/* The hunt's `challenge` event is what earns `hunt:<day>` in
               `blindbox.ts` — one box per day, opened on the Journal. */}
           <span className="gm-today-box">+ blind box, opened on your Journal</span>
         </div>
+        {/* Both answers live inside the card. "Later" used to float below it
+            as 37 px of bare text, and on a phone it landed on the dock's Go
+            button — the text sat over the camera icon it was not. */}
+        <div className="gm-today-foot">
+          <button type="button" className="al-button gm-today-go" onClick={onGo}>
+            Let's go
+          </button>
+          <button type="button" className="gm-today-later" onClick={onLater}>
+            Later
+          </button>
+        </div>
       </div>
-      <button type="button" className="al-button gm-today-go" onClick={onGo}>
-        Let's go
-      </button>
-      <button type="button" className="gm-today-later" onClick={onLater}>
-        Later
-      </button>
     </div>
   );
 }
@@ -265,12 +270,16 @@ export function GameDock({
 /**
  * Toasts that carry points pop as a reward — trophy, "+25", what earned it.
  * Anything else ("Joined Sophie") stays a plain line in the same shell.
+ *
+ * On the play view the toast drops into the band under the HUD and the quest
+ * chip (`band="top"`): lower down it was drawn across the walker, which is the
+ * one thing on that screen a player is always looking at.
  */
-export function GameToast({ msg }: { msg: string }) {
+export function GameToast({ msg, band = "bottom" }: { msg: string; band?: "top" | "bottom" }) {
   const hit = /\+\s?(\d+)/.exec(msg);
   const label = hit ? msg.replace(hit[0], "").replace(/\s*(pts?|points)\b/i, "").replace(/^[\s·:-]+|[\s·:-]+$/g, "") : msg;
   return (
-    <div className="gm-toast" role="status">
+    <div className="gm-toast" data-band={band} role="status">
       {hit ? (
         <span className="gm-coin" aria-hidden>
           <GameIcon src={game_icon.points} size={34} />

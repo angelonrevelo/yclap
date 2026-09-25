@@ -522,11 +522,14 @@ This is the project's own server, not an Ateneo login, and the panel says so.
 ## First open, warnings, and the landscape
 
 - **Boot** (`src/boot.tsx`, `src/boot.css`). The genre's cold start, cut from the
-  brand kit: the stacked lockup on white with the Youth CLAP and Ateneo credits,
-  then the trail scene with the Sprout cast, a rotating tip and a progress bar,
-  then a safety card ("Stay aware of your surroundings"). The bar counts real
-  work (fonts, the species pool, the art), with a dwell floor so a warm cache
-  does not flash past. Every tip is a rule the build enforces.
+  brand kit: the stacked lockup on the scene's pale sky with the Youth CLAP and
+  Ateneo credits, then the trail scene with the Sprout cast, a rotating tip and
+  a progress bar, then a safety card ("Stay aware of your surroundings"). The
+  bar counts real work (fonts, the species pool, the art), and the loading
+  screen stays up at least 2.4 s from when it appears, so a warm cache does not
+  flash past. Every tip is a rule the build enforces. Nothing in the boot is
+  white: `index.html` paints the sky and the lockup inline before the script
+  arrives, and each screen cross-fades in over the one before it.
 - **Alerts** (`src/alert.tsx`). One card for every interruption. Light for
   "before you start" (no position here, off campus), dark over a dimmed map for
   "stop" (weather, going too fast). Each shows once per launch.
@@ -537,9 +540,11 @@ This is the project's own server, not an Ateneo login, and the panel says so.
   unmeasured all-clear. The card says it is a model, not a PAGASA bulletin.
 - **Speed.** Two GPS fixes more than 7 m/s apart raise "You are going too
   fast". Stick and demo walks are exempt.
-- **Today's hunt.** The day's first open shows the daily hunt as a ribbon card.
-  It is not a login bonus: the +40 is the hunt's own, paid only when the species
-  is logged.
+- **Today's hunt.** The day's first open shows the daily hunt as a ribbon card,
+  with "Let's go" and a full-size "Later" inside the card. It is not a login
+  bonus: the +40 pts is the hunt's own, paid only when the species is logged.
+  The hunt tab flies the map to the hunt's finds (the species itself if the
+  window spawned it, else the finds in its area), not to the area's label.
 - **Horizon** (`src/horizon.tsx`). A 360° panorama keyed to camera bearing, with
   the Sierra Madre foothills east, Ortigas and Cubao south, and QC west. Shapes
   are schematic, directions are real. At night there are stars, lit windows
@@ -570,7 +575,9 @@ This is the project's own server, not an Ateneo login, and the panel says so.
 Projector parameters: `?boot=off` skips the boot, `?weather=storm|rain|heat|clear|night`
 pins a reading (the card says it is pinned), `?time=day|night` pins the sky,
 `?at=lat,lon` sets the stick start, and `?skyline=block|shadow|hollow|solid`
-sets the building style.
+sets the building style. These (and `?bearing`, `?zoom`, `?seed`, `?sync`,
+`?view`, `?probe`) survive every in-app route change: all navigation goes
+through `navigateTo` in `src/nav.ts`.
 
 ## Two map views
 
@@ -612,7 +619,10 @@ illustration, not chrome, and keep their gradients.
 - **`src/hud.tsx`** — the play layer's chrome: player card (level, points,
   weekly streak), the daily hunt as a wood-plank tab, the plain white tab bar
   (Buddy · Nearby · Go · Dex · About) with the camera as a raised lagoon-ringed disc,
-  reward toast, and the Dex field-guide cards. The bar's five slots stay a
+  reward toast, and the Dex field-guide cards. On the map the toast sits in a
+  band under the player card and the hunt tab, and the live feed ("Ana logged
+  Molave") stacks just below it, so neither is drawn across the walker or
+  under the pet. The bar's five slots stay a
   560 px row centred on a desktop, so the gaps are even. **Go** is one tap from
   any screen: from the Dex or About it returns to the map *and* opens the log.
   The Dex grid draws the nine curated species (`dex_order`), the same set its
@@ -621,8 +631,9 @@ illustration, not chrome, and keep their gradients.
   opens; walk mode → "Walking to …"; GPS mode out of reach → a toast with the
   distance and compass direction, and the camera stays on the walker (it used
   to pan away to the find, which read as nothing happening).
-- **`src/character.tsx`** — the walker. It draws the stage **sticker** (seed →
-  seedling → sapling → tree) and keeps the billboard, contact shadow, bob and
+- **`src/character.tsx`** — the walker. It draws the stage **sticker** (Seed →
+  Sprout → Sapling → Tree, `STAGE_LABEL` in `src/stage.ts`; the one growth
+  ladder, by areas of campus walked, that every screen names — `stageLine`) and keeps the billboard, contact shadow, bob and
   walking gait. Vigor greys the sticker; it never changes the stage. On the
   play map the gait is switched off by a timer once the fix stops moving
   (`walkStopMs`: 450 ms for the stick and demo, 2.5 s for GPS) — it used to wait
