@@ -27,10 +27,10 @@ export interface Accent {
 }
 
 const ACCENT: Record<Origin | "unknown" | "threatened", Accent> = {
-  Native: { ink: "#b2e068", wash: "rgba(129,182,76,0.12)", ring: "rgba(129,182,76,0.4)" },
-  Exotic: { ink: "#f7c631", wash: "rgba(247,198,49,0.12)", ring: "rgba(247,198,49,0.4)" },
-  threatened: { ink: "#ff8a7a", wash: "rgba(250,65,45,0.12)", ring: "rgba(250,65,45,0.4)" },
-  unknown: { ink: "rgba(255,255,255,0.5)", wash: "rgba(255,255,255,0.06)", ring: "rgba(255,255,255,0.16)" },
+  Native: { ink: "var(--mg-green-text)", wash: "rgba(62,154,74,0.12)", ring: "rgba(62,154,74,0.4)" },
+  Exotic: { ink: "var(--mg-gold)", wash: "rgba(247,198,49,0.12)", ring: "rgba(247,198,49,0.4)" },
+  threatened: { ink: "var(--mg-red)", wash: "rgba(250,65,45,0.12)", ring: "rgba(250,65,45,0.4)" },
+  unknown: { ink: "rgb(var(--mg-ink-rgb) / 0.6)", wash: "rgb(var(--mg-ink-rgb) / 0.06)", ring: "rgb(var(--mg-ink-rgb) / 0.16)" },
 };
 
 /** Threatened outranks origin — it is the fact a field guide should lead with. */
@@ -48,11 +48,11 @@ export function Pill({
   tone?: "neutral" | "native" | "exotic" | "threatened" | "info";
 }) {
   const map = {
-    neutral: { bg: "rgba(255,255,255,0.08)", fg: "rgba(255,255,255,0.85)", bd: "rgba(255,255,255,0.1)" },
-    native: { bg: "rgba(129,182,76,0.12)", fg: "#b2e068", bd: "rgba(129,182,76,0.4)" },
-    exotic: { bg: "rgba(247,198,49,0.12)", fg: "#f7c631", bd: "rgba(247,198,49,0.4)" },
-    threatened: { bg: "rgba(250,65,45,0.12)", fg: "#ff8a7a", bd: "rgba(250,65,45,0.4)" },
-    info: { bg: "rgba(0,159,217,0.12)", fg: "#4dc3ea", bd: "rgba(0,159,217,0.4)" },
+    neutral: { bg: "rgb(var(--mg-ink-rgb) / 0.08)", fg: "rgb(var(--mg-ink-rgb) / 0.92)", bd: "rgb(var(--mg-ink-rgb) / 0.1)" },
+    native: { bg: "rgba(62,154,74,0.12)", fg: "var(--mg-green-text)", bd: "rgba(62,154,74,0.4)" },
+    exotic: { bg: "rgba(247,198,49,0.12)", fg: "var(--mg-gold)", bd: "rgba(247,198,49,0.4)" },
+    threatened: { bg: "rgba(250,65,45,0.12)", fg: "var(--mg-red)", bd: "rgba(250,65,45,0.4)" },
+    info: { bg: "rgba(0,159,217,0.12)", fg: "var(--mg-blue)", bd: "rgba(0,159,217,0.4)" },
   }[tone];
   return (
     <span
@@ -172,7 +172,7 @@ export function TaxonName({
           style={{
             fontSize: 10,
             fontWeight: 700,
-            color: "#b2e068",
+            color: "var(--mg-green-text)",
             letterSpacing: "0.07em",
             whiteSpace: "nowrap",
             overflow: "hidden",
@@ -182,10 +182,10 @@ export function TaxonName({
           {eyebrow}
         </div>
       )}
-      <div style={{ fontWeight: 800, fontSize: size, lineHeight: 1.15, color: "#ffffff", marginTop: eyebrow ? 3 : 0 }}>
+      <div style={{ fontWeight: 800, fontSize: size, lineHeight: 1.15, color: "var(--mg-forest)", marginTop: eyebrow ? 3 : 0 }}>
         {sp.common_name}
       </div>
-      <div style={{ fontStyle: "italic", fontSize: size * 0.72, color: "rgba(255,255,255,0.72)", marginTop: 1 }}>
+      <div style={{ fontStyle: "italic", fontSize: size * 0.72, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 1 }}>
         {sp.scientific_name}
       </div>
       {meta && <div style={{ marginTop: 4 }}>{meta}</div>}
@@ -223,8 +223,8 @@ export function Fab({
         /* The kit glyphs are green on ink. A green disc would swallow them, so
            the disc is paper and the ring carries the brand colour instead. */
         background: "rgba(255,255,255,0.92)",
-        border: is_leaf ? "4px solid #81b64c" : "1.5px solid rgba(255,255,255,0.1)",
-        boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
+        border: is_leaf ? "4px solid var(--mg-green)" : "1.5px solid rgb(var(--mg-ink-rgb) / 0.1)",
+        boxShadow: "0 8px 20px rgba(17,75,47,0.18)",
         flexShrink: 0,
         ...style,
       }}
@@ -235,7 +235,7 @@ export function Fab({
 }
 
 /** Section heading used across `/journal` and `/plan`. */
-export function Eyebrow({ children, tone = "#81b64c" }: { children: ReactNode; tone?: string }) {
+export function Eyebrow({ children, tone = "var(--mg-green)" }: { children: ReactNode; tone?: string }) {
   return (
     <div style={{ fontSize: 11, fontWeight: 700, color: tone, letterSpacing: "0.06em" }}>{children}</div>
   );
@@ -253,11 +253,11 @@ export function Card({
   return (
     <div
       style={{
-        background: "#262421",
-        color: "rgba(255,255,255,0.85)",
-        border: "1px solid rgba(255,255,255,0.1)",
+        background: "var(--mg-surface)",
+        color: "rgb(var(--mg-ink-rgb) / 0.92)",
+        border: "1px solid rgb(var(--mg-ink-rgb) / 0.1)",
         borderRadius: RADIUS.card,
-        boxShadow: "var(--cc-shadow-sm)",
+        boxShadow: "var(--mg-shadow-sm)",
         padding,
         ...style,
       }}
@@ -275,7 +275,7 @@ export function Card({
  */
 export function Chip({
   is_on = false,
-  tone = "#81b64c",
+  tone = "var(--mg-green)",
   onClick,
   children,
   style,
@@ -291,14 +291,14 @@ export function Chip({
       onClick={onClick}
       className="flex items-center gap-1.5"
       style={{
-        background: "rgba(38,36,33,0.94)",
-        border: `1.5px solid ${is_on ? tone : "rgba(255,255,255,0.1)"}`,
-        color: is_on ? tone : "rgba(255,255,255,0.85)",
+        background: "var(--mg-surface-glass)",
+        border: `1.5px solid ${is_on ? tone : "rgb(var(--mg-ink-rgb) / 0.1)"}`,
+        color: is_on ? tone : "rgb(var(--mg-ink-rgb) / 0.92)",
         borderRadius: RADIUS.pill,
         padding: "7px 12px",
         fontSize: 12,
         fontWeight: 700,
-        boxShadow: "var(--cc-shadow-sm)",
+        boxShadow: "var(--mg-shadow-sm)",
         whiteSpace: "nowrap",
         ...style,
       }}

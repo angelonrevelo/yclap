@@ -1,20 +1,40 @@
 import type { ReactNode } from "react";
-import Character, { type Stage } from "./character";
-import { game_icon } from "./asset/kit";
+import type { Stage } from "./character";
+import { game_icon, stage_sticker } from "./asset/kit";
 import { species } from "./data";
 import type { DailyTask } from "./gamify";
 import { levelOf } from "./level";
 import { TaxonThumb } from "./ui";
 
 /**
- * The game layer, in the chess.com system (`game.css`, tokens from the user's
- * chesscom repo). This file decides what each piece says; every number shown is
+ * The game layer, in the Magisphere system (`game.css`, off the team's poster
+ * set: sky, white sticker cards, wood-plank quests, Fredoka). This file decides what each piece says; every number shown is
  * one the app already has — points, the weekly streak, the daily hunt — with no
  * invented currency behind it (`level.ts`).
  */
 
 function GameIcon({ src, size, alt = "" }: { src: string; size: number; alt?: string }) {
   return <img className="gm-ico" src={src} width={size} height={size} alt={alt} aria-hidden={alt ? undefined : true} />;
+}
+
+/**
+ * The buddy as a sticker, one per growth stage. Vigor keeps its meaning from
+ * `Character`: an unwalked buddy fades toward grey and walking brings the colour
+ * back — the look changes, the stage never does.
+ */
+export function StageSticker({ stage, vigor = 1, size }: { stage: Stage; vigor?: number; size: number }) {
+  const v = Math.max(0, Math.min(1, vigor));
+  return (
+    <img
+      className="gm-ico"
+      src={stage_sticker[stage]}
+      width={size}
+      height={size}
+      alt=""
+      aria-hidden
+      style={{ filter: v < 1 ? `saturate(${0.35 + 0.65 * v}) brightness(${0.92 + 0.08 * v})` : undefined }}
+    />
+  );
 }
 
 /** Top-left player card: who you are, how far into your level, your streak. Opens the trainer sheet. */
@@ -44,7 +64,7 @@ export function PlayerHud({
       aria-label={`Trainer, level ${lv.level}, ${points} points, ${streak_weeks} week streak`}
     >
       <span className="gm-avatar">
-        <Character stage={stage} vigor={vigor} size={40} is_idle_animated={false} />
+        <StageSticker stage={stage} vigor={vigor} size={46} />
         <span className="gm-level">{lv.level}</span>
       </span>
       <span className="gm-hud-body">
@@ -134,7 +154,7 @@ function DockButton({
   );
 }
 
-/** chess.com's mobile tab bar: Buddy · Nearby · GO (raised, primary green) · Dex · Plan. */
+/** Buddy · Nearby · GO (raised) · Dex · About — the Magisphere leafy tab bar. */
 export function GameDock({
   stage,
   vigor,
@@ -162,15 +182,12 @@ export function GameDock({
     <nav className="gm-dock" aria-label="Game">
       <div className="gm-dock-bar">
         <DockButton label="Buddy" onClick={onAvatar}>
-          {/* 28, not 32: `Character` renders at size x 1.15, so a 32 asked for a
-              36.8 px box inside the dock's 32 px face and the bottom of the
-              tree — trunk and shadow — was cut off. */}
-          <Character stage={stage} vigor={vigor} size={28} is_idle_animated={false} />
+          <StageSticker stage={stage} vigor={vigor} size={34} />
         </DockButton>
         <DockButton label="Nearby" is_active={is_nearby_open} icon={game_icon.nearby} onClick={onNearby} />
         <button type="button" className="gm-go" aria-label="Go — log a sighting" onClick={onGo}>
           <span className="gm-go-core">
-            <GameIcon src={game_icon.go} size={46} />
+            <GameIcon src={game_icon.go} size={50} />
           </span>
           <span className="gm-go-tag">Go</span>
         </button>
@@ -195,7 +212,7 @@ export function GameToast({ msg }: { msg: string }) {
           <GameIcon src={game_icon.points} size={34} />
         </span>
       ) : (
-        <span className="gm-coin" aria-hidden style={{ color: "#81b64c", fontWeight: 900, fontSize: 20 }}>
+        <span className="gm-coin" aria-hidden style={{ color: "var(--mg-green)", fontWeight: 900, fontSize: 20 }}>
           ✓
         </span>
       )}
@@ -211,7 +228,7 @@ export function DexHeader({ seen_count, total, extra }: { seen_count: number; to
   return (
     <div className="gm-dex-head">
       <span className="gm-trophy">
-        <GameIcon src={game_icon.trophy} size={48} />
+        <GameIcon src={game_icon.trophy} size={52} />
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="flex items-baseline justify-between gap-2">
@@ -229,11 +246,11 @@ export function DexHeader({ seen_count, total, extra }: { seen_count: number; to
   );
 }
 
-/* chess.com's "similar skill" chip, one tone per origin. */
+/* The origin chip: a pale ground and dark ink, readable on a white card. */
 const ORIGIN_TAG: Record<"Native" | "Exotic" | "Threatened", { bg: string; fg: string }> = {
-  Native: { bg: "#2f5d2b", fg: "#d8fa9d" },
-  Exotic: { bg: "rgba(247,198,49,0.16)", fg: "#f7c631" },
-  Threatened: { bg: "rgba(250,65,45,0.18)", fg: "#ff8a7a" },
+  Native: { bg: "rgba(62,154,74,0.16)", fg: "var(--mg-green-text)" },
+  Exotic: { bg: "rgba(245,200,66,0.28)", fg: "#8a5a06" },
+  Threatened: { bg: "rgba(250,65,45,0.18)", fg: "var(--mg-red)" },
 };
 
 /** One collectible card. Locked cards keep their number so the set reads as a set to finish. */
@@ -256,14 +273,14 @@ export function DexCard({
       <span className="gm-card-no">#{String(index + 1).padStart(3, "0")}</span>
       {!is_seen && (
         <span className="gm-card-lock">
-          <GameIcon src={game_icon.lock} size={16} />
+          <GameIcon src={game_icon.lock} size={20} />
         </span>
       )}
       <TaxonThumb
         species_code={species_code}
         size={size}
         is_dim={!is_seen}
-        style={{ margin: "0 auto", background: is_seen ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.05)", border: "none" }}
+        style={{ margin: "0 auto", background: is_seen ? "rgba(255,255,255,0.92)" : "rgb(var(--mg-ink-rgb) / 0.05)", border: "none" }}
       />
       {is_seen && sp ? (
         <>

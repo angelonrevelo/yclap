@@ -189,35 +189,42 @@ Two fingers (or shift-drag) swing the camera 360°; the compass returns north.
 
 ## Look and feel
 
-The app wears the chess.com design system. Its tokens are lifted from the
-`CelestialBrain/chesscom` recreation (`src/styles.css` there): warm charcoal
-surfaces `#312E2B` / `#262421`, the green `#81B64C` primary with an inset
-top-light and bottom-shade edge, 8–10 px radii, Nunito 800 headings, thin green
-progress bars, and small chips for tags.
+The app wears **Magisphere's own look**, taken off the team's poster set
+(2026-09-23): a sky that fades into mint paper, white "sticker" cards with a
+soft forest shadow, wood-plank signs for quests and directions, sunny yellow for
+rewards, Fredoka for headlines. It replaced the chess.com port (charcoal
+`#312E2B` / `#262421`, the inset green button) on 09-23. The posters were the
+**reference**, not the source — nothing from them ships 1:1.
 
-- **`src/game.css`** — the tokens and every `gm-` / `cc-` class. Components read
-  these rather than inventing colours.
+- **`src/game.css`** — the `--mg-*` tokens and every `gm-` / `mg-` class.
+  Components read these rather than inventing colours; inline styles use
+  `rgb(var(--mg-ink-rgb) / a)` for ink at an alpha.
 - **`src/hud.tsx`** — the play layer's chrome: player card (level, points,
-  weekly streak), daily-hunt quest card, the bottom tab bar (Buddy · Nearby ·
-  Go · Dex · Plan), reward toast, and the Dex cards.
+  weekly streak), the daily hunt as a wood-plank tab, the leafy tab bar
+  (Buddy · Nearby · Go · Dex · About) with the camera as a raised sky lens,
+  reward toast, and the Dex field-guide cards.
+- **`src/character.tsx`** — the walker. It draws the stage **sticker** (seed →
+  seedling → sapling → tree) and keeps the billboard, contact shadow, bob and
+  walking gait. Vigor greys the sticker; it never changes the stage.
 - **`src/level.ts`** — trainer level is a way of *displaying* points, not a
   second score: level L starts at 50·L·(L−1) points. Nothing awards "XP".
 
-**Icons.** `src/asset/icon/game/` and the kit icons in `src/asset/icon/*.png`
-are one illustrated set: flat vector, two-tone cel shading, no outlines, full
-colour for dark surfaces. They were generated on a `#FF00FF` key with `codex`
-(`gpt-image-2`) and, after its quota ran out, `grok`, both anchored to the same
-reference, then keyed to RGBA with soft edges and shipped at 160 px. To
-regenerate: the specs and the keyer are in `script/icon/` —
+**The asset kit.** Three production paths, one palette (sampled off the
+posters; the list is in `script/magi-asset/build-vector.mjs`):
 
-```
-node <codex-skill>/scripts/imagen.mjs script/icon/icon-spec.json --keep-raw
-python3 script/icon/keyer.py <out-dir> <keyed-dir>   # needs Pillow + numpy
-```
+| Path | What | Where | Rebuild |
+|---|---|---|---|
+| Generated | Sprout buddy (sprout, cheer, map, sleep, trail), the explorer, the four growth stages | `src/asset/magi/sticker/` (1024 px masters), `src/asset/magi/web/` (400 px WebP the app ships) | `script/magi-asset/sticker.spec.json` via the codex skill's `imagen.mjs` |
+| Drawn by code | Mark, wordmark (Fredoka outlines), lockups, app icon, scenes, wood sign, ornaments, the 12 game icons | `public/brand/magi/*.svg`, `src/asset/magi/icon/*.svg` | `node script/magi-asset/build-vector.mjs` |
+| Rendered | PWA icons, PNG exports, posters, social, OG, banner, sticker and brand sheets | `public/brand/icon-*.png`, `../docs/brand/magisphere/` | `node script/magi-asset/render.mjs` (needs Chrome) |
 
-The keyer un-premultiplies against the key so edges carry no pink fringe, and
-reports `magenta_residue_px` per icon; it must be 0. The specs hold absolute
-paths from the machine that ran them — edit `out` and `reference` first.
+Stickers are generated on a `#FF00FF` key and **remapped to the 17-colour
+palette** with no dither, so they cannot drift off-brand; each one met its
+contract (size, palette, ink share). Icons are vector on purpose: they live at
+15–52 px, where a downscaled render goes soft. Fonts (OFL) are vendored in
+`script/magi-asset/font/`, so the wordmark renders identically anywhere. The
+older kit icons and Settings art in `src/asset/icon/` are still the previous
+generation (specs and keyer in `script/icon/`) — see `../docs/brand/magisphere/README.md` for what is still open.
 
 ## Regenerating the map data
 

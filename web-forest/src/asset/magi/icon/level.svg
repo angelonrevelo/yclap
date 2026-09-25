@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img">
+<title>Level — the rosette</title>
+<defs><filter id="sticker" x="-20%" y="-20%" width="140%" height="140%">
+  <feMorphology in="SourceAlpha" operator="dilate" radius="4" result="grow"/>
+  <feFlood flood-color="#fff"/><feComposite in2="grow" operator="in" result="edge"/>
+  <feMerge><feMergeNode in="edge"/><feMergeNode in="SourceGraphic"/></feMerge>
+</filter></defs>
+<g filter="url(#sticker)">
+
+  <path d="M34,58 L26,88 L36,82 L42,90 L48,62 Z" fill="#2F80D8" stroke="#0E3B2A" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M62,58 L70,88 L60,82 L54,90 L48,62 Z" fill="#7CC84A" stroke="#0E3B2A" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <g fill="#3E9A4A" stroke="#0E3B2A" stroke-width="3.5"><circle cx="74" cy="40" r="9"/><circle cx="70.52" cy="53" r="9"/><circle cx="61" cy="62.52" r="9"/><circle cx="48" cy="66" r="9"/><circle cx="35" cy="62.52" r="9"/><circle cx="25.48" cy="53" r="9"/><circle cx="22" cy="40" r="9"/><circle cx="25.48" cy="27" r="9"/><circle cx="35" cy="17.48" r="9"/><circle cx="48" cy="14" r="9"/><circle cx="61" cy="17.48" r="9"/><circle cx="70.52" cy="27" r="9"/></g>
+  <circle cx="48" cy="40" r="28" fill="#3E9A4A"/>
+  <circle cx="48" cy="40" r="19" fill="#FFF6DC" stroke="#0E3B2A" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M48,52 L48,40" stroke="#0E3B2A" stroke-width="3" stroke-linecap="round"/>
+  <g transform="translate(48 42) rotate(-150)">
+    <path d="M0,0 C3.92,-5.04 10.92,-4.54 14,0 C10.92,4.54 3.92,5.04 0,0 Z" fill="#7CC84A" stroke="#0E3B2A" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M1.68,0.7 C5.6,2.8 10.5,1.96 12.88,0 C9.8,3.36 4.2,3.64 1.68,0.7 Z" fill="#3E9A4A"/>
+    <path d="M1.4,0 Q7,-0.42 12.04,0" fill="none" stroke="#0E3B2A" stroke-width="1.1" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(48 40) rotate(-30)">
+    <path d="M0,0 C4.2,-5.4 11.7,-4.86 15,0 C11.7,4.86 4.2,5.4 0,0 Z" fill="#7CC84A" stroke="#0E3B2A" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M1.8,0.75 C6,3 11.25,2.1 13.8,0 C10.5,3.6 4.5,3.9 1.8,0.75 Z" fill="#3E9A4A"/>
+    <path d="M1.5,0 Q7.5,-0.45 12.9,0" fill="none" stroke="#0E3B2A" stroke-width="1.1" stroke-linecap="round"/>
+  </g>
+</g>
+</svg>

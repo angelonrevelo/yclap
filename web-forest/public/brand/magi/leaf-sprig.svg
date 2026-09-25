@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" width="120" height="80" role="img">
+<title>Leaf sprig</title>
+<g transform="translate(60 70) rotate(-120)">
+    <path d="M0,0 C14,-18 39,-16.2 50,0 C39,16.2 14,18 0,0 Z" fill="#7CC84A" stroke="#0E3B2A" stroke-width="3.5" stroke-linejoin="round"/>
+    <path d="M6,2.5 C20,10 37.5,7 46,0 C35,12 15,13 6,2.5 Z" fill="#3E9A4A"/>
+    <path d="M5,0 Q25,-1.5 43,0" fill="none" stroke="#0E3B2A" stroke-width="1.93" stroke-linecap="round"/>
+  </g><g transform="translate(60 70) rotate(-60)">
+    <path d="M0,0 C15.12,-19.44 42.12,-17.5 54,0 C42.12,17.5 15.12,19.44 0,0 Z" fill="#7CC84A" stroke="#0E3B2A" stroke-width="3.78" stroke-linejoin="round"/>
+    <path d="M6.48,2.7 C21.6,10.8 40.5,7.56 49.68,0 C37.8,12.96 16.2,14.04 6.48,2.7 Z" fill="#3E9A4A"/>
+    <path d="M5.4,0 Q27,-1.62 46.44,0" fill="none" stroke="#0E3B2A" stroke-width="2.08" stroke-linecap="round"/>
+  </g><g transform="translate(60 70) rotate(-90)">
+    <path d="M0,0 C10.08,-12.96 28.08,-11.66 36,0 C28.08,11.66 10.08,12.96 0,0 Z" fill="#C8E88C" stroke="#0E3B2A" stroke-width="2.52" stroke-linejoin="round"/>
+    <path d="M4.32,1.8 C14.4,7.2 27,5.04 33.12,0 C25.2,8.64 10.8,9.36 4.32,1.8 Z" fill="#7CC84A"/>
+    <path d="M3.6,0 Q18,-1.08 30.96,0" fill="none" stroke="#0E3B2A" stroke-width="1.39" stroke-linecap="round"/>
+  </g>
+</svg>

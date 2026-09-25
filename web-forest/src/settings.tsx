@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { RADIUS } from "./ui";
+import { sticker } from "./asset/kit";
 import {
   ESSAY,
   LIMIT,
@@ -45,16 +46,16 @@ import type { Preference } from "./preference";
  */
 
 const TONE = {
-  panel: "#312e2b",
-  card: "#262421",
-  edge: "rgba(255,255,255,0.09)",
-  rule: "rgba(255,255,255,0.07)",
-  text: "rgba(255,255,255,0.86)",
-  dim: "rgba(255,255,255,0.55)",
-  faint: "rgba(255,255,255,0.4)",
-  green: "#81b64c",
-  green_soft: "rgba(129,182,76,0.12)",
-  gold: "#f7c631",
+  panel: "var(--mg-bg)",
+  card: "var(--mg-surface)",
+  edge: "rgb(var(--mg-ink-rgb) / 0.09)",
+  rule: "rgb(var(--mg-ink-rgb) / 0.07)",
+  text: "rgb(var(--mg-ink-rgb) / 0.92)",
+  dim: "rgb(var(--mg-ink-rgb) / 0.62)",
+  faint: "rgb(var(--mg-ink-rgb) / 0.5)",
+  green: "var(--mg-green)",
+  green_soft: "rgba(62,154,74,0.12)",
+  gold: "var(--mg-gold)",
 };
 
 export interface SettingsIcon {
@@ -119,7 +120,7 @@ function Th({ children, width }: { children: ReactNode; width?: string }) {
         color: TONE.faint,
         padding: "8px 10px",
         borderBottom: `1px solid ${TONE.rule}`,
-        background: "rgba(255,255,255,0.03)",
+        background: "rgb(var(--mg-ink-rgb) / 0.03)",
       }}
     >
       {children}
@@ -133,7 +134,7 @@ function Td({ children, is_head = false }: { children: ReactNode; is_head?: bool
     borderBottom: `1px solid ${TONE.rule}`,
     fontSize: is_head ? 13 : 12.5,
     fontWeight: is_head ? 800 : 500,
-    color: is_head ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.74)",
+    color: is_head ? "var(--mg-text-boldest)" : "rgb(var(--mg-ink-rgb) / 0.8)",
     lineHeight: 1.45,
     verticalAlign: "top",
     textAlign: "left",
@@ -151,9 +152,9 @@ function Td({ children, is_head = false }: { children: ReactNode; is_head?: bool
 
 function Pill({ tone, children }: { tone: "green" | "gold" | "grey"; children: ReactNode }) {
   const map = {
-    green: { fg: "#b2e068", bd: "rgba(129,182,76,0.5)" },
+    green: { fg: "var(--mg-green-text)", bd: "rgba(62,154,74,0.5)" },
     gold: { fg: TONE.gold, bd: "rgba(247,198,49,0.5)" },
-    grey: { fg: TONE.faint, bd: "rgba(255,255,255,0.15)" },
+    grey: { fg: TONE.faint, bd: "rgb(var(--mg-ink-rgb) / 0.15)" },
   }[tone];
   return (
     <span
@@ -188,7 +189,7 @@ function Switch({ is_on, onToggle, label }: { is_on: boolean; onToggle: () => vo
         borderRadius: 999,
         border: "none",
         padding: 0,
-        background: is_on ? TONE.green : "rgba(255,255,255,0.16)",
+        background: is_on ? TONE.green : "rgb(var(--mg-ink-rgb) / 0.16)",
         position: "relative",
         cursor: "pointer",
         transition: "background .18s ease",
@@ -206,7 +207,7 @@ function Switch({ is_on, onToggle, label }: { is_on: boolean; onToggle: () => vo
           borderRadius: 999,
           background: "#fff",
           transition: "left .18s ease",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
+          boxShadow: "0 1px 3px rgba(17,75,47,0.2)",
         }}
       />
     </button>
@@ -219,8 +220,8 @@ const INPUT: React.CSSProperties = {
   padding: "8px 10px",
   borderRadius: 9,
   border: `1.5px solid ${TONE.edge}`,
-  background: "rgba(0,0,0,0.25)",
-  color: "#fff",
+  background: "#fff",
+  color: "var(--mg-text-boldest)",
   fontSize: 13.5,
   fontWeight: 700,
 };
@@ -230,7 +231,7 @@ const BTN: React.CSSProperties = {
   borderRadius: 9,
   border: "none",
   background: TONE.green,
-  color: "#12220c",
+  color: "#fff",
   fontWeight: 800,
   fontSize: 12.5,
   cursor: "pointer",
@@ -284,27 +285,31 @@ export default function SettingsScreen({
         {/* ── identity strip: the stage first, because it qualifies the rest ── */}
         <div
           style={{
+            position: "relative",
             display: "flex",
             alignItems: "center",
-            gap: 12,
-            padding: "12px 14px",
-            borderRadius: RADIUS.tile,
-            border: `1px solid ${TONE.edge}`,
-            background:
-              "radial-gradient(120% 160% at 10% 0%, rgba(129,182,76,0.26) 0%, rgba(0,0,0,0) 68%), " +
-              TONE.card,
+            gap: 8,
+            padding: "12px 12px 12px 14px",
+            borderRadius: 22,
+            overflow: "hidden",
+            boxShadow: "var(--mg-sticker)",
+            background: "linear-gradient(180deg, #9BD6F8 0%, #DDF2FF 58%, #D7EFC0 58%, #BFE39A 100%)",
           }}
         >
-          {icon.stage && <img src={icon.stage} alt="" width={40} height={40} style={{ flexShrink: 0 }} />}
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontWeight: 800, fontSize: 18 }}>Magisphere</span>
+            <img
+              src="/brand/magi/lockup-horizontal.svg"
+              alt="Magisphere — Rediscovering home."
+              style={{ display: "block", width: "100%", maxWidth: 300, height: "auto" }}
+            />
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
               <Pill tone="gold">ALPHA</Pill>
-            </div>
-            <div style={{ fontSize: 11.5, color: TONE.dim, marginTop: 1, lineHeight: 1.35 }}>
-              A student field guide to the Ateneo campus forest · Youth CLAP 2026
+              <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--mg-forest)", lineHeight: 1.35 }}>
+                A student field guide to the Ateneo campus forest · Youth CLAP 2026
+              </span>
             </div>
           </div>
+          <img className="mg-bob" src={sticker.buddy_map} alt="" width={84} height={84} style={{ flexShrink: 0 }} />
         </div>
 
         {/* ── the tab bar. Five fixed columns, so it never scrolls sideways. ── */}
@@ -318,7 +323,7 @@ export default function SettingsScreen({
             marginTop: 10,
             padding: 4,
             borderRadius: RADIUS.tile,
-            background: "rgba(0,0,0,0.22)",
+            background: "rgba(17,75,47,0.11)",
             border: `1px solid ${TONE.edge}`,
           }}
         >
@@ -341,7 +346,7 @@ export default function SettingsScreen({
                   borderRadius: 7,
                   border: "none",
                   background: is_on ? TONE.green_soft : "transparent",
-                  color: is_on ? "#b2e068" : TONE.dim,
+                  color: is_on ? "var(--mg-green-text)" : TONE.dim,
                   fontWeight: 800,
                   fontSize: 11,
                   cursor: "pointer",
@@ -397,7 +402,7 @@ export default function SettingsScreen({
                             borderRadius: 999,
                             background: TONE.green_soft,
                             border: `1px solid ${TONE.green}`,
-                            color: "#b2e068",
+                            color: "var(--mg-green-text)",
                             fontSize: 11,
                             fontWeight: 900,
                           }}
@@ -412,7 +417,7 @@ export default function SettingsScreen({
                               cursor: "pointer",
                               fontWeight: 800,
                               fontSize: 13,
-                              color: "rgba(255,255,255,0.92)",
+                              color: "var(--mg-text-boldest)",
                               lineHeight: 1.35,
                             }}
                           >
@@ -497,7 +502,7 @@ export default function SettingsScreen({
                   <tr>
                     <Td is_head>Walker code</Td>
                     <Td>
-                      <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: "0.14em", color: "#fff" }}>
+                      <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: "0.14em", color: "var(--mg-forest)" }}>
                         {join_code}
                       </div>
                       <div style={{ fontSize: 11, color: TONE.faint, marginTop: 3, lineHeight: 1.4 }}>
@@ -644,7 +649,7 @@ export default function SettingsScreen({
                               preference.skyline_style === style ? TONE.green : TONE.edge
                             }`,
                             background: preference.skyline_style === style ? TONE.green_soft : "transparent",
-                            color: preference.skyline_style === style ? "#b2e068" : TONE.dim,
+                            color: preference.skyline_style === style ? "var(--mg-green-text)" : TONE.dim,
                             fontWeight: 800,
                             fontSize: 10.5,
                             textTransform: "capitalize",
@@ -725,7 +730,7 @@ export default function SettingsScreen({
             <>
               <p style={{ fontSize: 12, color: TONE.dim, margin: "0 0 10px", lineHeight: 1.45 }}>
                 What we need from each office.{" "}
-                <b style={{ color: "rgba(255,255,255,0.82)" }}>None have agreed yet</b> — this is the ask,
+                <b style={{ color: "rgb(var(--mg-ink-rgb) / 0.88)" }}>None have agreed yet</b> — this is the ask,
                 not a partnership.
               </p>
               <Table label="Offices we are asking">

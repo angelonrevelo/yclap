@@ -1,0 +1,49 @@
+{
+  "out": "src/asset/magi/sticker",
+  "timeoutSec": 720,
+  "contract": {
+    "width": 1024,
+    "height": 1024,
+    "palette": [
+      "#FF00FF",
+      "#FFFFFF",
+      "#0E3B2A",
+      "#114B2F",
+      "#11646C",
+      "#279CAD",
+      "#3E9A4A",
+      "#7CC84A",
+      "#C8E88C",
+      "#AADCFC",
+      "#2F80D8",
+      "#F5C842",
+      "#F59A23",
+      "#FFF6DC",
+      "#A8582C",
+      "#6B3519",
+      "#E8483A"
+    ],
+    "maxDistinct": 17,
+    "keyOut": true,
+    "opaque": false,
+    "minInkShare": 0.06
+  },
+  "style": "STYLE: a cheerful hand-drawn STICKER illustration for a nature-exploration game about native Philippine trees on a university campus. Chunky rounded shapes, friendly and bouncy, like a premium kids' nature app sticker sheet. Every subject has a confident dark forest-green outline (about 2% of canvas width, uniform, rounded joins) and then a thick clean WHITE sticker border around the whole silhouette. FLAT CEL SHADING ONLY: each surface is one base colour plus at most one darker shadow shape and one lighter highlight shape, all hard-edged. COLOURS: use only lush leaf greens, deep forest green, teal, sky blue, sunny yellow, warm orange, cream, warm wood brown and a little tomato red. BANNED: any pink, magenta, purple or violet anywhere inside the subject; gradients; airbrush; soft glow; drop shadows; noise; paper texture; stippling; hatching; photorealism; 3D render look; text, letters, numbers, logos or watermarks of any kind; chess pieces or boards; dark or black backgrounds.",
+  "framing": "FRAMING: one single subject, centred, filling about 70% of a square canvas, with generous even margin on all sides and nothing touching the edge. BACKGROUND: a perfectly flat, uniform #FF00FF magenta, edge to edge, with no scenery, no floor, no cast shadow and no vignette; magenta is ground only and is keyed out afterwards, so it must never appear inside the subject. Save the raw image; do not crop, resize, recolour or post-process it.",
+  "item": [
+    {
+      "name": "spot-empty-journal",
+      "subject": "a spot illustration: an open blank field journal lying on a small patch of grass with a pencil, the cream seed-bean Sprout mascot from the reference sitting beside it looking up hopefully, a small leaf floating above"
+    },
+    {
+      "name": "spot-success",
+      "subject": "a spot illustration: the cream seed-bean Sprout mascot from the reference hugging the trunk of a small friendly tree, a big green check-mark badge and orange four-point sparkles floating above them"
+    },
+    {
+      "name": "spot-find",
+      "subject": "a spot illustration: the cream seed-bean Sprout mascot from the reference crouching on a small grass patch and pointing a teal instant camera at a small tree with glossy leaves, orange sparkles near the leaves"
+    }
+  ],
+  "engine": "codex",
+  "reference": "src/asset/magi/sticker/buddy-sprout.png"
+}

@@ -1,64 +1,97 @@
 /* ── Game layer ────────────────────────────────────────────────────────────
  *
- * Magisphere in the chess.com system, tokens lifted from the chesscom repo
- * (src/styles.css): warm charcoal surfaces #312E2B / #262421, the green
- * #81B64C primary with its inset top-light / bottom-shade edge, 8–10 px radii,
- * Nunito 800 headings, gold / silver / bronze rank chips, and thin green
- * progress bars. Gamified through content and illustration — level, streak,
- * quest, reward, collection — not through borders and rings.
+ * Magisphere's own system, taken off the team's poster set (2026-09-23): a sky
+ * that fades into mint paper, white sticker cards with a soft forest shadow,
+ * wood-plank signs for anything that is a quest or a direction, a sunny
+ * yellow for rewards, and Fredoka for every headline — the chunky rounded
+ * letter the wordmark is cut from.
+ *
+ * It replaces the chess.com port (charcoal #312E2B / #262421, the inset green
+ * button) that 9d2ae49 introduced. The class names keep their `gm-` prefix so
+ * the components did not have to move; the tokens are `--mg-*`.
+ *
+ * Art lives in public/brand/magi (vector, drawn by script/magi-asset/build-
+ * vector.mjs) and src/asset/magi/sticker (the codex-generated sticker set).
  */
 
 :root {
-  --cc-bg: #312e2b;
-  --cc-surface: #262421;
-  --cc-surface-2: #3d3b38;
-  --cc-hover: rgba(255, 255, 255, 0.05);
-  --cc-subtle: rgba(255, 255, 255, 0.1);
-  --cc-line: rgba(255, 255, 255, 0.1);
-  --cc-text-boldest: #ffffff;
-  --cc-text-bolder: rgba(255, 255, 255, 0.85);
-  --cc-text-default: rgba(255, 255, 255, 0.72);
-  --cc-text-subtle: rgba(255, 255, 255, 0.5);
-  --cc-green-100: #d8fa9d;
-  --cc-green-200: #b2e068;
-  --cc-green-300: #81b64c;
-  --cc-green-400: #5d9948;
-  --cc-green-500: #45753c;
-  --cc-gold-100: #fad541;
-  --cc-gold-200: #f7c631;
-  --cc-gold-400: #cf8d1b;
-  --cc-blue-100: #4dc3ea;
-  --cc-red-300: #fa412d;
-  --cc-heading: "Nunito", "Segoe UI", system-ui, sans-serif;
-  --cc-shadow: 0 1.2rem 3.2rem rgba(0, 0, 0, 0.45);
-  --cc-shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.35);
-  --cc-motion: 150ms ease;
+  --mg-ink-rgb: 14 59 42;
+  --mg-ink: #0e3b2a;
+  --mg-forest: #114b2f;
+  --mg-teal: #11646c;
+  --mg-bg: #eef8e7;
+  --mg-surface: #ffffff;
+  --mg-surface-2: #f3faec;
+  --mg-surface-glass: rgba(255, 255, 255, 0.95);
+  --mg-hover: rgb(var(--mg-ink-rgb) / 0.05);
+  --mg-subtle: rgb(var(--mg-ink-rgb) / 0.1);
+  --mg-line: rgb(var(--mg-ink-rgb) / 0.1);
+  --mg-text-boldest: #0e3b2a;
+  --mg-text-bolder: rgb(var(--mg-ink-rgb) / 0.92);
+  --mg-text-default: rgb(var(--mg-ink-rgb) / 0.78);
+  --mg-text-subtle: rgb(var(--mg-ink-rgb) / 0.6);
+  --mg-green: #3e9a4a;
+  --mg-green-deep: #2e7d3e;
+  --mg-green-text: #2e7d3e;
+  --mg-leaf: #7cc84a;
+  --mg-lime: #c8e88c;
+  --mg-sky: #aadcfc;
+  --mg-blue: #2f80d8;
+  --mg-gold: #a86d05;
+  --mg-sun: #f5c842;
+  --mg-orange: #f59a23;
+  --mg-red: #d8452f;
+  --mg-wood: #a8582c;
+  --mg-wood-dark: #6b3519;
+  --mg-cream: #fff6dc;
+  --mg-heading: "Fredoka", "Nunito", "Segoe UI", system-ui, sans-serif;
+  --mg-shadow: 0 16px 36px rgba(17, 75, 47, 0.18);
+  --mg-shadow-sm: 0 6px 16px rgba(17, 75, 47, 0.14);
+  --mg-sticker: 0 0 0 3px #fff, 0 6px 16px rgba(17, 75, 47, 0.16);
+  --mg-motion: 150ms ease;
+  --mg-bounce: 380ms cubic-bezier(0.2, 1.4, 0.4, 1);
 }
 
-.cc-heading {
-  font-family: var(--cc-heading);
-  font-weight: 800;
+.mg-heading {
+  font-family: var(--mg-heading);
+  font-weight: 700;
+  letter-spacing: 0.005em;
 }
 
-/* The chess.com primary: green gradient, inset light on top, inset shade underneath. */
-.cc-btn-primary {
+/* The primary: a round leafy button with a firm darker lip, like a sticker you press. */
+.mg-btn-primary {
   color: #fff;
-  background: linear-gradient(180deg, var(--cc-green-300) 0%, var(--cc-green-400) 100%);
-  box-shadow: inset 0 1px 0 0 rgba(178, 224, 104, 0.4), inset 0 -1px 0 0 var(--cc-green-500);
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
-  transition: filter var(--cc-motion);
+  background: linear-gradient(180deg, #5cb85a 0%, var(--mg-green) 100%);
+  box-shadow: inset 0 2px 0 0 rgba(255, 255, 255, 0.28), 0 3px 0 0 var(--mg-green-deep);
+  text-shadow: 0 1px 0 rgba(14, 59, 42, 0.25);
+  font-family: var(--mg-heading);
+  transition: filter var(--mg-motion), transform var(--mg-motion);
 }
-.cc-btn-primary:hover {
-  filter: brightness(1.06);
+.mg-btn-primary:hover {
+  filter: brightness(1.05);
 }
-.cc-btn-primary:active {
-  filter: brightness(0.94);
+.mg-btn-primary:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 2px 0 0 rgba(255, 255, 255, 0.2), 0 1px 0 0 var(--mg-green-deep);
 }
 
-.cc-btn-secondary {
-  color: var(--cc-text-boldest);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.06) 100%);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 0 rgba(0, 0, 0, 0.25);
+.mg-btn-secondary {
+  color: var(--mg-text-boldest);
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px var(--mg-line), 0 2px 0 0 rgb(var(--mg-ink-rgb) / 0.08);
+}
+
+/* A wood plank: quests, directions, the slogan board on the posters. */
+.mg-plank {
+  color: var(--mg-cream);
+  background: linear-gradient(180deg, #c06c38 0%, var(--mg-wood) 100%);
+  box-shadow: inset 0 0 0 2px var(--mg-wood-dark), inset 0 3px 0 0 rgba(255, 255, 255, 0.22), 0 4px 10px rgba(107, 53, 25, 0.25);
+  text-shadow: 0 1px 0 rgba(107, 53, 25, 0.5);
+}
+
+/* The world behind every sheet: sky at the top, mint paper below. */
+.mg-world {
+  background: url("/brand/magi/app-backdrop.svg") top center / 100% auto no-repeat, var(--mg-bg);
 }
 
 .gm-ico {
@@ -78,15 +111,15 @@
   gap: 12px;
   width: min(292px, calc(100vw - 88px));
   padding: 8px 12px 8px 8px;
-  border-radius: 10px;
-  background: rgba(38, 36, 33, 0.97);
-  box-shadow: var(--cc-shadow-sm);
-  color: var(--cc-text-bolder);
+  border-radius: 20px;
+  background: var(--mg-surface-glass);
+  box-shadow: var(--mg-sticker);
+  color: var(--mg-text-bolder);
   text-align: left;
-  transition: background var(--cc-motion);
+  transition: transform var(--mg-motion);
 }
 .gm-hud:active {
-  background: #2c2a28;
+  transform: scale(0.98);
 }
 
 .gm-avatar {
@@ -94,28 +127,30 @@
   width: 44px;
   height: 44px;
   flex-shrink: 0;
-  border-radius: 6px;
+  border-radius: 14px;
   display: grid;
   place-items: center;
-  background: #e7e5e3;
+  background: linear-gradient(180deg, #d9f1ff 0%, #e6f7d8 100%);
+  box-shadow: inset 0 0 0 2px rgba(124, 200, 74, 0.45);
 }
 
-/* chess.com's tier badge: a small square chip hung off the avatar corner. */
+/* The level: a sunny sticker disc hung off the avatar corner. */
 .gm-level {
   position: absolute;
-  left: -5px;
-  bottom: -5px;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 4px;
-  border-radius: 4px;
+  left: -6px;
+  bottom: -6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 999px;
   display: grid;
   place-items: center;
-  background: var(--cc-gold-200);
-  color: #1a1a1a;
-  font-family: var(--cc-heading);
-  font-weight: 900;
-  font-size: 11.5px;
+  background: var(--mg-sun);
+  box-shadow: 0 0 0 2.5px #fff;
+  color: var(--mg-ink);
+  font-family: var(--mg-heading);
+  font-weight: 700;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -137,10 +172,11 @@
 .gm-place {
   flex: 1;
   min-width: 0;
-  font-weight: 700;
-  font-size: 14px;
+  font-family: var(--mg-heading);
+  font-weight: 600;
+  font-size: 15px;
   line-height: 1.15;
-  color: var(--cc-text-boldest);
+  color: var(--mg-text-boldest);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -151,13 +187,14 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
+  font-family: var(--mg-heading);
   font-weight: 700;
-  font-size: 13px;
-  color: var(--cc-text-boldest);
+  font-size: 14px;
+  color: var(--mg-orange);
   font-variant-numeric: tabular-nums;
 }
 .gm-streak[data-idle="true"] {
-  color: var(--cc-text-subtle);
+  color: var(--mg-text-subtle);
 }
 .gm-streak[data-idle="true"] .gm-ico {
   filter: grayscale(1);
@@ -166,9 +203,10 @@
 
 .gm-xp {
   position: relative;
-  height: 6px;
+  height: 8px;
   border-radius: 99px;
-  background: var(--cc-subtle);
+  background: #e3f3d6;
+  box-shadow: inset 0 1px 2px rgb(var(--mg-ink-rgb) / 0.12);
   overflow: hidden;
 }
 
@@ -177,9 +215,10 @@
   top: 0;
   bottom: 0;
   left: 0;
-  min-width: 6px;
+  min-width: 8px;
   border-radius: 99px;
-  background: var(--cc-green-300);
+  background: linear-gradient(90deg, var(--mg-leaf) 0%, var(--mg-green) 100%);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35);
   transition: width 0.6s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 
@@ -189,12 +228,12 @@
   gap: 6px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--cc-text-subtle);
+  color: var(--mg-text-subtle);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 .gm-hud-meta b {
-  color: var(--cc-text-boldest);
+  color: var(--mg-text-boldest);
   font-weight: 700;
 }
 
@@ -206,22 +245,22 @@
  * a 375 px phone that is a banner over the thing you are supposed to be looking
  * at, and it never changes often enough to earn that. One line, hugging its own
  * content, still says the same four things: what, where, what it pays, and
- * whether it is done. */
+ * whether it is done. It is a wood plank now — the posters' trail sign. */
 .gm-quest {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   max-width: min(100%, 74vw);
   padding: 5px 6px 5px 5px;
-  border-radius: 999px;
+  border-radius: 14px;
   text-align: left;
-  color: var(--cc-text-bolder);
-  background: rgba(38, 36, 33, 0.95);
-  box-shadow: var(--cc-shadow-sm);
-  transition: background var(--cc-motion);
+  color: var(--mg-cream);
+  background: linear-gradient(180deg, #c06c38 0%, var(--mg-wood) 100%);
+  box-shadow: inset 0 0 0 2px var(--mg-wood-dark), inset 0 3px 0 0 rgba(255, 255, 255, 0.2), 0 0 0 2.5px #fff, 0 6px 14px rgba(107, 53, 25, 0.25);
+  transition: transform var(--mg-motion);
 }
 .gm-quest:active {
-  background: #2c2a28;
+  transform: scale(0.98);
 }
 
 .gm-quest-target {
@@ -232,7 +271,8 @@
   overflow: hidden;
   display: grid;
   place-items: center;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--mg-cream);
+  box-shadow: 0 0 0 2px var(--mg-wood-dark);
 }
 
 .gm-quest-body {
@@ -251,18 +291,19 @@
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--cc-gold-200);
+  color: #ffe08a;
 }
 .gm-quest[data-done="true"] .gm-ribbon {
-  color: var(--cc-green-300);
+  color: var(--mg-lime);
 }
 
 .gm-quest-name {
-  font-family: var(--cc-heading);
-  font-weight: 800;
-  font-size: 13.5px;
+  font-family: var(--mg-heading);
+  font-weight: 600;
+  font-size: 14.5px;
   line-height: 1.15;
-  color: var(--cc-text-boldest);
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(107, 53, 25, 0.55);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -275,12 +316,11 @@
  * The tab hugs its own content and is capped well short of the screen, so on a
  * narrow phone the sector simply does not fit — and that is the right thing to
  * drop: the species is what you act on, and where to look is what the map under
- * the tab is already showing. Below 380 px it is hidden outright rather than
- * rendered as three letters and an ellipsis. */
+ * the tab is already showing. */
 .gm-quest-hint {
   font-size: 11.5px;
-  font-weight: 500;
-  color: var(--cc-text-subtle);
+  font-weight: 600;
+  color: rgba(255, 246, 220, 0.78);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -305,21 +345,22 @@
   align-items: center;
   gap: 3px;
   height: 22px;
-  padding: 0 7px 0 4px;
+  padding: 0 8px 0 4px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.25);
-  color: var(--cc-gold-100);
-  font-family: var(--cc-heading);
-  font-weight: 900;
+  background: var(--mg-sun);
+  color: var(--mg-ink);
+  box-shadow: inset 0 -2px 0 rgba(217, 144, 15, 0.45);
+  font-family: var(--mg-heading);
+  font-weight: 700;
   font-size: 12.5px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 .gm-quest[data-done="true"] .gm-reward {
-  color: var(--cc-green-200);
+  background: var(--mg-lime);
 }
 
-/* ── Dock: chess.com's mobile tab bar, with the primary action raised ────── */
+/* ── Dock: a leafy tab bar with the camera raised in the middle ──────────── */
 
 .gm-dock {
   position: absolute;
@@ -331,15 +372,30 @@
 }
 
 .gm-dock-bar {
+  position: relative;
   pointer-events: auto;
   display: grid;
   grid-template-columns: 1fr 1fr 88px 1fr 1fr;
   align-items: end;
-  height: 72px;
+  height: 74px;
   padding: 0 6px 10px;
-  background: var(--cc-surface);
-  border-top: 1px solid var(--cc-line);
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.25);
+  border-radius: 24px 24px 0 0;
+  background: #fff;
+  box-shadow: 0 -2px 0 0 rgba(124, 200, 74, 0.55), 0 -10px 28px rgba(17, 75, 47, 0.16);
+}
+/* A hedge along the top edge of the dock: the posters frame everything in leaves. */
+.gm-dock-bar::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: -9px;
+  height: 12px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 8px 10px, var(--mg-leaf) 7px, transparent 7.5px) 0 0 / 30px 12px repeat-x,
+    radial-gradient(circle at 22px 12px, var(--mg-green) 6px, transparent 6.5px) 0 0 / 30px 12px repeat-x;
+  opacity: 0.9;
 }
 
 .gm-dock-btn {
@@ -348,39 +404,49 @@
   align-items: center;
   gap: 3px;
   padding-top: 6px;
-  border-radius: 8px;
-  color: var(--cc-text-subtle);
-  transition: color var(--cc-motion), background var(--cc-motion);
+  border-radius: 14px;
+  color: var(--mg-text-subtle);
+  transition: color var(--mg-motion), background var(--mg-motion);
 }
 .gm-dock-btn:active {
-  background: var(--cc-hover);
+  background: var(--mg-hover);
 }
 .gm-dock-btn .gm-ico {
-  width: 32px;
-  height: 32px;
-  opacity: 0.78;
-  transition: opacity var(--cc-motion), transform var(--cc-motion);
+  width: 34px;
+  height: 34px;
+  opacity: 0.86;
+  transition: opacity var(--mg-motion), transform var(--mg-bounce);
 }
 .gm-dock-btn[data-active="true"] {
-  color: var(--cc-text-boldest);
+  color: var(--mg-forest);
 }
 .gm-dock-btn[data-active="true"] .gm-ico {
   opacity: 1;
-  transform: translateY(-1px) scale(1.06);
+  transform: translateY(-3px) scale(1.12) rotate(-4deg);
+}
+.gm-dock-btn[data-active="true"] .gm-dock-label::after {
+  content: "";
+  display: block;
+  width: 18px;
+  height: 4px;
+  margin: 2px auto 0;
+  border-radius: 99px;
+  background: var(--mg-leaf);
 }
 
 .gm-dock-face {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   overflow: hidden;
 }
 
 .gm-dock-label {
-  font-size: 11px;
+  font-family: var(--mg-heading);
+  font-size: 12px;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.1;
 }
 
 .gm-go {
@@ -392,30 +458,33 @@
   margin-bottom: -2px;
 }
 
+/* The camera: a round sky lens with a white sticker ring, not a green slab. */
 .gm-go-core {
-  width: 64px;
-  height: 64px;
-  margin-top: -26px;
-  border-radius: 16px;
+  width: 70px;
+  height: 70px;
+  margin-top: -32px;
+  border-radius: 999px;
   display: grid;
   place-items: center;
-  box-shadow: inset 0 1px 0 0 rgba(178, 224, 104, 0.45), inset 0 -2px 0 0 var(--cc-green-500), 0 8px 20px rgba(0, 0, 0, 0.4);
-  background: linear-gradient(180deg, var(--cc-green-300) 0%, var(--cc-green-400) 100%);
-  transition: filter var(--cc-motion), transform var(--cc-motion);
+  background: radial-gradient(circle at 35% 30%, #d9f1ff 0%, #8ed3fa 45%, #279cad 100%);
+  box-shadow: 0 0 0 4px #fff, 0 0 0 6.5px var(--mg-green), 0 10px 22px rgba(17, 75, 47, 0.3);
+  transition: filter var(--mg-motion), transform var(--mg-bounce);
+  animation: gm-breathe 3.2s ease-in-out infinite;
 }
 .gm-go:active .gm-go-core {
-  filter: brightness(0.94);
-  transform: translateY(1px);
+  filter: brightness(0.95);
+  transform: translateY(2px) scale(0.96);
 }
 .gm-go-core .gm-ico {
-  width: 46px;
-  height: 46px;
+  width: 50px;
+  height: 50px;
 }
 
 .gm-go-tag {
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--cc-text-boldest);
+  font-family: var(--mg-heading);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--mg-forest);
 }
 
 /* ── Reward toast ───────────────────────────────────────────────────────── */
@@ -423,17 +492,17 @@
 .gm-toast {
   position: absolute;
   left: 50%;
-  bottom: 96px;
+  bottom: 100px;
   z-index: 70;
   display: flex;
   align-items: center;
   gap: 10px;
   max-width: calc(100vw - 32px);
-  padding: 8px 16px 8px 8px;
-  border-radius: 10px;
-  background: var(--cc-surface);
-  color: var(--cc-text-bolder);
-  box-shadow: var(--cc-shadow);
+  padding: 8px 18px 8px 8px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--mg-text-bolder);
+  box-shadow: var(--mg-sticker), var(--mg-shadow);
   font-weight: 600;
   font-size: 14px;
   white-space: nowrap;
@@ -442,8 +511,8 @@
 }
 
 .gm-coin {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   flex-shrink: 0;
   display: grid;
   place-items: center;
@@ -451,10 +520,10 @@
 }
 
 .gm-toast-points {
-  font-family: var(--cc-heading);
-  font-weight: 900;
-  font-size: 18px;
-  color: var(--cc-green-300);
+  font-family: var(--mg-heading);
+  font-weight: 700;
+  font-size: 19px;
+  color: var(--mg-green);
 }
 
 .gm-toast-label {
@@ -469,85 +538,111 @@
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
-  border-radius: 8px;
-  background: var(--cc-surface);
+  border-radius: 22px;
+  background: linear-gradient(120deg, #ffffff 0%, #eaf8e0 100%);
+  box-shadow: var(--mg-sticker);
 }
 
 .gm-trophy {
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   flex-shrink: 0;
   display: grid;
   place-items: center;
 }
 
 .gm-dex-title {
-  font-family: var(--cc-heading);
-  font-weight: 800;
-  font-size: 22px;
+  font-family: var(--mg-heading);
+  font-weight: 700;
+  font-size: 24px;
   line-height: 1;
-  color: var(--cc-text-boldest);
+  color: var(--mg-forest);
 }
 
 .gm-dex-bar {
   position: relative;
-  height: 6px;
+  height: 8px;
   margin-top: 10px;
   border-radius: 99px;
-  background: var(--cc-subtle);
+  background: #e3f3d6;
   overflow: hidden;
 }
 
 .gm-dex-count {
-  font-weight: 700;
-  font-size: 14px;
-  color: var(--cc-text-default);
+  font-family: var(--mg-heading);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--mg-text-default);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-/* chess.com coach-card: an opaque tile, the selected state carried by the green edge. */
+/* A field-guide card: white sticker, a little sky-to-grass window for the tree. */
 .gm-card {
   position: relative;
   min-width: 0;
   padding: 22px 6px 12px;
-  border-radius: 8px;
+  border-radius: 20px;
   text-align: center;
-  background: #2a2826;
-  border: 2px solid transparent;
+  background: #fff;
+  box-shadow: var(--mg-sticker);
   animation: gm-rise 0.4s cubic-bezier(0.2, 1, 0.4, 1) both;
-  transition: background var(--cc-motion);
+  transition: transform var(--mg-motion);
 }
-.gm-card[data-locked="false"] {
-  background: var(--cc-surface);
+.gm-card::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 6px;
+  height: 56%;
+  border-radius: 15px;
+  background: linear-gradient(180deg, #d9f1ff 0%, #eef9e4 70%, #d7efc0 100%);
+  z-index: 0;
+}
+.gm-card > * {
+  position: relative;
+  z-index: 1;
+}
+.gm-card:active {
+  transform: scale(0.97);
 }
 .gm-card[data-locked="true"] {
-  background: rgba(0, 0, 0, 0.14);
+  background: #f5faf0;
+  box-shadow: inset 0 0 0 2px rgb(var(--mg-ink-rgb) / 0.08);
+}
+.gm-card[data-locked="true"]::before {
+  background: repeating-linear-gradient(135deg, #eaf4e2 0 8px, #e2efd8 8px 16px);
 }
 
 .gm-card-no {
   position: absolute;
-  top: 6px;
-  left: 8px;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--cc-text-subtle);
+  top: 10px;
+  left: 12px;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.85);
+  font-family: var(--mg-heading);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--mg-text-subtle);
   font-variant-numeric: tabular-nums;
 }
 
 .gm-card-lock {
   position: absolute;
-  top: 4px;
-  right: 5px;
-  opacity: 0.6;
+  top: 8px;
+  right: 10px;
+  opacity: 0.8;
 }
 
 .gm-card-name {
-  font-weight: 700;
-  font-size: 13px;
+  font-family: var(--mg-heading);
+  font-weight: 600;
+  font-size: 14px;
   line-height: 1.15;
   margin-top: 9px;
-  color: var(--cc-text-boldest);
+  color: var(--mg-text-boldest);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -558,30 +653,29 @@
   font-size: 10.5px;
   line-height: 1.2;
   margin-top: 2px;
-  color: var(--cc-text-subtle);
+  color: var(--mg-text-subtle);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* chess.com's "similar skill" chip, reused as the origin tag. */
 .gm-card-tag {
   display: inline-block;
   margin-top: 7px;
-  padding: 2px 6px;
-  border-radius: 3px;
+  padding: 2px 8px;
+  border-radius: 99px;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
 
 .gm-card-unknown {
-  font-family: var(--cc-heading);
-  font-weight: 800;
+  font-family: var(--mg-heading);
+  font-weight: 700;
   font-size: 15px;
   margin-top: 9px;
   letter-spacing: 0.12em;
-  color: rgba(255, 255, 255, 0.2);
+  color: rgb(var(--mg-ink-rgb) / 0.25);
 }
 
 /* ── Map controls ───────────────────────────────────────────────────────── */
@@ -589,17 +683,20 @@
 .gm-map-btn {
   width: 44px;
   height: 44px;
-  border-radius: 10px;
+  border-radius: 999px;
   display: grid;
   place-items: center;
-  background: rgba(38, 36, 33, 0.97);
-  box-shadow: var(--cc-shadow-sm);
-  color: var(--cc-text-bolder);
-  transition: background var(--cc-motion);
+  background: #fff;
+  box-shadow: var(--mg-sticker);
+  color: var(--mg-forest);
+  transition: background var(--mg-motion), transform var(--mg-motion);
 }
-.gm-map-btn:active,
+.gm-map-btn:active {
+  transform: scale(0.94);
+}
 .gm-map-btn[data-active="true"] {
-  background: var(--cc-green-400);
+  background: var(--mg-green);
+  color: #fff;
 }
 
 /* ── Motion ─────────────────────────────────────────────────────────────── */
@@ -617,11 +714,24 @@
   from { transform: translateY(10px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+@keyframes gm-breathe {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+@keyframes mg-bob {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-6px) rotate(2deg); }
+}
+.mg-bob {
+  animation: mg-bob 3.4s ease-in-out infinite;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .gm-toast,
   .gm-coin,
-  .gm-card {
+  .gm-card,
+  .gm-go-core,
+  .mg-bob {
     animation: none !important;
   }
 }

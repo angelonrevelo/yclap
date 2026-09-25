@@ -33,16 +33,28 @@ import raintree from "./species/raintree.png";
 import teak from "./species/teak.png";
 import balete from "./species/balete.png";
 import silhouette from "./species/silhouette.png";
-import game_dex from "./icon/game/dex.png";
-import game_go from "./icon/game/go.png";
-import game_nearby from "./icon/game/nearby.png";
-import game_level from "./icon/game/level.png";
-import game_lock from "./icon/game/lock.png";
-import game_plan from "./icon/game/plan.png";
-import game_points from "./icon/game/points.png";
-import game_quest from "./icon/game/quest.png";
-import game_streak from "./icon/game/streak.png";
-import game_trophy from "./icon/game/trophy.png";
+import game_dex from "./magi/icon/dex.svg";
+import game_go from "./magi/icon/go.svg";
+import game_nearby from "./magi/icon/nearby.svg";
+import game_level from "./magi/icon/level.svg";
+import game_lock from "./magi/icon/lock.svg";
+import game_plan from "./magi/icon/plan.svg";
+import game_points from "./magi/icon/points.svg";
+import game_quest from "./magi/icon/quest.svg";
+import game_streak from "./magi/icon/streak.svg";
+import game_trophy from "./magi/icon/trophy.svg";
+import game_buddy from "./magi/icon/buddy.svg";
+import game_pin from "./magi/icon/pin.svg";
+import sticker_buddy_sprout from "./magi/web/buddy-sprout.webp";
+import sticker_buddy_cheer from "./magi/web/buddy-cheer.webp";
+import sticker_buddy_map from "./magi/web/buddy-map.webp";
+import sticker_buddy_sleep from "./magi/web/buddy-sleep.webp";
+import sticker_buddy_trail from "./magi/web/buddy-trail.webp";
+import sticker_hiker from "./magi/web/hiker.webp";
+import sticker_stage_seed from "./magi/web/stage-seed.webp";
+import sticker_stage_seedling from "./magi/web/stage-seedling.webp";
+import sticker_stage_sapling from "./magi/web/stage-sapling.webp";
+import sticker_stage_tree from "./magi/web/stage-tree.webp";
 import empty_journal from "./spot/empty_journal.png";
 import success_log from "./spot/success_log.png";
 import log_sighting from "./spot/log_sighting.png";
@@ -82,11 +94,14 @@ export const icon = {
 };
 
 /**
- * Game icons — chess.com-style illustrated set generated with `codex` (gpt-image-2)
- * on a magenta key, keyed to RGBA with soft edges (09-14). Full colour on purpose:
- * these sit on the dark chess.com surfaces, not on paper like the kit glyphs above.
+ * Game icons — Magisphere vector stickers, drawn by
+ * `script/magi-asset/build-vector.mjs`: forest outline, flat cel shading, a
+ * white sticker border. Vector on purpose — they live at 15–52 px, where a
+ * downscaled render goes soft. Replaced the chess.com-style set (09-23).
  */
 export const game_icon = {
+  buddy: game_buddy,
+  pin: game_pin,
   dex: game_dex,
   go: game_go,
   level: game_level,
@@ -97,6 +112,29 @@ export const game_icon = {
   quest: game_quest,
   streak: game_streak,
   trophy: game_trophy,
+};
+
+/**
+ * The Magisphere sticker set — the Sprout buddy, its four growth stages and the
+ * explorer, generated with `codex` (gpt-image-2) on a magenta key and remapped
+ * to the brand palette (`script/magi-asset/sticker.spec.json`). 1024 px masters
+ * sit in `magi/sticker`; these are the trimmed 400 px WebP copies the app ships.
+ */
+export const sticker = {
+  buddy_sprout: sticker_buddy_sprout,
+  buddy_cheer: sticker_buddy_cheer,
+  buddy_map: sticker_buddy_map,
+  buddy_sleep: sticker_buddy_sleep,
+  buddy_trail: sticker_buddy_trail,
+  hiker: sticker_hiker,
+};
+
+/** One sticker per growth stage, keyed like `Stage` in stage.ts. */
+export const stage_sticker = {
+  egg: sticker_stage_seed,
+  sprout: sticker_stage_seedling,
+  sapling: sticker_stage_sapling,
+  tree: sticker_stage_tree,
 };
 
 export const mark = {

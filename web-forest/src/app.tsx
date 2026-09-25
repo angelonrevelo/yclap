@@ -160,8 +160,8 @@ function StatTile({ big, line, source }: { big: string; line: string; source: st
     <div
       className="flex-1"
       style={{
-        background: "rgba(255,255,255,0.06)",
-        border: "1.5px solid rgba(255,255,255,0.1)",
+        background: "rgb(var(--mg-ink-rgb) / 0.06)",
+        border: "1.5px solid rgb(var(--mg-ink-rgb) / 0.1)",
         borderRadius: TILE_RADIUS,
         padding: "12px 10px",
         display: "flex",
@@ -169,9 +169,9 @@ function StatTile({ big, line, source }: { big: string; line: string; source: st
         boxShadow: "none",
       }}
     >
-      <div style={{ fontWeight: 800, fontSize: 20, color: "#ffffff", lineHeight: 1.05 }}>{big}</div>
-      <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.85)", marginTop: 4, lineHeight: 1.35 }}>{line}</div>
-      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: "auto", paddingTop: 4 }}>{source}</div>
+      <div style={{ fontWeight: 800, fontSize: 20, color: "var(--mg-text-boldest)", lineHeight: 1.05 }}>{big}</div>
+      <div style={{ fontSize: 11.5, color: "rgb(var(--mg-ink-rgb) / 0.92)", marginTop: 4, lineHeight: 1.35 }}>{line}</div>
+      <div style={{ fontSize: 10, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: "auto", paddingTop: 4 }}>{source}</div>
     </div>
   );
 }
@@ -255,7 +255,7 @@ function PartnerCard({
         <StreakFlame weeks={group.weeks} size={30} is_group />
       </div>
 
-      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.72)", marginTop: 8, lineHeight: 1.45 }}>
+      <div style={{ fontSize: 12, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 8, lineHeight: 1.45 }}>
         {group.member_count === 1
           ? "Add a partner by their code. Your group's week stays alive if any one of you walks it."
           : group.is_week_carried
@@ -278,9 +278,9 @@ function PartnerCard({
             minWidth: 0,
             padding: "9px 11px",
             borderRadius: 12,
-            border: "1.5px solid rgba(255,255,255,0.14)",
-            background: "rgba(0,0,0,0.22)",
-            color: "#fff",
+            border: "1.5px solid rgb(var(--mg-ink-rgb) / 0.14)",
+            background: "#fff",
+            color: "var(--mg-text-boldest)",
             fontWeight: 800,
             letterSpacing: "0.16em",
             fontSize: 14,
@@ -296,8 +296,8 @@ function PartnerCard({
             padding: "9px 14px",
             borderRadius: 12,
             border: "none",
-            background: "#81b64c",
-            color: "#12220c",
+            background: "var(--mg-green)",
+            color: "#fff",
             fontWeight: 800,
             fontSize: 13,
             cursor: "pointer",
@@ -307,8 +307,8 @@ function PartnerCard({
         </button>
       </div>
 
-      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 7, lineHeight: 1.45 }}>
-        Your code is <b style={{ color: "rgba(255,255,255,0.8)", letterSpacing: "0.1em" }}>{join_code}</b>.
+      <div style={{ fontSize: 11, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 7, lineHeight: 1.45 }}>
+        Your code is <b style={{ color: "rgb(var(--mg-ink-rgb) / 0.86)", letterSpacing: "0.1em" }}>{join_code}</b>.
         {" "}
         {/* The honesty clause. `friend.ts` explains why the roster is local. */}
         Adding somebody is one-sided and only this device knows about it — they
@@ -326,8 +326,8 @@ function PartnerCard({
               style={{
                 padding: "8px 10px",
                 borderRadius: 12,
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.06)",
+                background: "rgb(var(--mg-ink-rgb) / 0.06)",
+                border: "1px solid rgb(var(--mg-ink-rgb) / 0.06)",
               }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -335,7 +335,7 @@ function PartnerCard({
                   {row.name}
                 </div>
                 {group.carried_by.includes(row.name) && (
-                  <div style={{ fontSize: 11, color: "#b2e068" }}>carried this week</div>
+                  <div style={{ fontSize: 11, color: "var(--mg-green-text)" }}>carried this week</div>
                 )}
               </div>
               <button
@@ -345,7 +345,7 @@ function PartnerCard({
                 style={{
                   border: "none",
                   background: "transparent",
-                  color: "rgba(255,255,255,0.45)",
+                  color: "rgb(var(--mg-ink-rgb) / 0.56)",
                   fontSize: 18,
                   lineHeight: 1,
                   cursor: "pointer",
@@ -411,17 +411,17 @@ function TrainerSheet({
         style={{
           maxHeight: "78%",
           overflowY: "auto",
-          background: "#262421",
-          color: "rgba(255,255,255,0.85)",
+          background: "var(--mg-surface)",
+          color: "rgb(var(--mg-ink-rgb) / 0.92)",
           borderTopLeftRadius: 16,
           borderTopRightRadius: 16,
-          boxShadow: "0 -12px 40px rgba(0,0,0,0.35)",
+          boxShadow: "0 -12px 40px rgba(17,75,47,0.18)",
           padding: "18px 18px 28px",
         }}
       >
-        <div style={{ width: 42, height: 4, borderRadius: 999, background: "rgba(255,255,255,0.28)", margin: "0 auto 14px" }} />
+        <div style={{ width: 42, height: 4, borderRadius: 999, background: "rgb(var(--mg-ink-rgb) / 0.28)", margin: "0 auto 14px" }} />
         <div className="flex items-center gap-3">
-          <div style={{ width: 72, height: 72, borderRadius: 999, overflow: "hidden", background: "#2f5d2b", border: "3px solid #81b64c" }}>
+          <div style={{ width: 72, height: 72, borderRadius: 999, overflow: "hidden", background: "#2f5d2b", border: "3px solid var(--mg-green)" }}>
             <Character stage={stage} vigor={vigor} size={68} is_idle_animated />
           </div>
           <div>
@@ -440,8 +440,8 @@ function TrainerSheet({
         <div
           style={{
             marginTop: 16,
-            background: "#312e2b",
-            color: "rgba(255,255,255,0.85)",
+            background: "var(--mg-bg)",
+            color: "rgb(var(--mg-ink-rgb) / 0.92)",
             borderRadius: 20,
             padding: 12,
           }}
@@ -471,7 +471,7 @@ function TrainerSheet({
           <Chip is_on={geo_mode === "gps"} onClick={onCycleMode}>
             {geoModeLabel(geo_mode, geo_status)}
           </Chip>
-          <button type="button" onClick={onPlan} style={{ fontWeight: 700, fontSize: 13, color: "#4dc3ea" }}>
+          <button type="button" onClick={onPlan} style={{ fontWeight: 700, fontSize: 13, color: "var(--mg-blue)" }}>
             Plan
           </button>
         </div>
@@ -500,15 +500,15 @@ function JoinRow({ onJoin }: { onJoin: (code: string) => void }) {
         style={{
           flex: 1,
           borderRadius: 12,
-          border: "1.5px solid rgba(255,255,255,0.2)",
-          background: "rgba(0,0,0,0.2)",
-          color: "rgba(255,255,255,0.85)",
+          border: "1.5px solid rgb(var(--mg-ink-rgb) / 0.2)",
+          background: "rgba(17,75,47,0.1)",
+          color: "rgb(var(--mg-ink-rgb) / 0.92)",
           padding: "8px 10px",
           fontWeight: 800,
           letterSpacing: "0.12em",
         }}
       />
-      <button type="submit" style={{ fontWeight: 800, fontSize: 13, color: "#b2e068" }}>
+      <button type="submit" style={{ fontWeight: 800, fontSize: 13, color: "var(--mg-green-text)" }}>
         Join
       </button>
     </form>
@@ -536,14 +536,14 @@ function NearbySightTray({
           overflowX: "auto",
           padding: "12px 14px",
           borderRadius: 16,
-          background: "rgba(38,36,33,0.94)",
-          color: "rgba(255,255,255,0.85)",
-          boxShadow: "0 10px 28px rgba(0,0,0,0.45)",
-          border: "1px solid rgba(255,255,255,0.1)",
+          background: "var(--mg-surface-glass)",
+          color: "rgb(var(--mg-ink-rgb) / 0.92)",
+          boxShadow: "0 10px 28px rgba(17,75,47,0.23)",
+          border: "1px solid rgb(var(--mg-ink-rgb) / 0.1)",
         }}
       >
         {row.length === 0 ? (
-          <div style={{ fontSize: 12, fontWeight: 700, padding: "8px 6px", color: "rgba(255,255,255,0.55)" }}>None nearby</div>
+          <div style={{ fontSize: 12, fontWeight: 700, padding: "8px 6px", color: "rgb(var(--mg-ink-rgb) / 0.62)" }}>None nearby</div>
         ) : (
           row.map((s) => (
             <button
@@ -566,7 +566,7 @@ function NearbySightTray({
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
-                  color: seen.has(s.species_code) ? "#b2e068" : "rgba(255,255,255,0.72)",
+                  color: seen.has(s.species_code) ? "var(--mg-green-text)" : "rgb(var(--mg-ink-rgb) / 0.78)",
                 }}
               >
                 {s.common_name}
@@ -589,16 +589,16 @@ function PointsStreakCard({ snap, is_desktop }: { snap: GamifySnapshot; is_deskt
           style={{
             flex: 1,
             borderRadius: RADIUS.tile,
-            border: "1.5px solid rgba(129,182,76,0.4)",
-            background: "rgba(129,182,76,0.12)",
+            border: "1.5px solid rgba(62,154,74,0.4)",
+            background: "rgba(62,154,74,0.12)",
             padding: "10px 12px",
           }}
         >
-          <div style={{ fontSize: 10, fontWeight: 800, color: "#b2e068", letterSpacing: "0.04em" }}>POINTS</div>
+          <div style={{ fontSize: 10, fontWeight: 800, color: "var(--mg-green-text)", letterSpacing: "0.04em" }}>POINTS</div>
           <div style={{ fontSize: is_desktop ? 28 : 24, fontWeight: 800, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
             {snap.total_points}
           </div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.72)", marginTop: 2 }}>
+          <div style={{ fontSize: 11, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 2 }}>
             Hunt {POINT_VALUE.challenge} · Log {POINT_VALUE.observe}
           </div>
         </div>
@@ -611,12 +611,12 @@ function PointsStreakCard({ snap, is_desktop }: { snap: GamifySnapshot; is_deskt
             padding: "10px 12px",
           }}
         >
-          <div style={{ fontSize: 10, fontWeight: 800, color: "#f7c631", letterSpacing: "0.04em" }}>WEEKLY STREAK</div>
+          <div style={{ fontSize: 10, fontWeight: 800, color: "var(--mg-gold)", letterSpacing: "0.04em" }}>WEEKLY STREAK</div>
           <div style={{ fontSize: is_desktop ? 28 : 24, fontWeight: 800, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
             {snap.streak_weeks}
             <span style={{ fontSize: 13, fontWeight: 700, marginLeft: 4 }}>wk</span>
           </div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.72)", marginTop: 2 }}>
+          <div style={{ fontSize: 11, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 2 }}>
             {snap.participated_this_week ? "This week" : "Idle"}
           </div>
         </div>
@@ -637,11 +637,11 @@ function LocalLeaderboardCard({ snap, is_desktop }: { snap: GamifySnapshot; is_d
             style={{
               padding: "8px 10px",
               borderRadius: 12,
-              background: row.is_you ? "rgba(129,182,76,0.12)" : "rgba(255,255,255,0.06)",
-              border: row.is_you ? "1.5px solid rgba(129,182,76,0.4)" : "1px solid rgba(255,255,255,0.06)",
+              background: row.is_you ? "rgba(62,154,74,0.12)" : "rgb(var(--mg-ink-rgb) / 0.06)",
+              border: row.is_you ? "1.5px solid rgba(62,154,74,0.4)" : "1px solid rgb(var(--mg-ink-rgb) / 0.06)",
             }}
           >
-            <span style={{ width: 22, fontWeight: 800, fontVariantNumeric: "tabular-nums", color: "rgba(255,255,255,0.72)" }}>
+            <span style={{ width: 22, fontWeight: 800, fontVariantNumeric: "tabular-nums", color: "rgb(var(--mg-ink-rgb) / 0.78)" }}>
               {i + 1}
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -650,7 +650,7 @@ function LocalLeaderboardCard({ snap, is_desktop }: { snap: GamifySnapshot; is_d
                 {row.is_you ? " · you" : ""}
                 {row.is_seed ? " · demo" : ""}
               </div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{row.streak_weeks} wk streak</div>
+              <div style={{ fontSize: 11, color: "rgb(var(--mg-ink-rgb) / 0.6)" }}>{row.streak_weeks} wk streak</div>
             </div>
             <span style={{ fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{row.points}</span>
           </div>
@@ -671,18 +671,18 @@ function ChallengesCard({ snap }: { snap: GamifySnapshot }) {
             <div key={c.challenge_id}>
               <div className="flex items-center justify-between" style={{ fontSize: 13 }}>
                 <span style={{ fontWeight: 700 }}>{c.title}</span>
-                <span style={{ fontVariantNumeric: "tabular-nums", color: "rgba(255,255,255,0.72)" }}>
+                <span style={{ fontVariantNumeric: "tabular-nums", color: "rgb(var(--mg-ink-rgb) / 0.78)" }}>
                   {c.current}/{c.target}
                   {c.done ? " · done" : ""}
                 </span>
               </div>
-              <div style={{ height: 6, borderRadius: 999, background: "rgba(255,255,255,0.1)", marginTop: 5 }}>
+              <div style={{ height: 6, borderRadius: 999, background: "rgb(var(--mg-ink-rgb) / 0.1)", marginTop: 5 }}>
                 <div
                   style={{
                     width: `${ratio * 100}%`,
                     height: "100%",
                     borderRadius: 999,
-                    background: c.done ? "#b2e068" : "#81b64c",
+                    background: c.done ? "var(--mg-green-text)" : "var(--mg-green)",
                   }}
                 />
               </div>
@@ -698,7 +698,7 @@ function BuddyLine({ snap }: { snap: GamifySnapshot }) {
   const next = snap.buddy.next;
   const next_label = next ? next.stage.replace(/_/g, " ") : "";
   return (
-    <p style={{ fontSize: 12, color: "rgba(255,255,255,0.72)", marginTop: 8, lineHeight: 1.4 }}>
+    <p style={{ fontSize: 12, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 8, lineHeight: 1.4 }}>
       Biodiversity Buddy: <strong>{snap.buddy.label}</strong>
       {next
         ? ` · ${next.remaining} more week${next.remaining === 1 ? "" : "s"} toward ${next_label}`
@@ -724,15 +724,15 @@ function DailyHuntCard({
         textAlign: "left",
         padding: "12px 14px",
         borderRadius: RADIUS.tile,
-        border: daily.is_done ? "1.5px solid rgba(129,182,76,0.4)" : "1.5px solid rgba(247,198,49,0.4)",
-        background: daily.is_done ? "rgba(129,182,76,0.12)" : "rgba(247,198,49,0.12)",
+        border: daily.is_done ? "1.5px solid rgba(62,154,74,0.4)" : "1.5px solid rgba(247,198,49,0.4)",
+        background: daily.is_done ? "rgba(62,154,74,0.12)" : "rgba(247,198,49,0.12)",
       }}
     >
-      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.04em", color: daily.is_done ? "#b2e068" : "#f7c631" }}>
+      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.04em", color: daily.is_done ? "var(--mg-green-text)" : "var(--mg-gold)" }}>
         {daily.is_done ? "HUNT DONE" : "TODAY"}
       </div>
       <div style={{ fontWeight: 800, fontSize: 16, marginTop: 2 }}>{daily.common_name}</div>
-      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.72)", marginTop: 2 }}>{daily.sector_name}</div>
+      <div style={{ fontSize: 12, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 2 }}>{daily.sector_name}</div>
     </button>
   );
 }
@@ -758,12 +758,12 @@ function NearbyBar({
       className="absolute inset-x-0 flex items-center gap-3"
       style={{
         bottom: 100,
-        background: "#262421",
-        color: "rgba(255,255,255,0.85)",
-        borderTop: "1.5px solid rgba(255,255,255,0.1)",
+        background: "var(--mg-surface)",
+        color: "rgb(var(--mg-ink-rgb) / 0.92)",
+        borderTop: "1.5px solid rgb(var(--mg-ink-rgb) / 0.1)",
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
-        boxShadow: "0 -8px 20px rgba(0,0,0,0.35)",
+        boxShadow: "0 -8px 20px rgba(17,75,47,0.18)",
         zIndex: 45,
         padding: "10px 90px 10px 14px",
         animation: "fgup .28s cubic-bezier(.2,.8,.2,1)",
@@ -777,7 +777,7 @@ function NearbyBar({
           eyebrow={`${is_pinned ? "PINNED" : "NEAREST"} · ${where.toUpperCase()}`}
           meta={
             distance_line ? (
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#4dc3ea" }}>{distance_line}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--mg-blue)" }}>{distance_line}</span>
             ) : null
           }
         />
@@ -786,7 +786,7 @@ function NearbyBar({
         <button
           onClick={onUnpin}
           aria-label="Follow the nearest tree again"
-          className="cc-btn-secondary"
+          className="mg-btn-secondary"
           style={{
             height: 34,
             flexShrink: 0,
@@ -829,13 +829,13 @@ function NearbySheet({
       style={{
         height: is_panel ? "100%" : "78%",
         maxHeight: is_panel ? "none" : "min(780px, 92vh)",
-        background: "#262421",
-        color: "rgba(255,255,255,0.85)",
+        background: "var(--mg-surface)",
+        color: "rgb(var(--mg-ink-rgb) / 0.92)",
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
         borderBottomLeftRadius: is_panel ? 16 : 0,
         borderBottomRightRadius: is_panel ? 16 : 0,
-        boxShadow: is_panel ? "none" : "0 -16px 40px rgba(0,0,0,0.35)",
+        boxShadow: is_panel ? "none" : "0 -16px 40px rgba(17,75,47,0.18)",
         zIndex: 45,
         padding: is_panel ? "10px 18px 18px" : "8px 22px 88px",
         display: "flex",
@@ -846,38 +846,38 @@ function NearbySheet({
       <button
         onClick={onDismiss}
         aria-label="Collapse"
-        style={{ display: "block", width: 42, height: 5, borderRadius: 999, background: "rgba(255,255,255,0.28)", margin: "4px auto 6px", flexShrink: 0 }}
+        style={{ display: "block", width: 42, height: 5, borderRadius: 999, background: "rgb(var(--mg-ink-rgb) / 0.28)", margin: "4px auto 6px", flexShrink: 0 }}
       />
 
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", paddingTop: 4, flexShrink: 0 }}>
-        <TaxonThumb species_code={sp.species_code} size={132} style={{ boxShadow: "0 10px 28px rgba(0,0,0,0.35)" }} />
+        <TaxonThumb species_code={sp.species_code} size={132} style={{ boxShadow: "0 10px 28px rgba(17,75,47,0.18)" }} />
         <div style={{ fontWeight: 800, fontSize: 26, lineHeight: 1.15, marginTop: 14, letterSpacing: "-0.02em" }}>{sp.common_name}</div>
-        <div style={{ fontStyle: "italic", fontSize: 14, color: "rgba(255,255,255,0.72)", marginTop: 4 }}>{sp.scientific_name}</div>
+        <div style={{ fontStyle: "italic", fontSize: 14, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 4 }}>{sp.scientific_name}</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 12 }}>
           <SpeciesPill sp={sp} limit={3} />
         </div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.5)", letterSpacing: "0.06em", marginTop: 10 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "rgb(var(--mg-ink-rgb) / 0.6)", letterSpacing: "0.06em", marginTop: 10 }}>
           {where.toUpperCase()}
           {distance_line ? ` · ${distance_line}` : ""}
         </div>
       </div>
 
       {distance_line?.includes("min walk") ? (
-        <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 10, textAlign: "center", flexShrink: 0 }}>
+        <p style={{ fontSize: 11, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 10, textAlign: "center", flexShrink: 0 }}>
           Minutes assume a walking pace of {WALK_PACE_MS} m/s. The metre figure is the measured one.
         </p>
       ) : null}
 
       <div style={{ overflowY: "auto", flex: 1, minHeight: 0, marginTop: 18 }}>
-        <p style={{ fontSize: 15, lineHeight: 1.5, color: "rgba(255,255,255,0.85)", margin: 0 }}>{sp.note}</p>
+        <p style={{ fontSize: 15, lineHeight: 1.5, color: "rgb(var(--mg-ink-rgb) / 0.92)", margin: 0 }}>{sp.note}</p>
         {sp.caption && (
-          <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.5)", marginTop: 10, lineHeight: 1.4 }}>{sp.caption}</div>
+          <div style={{ fontSize: 11.5, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 10, lineHeight: 1.4 }}>{sp.caption}</div>
         )}
         <div style={{ height: 18 }} />
         <SpeciesBack sp={sp} />
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.72)", marginTop: 18, lineHeight: 1.45 }}>
+        <p style={{ fontSize: 12, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 18, lineHeight: 1.45 }}>
           Need a second opinion?{" "}
-          <a href={SEEK_URL} target="_blank" rel="noreferrer" style={{ color: "#4dc3ea", fontWeight: 700, textDecoration: "underline" }}>
+          <a href={SEEK_URL} target="_blank" rel="noreferrer" style={{ color: "var(--mg-blue)", fontWeight: 700, textDecoration: "underline" }}>
             Open Seek
           </a>
           . Identification stays with iNaturalist — not this app.
@@ -886,7 +886,7 @@ function NearbySheet({
 
       <button
         onClick={onLog}
-        className="flex items-center justify-center gap-2 cc-btn-primary"
+        className="flex items-center justify-center gap-2 mg-btn-primary"
         style={{
           width: "100%",
           height: 52,
@@ -926,11 +926,11 @@ function ConfusableWarning({ warn }: { warn: Confusable }) {
         border: "1.5px solid rgba(247,198,49,0.4)",
       }}
     >
-      <div style={{ fontSize: 11, fontWeight: 800, color: "#f7c631", letterSpacing: "0.06em" }}>
+      <div style={{ fontSize: 11, fontWeight: 800, color: "var(--mg-gold)", letterSpacing: "0.06em" }}>
         EASY TO CONFUSE WITH {(other?.common_name ?? warn.species_code).toUpperCase()}
       </div>
-      <p style={{ fontSize: 12.5, lineHeight: 1.45, marginTop: 4, color: "rgba(255,255,255,0.85)" }}>{warn.difference}</p>
-      <div style={{ fontSize: 10.5, color: "rgba(255,255,255,0.5)", marginTop: 5 }}>{warn.source}</div>
+      <p style={{ fontSize: 12.5, lineHeight: 1.45, marginTop: 4, color: "rgb(var(--mg-ink-rgb) / 0.92)" }}>{warn.difference}</p>
+      <div style={{ fontSize: 10.5, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 5 }}>{warn.source}</div>
     </div>
   );
 }
@@ -951,16 +951,16 @@ function SpeciesBack({ sp }: { sp: Species }) {
               flex: 1,
               minWidth: 0,
               borderRadius: TILE_RADIUS,
-              border: "1.5px solid rgba(255,255,255,0.1)",
-              background: "rgba(255,255,255,0.06)",
+              border: "1.5px solid rgb(var(--mg-ink-rgb) / 0.1)",
+              background: "rgb(var(--mg-ink-rgb) / 0.06)",
               padding: "9px 10px",
             }}
           >
-            <div style={{ fontSize: 10, fontWeight: 800, color: "#b2e068", letterSpacing: "0.05em" }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: "var(--mg-green-text)", letterSpacing: "0.05em" }}>
               {tile.label.toUpperCase()}
             </div>
             <div style={{ fontSize: 13, fontWeight: 700, marginTop: 3, lineHeight: 1.25 }}>{tile.value}</div>
-            <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.5)", marginTop: 5, lineHeight: 1.3 }}>
+            <div style={{ fontSize: 9.5, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 5, lineHeight: 1.3 }}>
               {tile.source}
             </div>
           </div>
@@ -969,7 +969,7 @@ function SpeciesBack({ sp }: { sp: Species }) {
       <div style={{ marginTop: 12 }}>
         <Eyebrow>WHERE IT GROWS</Eyebrow>
         <p style={{ fontSize: 13.5, lineHeight: 1.45, marginTop: 5 }}>{detail.habitat.line}</p>
-        <div style={{ fontSize: 10.5, color: "rgba(255,255,255,0.5)", marginTop: 5 }}>{detail.habitat.source}</div>
+        <div style={{ fontSize: 10.5, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 5 }}>{detail.habitat.source}</div>
       </div>
     </div>
   );
@@ -1007,17 +1007,17 @@ function BiomeSpeciesRow({
       type="button"
       onClick={() => onLog(species_code)}
       className="w-full flex items-center justify-between gap-3"
-      style={{ padding: "10px 0", borderTop: "1px solid rgba(255,255,255,0.1)", textAlign: "left" }}
+      style={{ padding: "10px 0", borderTop: "1px solid rgb(var(--mg-ink-rgb) / 0.1)", textAlign: "left" }}
     >
       <span className="flex items-center gap-3" style={{ minWidth: 0 }}>
         <TaxonThumb species_code={species_code} size={46} />
         <span style={{ minWidth: 0 }}>
           <span style={{ display: "block", fontWeight: 700, fontSize: 14.5, lineHeight: 1.2 }}>{sp.common_name}</span>
-          <span style={{ display: "block", fontStyle: "italic", fontSize: 11.5, color: "rgba(255,255,255,0.72)" }}>
+          <span style={{ display: "block", fontStyle: "italic", fontSize: 11.5, color: "rgb(var(--mg-ink-rgb) / 0.78)" }}>
             {sp.scientific_name}
           </span>
           {distance_line && (
-            <span style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "#4dc3ea", marginTop: 2 }}>
+            <span style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--mg-blue)", marginTop: 2 }}>
               {distance_line}
             </span>
           )}
@@ -1052,8 +1052,8 @@ function BiomeCard({
             borderRadius: 999,
             display: "grid",
             placeItems: "center",
-            background: "rgba(129,182,76,0.12)",
-            border: "2px solid rgba(129,182,76,0.4)",
+            background: "rgba(62,154,74,0.12)",
+            border: "2px solid rgba(62,154,74,0.4)",
           }}
         >
           <CanopyIcon size={is_desktop ? 34 : 27} />
@@ -1083,7 +1083,7 @@ function BiomeCard({
             padding: "8px 11px",
             fontSize: 11.5,
             lineHeight: 1.4,
-            color: "#f7c631",
+            color: "var(--mg-gold)",
             fontWeight: 700,
           }}
         >
@@ -1093,7 +1093,7 @@ function BiomeCard({
       <div style={{ marginTop: 10 }}>
         <Eyebrow>SPECIES TO FIND {row.species_code.length > 0 ? `· ${row.species_code.length}` : ""}</Eyebrow>
         {row.species_code.length === 0 ? (
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.72)", marginTop: 8, lineHeight: 1.45 }}>
+          <p style={{ fontSize: 13, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 8, lineHeight: 1.45 }}>
             No species assigned to this area yet — the AIS inventory ({aisDueNote()}) will fill it in.
           </p>
         ) : (
@@ -1111,7 +1111,7 @@ function BiomeCard({
                   marginTop: 8,
                   fontSize: 12.5,
                   fontWeight: 700,
-                  color: "#4dc3ea",
+                  color: "var(--mg-blue)",
                   background: "none",
                   border: "none",
                   padding: 0,
@@ -1136,12 +1136,12 @@ function BiomeBar({ presence, onExpand }: { presence: BiomePresence; onExpand: (
       className="absolute inset-x-0 flex items-center gap-3"
       style={{
         bottom: 100,
-        background: "#262421",
-        color: "rgba(255,255,255,0.85)",
-        borderTop: "1.5px solid rgba(255,255,255,0.1)",
+        background: "var(--mg-surface)",
+        color: "rgb(var(--mg-ink-rgb) / 0.92)",
+        borderTop: "1.5px solid rgb(var(--mg-ink-rgb) / 0.1)",
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
-        boxShadow: "0 -8px 20px rgba(0,0,0,0.35)",
+        boxShadow: "0 -8px 20px rgba(17,75,47,0.18)",
         zIndex: 45,
         padding: "10px 90px 10px 14px",
         animation: "fgup .28s cubic-bezier(.2,.8,.2,1)",
@@ -1156,8 +1156,8 @@ function BiomeBar({ presence, onExpand }: { presence: BiomePresence; onExpand: (
             borderRadius: 999,
             display: "grid",
             placeItems: "center",
-            background: "rgba(129,182,76,0.12)",
-            border: "2px solid rgba(129,182,76,0.4)",
+            background: "rgba(62,154,74,0.12)",
+            border: "2px solid rgba(62,154,74,0.4)",
           }}
         >
           <CanopyIcon size={24} />
@@ -1168,7 +1168,7 @@ function BiomeBar({ presence, onExpand }: { presence: BiomePresence; onExpand: (
               display: "block",
               fontSize: 10,
               fontWeight: 700,
-              color: "#b2e068",
+              color: "var(--mg-green-text)",
               letterSpacing: "0.07em",
               whiteSpace: "nowrap",
               overflow: "hidden",
@@ -1178,7 +1178,7 @@ function BiomeBar({ presence, onExpand }: { presence: BiomePresence; onExpand: (
             BIOME · INSIDE {row.is_placeholder ? "· PLACEHOLDER, NOT SURVEYED" : ""}
           </span>
           <span style={{ display: "block", fontWeight: 800, fontSize: 17, lineHeight: 1.15 }}>{row.name}</span>
-          <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#4dc3ea", marginTop: 2 }}>
+          <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--mg-blue)", marginTop: 2 }}>
             {first_species && species[first_species] ? `Find ${species[first_species].common_name}` : "Species to be assigned"}
           </span>
         </span>
@@ -1202,11 +1202,11 @@ function BiomeSheet({
       className="absolute inset-x-0 bottom-0 scroll-soft"
       style={{
         height: "56%",
-        background: "#262421",
-        color: "rgba(255,255,255,0.85)",
+        background: "var(--mg-surface)",
+        color: "rgb(var(--mg-ink-rgb) / 0.92)",
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
-        boxShadow: "0 -12px 28px rgba(0,0,0,0.35)",
+        boxShadow: "0 -12px 28px rgba(17,75,47,0.18)",
         zIndex: 45,
         padding: "10px 20px 76px",
         overflowY: "auto",
@@ -1216,7 +1216,7 @@ function BiomeSheet({
       <button
         onClick={onDismiss}
         aria-label="Collapse"
-        style={{ display: "block", width: 40, height: 5, borderRadius: 999, background: "rgba(255,255,255,0.28)", margin: "0 auto 12px" }}
+        style={{ display: "block", width: 40, height: 5, borderRadius: 999, background: "rgb(var(--mg-ink-rgb) / 0.28)", margin: "0 auto 12px" }}
       />
       <BiomeCard presence={presence} is_desktop={false} onLog={onLog} />
     </div>
@@ -1264,10 +1264,10 @@ function SuggestionList({
                 size={64}
                 style={{ margin: "0 auto" }}
               />
-              <span style={{ display: "block", fontWeight: 800, fontSize: 11, color: "rgba(255,255,255,0.85)", marginTop: 6, lineHeight: 1.2 }}>
+              <span style={{ display: "block", fontWeight: 800, fontSize: 11, color: "rgb(var(--mg-ink-rgb) / 0.92)", marginTop: 6, lineHeight: 1.2 }}>
                 {row.common_name}
               </span>
-              <span style={{ display: "block", fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>
+              <span style={{ display: "block", fontSize: 10, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 2 }}>
                 {is_demo ? "recorded" : `${row.score.toFixed(2)}`}
               </span>
             </button>
@@ -1283,9 +1283,9 @@ const PIN_FILTER: { kind: PinKind; label: string; tone: string }[] = [
   /* Ecology, not chrome — this is the legend for what a pin MEANS, so it keeps
      the green the Native pill and the sector fills use. Deliberately the one
      #008653 left in this file. */
-  { kind: "native", label: "Native", tone: "#81b64c" },
-  { kind: "exotic", label: "Exotic", tone: "#f7c631" },
-  { kind: "threatened", label: "Threatened", tone: "#ff8a7a" },
+  { kind: "native", label: "Native", tone: "var(--mg-green)" },
+  { kind: "exotic", label: "Exotic", tone: "var(--mg-gold)" },
+  { kind: "threatened", label: "Threatened", tone: "var(--mg-red)" },
 ];
 
 export interface SaveInput {
@@ -1377,25 +1377,25 @@ function CameraSheet({
 
   return (
     <div className="absolute inset-0" style={{ zIndex: 60 }}>
-      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.5)" }} onClick={onClose} />
+      <div className="absolute inset-0" style={{ background: "rgba(17,75,47,0.25)" }} onClick={onClose} />
       <div
         className="absolute inset-x-0 bottom-0 scroll-soft"
         style={{
           top: 24,
-          background: "#262421",
-          color: "rgba(255,255,255,0.85)",
+          background: "var(--mg-surface)",
+          color: "rgb(var(--mg-ink-rgb) / 0.92)",
           borderTopLeftRadius: 16,
           borderTopRightRadius: 16,
           overflowY: "auto",
           padding: "16px 20px 28px",
-          boxShadow: "0 -12px 40px rgba(0,0,0,0.35)",
+          boxShadow: "0 -12px 40px rgba(17,75,47,0.18)",
           animation: "fgup .3s cubic-bezier(.2,.8,.2,1)",
         }}
       >
         <div className="flex items-center justify-between">
           <div>
             <div style={{ fontWeight: 800, fontSize: 18 }}>Log a sighting</div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>{where}</div>
+            <div style={{ fontSize: 12, color: "rgb(var(--mg-ink-rgb) / 0.66)", marginTop: 2 }}>{where}</div>
             {/* Only when you walked into a find in the world. An ordinary log
                 makes no rarity claim, because outside a spawn we do not know
                 that this individual is the species the pill would be about. */}
@@ -1418,21 +1418,21 @@ function CameraSheet({
           <span style={{ flexShrink: 0, marginTop: 1 }}>
             <LeafScanIcon size={16} />
           </span>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1.4 }}>{identifyCaption(identify)}</div>
+          <div style={{ fontSize: 11, color: "rgb(var(--mg-ink-rgb) / 0.62)", lineHeight: 1.4 }}>{identifyCaption(identify)}</div>
         </div>
         <SuggestionList state={identify} onPick={onPick} />
         {!hasInatToken() && (
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>
+          <div style={{ fontSize: 11, color: "rgb(var(--mg-ink-rgb) / 0.5)", marginTop: 6 }}>
             Set <code>VITE_INAT_API_TOKEN</code> before building to run live iNaturalist computer vision instead.
           </div>
         )}
 
-        <div className="flex items-center gap-1.5" style={{ marginTop: 14, fontSize: 12, color: "rgba(255,255,255,0.7)" }}>
+        <div className="flex items-center gap-1.5" style={{ marginTop: 14, fontSize: 12, color: "rgb(var(--mg-ink-rgb) / 0.76)" }}>
           <PinIcon size={16} />
           {fix_line}
         </div>
 
-        <div style={{ marginTop: 18, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", color: "#b2e068" }}>
+        <div style={{ marginTop: 18, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", color: "var(--mg-green-text)" }}>
           WHAT DID YOU SEE?
         </div>
         <div
@@ -1456,13 +1456,13 @@ function CameraSheet({
                 size={72}
                 style={{
                   margin: "0 auto",
-                  border: pick_code === wild_pick.species_code ? "3px solid #81b64c" : "2px solid rgba(255,255,255,0.35)",
+                  border: pick_code === wild_pick.species_code ? "3px solid var(--mg-green)" : "2px solid rgb(var(--mg-ink-rgb) / 0.35)",
                 }}
               />
               <span style={{ display: "block", fontWeight: 800, fontSize: 11, marginTop: 6, lineHeight: 1.2 }}>
                 {displayName(wild_pick.common_name)}
               </span>
-              <span style={{ display: "block", fontSize: 10, color: "#b2e068", marginTop: 2 }}>Sweep</span>
+              <span style={{ display: "block", fontSize: 10, color: "var(--mg-green-text)", marginTop: 2 }}>Sweep</span>
             </button>
           )}
           {picker_order.map((species_code) => {
@@ -1481,13 +1481,13 @@ function CameraSheet({
                   size={72}
                   style={{
                     margin: "0 auto",
-                    border: is_active ? "3px solid #81b64c" : "2px solid rgba(255,255,255,0.35)",
+                    border: is_active ? "3px solid var(--mg-green)" : "2px solid rgb(var(--mg-ink-rgb) / 0.35)",
                   }}
                 />
                 <span style={{ display: "block", fontWeight: 800, fontSize: 11, marginTop: 6, lineHeight: 1.2 }}>
                   {sp.common_name}
                 </span>
-                <span style={{ display: "block", fontStyle: "italic", fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>
+                <span style={{ display: "block", fontStyle: "italic", fontSize: 10, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 2 }}>
                   {sp.scientific_name}
                 </span>
               </button>
@@ -1507,7 +1507,7 @@ function CameraSheet({
                 margin: "0 auto",
                 borderRadius: 999,
                 background: is_reporting ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.88)",
-                border: is_reporting ? "3px solid #81b64c" : "3px solid rgba(255,255,255,0.95)",
+                border: is_reporting ? "3px solid var(--mg-green)" : "3px solid rgba(255,255,255,0.95)",
                 boxShadow: "0 6px 18px rgba(12, 28, 16, 0.28)",
                 fontWeight: 800,
                 fontSize: 22,
@@ -1526,15 +1526,15 @@ function CameraSheet({
               marginTop: 12,
               padding: "12px 14px",
               borderRadius: 16,
-              border: "1.5px solid rgba(255,255,255,0.16)",
-              background: "rgba(0,0,0,0.2)",
+              border: "1.5px solid rgb(var(--mg-ink-rgb) / 0.16)",
+              background: "rgba(17,75,47,0.1)",
             }}
           >
             <label style={{ display: "block" }}>
               <span style={{ fontSize: 13.5, fontWeight: 700, display: "block" }}>
                 What would you call it?
               </span>
-              <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.55)", display: "block", marginTop: 2 }}>
+              <span style={{ fontSize: 11.5, color: "rgb(var(--mg-ink-rgb) / 0.62)", display: "block", marginTop: 2 }}>
                 A guess is fine. &ldquo;Unknown&rdquo; is fine too — the position is the part AIS does not have.
               </span>
               <input
@@ -1546,16 +1546,16 @@ function CameraSheet({
                   width: "100%",
                   marginTop: 8,
                   borderRadius: 12,
-                  border: "1.5px solid rgba(255,255,255,0.16)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "rgba(255,255,255,0.85)",
+                  border: "1.5px solid rgb(var(--mg-ink-rgb) / 0.16)",
+                  background: "rgb(var(--mg-ink-rgb) / 0.06)",
+                  color: "rgb(var(--mg-ink-rgb) / 0.92)",
                   padding: "10px 12px",
                   fontSize: 14,
                   fontFamily: "inherit",
                 }}
               />
             </label>
-            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 8, lineHeight: 1.4 }}>
+            <p style={{ fontSize: 11, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 8, lineHeight: 1.4 }}>
               This saves as a report, not as a species badge, and leaves the export tagged that way. It is not
               added to the guide — nobody here is deciding what a tree is.
             </p>
@@ -1566,7 +1566,7 @@ function CameraSheet({
           <span style={{ fontSize: 13.5, fontWeight: 700, display: "block" }}>
             What did you notice?
           </span>
-          <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.5)", display: "block", marginTop: 2 }}>
+          <span style={{ fontSize: 11.5, color: "rgb(var(--mg-ink-rgb) / 0.6)", display: "block", marginTop: 2 }}>
             Optional — one line is plenty.
           </span>
           <textarea
@@ -1579,9 +1579,9 @@ function CameraSheet({
               width: "100%",
               marginTop: 8,
               borderRadius: 14,
-              border: "1.5px solid rgba(255,255,255,0.16)",
-              background: "rgba(255,255,255,0.06)",
-              color: "rgba(255,255,255,0.85)",
+              border: "1.5px solid rgb(var(--mg-ink-rgb) / 0.16)",
+              background: "rgb(var(--mg-ink-rgb) / 0.06)",
+              color: "rgb(var(--mg-ink-rgb) / 0.92)",
               padding: "10px 12px",
               fontSize: 14,
               fontFamily: "inherit",
@@ -1590,9 +1590,9 @@ function CameraSheet({
           />
         </label>
 
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginTop: 14, lineHeight: 1.45 }}>
+        <p style={{ fontSize: 12, color: "rgb(var(--mg-ink-rgb) / 0.62)", marginTop: 14, lineHeight: 1.45 }}>
           iNaturalist is identifying, not this app. The journal stays on this device.{" "}
-          <a href={SEEK_URL} target="_blank" rel="noreferrer" style={{ color: "#4dc3ea", textDecoration: "underline", fontWeight: 700 }}>
+          <a href={SEEK_URL} target="_blank" rel="noreferrer" style={{ color: "var(--mg-blue)", textDecoration: "underline", fontWeight: 700 }}>
             Open Seek
           </a>
         </p>
@@ -1612,12 +1612,12 @@ function CameraSheet({
               })
             }
             size={HUD_CAMERA}
-            style={{ background: "#81b64c", border: "4px solid #fff" }}
+            style={{ background: "var(--mg-green)", border: "4px solid #fff" }}
           >
             <CheckIcon size={28} />
           </HudOrb>
         </div>
-        <div style={{ textAlign: "center", fontSize: 12, fontWeight: 800, marginTop: 8, color: "rgba(255,255,255,0.7)" }}>
+        <div style={{ textAlign: "center", fontSize: 12, fontWeight: 800, marginTop: 8, color: "rgb(var(--mg-ink-rgb) / 0.76)" }}>
           {is_reporting ? "Save report" : "Save"}
         </div>
       </div>
@@ -1687,10 +1687,10 @@ function SummaryStrip({ sighting, pool }: { sighting: Sighting[]; pool: SpawnPoo
             <div key={row.key} style={{ marginTop: 8 }}>
               <div className="flex items-center justify-between" style={{ fontSize: 13 }}>
                 <span style={{ fontWeight: 700 }}>{name_of(row.key)}</span>
-                <span style={{ color: "rgba(255,255,255,0.72)" }}>{row.count}</span>
+                <span style={{ color: "rgb(var(--mg-ink-rgb) / 0.78)" }}>{row.count}</span>
               </div>
-              <div style={{ height: 6, borderRadius: 999, background: "rgba(255,255,255,0.1)", marginTop: 4 }}>
-                <div style={{ width: `${width}%`, height: "100%", borderRadius: 999, background: "#81b64c" }} />
+              <div style={{ height: 6, borderRadius: 999, background: "rgb(var(--mg-ink-rgb) / 0.1)", marginTop: 4 }}>
+                <div style={{ width: `${width}%`, height: "100%", borderRadius: 999, background: "var(--mg-green)" }} />
               </div>
             </div>
           );
@@ -1704,7 +1704,7 @@ function SummaryStrip({ sighting, pool }: { sighting: Sighting[]; pool: SpawnPoo
           </Pill>
         ))}
       </div>
-      <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.5)", marginTop: 14, lineHeight: 1.4 }}>
+      <p style={{ fontSize: 11.5, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 14, lineHeight: 1.4 }}>
         Counts and groupings only — no score, no rank, nobody else&rsquo;s journal. {summary.photo_count} of{" "}
         {summary.sighting_count} carry a photo.
       </p>
@@ -1719,12 +1719,12 @@ function ExportRow({ sighting }: { sighting: Sighting[] }) {
     <Card style={{ marginTop: 16, background: "transparent" }}>
       <Eyebrow>HAND IT OVER</Eyebrow>
       <p style={{ fontSize: 13.5, lineHeight: 1.45, marginTop: 8 }}>{AIS_GAP_NOTE}</p>
-      <p style={{ fontSize: 12, color: "rgba(255,255,255,0.72)", marginTop: 8, lineHeight: 1.4 }}>
+      <p style={{ fontSize: 12, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 8, lineHeight: 1.4 }}>
         Nothing leaves this device on its own. These buttons write a file you choose to share. Photos are not included.
       </p>
       <div className="flex gap-2" style={{ marginTop: 12 }}>
         <button
-          className="cc-btn-secondary"
+          className="mg-btn-secondary"
           type="button"
           disabled={located === 0}
           onClick={() =>
@@ -1750,7 +1750,7 @@ function ExportRow({ sighting }: { sighting: Sighting[] }) {
           </span>
         </button>
         <button
-          className="cc-btn-secondary"
+          className="mg-btn-secondary"
           type="button"
           disabled={sighting.length === 0}
           onClick={() => downloadText(`field-guide-sighting-${stamp}.csv`, toCsv(sighting), "text/csv")}
@@ -1789,8 +1789,8 @@ function SightingLog({ sighting }: { sighting: Sighting[] }) {
   return (
     <div style={{ marginTop: 16 }}>
       <Eyebrow>WHAT YOU LOGGED</Eyebrow>
-      <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 6, lineHeight: 1.4 }}>{LOCAL_OBS_STATUS_NOTE}</p>
-      <div style={{ marginTop: 8, border: "1.5px solid rgba(255,255,255,0.1)", borderRadius: 10, overflow: "hidden", background: "rgba(255,255,255,0.06)" }}>
+      <p style={{ fontSize: 11, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 6, lineHeight: 1.4 }}>{LOCAL_OBS_STATUS_NOTE}</p>
+      <div style={{ marginTop: 8, border: "1.5px solid rgb(var(--mg-ink-rgb) / 0.1)", borderRadius: 10, overflow: "hidden", background: "rgb(var(--mg-ink-rgb) / 0.06)" }}>
         {row.map((s, i) => {
           const sp = species[s.species_code];
           const status = localObsStatus({
@@ -1802,7 +1802,7 @@ function SightingLog({ sighting }: { sighting: Sighting[] }) {
             <div
               key={s.sighting_id}
               className="flex items-start gap-3"
-              style={{ padding: "12px 14px", borderTop: i === 0 ? "none" : "1px solid rgba(255,255,255,0.1)" }}
+              style={{ padding: "12px 14px", borderTop: i === 0 ? "none" : "1px solid rgb(var(--mg-ink-rgb) / 0.1)" }}
             >
               <TaxonThumb species_code={s.species_code} size={52} photo_data={s.photo_data} />
               <div style={{ minWidth: 0 }}>
@@ -1823,17 +1823,17 @@ function SightingLog({ sighting }: { sighting: Sighting[] }) {
                     style={{
                       fontSize: 11,
                       fontVariantNumeric: "tabular-nums",
-                      color: "rgba(255,255,255,0.5)",
+                      color: "rgb(var(--mg-ink-rgb) / 0.6)",
                       letterSpacing: 0.3,
                     }}
                   >
                     №{String(s.entry_index).padStart(4, "0")}
                   </span>
                 </div>
-                <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.72)", marginTop: 2 }}>
+                <div style={{ fontSize: 11.5, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 2 }}>
                   {s.created_at ? new Date(s.created_at).toLocaleString() : "—"}
                 </div>
-                <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.72)", marginTop: 3 }}>
+                <div style={{ fontSize: 11.5, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 3 }}>
                   {s.lat !== null && s.lon !== null ? (
                     <>
                       {formatLatLon({ lat: s.lat, lon: s.lon })}
@@ -1846,7 +1846,7 @@ function SightingLog({ sighting }: { sighting: Sighting[] }) {
                   )}
                 </div>
                 {s.note && (
-                  <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.85)", marginTop: 5, lineHeight: 1.4 }}>{s.note}</div>
+                  <div style={{ fontSize: 12.5, color: "rgb(var(--mg-ink-rgb) / 0.92)", marginTop: 5, lineHeight: 1.4 }}>{s.note}</div>
                 )}
               </div>
             </div>
@@ -1896,7 +1896,7 @@ function WalkReceiptSheet({
         position: "fixed",
         inset: 0,
         zIndex: 70,
-        background: "rgba(0,0,0,0.55)",
+        background: "rgba(17,75,47,0.28)",
         display: "flex",
         alignItems: is_desktop ? "center" : "flex-end",
         justifyContent: "center",
@@ -1909,8 +1909,8 @@ function WalkReceiptSheet({
         style={{
           width: "100%",
           maxWidth: 460,
-          background: "#262421",
-          color: "rgba(255,255,255,0.85)",
+          background: "var(--mg-surface)",
+          color: "rgb(var(--mg-ink-rgb) / 0.92)",
           borderRadius: is_desktop ? CARD_RADIUS + 6 : `${CARD_RADIUS + 6}px ${CARD_RADIUS + 6}px 0 0`,
           padding: 20,
           maxHeight: "88vh",
@@ -1918,7 +1918,7 @@ function WalkReceiptSheet({
         }}
       >
         <Eyebrow>WALK ENDED</Eyebrow>
-        <h2 className="cc-heading" style={{ fontWeight: 800, fontSize: 22, marginTop: 6, color: "#ffffff" }}>
+        <h2 className="mg-heading" style={{ fontWeight: 800, fontSize: 22, marginTop: 6, color: "var(--mg-forest)" }}>
           {receipt.species_count === 0 ? "You walked. Nothing logged." : "Here is what you walked past."}
         </h2>
 
@@ -1938,7 +1938,7 @@ function WalkReceiptSheet({
             {sector_name.length > 0 ? (
               sector_name.map((name) => <Pill key={name}>{name}</Pill>)
             ) : (
-              <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.72)" }}>
+              <span style={{ fontSize: 12.5, color: "rgb(var(--mg-ink-rgb) / 0.78)" }}>
                 No area recorded — the walk had no position fixes.
               </span>
             )}
@@ -1955,7 +1955,7 @@ function WalkReceiptSheet({
                 campus should say so here rather than reporting "1 species" and
                 leaving the moment flat. Only when the walk actually earned it. */}
             {(highlight.best === "mythic" || highlight.best === "rare") && (
-              <p style={{ fontSize: 12.5, fontWeight: 700, color: "#b2e068", marginTop: 6 }}>
+              <p style={{ fontSize: 12.5, fontWeight: 700, color: "var(--mg-green-text)", marginTop: 6 }}>
                 {highlight.best === "mythic"
                   ? "One of these has been recorded on this campus once."
                   : "One of these is rarely recorded here."}
@@ -1986,7 +1986,7 @@ function WalkReceiptSheet({
               padding: "10px 12px",
               borderRadius: 14,
               background: "rgba(247,198,49,0.12)",
-              color: "#f7c631",
+              color: "var(--mg-gold)",
             }}
           >
             This walk was driven by the demo loop, not by a device fix. The distance and areas above are the
@@ -1994,14 +1994,14 @@ function WalkReceiptSheet({
           </p>
         )}
 
-        <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.5)", marginTop: 14, lineHeight: 1.4 }}>
+        <p style={{ fontSize: 11.5, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 14, lineHeight: 1.4 }}>
           Counts only — no score, no rank, and nothing here is compared to anybody else&rsquo;s walk.
         </p>
 
         <div className="flex gap-2" style={{ marginTop: 16 }}>
           <button
             onClick={onJournal}
-            className="cc-btn-primary"
+            className="mg-btn-primary"
             style={{
               flex: 1,
               height: 46,
@@ -2015,7 +2015,7 @@ function WalkReceiptSheet({
           </button>
           <button
             onClick={onDismiss}
-            className="cc-btn-secondary"
+            className="mg-btn-secondary"
             style={{
               height: 46,
               padding: "0 18px",
@@ -2077,7 +2077,7 @@ function BlindBoxReveal({ stage, onDismiss }: { stage: Stage; onDismiss: () => v
       style={{ zIndex: 80, display: "grid", placeItems: "center" }}
       onClick={onDismiss}
     >
-      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.55)" }} />
+      <div className="absolute inset-0" style={{ background: "rgba(17,75,47,0.28)" }} />
       <div
         onClick={(e) => e.stopPropagation()}
         style={{ position: "relative", textAlign: "center", padding: 20 }}
@@ -2156,17 +2156,17 @@ function BlindBoxReveal({ stage, onDismiss }: { stage: Stage; onDismiss: () => v
             </Suspense>
             {cosmetic && (
               <>
-                <div style={{ marginTop: 4, fontWeight: 800, fontSize: 18, color: "rgba(255,255,255,0.85)" }}>
+                <div style={{ marginTop: 4, fontWeight: 800, fontSize: 18, color: "rgb(var(--mg-ink-rgb) / 0.92)" }}>
                   {cosmetic.name}
                 </div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)", maxWidth: 260, lineHeight: 1.4 }}>
+                <div style={{ fontSize: 13, color: "rgb(var(--mg-ink-rgb) / 0.78)", maxWidth: 260, lineHeight: 1.4 }}>
                   {cosmetic.blurb}
                 </div>
               </>
             )}
             <button
               onClick={onDismiss}
-              className="cc-btn-primary"
+              className="mg-btn-primary"
               style={{
                 marginTop: 10,
                 height: 40,
@@ -2219,16 +2219,16 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
               flex: 1,
               minWidth: 0,
               borderRadius: RADIUS.tile,
-              border: "1.5px solid rgba(129,182,76,0.4)",
-              background: "rgba(129,182,76,0.12)",
+              border: "1.5px solid rgba(62,154,74,0.4)",
+              background: "rgba(62,154,74,0.12)",
               padding: "9px 11px",
             }}
           >
-            <div style={{ fontSize: 9.5, fontWeight: 800, color: "#b2e068", letterSpacing: "0.02em" }}>
+            <div style={{ fontSize: 9.5, fontWeight: 800, color: "var(--mg-green-text)", letterSpacing: "0.02em" }}>
               BADGES
             </div>
             <div style={{ fontSize: 18, fontWeight: 800, marginTop: 2 }}>{p.badge_count}</div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 1 }}>
+            <div style={{ fontSize: 10, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 1 }}>
               {p.seen_count} species photographed
             </div>
           </div>
@@ -2242,11 +2242,11 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
               padding: "9px 11px",
             }}
           >
-            <div style={{ fontSize: 9.5, fontWeight: 800, color: "#4dc3ea", letterSpacing: "0.02em" }}>
+            <div style={{ fontSize: 9.5, fontWeight: 800, color: "var(--mg-blue)", letterSpacing: "0.02em" }}>
               CONTRIBUTIONS
             </div>
             <div style={{ fontSize: 18, fontWeight: 800, marginTop: 2 }}>{p.contribution_count}</div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 1 }}>
+            <div style={{ fontSize: 10, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 1 }}>
               reports AIS does not have
             </div>
           </div>
@@ -2257,20 +2257,20 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
             rank against anyone else. */}
         <div style={{ marginTop: 12 }}>
           <div className="flex items-center justify-between" style={{ fontSize: 12.5 }}>
-            <span style={{ fontWeight: 700, color: "rgba(255,255,255,0.85)" }}>
+            <span style={{ fontWeight: 700, color: "rgb(var(--mg-ink-rgb) / 0.92)" }}>
               {next ? `To ${STAGE_LABEL[next.stage]}` : "Fully grown"}
             </span>
-            <span style={{ color: "rgba(255,255,255,0.72)", fontVariantNumeric: "tabular-nums" }}>
+            <span style={{ color: "rgb(var(--mg-ink-rgb) / 0.78)", fontVariantNumeric: "tabular-nums" }}>
               {next ? `${p.sector_seen_count}/${next_total}` : "—"}
             </span>
           </div>
-          <div style={{ height: 6, borderRadius: 999, background: "rgba(255,255,255,0.1)", marginTop: 5 }}>
+          <div style={{ height: 6, borderRadius: 999, background: "rgb(var(--mg-ink-rgb) / 0.1)", marginTop: 5 }}>
             <div
               style={{
                 width: `${ratio * 100}%`,
                 height: "100%",
                 borderRadius: 999,
-                background: "#81b64c",
+                background: "var(--mg-green)",
                 transition: "width .3s ease",
               }}
             />
@@ -2289,8 +2289,8 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
             display: "grid",
             placeItems: "center",
             borderRadius: RADIUS.tile,
-            background: "rgba(129,182,76,0.12)",
-            border: "1px solid rgba(129,182,76,0.12)",
+            background: "rgba(62,154,74,0.12)",
+            border: "1px solid rgba(62,154,74,0.12)",
             padding: is_desktop ? "14px 20px" : "10px 12px",
           }}
         >
@@ -2308,7 +2308,7 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
             <span
               style={{
                 fontSize: 11,
-                color: "rgba(255,255,255,0.5)",
+                color: "rgb(var(--mg-ink-rgb) / 0.6)",
                 marginLeft: "auto",
                 whiteSpace: "nowrap",
                 flexShrink: 0,
@@ -2320,7 +2320,7 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
           <div className="flex items-baseline gap-2" style={{ marginTop: 4, flexWrap: "wrap" }}>
             <div style={{ fontWeight: 800, fontSize: is_desktop ? 24 : 20 }}>{stage_label}</div>
             {p.sector_seen_count > 0 && (
-              <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.72)" }}>
+              <span style={{ fontSize: 12.5, color: "rgb(var(--mg-ink-rgb) / 0.78)" }}>
                 · {p.sector_seen_count} {p.sector_seen_count === 1 ? "area" : "areas"} walked
               </span>
             )}
@@ -2365,8 +2365,8 @@ function JournalScreen({
         height: "100%",
         overflowY: "auto",
         overflowX: "hidden",
-        background: "#312e2b",
-        color: "rgba(255,255,255,0.85)",
+        background: "var(--mg-bg)",
+        color: "rgb(var(--mg-ink-rgb) / 0.92)",
         padding: is_desktop ? "28px 56px 190px" : "18px 16px 190px",
       }}
     >
@@ -2381,7 +2381,7 @@ function JournalScreen({
               padding: "8px 10px",
               borderRadius: 12,
               background: "rgba(247,198,49,0.12)",
-              color: "#f7c631",
+              color: "var(--mg-gold)",
               fontWeight: 700,
             }}
           >
@@ -2420,26 +2420,26 @@ function JournalScreen({
 function PlanContent() {
   return (
     <>
-      <h1 className="cc-heading" style={{ fontWeight: 800, fontSize: 24, lineHeight: 1.15, color: "#ffffff" }}>What happens after the walk</h1>
-      <div style={{ width: 48, height: 4, borderRadius: 999, background: "#81b64c", marginTop: 12 }} />
-      <section style={{ marginTop: 20, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#262421", padding: 16 }}>
+      <h1 className="mg-heading" style={{ fontWeight: 800, fontSize: 24, lineHeight: 1.15, color: "var(--mg-forest)" }}>What happens after the walk</h1>
+      <div style={{ width: 48, height: 4, borderRadius: 999, background: "var(--mg-green)", marginTop: 12 }} />
+      <section style={{ marginTop: 20, borderRadius: 10, border: "1px solid rgb(var(--mg-ink-rgb) / 0.1)", background: "var(--mg-surface)", padding: 16 }}>
         <Eyebrow>1 · WHAT THIS IS FOR</Eyebrow>
         <p style={{ fontSize: 14.5, lineHeight: 1.5, marginTop: 8 }}>
           Formation, first: help students notice and name the trees they walk under every day. And a public map they can
           actually use — not a report that sits in a drawer.
         </p>
       </section>
-      <section style={{ marginTop: 16, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#262421", padding: 16 }}>
+      <section style={{ marginTop: 16, borderRadius: 10, border: "1px solid rgb(var(--mg-ink-rgb) / 0.1)", background: "var(--mg-surface)", padding: 16 }}>
         <Eyebrow>2 · WHO WE STILL NEED TO TALK TO</Eyebrow>
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.72)", marginTop: 6 }}>
+        <p style={{ fontSize: 12, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 6 }}>
           Nothing here is agreed yet. We are not claiming a consultation we have not held.
         </p>
         <div
           style={{
             marginTop: 10,
             borderRadius: 16,
-            background: "rgba(129,182,76,0.12)",
-            border: "1px solid rgba(129,182,76,0.4)",
+            background: "rgba(62,154,74,0.12)",
+            border: "1px solid rgba(62,154,74,0.4)",
             padding: "12px 14px",
           }}
         >
@@ -2448,26 +2448,26 @@ function PlanContent() {
         </div>
         <div style={{ marginTop: 8 }}>
           {consult.map((row) => (
-            <div key={row.consult_id} style={{ padding: "12px 0", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+            <div key={row.consult_id} style={{ padding: "12px 0", borderTop: "1px solid rgb(var(--mg-ink-rgb) / 0.1)" }}>
               <div className="flex items-start justify-between gap-3">
                 <span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.35 }}>{row.label}</span>
                 <Pill tone="exotic">not yet</Pill>
               </div>
               {row.detail && (
-                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.72)", marginTop: 6, lineHeight: 1.4 }}>{row.detail}</p>
+                <p style={{ fontSize: 12, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 6, lineHeight: 1.4 }}>{row.detail}</p>
               )}
             </div>
           ))}
         </div>
       </section>
-      <section style={{ marginTop: 16, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#262421", padding: 16 }}>
+      <section style={{ marginTop: 16, borderRadius: 10, border: "1px solid rgb(var(--mg-ink-rgb) / 0.1)", background: "var(--mg-surface)", padding: 16 }}>
         <Eyebrow>3 · THE BIOMES — THE MAP CUT INTO AREAS</Eyebrow>
         <p style={{ fontSize: 13.5, lineHeight: 1.5, marginTop: 8 }}>
           Since the 09-02 pulong the unit of play is the area, not the tree — and since 09-03 those areas are cut{" "}
           <strong style={{ fontWeight: 700 }}>along the real roads and footpaths</strong>, not drawn by us. Each sector
           below is a face of the OpenStreetMap way network (ODbL), the way a city block is defined by its streets.
         </p>
-        <p style={{ fontSize: 13, lineHeight: 1.5, marginTop: 8, color: "rgba(255,255,255,0.85)" }}>
+        <p style={{ fontSize: 13, lineHeight: 1.5, marginTop: 8, color: "rgb(var(--mg-ink-rgb) / 0.92)" }}>
           How green each one is was <strong style={{ fontWeight: 700 }}>measured off satellite imagery</strong>, not
           guessed from the absence of a building — which is what used to paint car parks as lawn. Species lists stay
           provisional until the AIS inventory lands ({aisDueNote()}).
@@ -2477,11 +2477,11 @@ function PlanContent() {
             .sort((a, b) => b.area_m2 - a.area_m2)
             .slice(0, 14)
             .map((row) => (
-              <div key={row.sector_code} style={{ padding: "10px 0", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+              <div key={row.sector_code} style={{ padding: "10px 0", borderTop: "1px solid rgb(var(--mg-ink-rgb) / 0.1)" }}>
                 <div className="flex items-start justify-between gap-3">
                   <span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.35 }}>
                     {row.name}
-                    <span style={{ display: "block", fontSize: 11.5, color: "rgba(255,255,255,0.72)", marginTop: 2 }}>
+                    <span style={{ display: "block", fontSize: 11.5, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 2 }}>
                       {row.kind.replace(/-/g, " ")} · {(row.area_m2 / 10000).toFixed(2)} ha ·{" "}
                       {row.vegetation_ratio === null
                         ? "not measured"
@@ -2494,14 +2494,14 @@ function PlanContent() {
               </div>
             ))}
         </div>
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.72)", marginTop: 10, lineHeight: 1.4 }}>
+        <p style={{ fontSize: 12, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 10, lineHeight: 1.4 }}>
           {sector_row.length} sectors cut in total, {biome_sector.length} of them vegetated enough to walk into and look
           at a plant. The rest are drawn as the paved ground they are — showing them as lawn would be the lie this
           replaced. {sector_row.filter((r) => r.is_named_by_us).length} carry a name we chose because OpenStreetMap has
           none for that ground.
         </p>
       </section>
-      <section style={{ marginTop: 16, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#262421", padding: 16 }}>
+      <section style={{ marginTop: 16, borderRadius: 10, border: "1px solid rgb(var(--mg-ink-rgb) / 0.1)", background: "var(--mg-surface)", padding: 16 }}>
         <Eyebrow>4 · HOW ANOTHER CAMPUS COPIES THIS</Eyebrow>
         <ul style={{ marginTop: 8, paddingLeft: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
           {[
@@ -2511,17 +2511,17 @@ function PlanContent() {
             "A geofence for off-limits ground.",
           ].map((t) => (
             <li key={t} style={{ fontSize: 14.5, lineHeight: 1.45, display: "flex", gap: 10 }}>
-              <span style={{ color: "#81b64c", fontWeight: 800 }}>—</span>
+              <span style={{ color: "var(--mg-green)", fontWeight: 800 }}>—</span>
               <span>{t}</span>
             </li>
           ))}
         </ul>
-        <p style={{ fontSize: 13, lineHeight: 1.45, marginTop: 12, color: "rgba(255,255,255,0.85)" }}>
+        <p style={{ fontSize: 13, lineHeight: 1.45, marginTop: 12, color: "rgb(var(--mg-ink-rgb) / 0.92)" }}>
           Ateneo sits in AUN ecological-education networks (Delocado, Tuaño, Lacdao-Umali 2025) — that is a carrier, not a
           second app.
         </p>
       </section>
-      <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 26, lineHeight: 1.4 }}>
+      <p style={{ fontSize: 11, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 26, lineHeight: 1.4 }}>
         Youth CLAP 2026 · student prototype · not an official AIS product.
       </p>
     </>
@@ -2544,12 +2544,12 @@ function MapNote({ is_desktop, layer }: { is_desktop: boolean; layer: Layer }) {
         bottom: is_desktop ? 30 : 176,
         zIndex: 20,
         maxWidth: is_desktop ? 330 : 250,
-        background: "rgba(38,36,33,0.94)",
-        color: "rgba(255,255,255,0.85)",
-        border: "1.5px solid rgba(255,255,255,0.1)",
+        background: "var(--mg-surface-glass)",
+        color: "rgb(var(--mg-ink-rgb) / 0.92)",
+        border: "1.5px solid rgb(var(--mg-ink-rgb) / 0.1)",
         borderRadius: 10,
         padding: "9px 12px",
-        boxShadow: "var(--cc-shadow-sm)",
+        boxShadow: "var(--mg-shadow-sm)",
         backdropFilter: "blur(6px)",
       }}
     >
@@ -2566,10 +2566,10 @@ function MapNote({ is_desktop, layer }: { is_desktop: boolean; layer: Layer }) {
           style={{
             fontSize: 10.5,
             lineHeight: 1.35,
-            color: "rgba(255,255,255,0.72)",
+            color: "rgb(var(--mg-ink-rgb) / 0.78)",
             marginTop: 7,
             paddingTop: 7,
-            borderTop: "1px solid rgba(255,255,255,0.1)",
+            borderTop: "1px solid rgb(var(--mg-ink-rgb) / 0.1)",
           }}
         >
           Imagery, not our canopy layer.
@@ -2639,7 +2639,7 @@ function SectorCard({
     <>
       <div
         className="absolute inset-0"
-        style={{ zIndex: 47, background: "rgba(0,0,0,0.5)" }}
+        style={{ zIndex: 47, background: "rgba(17,75,47,0.25)" }}
         onClick={onDismiss}
       />
       <div
@@ -2652,17 +2652,17 @@ function SectorCard({
           width: is_desktop ? 380 : undefined,
           bottom: 148,
           zIndex: 48,
-          background: "#262421",
-          color: "rgba(255,255,255,0.85)",
+          background: "var(--mg-surface)",
+          color: "rgb(var(--mg-ink-rgb) / 0.92)",
           borderRadius: is_desktop ? 16 : "16px 16px 0 0",
-          boxShadow: "0 -12px 40px rgba(0,0,0,0.35)",
+          boxShadow: "0 -12px 40px rgba(17,75,47,0.18)",
           display: "grid",
           gridTemplateColumns: "1fr auto",
           gap: 14,
           padding: is_desktop ? `${PAD}px` : `10px ${PAD}px ${PAD}px`,
         }}
       >
-        <div style={{ gridColumn: "1 / -1", justifySelf: "center", width: 42, height: 4, borderRadius: 999, background: "rgba(255,255,255,0.28)" }} />
+        <div style={{ gridColumn: "1 / -1", justifySelf: "center", width: 42, height: 4, borderRadius: 999, background: "rgb(var(--mg-ink-rgb) / 0.28)" }} />
 
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 19, fontWeight: 800, lineHeight: 1.2, letterSpacing: -0.2 }}>{row.name}</div>
@@ -2673,7 +2673,7 @@ function SectorCard({
           </div>
           {resident.length > 0 ? (
             <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.55)" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "rgb(var(--mg-ink-rgb) / 0.62)" }}>
                 On the walk list here · {progress.seen_count} logged · yours only
               </div>
               <div style={{ display: "flex", gap: 10, overflowX: "auto", marginTop: 8 }}>
@@ -2695,12 +2695,12 @@ function SectorCard({
               </div>
             </div>
           ) : (
-            <p style={{ fontSize: 13, lineHeight: 1.5, color: "rgba(255,255,255,0.6)", margin: "12px 0 0" }}>
+            <p style={{ fontSize: 13, lineHeight: 1.5, color: "rgb(var(--mg-ink-rgb) / 0.66)", margin: "12px 0 0" }}>
               Nothing is on the walk list here yet. Log whatever you actually see.
             </p>
           )}
           {is_open && (
-            <p style={{ fontSize: 12, lineHeight: 1.55, color: "rgba(255,255,255,0.55)", margin: "12px 0 0" }}>
+            <p style={{ fontSize: 12, lineHeight: 1.55, color: "rgb(var(--mg-ink-rgb) / 0.62)", margin: "12px 0 0" }}>
               The edges of this sector are the roads and footpaths around it, from OpenStreetMap (ODbL) — not a boundary we
               drew.{" "}
               {veg_percent !== null
@@ -2734,8 +2734,8 @@ function Tag({ children, tone = "grey" }: { children: React.ReactNode; tone?: "g
       style={{
         display: "inline-flex",
         alignItems: "center",
-        background: tone === "green" ? "#2f5d2b" : "rgba(255,255,255,0.08)",
-        color: tone === "green" ? "#d8fa9d" : "rgba(255,255,255,0.85)",
+        background: tone === "green" ? "#2f5d2b" : "rgb(var(--mg-ink-rgb) / 0.08)",
+        color: tone === "green" ? "var(--mg-green-text)" : "rgb(var(--mg-ink-rgb) / 0.92)",
         border: "1px solid transparent",
         borderRadius: 3,
         padding: "4px 10px",
@@ -2846,13 +2846,13 @@ function ContextCard({ label, value }: { label: string; value: string }) {
   return (
     <div
       style={{
-        background: "rgba(38,36,33,0.94)",
-        color: "rgba(255,255,255,0.85)",
+        background: "var(--mg-surface-glass)",
+        color: "rgb(var(--mg-ink-rgb) / 0.92)",
         backdropFilter: "blur(8px)",
-        border: "1px solid rgba(255,255,255,0.1)",
+        border: "1px solid rgb(var(--mg-ink-rgb) / 0.1)",
         borderRadius: 10,
         padding: "9px 15px",
-        boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
+        boxShadow: "0 4px 14px rgba(17,75,47,0.18)",
         minWidth: 0,
       }}
     >
@@ -2862,7 +2862,7 @@ function ContextCard({ label, value }: { label: string; value: string }) {
           fontWeight: 800,
           letterSpacing: 0.7,
           textTransform: "uppercase",
-          color: "rgba(255,255,255,0.5)",
+          color: "rgb(var(--mg-ink-rgb) / 0.6)",
         }}
       >
         {label}
@@ -2901,9 +2901,9 @@ function ModeSwitch({
         width: 44,
         height: 44,
         borderRadius: 10,
-        background: is_field ? "#5d9948" : "rgba(38,36,33,0.97)",
-        color: "#fff",
-        boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
+        background: is_field ? "var(--mg-green-deep)" : "var(--mg-surface-glass)",
+        color: is_field ? "#fff" : "var(--mg-forest)",
+        boxShadow: "0 4px 14px rgba(17,75,47,0.18)",
         border: "none",
         display: "grid",
         placeItems: "center",
@@ -2938,7 +2938,7 @@ function GeoModeSwitch({
   onCycle: () => void;
 }) {
   const tone =
-    mode === "gps" ? "#5d9948" : mode === "play" ? "#C98A12" : "rgba(38,36,33,0.97)";
+    mode === "gps" ? "var(--mg-green-deep)" : mode === "play" ? "#C98A12" : "var(--mg-surface-glass)";
   return (
     <button
       type="button"
@@ -2950,8 +2950,8 @@ function GeoModeSwitch({
         height: 44,
         borderRadius: 10,
         background: tone,
-        color: "#fff",
-        boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
+        color: mode === "gps" || mode === "play" ? "#fff" : "var(--mg-forest)",
+        boxShadow: "0 4px 14px rgba(17,75,47,0.18)",
         border: "none",
         display: "grid",
         placeItems: "center",
@@ -2961,20 +2961,20 @@ function GeoModeSwitch({
       <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
         {mode === "gps" ? (
           <>
-            <circle cx="12" cy="12" r="3.4" fill="#fff" />
-            <circle cx="12" cy="12" r="7.4" fill="none" stroke="#fff" strokeWidth="1.8" opacity="0.8" />
-            <path d="M12 1.6v3M12 19.4v3M1.6 12h3M19.4 12h3" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
+            <circle cx="12" cy="12" r="3.4" fill="currentColor" />
+            <circle cx="12" cy="12" r="7.4" fill="none" stroke="currentColor" strokeWidth="1.8" opacity="0.8" />
+            <path d="M12 1.6v3M12 19.4v3M1.6 12h3M19.4 12h3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </>
         ) : mode === "play" ? (
           <>
-            <circle cx="12" cy="12" r="8" fill="none" stroke="#fff" strokeWidth="1.8" opacity="0.85" />
-            <circle cx="12" cy="12" r="3.6" fill="#fff" />
-            <path d="M12 3.4v2.2M12 18.4v2.2M3.4 12h2.2M18.4 12h2.2" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
+            <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="1.8" opacity="0.85" />
+            <circle cx="12" cy="12" r="3.6" fill="currentColor" />
+            <path d="M12 3.4v2.2M12 18.4v2.2M3.4 12h2.2M18.4 12h2.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </>
         ) : (
           <path
             d="M6 4.5v15l12-7.5z"
-            fill="#fff"
+            fill="currentColor"
           />
         )}
       </svg>
@@ -2998,9 +2998,9 @@ function Compass({ bearing, onReset }: { bearing: number; onReset: () => void })
         width: 44,
         height: 44,
         borderRadius: 10,
-        background: "rgba(38,36,33,0.97)",
+        background: "var(--mg-surface-glass)",
         border: "none",
-        boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
+        boxShadow: "0 4px 14px rgba(17,75,47,0.18)",
         display: "grid",
         placeItems: "center",
         cursor: "pointer",
@@ -3595,7 +3595,7 @@ export default function App() {
           {geoModeLabel(geo_mode, geo.status)}
         </Chip>
       )}
-      <Chip is_on={Boolean(walk)} tone="#4dc3ea" onClick={toggleWalk}>
+      <Chip is_on={Boolean(walk)} tone="var(--mg-blue)" onClick={toggleWalk}>
         <WalkIcon size={15} />
         {walk ? `End walk · ${walk_count}` : "Start a walk"}
       </Chip>
@@ -3619,7 +3619,7 @@ export default function App() {
         </Chip>
       ))}
       {pin_filter.size > 0 && (
-        <Chip tone="rgba(255,255,255,0.72)" onClick={() => setPinFilter(new Set())}>
+        <Chip tone="rgb(var(--mg-ink-rgb) / 0.78)" onClick={() => setPinFilter(new Set())}>
           Show all
         </Chip>
       )}
@@ -3765,7 +3765,7 @@ export default function App() {
 
       {is_sheet_open && !picked_sector && (
         is_desktop ? (
-          <div style={{ position: "absolute", left: 18, bottom: 84, width: 380, zIndex: 48, maxHeight: "78%", overflow: "hidden", borderRadius: 16, boxShadow: "0 -8px 34px rgba(0,0,0,0.35)" }}>
+          <div style={{ position: "absolute", left: 18, bottom: 84, width: 380, zIndex: 48, maxHeight: "78%", overflow: "hidden", borderRadius: 16, boxShadow: "0 -8px 34px rgba(17,75,47,0.18)" }}>
             <NearbySheet
               sp={play_sheet_sp}
               where={play_sheet_where}
@@ -3839,15 +3839,15 @@ export default function App() {
               onClick={() => setLayer(nextLayer)}
               className="flex items-center gap-1.5"
               style={{
-                background: "rgba(38,36,33,0.94)",
-                color: "rgba(255,255,255,0.85)",
+                background: "var(--mg-surface-glass)",
+                color: "rgb(var(--mg-ink-rgb) / 0.92)",
                 backdropFilter: "blur(8px)",
-                border: "1px solid rgba(255,255,255,0.1)",
+                border: "1px solid rgb(var(--mg-ink-rgb) / 0.1)",
                 borderRadius: 999,
                 padding: "8px 13px",
                 fontSize: 12,
                 fontWeight: 700,
-                boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
+                boxShadow: "0 4px 14px rgba(17,75,47,0.18)",
                 whiteSpace: "nowrap",
                 cursor: "pointer",
               }}
@@ -3938,7 +3938,7 @@ export default function App() {
   };
 
   return (
-    <div style={{ height: "100%", background: "#312e2b", color: "rgba(255,255,255,0.85)", overflowX: "hidden" }}>
+    <div style={{ height: "100%", background: "var(--mg-bg)", color: "rgb(var(--mg-ink-rgb) / 0.92)", overflowX: "hidden" }}>
       <div style={{ position: "relative", height: "100%", overflowX: "hidden" }}>
         {is_play && playBody}
         {is_on_map && map_mode === "field" && mapBody}

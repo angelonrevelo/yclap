@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img">
+<title>Trophy</title>
+<defs><filter id="sticker" x="-20%" y="-20%" width="140%" height="140%">
+  <feMorphology in="SourceAlpha" operator="dilate" radius="4" result="grow"/>
+  <feFlood flood-color="#fff"/><feComposite in2="grow" operator="in" result="edge"/>
+  <feMerge><feMergeNode in="edge"/><feMergeNode in="SourceGraphic"/></feMerge>
+</filter></defs>
+<g filter="url(#sticker)">
+
+  <path d="M26,24 C12,24 12,46 30,48" fill="none" stroke="#0E3B2A" stroke-width="9" stroke-linecap="round"/>
+  <path d="M70,24 C84,24 84,46 66,48" fill="none" stroke="#0E3B2A" stroke-width="9" stroke-linecap="round"/>
+  <path d="M26,24 C12,24 12,46 30,48" fill="none" stroke="#F5C842" stroke-width="4" stroke-linecap="round"/>
+  <path d="M70,24 C84,24 84,46 66,48" fill="none" stroke="#F5C842" stroke-width="4" stroke-linecap="round"/>
+  <path d="M24,16 L72,16 L70,40 C68,56 58,62 48,62 C38,62 28,56 26,40 Z" fill="#F5C842" stroke="#0E3B2A" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M60,20 L68,20 L66,40 C65,50 60,55 54,58 C60,50 61,36 60,20 Z" fill="#F59A23"/>
+  <rect x="42" y="62" width="12" height="10" fill="#F59A23" stroke="#0E3B2A" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <rect x="28" y="72" width="40" height="14" rx="4" fill="#A8582C" stroke="#0E3B2A" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <g transform="translate(40 44) rotate(-50)">
+    <path d="M0,0 C5.04,-6.48 14.04,-5.83 18,0 C14.04,5.83 5.04,6.48 0,0 Z" fill="#7CC84A" stroke="#0E3B2A" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="M2.16,0.9 C7.2,3.6 13.5,2.52 16.56,0 C12.6,4.32 5.4,4.68 2.16,0.9 Z" fill="#3E9A4A"/>
+    <path d="M1.8,0 Q9,-0.54 15.48,0" fill="none" stroke="#0E3B2A" stroke-width="1.21" stroke-linecap="round"/>
+  </g>
+  <path transform="translate(82 10)" d="M0,-7 Q1.4,-1.4 7,0 Q1.4,1.4 0,7 Q-1.4,1.4 -7,0 Q-1.4,-1.4 0,-7 Z" fill="#F59A23"/>
+</g>
+</svg>

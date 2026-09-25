@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img">
+<title>Streak — a leaf flame</title>
+<defs><filter id="sticker" x="-20%" y="-20%" width="140%" height="140%">
+  <feMorphology in="SourceAlpha" operator="dilate" radius="4" result="grow"/>
+  <feFlood flood-color="#fff"/><feComposite in2="grow" operator="in" result="edge"/>
+  <feMerge><feMergeNode in="edge"/><feMergeNode in="SourceGraphic"/></feMerge>
+</filter></defs>
+<g filter="url(#sticker)">
+
+  <path d="M48,8 C52,24 72,30 72,56 C72,72 62,86 48,86 C34,86 24,74 24,58 C24,46 30,38 36,32 C36,42 40,46 44,46 C40,32 44,18 48,8 Z" fill="#F59A23" stroke="#0E3B2A" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M48,34 C54,46 62,52 62,64 C62,76 56,82 48,82 C40,82 34,76 34,66 C34,58 40,54 42,48 C44,54 46,56 48,56 C46,48 46,40 48,34 Z" fill="#F5C842"/>
+  <g transform="translate(40 76) rotate(-70)">
+    <path d="M0,0 C6.16,-7.92 17.16,-7.13 22,0 C17.16,7.13 6.16,7.92 0,0 Z" fill="#7CC84A" stroke="#0E3B2A" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="M2.64,1.1 C8.8,4.4 16.5,3.08 20.24,0 C15.4,5.28 6.6,5.72 2.64,1.1 Z" fill="#3E9A4A"/>
+    <path d="M2.2,0 Q11,-0.66 18.92,0" fill="none" stroke="#0E3B2A" stroke-width="1.21" stroke-linecap="round"/>
+  </g>
+</g>
+</svg>
