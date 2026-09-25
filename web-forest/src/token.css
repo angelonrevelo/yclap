@@ -36,8 +36,8 @@
   --radius-card: 28px;
   --radius-tile: 22px;
   --radius-pill: 999px;
-  --shadow-card: 0 10px 28px rgba(21, 77, 48, 0.10);
-  --shadow-badge: 0 10px 0 rgba(145, 63, 22, 0.22), 0 20px 30px rgba(31, 32, 34, 0.14);
+  --shadow-card: 0 1px 4px rgba(24, 32, 28, 0.12);
+  --shadow-badge: 0 3px 0 rgba(145, 63, 22, 0.28);
   --type-family: Montserrat, "Avenir Next", "Century Gothic", sans-serif;
   --type-weight-regular: 400;
   --type-weight-strong: 700;

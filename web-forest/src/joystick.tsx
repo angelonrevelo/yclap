@@ -167,7 +167,6 @@ export default function Joystick({ onSteer, is_on, bottom = 178 }: Props) {
         touchAction: "none",
         display: "grid",
         placeItems: "center",
-        background: "radial-gradient(circle, rgba(255,252,242,0.5) 0%, rgba(255,252,242,0.22) 62%, rgba(255,252,242,0) 72%)",
         cursor: is_held ? "grabbing" : "grab",
         userSelect: "none",
         WebkitUserSelect: "none",
@@ -183,7 +182,6 @@ export default function Joystick({ onSteer, is_on, bottom = 178 }: Props) {
           borderRadius: "50%",
           border: "2px solid rgba(255,255,255,0.8)",
           background: "rgba(38,58,36,0.16)",
-          boxShadow: "inset 0 2px 10px rgba(24,38,20,0.18)",
         }}
       />
       {/* The compass ticks. Purely orienting: the stick is screen-relative, so
@@ -218,10 +216,11 @@ export default function Joystick({ onSteer, is_on, bottom = 178 }: Props) {
           transform: `translate(${knob.x}px, ${knob.y}px)`,
           transition: is_held ? "none" : "transform 140ms cubic-bezier(.2,.9,.3,1)",
           background: is_walking
-            ? "radial-gradient(circle at 34% 30%, #FFF6DE 0%, #F0B429 58%, #C98A12 100%)"
-            : "radial-gradient(circle at 34% 30%, #FFFDF6 0%, #E9E2CF 60%, #C9C0A9 100%)",
+            ? "#F5C842"
+            : "#FFFFFF",
           border: "2px solid rgba(255,255,255,0.95)",
-          boxShadow: "0 5px 14px rgba(24,38,20,0.34)",
+          /* Flat (09-25): a solid darker bottom edge is the only depth. */
+          boxShadow: is_walking ? "0 3px 0 #C98A12" : "0 3px 0 #C9CCC4",
           display: "grid",
           placeItems: "center",
         }}

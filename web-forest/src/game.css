@@ -10,6 +10,15 @@
  * button) that 9d2ae49 introduced. The class names keep their `gm-` prefix so
  * the components did not have to move; the tokens are `--mg-*`.
  *
+ * FLAT, since 09-25. Gelo: "I really don't like the shadow-ish neomorphism
+ * vibe... it doesn't fit the Pokémon Go vibe" — he wants neutral, simple,
+ * "3D-ish but not over in shadows and detail". So the rules now are: white or
+ * off-white panels on a neutral ground, ONE small drop shadow at most, no inset
+ * highlights, no text shadows, no gradients on chrome. Depth on anything you
+ * press is a solid darker bottom edge (`0 3px 0 <darker>`), not a blur. The
+ * colour lives in the art (the recoloured game icons, the stickers), not in the
+ * panels.
+ *
  * Art lives in public/brand/magi (vector, drawn by script/magi-asset/build-
  * vector.mjs) and src/asset/magi/sticker (the codex-generated sticker set).
  */
@@ -19,9 +28,9 @@
   --mg-ink: #0e3b2a;
   --mg-forest: #114b2f;
   --mg-teal: #11646c;
-  --mg-bg: #eef8e7;
+  --mg-bg: #f3f5f1;
   --mg-surface: #ffffff;
-  --mg-surface-2: #f3faec;
+  --mg-surface-2: #f1f3ef;
   --mg-surface-glass: rgba(255, 255, 255, 0.95);
   --mg-hover: rgb(var(--mg-ink-rgb) / 0.05);
   --mg-subtle: rgb(var(--mg-ink-rgb) / 0.1);
@@ -45,9 +54,14 @@
   --mg-wood-dark: #6b3519;
   --mg-cream: #fff6dc;
   --mg-heading: "Fredoka", "Nunito", "Segoe UI", system-ui, sans-serif;
-  --mg-shadow: 0 16px 36px rgba(17, 75, 47, 0.18);
-  --mg-shadow-sm: 0 6px 16px rgba(17, 75, 47, 0.14);
-  --mg-sticker: 0 0 0 3px #fff, 0 6px 16px rgba(17, 75, 47, 0.16);
+  /* One crisp shadow each, neutral not forest-tinted. --mg-sticker keeps its
+     name (components read it) but is a hairline edge plus that one shadow. */
+  --mg-shadow: 0 2px 8px rgba(24, 32, 28, 0.14);
+  --mg-shadow-sm: 0 1px 4px rgba(24, 32, 28, 0.12);
+  --mg-shadow-up: 0 -1px 6px rgba(24, 32, 28, 0.1);
+  --mg-sticker: 0 0 0 1px rgba(24, 32, 28, 0.08), 0 1px 4px rgba(24, 32, 28, 0.12);
+  --mg-lagoon: #279cad;
+  --mg-neutral: #e6e9e4;
   --mg-motion: 150ms ease;
   --mg-bounce: 380ms cubic-bezier(0.2, 1.4, 0.4, 1);
 }
@@ -58,12 +72,11 @@
   letter-spacing: 0.005em;
 }
 
-/* The primary: a round leafy button with a firm darker lip, like a sticker you press. */
+/* The primary: a flat leaf-green button whose only depth is a darker bottom edge. */
 .mg-btn-primary {
   color: #fff;
-  background: linear-gradient(180deg, #5cb85a 0%, var(--mg-green) 100%);
-  box-shadow: inset 0 2px 0 0 rgba(255, 255, 255, 0.28), 0 3px 0 0 var(--mg-green-deep);
-  text-shadow: 0 1px 0 rgba(14, 59, 42, 0.25);
+  background: var(--mg-green);
+  box-shadow: 0 3px 0 0 var(--mg-green-deep);
   font-family: var(--mg-heading);
   transition: filter var(--mg-motion), transform var(--mg-motion);
 }
@@ -72,21 +85,20 @@
 }
 .mg-btn-primary:active {
   transform: translateY(2px);
-  box-shadow: inset 0 2px 0 0 rgba(255, 255, 255, 0.2), 0 1px 0 0 var(--mg-green-deep);
+  box-shadow: 0 1px 0 0 var(--mg-green-deep);
 }
 
 .mg-btn-secondary {
   color: var(--mg-text-boldest);
   background: #fff;
-  box-shadow: inset 0 0 0 1.5px var(--mg-line), 0 2px 0 0 rgb(var(--mg-ink-rgb) / 0.08);
+  box-shadow: 0 0 0 1.5px var(--mg-line), 0 2px 0 0 var(--mg-neutral);
 }
 
 /* A wood plank: quests, directions, the slogan board on the posters. */
 .mg-plank {
   color: var(--mg-cream);
-  background: linear-gradient(180deg, #c06c38 0%, var(--mg-wood) 100%);
-  box-shadow: inset 0 0 0 2px var(--mg-wood-dark), inset 0 3px 0 0 rgba(255, 255, 255, 0.22), 0 4px 10px rgba(107, 53, 25, 0.25);
-  text-shadow: 0 1px 0 rgba(107, 53, 25, 0.5);
+  background: var(--mg-wood);
+  box-shadow: 0 3px 0 0 var(--mg-wood-dark);
 }
 
 /* The world behind every sheet: sky at the top, mint paper below. */
@@ -130,8 +142,7 @@
   border-radius: 14px;
   display: grid;
   place-items: center;
-  background: linear-gradient(180deg, #d9f1ff 0%, #e6f7d8 100%);
-  box-shadow: inset 0 0 0 2px rgba(124, 200, 74, 0.45);
+  background: var(--mg-surface-2);
 }
 
 /* The level: a sunny sticker disc hung off the avatar corner. */
@@ -146,7 +157,7 @@
   display: grid;
   place-items: center;
   background: var(--mg-sun);
-  box-shadow: 0 0 0 2.5px #fff;
+  box-shadow: 0 0 0 2px #fff;
   color: var(--mg-ink);
   font-family: var(--mg-heading);
   font-weight: 700;
@@ -205,8 +216,7 @@
   position: relative;
   height: 8px;
   border-radius: 99px;
-  background: #e3f3d6;
-  box-shadow: inset 0 1px 2px rgb(var(--mg-ink-rgb) / 0.12);
+  background: var(--mg-neutral);
   overflow: hidden;
 }
 
@@ -217,8 +227,7 @@
   left: 0;
   min-width: 8px;
   border-radius: 99px;
-  background: linear-gradient(90deg, var(--mg-leaf) 0%, var(--mg-green) 100%);
-  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35);
+  background: var(--mg-green);
   transition: width 0.6s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 
@@ -255,8 +264,8 @@
   border-radius: 14px;
   text-align: left;
   color: var(--mg-cream);
-  background: linear-gradient(180deg, #c06c38 0%, var(--mg-wood) 100%);
-  box-shadow: inset 0 0 0 2px var(--mg-wood-dark), inset 0 3px 0 0 rgba(255, 255, 255, 0.2), 0 0 0 2.5px #fff, 0 6px 14px rgba(107, 53, 25, 0.25);
+  background: var(--mg-wood);
+  box-shadow: 0 3px 0 0 var(--mg-wood-dark);
   transition: transform var(--mg-motion);
 }
 .gm-quest:active {
@@ -272,7 +281,6 @@
   display: grid;
   place-items: center;
   background: var(--mg-cream);
-  box-shadow: 0 0 0 2px var(--mg-wood-dark);
 }
 
 .gm-quest-body {
@@ -303,7 +311,6 @@
   font-size: 14.5px;
   line-height: 1.15;
   color: #fff;
-  text-shadow: 0 1px 0 rgba(107, 53, 25, 0.55);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -320,7 +327,7 @@
 .gm-quest-hint {
   font-size: 11.5px;
   font-weight: 600;
-  color: rgba(255, 246, 220, 0.78);
+  color: rgba(255, 246, 220, 0.9);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -349,7 +356,6 @@
   border-radius: 999px;
   background: var(--mg-sun);
   color: var(--mg-ink);
-  box-shadow: inset 0 -2px 0 rgba(217, 144, 15, 0.45);
   font-family: var(--mg-heading);
   font-weight: 700;
   font-size: 12.5px;
@@ -360,7 +366,7 @@
   background: var(--mg-lime);
 }
 
-/* ── Dock: a leafy tab bar with the camera raised in the middle ──────────── */
+/* ── Dock: a plain white tab bar with the camera raised in the middle ───── */
 
 .gm-dock {
   position: absolute;
@@ -381,22 +387,10 @@
   padding: 0 6px 10px;
   border-radius: 24px 24px 0 0;
   background: #fff;
-  box-shadow: 0 -2px 0 0 rgba(124, 200, 74, 0.55), 0 -10px 28px rgba(17, 75, 47, 0.16);
+  box-shadow: 0 -1px 0 0 rgba(24, 32, 28, 0.08), var(--mg-shadow-up);
 }
-/* A hedge along the top edge of the dock: the posters frame everything in leaves. */
-.gm-dock-bar::before {
-  content: "";
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  top: -9px;
-  height: 12px;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 8px 10px, var(--mg-leaf) 7px, transparent 7.5px) 0 0 / 30px 12px repeat-x,
-    radial-gradient(circle at 22px 12px, var(--mg-green) 6px, transparent 6.5px) 0 0 / 30px 12px repeat-x;
-  opacity: 0.9;
-}
+/* The leaf hedge that ran along the dock's top edge is gone (09-25, flat pass):
+   it was detail on chrome, and the chrome is meant to be quiet. */
 
 .gm-dock-btn {
   display: flex;
@@ -422,7 +416,7 @@
 }
 .gm-dock-btn[data-active="true"] .gm-ico {
   opacity: 1;
-  transform: translateY(-3px) scale(1.12) rotate(-4deg);
+  transform: translateY(-2px) scale(1.08);
 }
 .gm-dock-btn[data-active="true"] .gm-dock-label::after {
   content: "";
@@ -458,7 +452,7 @@
   margin-bottom: -2px;
 }
 
-/* The camera: a round sky lens with a white sticker ring, not a green slab. */
+/* The camera: a flat lagoon disc with a white ring — Pokémon GO's one big button. */
 .gm-go-core {
   width: 70px;
   height: 70px;
@@ -466,8 +460,8 @@
   border-radius: 999px;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at 35% 30%, #d9f1ff 0%, #8ed3fa 45%, #279cad 100%);
-  box-shadow: 0 0 0 4px #fff, 0 0 0 6.5px var(--mg-green), 0 10px 22px rgba(17, 75, 47, 0.3);
+  background: #d7eef5;
+  box-shadow: 0 0 0 4px #fff, 0 0 0 6px var(--mg-lagoon), 0 3px 8px rgba(24, 32, 28, 0.18);
   transition: filter var(--mg-motion), transform var(--mg-bounce);
   animation: gm-breathe 3.2s ease-in-out infinite;
 }
@@ -502,7 +496,7 @@
   border-radius: 999px;
   background: #fff;
   color: var(--mg-text-bolder);
-  box-shadow: var(--mg-sticker), var(--mg-shadow);
+  box-shadow: var(--mg-shadow);
   font-weight: 600;
   font-size: 14px;
   white-space: nowrap;
@@ -539,7 +533,7 @@
   gap: 14px;
   padding: 14px 16px;
   border-radius: 22px;
-  background: linear-gradient(120deg, #ffffff 0%, #eaf8e0 100%);
+  background: #fff;
   box-shadow: var(--mg-sticker);
 }
 
@@ -564,7 +558,7 @@
   height: 8px;
   margin-top: 10px;
   border-radius: 99px;
-  background: #e3f3d6;
+  background: var(--mg-neutral);
   overflow: hidden;
 }
 
@@ -577,7 +571,7 @@
   white-space: nowrap;
 }
 
-/* A field-guide card: white sticker, a little sky-to-grass window for the tree. */
+/* A field-guide card: a white panel with a flat pale window for the tree. */
 .gm-card {
   position: relative;
   min-width: 0;
@@ -597,7 +591,7 @@
   top: 6px;
   height: 56%;
   border-radius: 15px;
-  background: linear-gradient(180deg, #d9f1ff 0%, #eef9e4 70%, #d7efc0 100%);
+  background: #eef4ec;
   z-index: 0;
 }
 .gm-card > * {
@@ -608,11 +602,11 @@
   transform: scale(0.97);
 }
 .gm-card[data-locked="true"] {
-  background: #f5faf0;
-  box-shadow: inset 0 0 0 2px rgb(var(--mg-ink-rgb) / 0.08);
+  background: #f7f8f6;
+  box-shadow: 0 0 0 1px rgba(24, 32, 28, 0.08);
 }
 .gm-card[data-locked="true"]::before {
-  background: repeating-linear-gradient(135deg, #eaf4e2 0 8px, #e2efd8 8px 16px);
+  background: var(--mg-neutral);
 }
 
 .gm-card-no {

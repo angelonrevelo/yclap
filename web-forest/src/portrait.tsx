@@ -68,7 +68,7 @@ export function SpeciesPortrait({
         overflow: "hidden",
         background: "rgba(12,28,16,0.12)",
         border: "2px solid rgba(255,255,255,0.85)",
-        boxShadow: "0 4px 12px rgba(12,28,16,0.22)",
+        boxShadow: "var(--mg-shadow-sm)",
         display: "grid",
         placeItems: "center",
         ...style,
