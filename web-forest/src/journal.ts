@@ -34,6 +34,12 @@ export interface Sighting {
    * photographed "No. 7" should still find No. 7 tomorrow.
    */
   entry_index: number;
+  /**
+   * True when the species was picked off the RECORDED demo identify reply —
+   * the booth's replay, not a read of this photo. Such an entry can never be
+   * "Local verified". Absent on rows saved before the flag existed.
+   */
+  is_demo_id?: boolean;
 }
 
 /** One recorded position along a walk. Kept flat so it survives JSON round-trip. */
@@ -106,6 +112,7 @@ function parse(raw: string | null): Sighting[] {
              stored position, which is fixed, so the assignment is stable too. */
           entry_index: num(r.entry_index) ?? 0,
           reported_name: str(r.reported_name),
+          ...(r.is_demo_id === true ? { is_demo_id: true } : {}),
         },
       ];
     });
@@ -134,6 +141,7 @@ export interface SightingDraft {
   walk_id?: string | null;
   entry_kind?: "badge" | "contribution";
   reported_name?: string | null;
+  is_demo_id?: boolean;
 }
 
 export function addSighting(draft: SightingDraft): Sighting {
@@ -153,6 +161,7 @@ export function addSighting(draft: SightingDraft): Sighting {
     entry_kind: draft.entry_kind ?? "badge",
     reported_name: draft.reported_name?.trim() || null,
     entry_index: 0,
+    ...(draft.is_demo_id ? { is_demo_id: true } : {}),
   };
   const row = readSighting();
   next.entry_index = nextEntryIndex(row);
@@ -392,8 +401,11 @@ export interface Progress {
   level: number;
   stage: Stage;
   progress: number;
-  /** Distinct species photographed (badges only). */
+  /** Distinct species logged (badges only), with or without a photo. */
   seen_count: number;
+  /** Distinct species with at least one badge that carries a photo — what
+   *  "species photographed" may honestly claim. */
+  photographed_count: number;
   badge_count: number;
   contribution_count: number;
   /** Sectors this journal has a located badge inside. */
@@ -414,6 +426,7 @@ export function progressOf(row: Sighting[], now: number = Date.now()): Progress 
     stage: stageFor(sector_seen_count),
     progress: progressPointsOf(row),
     seen_count: seenCode(badge_row).size,
+    photographed_count: seenCode(badge_row.filter((s) => Boolean(s.photo_data))).size,
     badge_count: badge_row.length,
     contribution_count: row.filter(isContribution).length,
     sector_seen_count,

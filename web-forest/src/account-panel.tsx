@@ -42,6 +42,8 @@ const INPUT: CSSProperties = {
   color: "var(--mg-text-boldest)",
   fontSize: 13.5,
   fontWeight: 700,
+  /* 44 px: the smallest hit area a thumb reliably lands on. */
+  minHeight: 44,
   boxSizing: "border-box",
 };
 
@@ -54,6 +56,7 @@ const BTN: CSSProperties = {
   fontWeight: 800,
   fontSize: 12.5,
   cursor: "pointer",
+  minHeight: 44,
 };
 
 const GHOST: CSSProperties = {

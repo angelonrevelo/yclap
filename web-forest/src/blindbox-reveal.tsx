@@ -80,7 +80,7 @@ export function BlindboxShelf({ refresh_key }: { refresh_key?: unknown }) {
           onClick={openNext}
           disabled={waiting.length === 0}
           className="mg-btn-primary"
-          style={{ height: 38, padding: "0 16px", borderRadius: 8, fontWeight: 700, fontSize: 14, opacity: waiting.length === 0 ? 0.45 : 1 }}
+          style={{ height: 44, padding: "0 18px", borderRadius: 8, fontWeight: 700, fontSize: 14, opacity: waiting.length === 0 ? 0.45 : 1 }}
         >
           Open
         </button>
@@ -182,7 +182,7 @@ function BlindboxReveal({ result, onDismiss }: { result: OpenResult; onDismiss: 
               type="button"
               onClick={onDismiss}
               className="mg-btn-primary"
-              style={{ marginTop: 8, height: 40, padding: "0 24px", borderRadius: 8, fontWeight: 700, fontSize: 14 }}
+              style={{ marginTop: 8, height: 44, padding: "0 24px", borderRadius: 8, fontWeight: 700, fontSize: 14 }}
             >
               Keep it
             </button>

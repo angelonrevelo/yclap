@@ -1,6 +1,7 @@
 import { biomeContains, drawn_biome, type Biome } from "./biome.ts";
 import { encounter, ENCOUNTER_RADIUS_M, type Encounter } from "./data.ts";
 import { sectorAt, sectorContains, type Sector } from "./sector.ts";
+import type { Spawn } from "./spawn.ts";
 import { bearingDegree, compassPoint, distanceMeter, type LatLon } from "./geo.ts";
 
 export interface NearbyEncounter {
@@ -110,4 +111,25 @@ export function residentBySector(pool: Encounter[] = encounter): Map<string, Enc
     out.set(at.sector_code, list);
   }
   return out;
+}
+
+export interface TrayRow {
+  spawn: Spawn;
+  /** How many finds of this species are out right now (the first is the nearest). */
+  find_count: number;
+}
+
+/**
+ * The Nearby tray's rows: one per species, in the order the finds arrive
+ * (nearest first), so a species out twice — two Macarthur Palms — is listed
+ * once with its count instead of as two identical tiles.
+ */
+export function trayRow(spawn: Spawn[], limit = 8): TrayRow[] {
+  const by_code = new Map<string, TrayRow>();
+  for (const s of spawn) {
+    const hit = by_code.get(s.species_code);
+    if (hit) hit.find_count += 1;
+    else by_code.set(s.species_code, { spawn: s, find_count: 1 });
+  }
+  return [...by_code.values()].slice(0, limit);
 }

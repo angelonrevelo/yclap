@@ -225,6 +225,8 @@ const INPUT: React.CSSProperties = {
   color: "var(--mg-text-boldest)",
   fontSize: 13.5,
   fontWeight: 700,
+  /* 44 px: the smallest hit area a thumb reliably lands on. */
+  minHeight: 44,
 };
 
 const BTN: React.CSSProperties = {
@@ -236,6 +238,7 @@ const BTN: React.CSSProperties = {
   fontWeight: 800,
   fontSize: 12.5,
   cursor: "pointer",
+  minHeight: 44,
   flexShrink: 0,
 };
 
@@ -244,6 +247,7 @@ export default function SettingsScreen({
   preference,
   onPreference,
   walker_name,
+  account_name = null,
   join_code,
   is_live,
   icon = {},
@@ -254,6 +258,8 @@ export default function SettingsScreen({
   preference: Preference;
   onPreference: (next: Preference) => void;
   walker_name: string;
+  /** The signed-in account's display_name — what everybody else sees — or null when signed out. */
+  account_name?: string | null;
   join_code: string;
   is_live: boolean;
   icon?: SettingsIcon;
@@ -489,6 +495,14 @@ export default function SettingsScreen({
                   <tr>
                     <Td is_head>Display name</Td>
                     <Td>
+                      {account_name ? (
+                        <>
+                          <div style={{ fontSize: 15, fontWeight: 900, color: "var(--mg-forest)" }}>{account_name}</div>
+                          <div style={{ fontSize: 11, color: TONE.faint, marginTop: 3, lineHeight: 1.4 }}>
+                            Your account's name — the one the live campus sees while you are signed in.
+                          </div>
+                        </>
+                      ) : (
                       <div style={{ display: "flex", gap: 6 }}>
                         <input
                           value={name_draft}
@@ -505,6 +519,7 @@ export default function SettingsScreen({
                           Save
                         </button>
                       </div>
+                      )}
                     </Td>
                   </tr>
                   <tr>

@@ -104,3 +104,13 @@ export function displayName(common_name: string): string {
   if (!common_name) return common_name;
   return common_name.charAt(0).toUpperCase() + common_name.slice(1);
 }
+
+/**
+ * Title Case for a DISPLAY slot that lists names side by side (the Nearby
+ * tray), where "aji pepper" beside "Yellow Flame Tree" reads as a data bug.
+ * Only first letters are raised — nothing is lowered, so "Hanging-Parrot" and
+ * an all-caps acronym survive — and the stored name is never touched.
+ */
+export function titleName(common_name: string): string {
+  return common_name.replace(/(^|[\s(/-])(\p{Ll})/gu, (_m, lead: string, letter: string) => lead + letter.toUpperCase());
+}

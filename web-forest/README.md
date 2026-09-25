@@ -163,6 +163,12 @@ connection". It also shows the names, taxon kind, rarity band from the campus
 count, whether the species is in your journal, the curated Learn text where it
 exists, and Open in Seek. Opening it is a Learn (+10) under the same
 `species:<code>` subject as the Learn sheet, so it pays once per species.
+The tall pin sheet opens on the same turning model (`SpeciesHero`, exported
+from the card's chunk) instead of a flat drawing; on a desktop it sits under
+the HUD and the daily-hunt chip with "Log this sighting" pinned in view. Every
+sheet — the card (sticky header), the pin sheet and the Buddy sheet — has a
+44×44 × close, and Escape closes the top open sheet. The Buddy sheet rises from
+behind the dock, so every dock button stays tappable while it is open.
 
 ## What is out right now
 
@@ -369,7 +375,9 @@ The play layer, wired in `src/live.tsx`:
   `40:00` — *"you have to keep the fire small"*), never overlaps the plant, and
   always carries its number.
 - **`gamify.ts`** — device-local points (Explore 10, Learn 10, Observe 25,
-  Hunt 40, Local verified 50), weekly streak, Biodiversity Buddy, a seeded
+  Hunt 40, Local verified 50 — never for a pick off the recorded demo
+  identify reply, which saves with `is_demo_id` and reads "Needs ID · Demo
+  ID"), weekly streak, Biodiversity Buddy, a seeded
   demo board, and one daily hunt (a tree + a biome, deterministic per
   player-day). Observe awards once per `species+sector`. Hunt pays when the
   daily species is logged. The board is never an official AIS rank.

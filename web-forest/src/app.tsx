@@ -18,7 +18,7 @@ import { haptic } from "./haptic";
 import StreakFlame from "./streak-flame";
 import SettingsScreen, { type SettingsIcon } from "./settings";
 import { useAccount, useAccountSync } from "./account";
-import { levelOf } from "./level";
+import { levelOf, levelStart } from "./level";
 import { liveNameOf } from "./multiplayer";
 import { hallLabelOf, useHall } from "./remote-walker";
 import {
@@ -41,6 +41,8 @@ const CharacterModel = lazy(() => import("./character-model"));
 /* The 3D species card — lazy for the same reason: the species pack's viewer is
    fetched the first time a card opens, never at boot. */
 const SpeciesCard = lazy(() => import("./species-card"));
+/* The pin sheet's hero is the card's own turning model — same lazy chunk. */
+const SpeciesHero = lazy(() => import("./species-card").then((m) => ({ default: m.SpeciesHero })));
 import { learnSubject } from "./species-card-core";
 import { biome_sector, sectorAt, sectorByCode, sector as sector_row, type Sector } from "./sector";
 import Viewfinder, { type Shot } from "./camera";
@@ -103,11 +105,11 @@ import {
 import { CAMPUS_CENTER, distanceMeter, formatLatLon, formatMeter, formatWalkMinute, meterPerPixel, WALK_PACE_MS, type GeoState } from "./geo";
 import { LAYER_ORDER, nextLayer, prefetchCampus, SOURCE, type Layer, type View } from "./tile-map";
 import { geoModeLabel, nextGeoMode, useGeo, type GeoMode } from "./use-geo";
-import { biomePresenceAt, rankEncounter, sectorResident, type BiomePresence } from "./nearby";
+import { biomePresenceAt, rankEncounter, sectorResident, trayRow, type BiomePresence } from "./nearby";
 import { cosmeticForStage } from "./cosmetic";
 import { BlindboxShelf } from "./blindbox-reveal";
 import { BadgeShelf, loadSpawnPool, RarityPill, reachableSpawn, useLiveWorld, useSpawnWorld, WildShelf, WorldStrip } from "./live";
-import { displayName, kindOf } from "./kind";
+import { displayName, kindOf, titleName } from "./kind";
 import { SpeciesPortrait } from "./portrait.tsx";
 import { icon, settings_icon as kit_settings_icon, sticker } from "./asset/kit";
 import type { Rarity, Spawn, SpawnPoolEntry } from "./spawn";
@@ -125,8 +127,8 @@ import {
 import { matchCampus, suggestedPick } from "./inat-match";
 import { pinReply } from "./pin-reply";
 import InatStrip from "./inat-strip";
-import { Card, Chip, Eyebrow, Fab, GlyphDisc, Pill, PrimaryPill, RADIUS, SpeciesPill, TaxonName, TaxonThumb } from "./ui";
-import { DexCard, DexHeader, GameDock, GameToast, PlayerHud, QuestBanner, TodayHuntCard } from "./hud";
+import { Card, Chip, Eyebrow, Fab, GlyphDisc, Pill, PrimaryPill, RADIUS, SheetClose, SpeciesPill, TaxonName, TaxonThumb } from "./ui";
+import { DexCard, DexHeader, GameDock, GameToast, PlayerHud, QuestBanner, StageSticker, TodayHuntCard } from "./hud";
 import {
   CameraIcon,
   CanopyIcon,
@@ -351,6 +353,7 @@ function PartnerCard({
             flex: 1,
             minWidth: 0,
             padding: "9px 11px",
+            minHeight: 44,
             borderRadius: 12,
             border: "1.5px solid rgb(var(--mg-ink-rgb) / 0.14)",
             background: "#fff",
@@ -368,6 +371,7 @@ function PartnerCard({
           }}
           style={{
             padding: "9px 14px",
+            minHeight: 44,
             borderRadius: 12,
             border: "none",
             background: "var(--mg-green)",
@@ -423,7 +427,9 @@ function PartnerCard({
                   fontSize: 18,
                   lineHeight: 1,
                   cursor: "pointer",
-                  padding: "2px 6px",
+                  width: 44,
+                  height: 44,
+                  margin: "-10px -8px",
                 }}
               >
                 ×
@@ -479,8 +485,13 @@ function TrainerSheet({
   onClose: () => void;
 }) {
   return (
-    <div className="absolute inset-0" style={{ zIndex: 60 }} onClick={onClose}>
+    /* At 49, under the dock (50): the sheet rises from behind the tab bar, so
+       every dock button stays tappable while it is open. It sat at 60 over the
+       whole dock, and the only way out was a thin grab bar. */
+    <div className="absolute inset-0" style={{ zIndex: 49 }} onClick={onClose}>
       <div
+        role="dialog"
+        aria-label="Your buddy"
         onClick={(e) => e.stopPropagation()}
         className="absolute inset-x-0 bottom-0"
         style={{
@@ -491,10 +502,27 @@ function TrainerSheet({
           borderTopLeftRadius: 16,
           borderTopRightRadius: 16,
           boxShadow: "var(--mg-shadow-up)",
-          padding: "18px 18px 28px",
+          padding: "0 18px 28px",
         }}
       >
-        <div style={{ width: 42, height: 4, borderRadius: 999, background: "rgb(var(--mg-ink-rgb) / 0.28)", margin: "0 auto 14px" }} />
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 2,
+            margin: "0 -18px",
+            padding: "6px 10px 0",
+            background: "var(--mg-surface)",
+            display: "flex",
+            justifyContent: "flex-end",
+          }}
+        >
+          <span
+            aria-hidden="true"
+            style={{ position: "absolute", left: "50%", top: 10, width: 42, height: 4, marginLeft: -21, borderRadius: 999, background: "rgb(var(--mg-ink-rgb) / 0.28)" }}
+          />
+          <SheetClose onClose={onClose} />
+        </div>
         <div className="flex items-center gap-3">
           <div style={{ width: 72, height: 72, borderRadius: 999, overflow: "hidden", background: "#2f5d2b", border: "3px solid var(--mg-green)" }}>
             <Character stage={stage} vigor={vigor} size={68} is_idle_animated />
@@ -546,7 +574,7 @@ function TrainerSheet({
           <Chip is_on={geo_mode === "gps"} onClick={onCycleMode}>
             {geoModeLabel(geo_mode, geo_status)}
           </Chip>
-          <button type="button" onClick={onPlan} style={{ fontWeight: 700, fontSize: 13, color: "var(--mg-blue)" }}>
+          <button type="button" onClick={onPlan} style={{ fontWeight: 700, fontSize: 13, color: "var(--mg-blue)", minWidth: 44, minHeight: 44, padding: "0 8px" }}>
             Plan
           </button>
         </div>
@@ -579,11 +607,12 @@ function JoinRow({ onJoin }: { onJoin: (code: string) => void }) {
           background: "rgba(17,75,47,0.1)",
           color: "rgb(var(--mg-ink-rgb) / 0.92)",
           padding: "8px 10px",
+          minHeight: 44,
           fontWeight: 800,
           letterSpacing: "0.12em",
         }}
       />
-      <button type="submit" style={{ fontWeight: 800, fontSize: 13, color: "var(--mg-green-text)" }}>
+      <button type="submit" style={{ fontWeight: 800, fontSize: 13, color: "var(--mg-green-text)", minWidth: 44, minHeight: 44, padding: "0 8px" }}>
         Join
       </button>
     </form>
@@ -601,7 +630,8 @@ function NearbySightTray({
   onPick: (row: Spawn) => void;
   onClose: () => void;
 }) {
-  const row = spawn.slice(0, 8);
+  /* One tile per species: two finds of the same palm are one tile with "×2". */
+  const row = trayRow(spawn, 8);
   /* A card with a header and a four-column grid, sat just above the dock.
      It was one horizontal strip at bottom 148 — the last find cut off at the
      right edge with nothing saying it scrolled, and the strip parked right
@@ -640,13 +670,13 @@ function NearbySightTray({
             None nearby yet — finds appear as the world loads and as you walk.
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "10px 8px" }}>
-            {row.map((s) => (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "10px 2px", margin: "0 -6px" }}>
+            {row.map(({ spawn: s, find_count }) => (
               <button
                 key={s.spawn_id}
                 type="button"
                 onClick={() => onPick(s)}
-                style={{ minWidth: 0, textAlign: "center" }}
+                style={{ minWidth: 0, textAlign: "center", position: "relative" }}
               >
                 <SpeciesPortrait
                   scientific_name={s.scientific_name}
@@ -655,18 +685,44 @@ function NearbySightTray({
                   size={52}
                   style={{ margin: "0 auto", background: "var(--mg-surface-2)" }}
                 />
+                {find_count > 1 && (
+                  <span
+                    aria-label={`${find_count} out nearby`}
+                    style={{
+                      position: "absolute",
+                      top: -2,
+                      right: 2,
+                      padding: "0 5px",
+                      borderRadius: 99,
+                      background: "var(--mg-forest)",
+                      color: "#fff",
+                      fontSize: 11,
+                      fontWeight: 800,
+                      lineHeight: "18px",
+                    }}
+                  >
+                    ×{find_count}
+                  </span>
+                )}
+                {/* Up to three lines at 12 px rather than one at 10 cut off
+                    with "…" — the tray is only as tall as its longest name. */}
                 <div
+                  title={titleName(s.common_name)}
                   style={{
-                    fontSize: 10,
-                    fontWeight: 800,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    lineHeight: 1.18,
+                    letterSpacing: "-0.01em",
                     marginTop: 4,
-                    whiteSpace: "nowrap",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: "vertical",
                     overflow: "hidden",
-                    textOverflow: "ellipsis",
+                    overflowWrap: "break-word",
                     color: seen.has(s.species_code) ? "var(--mg-green-text)" : "rgb(var(--mg-ink-rgb) / 0.78)",
                   }}
                 >
-                  {s.common_name}
+                  {titleName(s.common_name)}
                 </div>
               </button>
             ))}
@@ -697,7 +753,8 @@ function PointsStreakCard({ snap, is_desktop }: { snap: GamifySnapshot; is_deskt
             {snap.total_points}
           </div>
           <div style={{ fontSize: 11, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 2 }}>
-            Hunt {POINT_VALUE.challenge} · Log {POINT_VALUE.observe}
+            {/* The rates, not a breakdown of the total above — labelled as such. */}
+            What earns points: hunt +{POINT_VALUE.challenge} · log +{POINT_VALUE.observe}
           </div>
         </div>
         <div
@@ -909,9 +966,12 @@ function NearbySheet({
   onLog,
   onDismiss,
   onOpenCard,
+  pool,
   is_panel = false,
 }: {
   sp: Species;
+  /** The spawn pool, so the hero can find the species' model. */
+  pool: SpawnPoolEntry[];
   where: string;
   distance_line: string | null;
   onLog: () => void;
@@ -944,24 +1004,37 @@ function NearbySheet({
         animation: "fgup .32s cubic-bezier(.2,.8,.2,1)",
       }}
     >
-      <button
-        onClick={onDismiss}
-        aria-label="Collapse"
-        style={{ display: "block", width: 42, height: 5, borderRadius: 999, background: "rgb(var(--mg-ink-rgb) / 0.28)", margin: "4px auto 6px", flexShrink: 0 }}
-      />
+      {/* The grab bar is a hint; the × is the button (44×44). */}
+      <div style={{ position: "relative", display: "flex", justifyContent: "flex-end", margin: is_panel ? "-4px -10px 0" : "0 -14px 0", flexShrink: 0 }}>
+        <span
+          aria-hidden="true"
+          style={{ position: "absolute", left: "50%", top: 6, width: 42, height: 5, marginLeft: -21, borderRadius: 999, background: "rgb(var(--mg-ink-rgb) / 0.28)" }}
+        />
+        <SheetClose onClose={onDismiss} label="Close" />
+      </div>
 
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", paddingTop: 4, flexShrink: 0 }}>
-        <TaxonThumb species_code={sp.species_code} size={132} style={{ boxShadow: "var(--mg-shadow-sm)" }} />
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flexShrink: 0 }}>
+        <div style={{ width: "100%" }}>
+          <Suspense
+            fallback={
+              <div style={{ height: is_panel ? 140 : 170, display: "grid", placeItems: "center" }}>
+                <TaxonThumb species_code={sp.species_code} size={120} style={{ boxShadow: "var(--mg-shadow-sm)" }} />
+              </div>
+            }
+          >
+            <SpeciesHero key={sp.species_code} species_code={sp.species_code} pool={pool} height={is_panel ? 140 : 170} />
+          </Suspense>
+        </div>
         {onOpenCard ? (
           <button
             onClick={onOpenCard}
             aria-label={`Open the ${sp.common_name} card`}
-            style={{ fontWeight: 800, fontSize: 26, lineHeight: 1.15, marginTop: 14, letterSpacing: "-0.02em", textDecoration: "underline dotted", textUnderlineOffset: 5 }}
+            style={{ fontWeight: 800, fontSize: 26, lineHeight: 1.15, marginTop: 4, letterSpacing: "-0.02em", textDecoration: "underline dotted", textUnderlineOffset: 5 }}
           >
             {sp.common_name}
           </button>
         ) : (
-          <div style={{ fontWeight: 800, fontSize: 26, lineHeight: 1.15, marginTop: 14, letterSpacing: "-0.02em" }}>{sp.common_name}</div>
+          <div style={{ fontWeight: 800, fontSize: 26, lineHeight: 1.15, marginTop: 4, letterSpacing: "-0.02em" }}>{sp.common_name}</div>
         )}
         <div style={{ fontStyle: "italic", fontSize: 14, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 4 }}>{sp.scientific_name}</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 12 }}>
@@ -1424,6 +1497,8 @@ export interface SaveInput {
    */
   entry_kind: "badge" | "contribution";
   reported_name: string | null;
+  /** The pick came off the recorded demo reply, so the entry cannot be verified. */
+  is_demo_id: boolean;
 }
 
 function CameraSheet({
@@ -1794,6 +1869,7 @@ function CameraSheet({
                 note: note.trim() || null,
                 entry_kind: is_reporting ? "contribution" : "badge",
                 reported_name: is_reporting ? reported_name.trim() || "Unknown" : null,
+                is_demo_id: identify.status === "demo",
               })
             }
             size={HUD_CAMERA}
@@ -1991,6 +2067,7 @@ function SightingLog({ sighting }: { sighting: Sighting[] }) {
             photo_data: s.photo_data,
             species_code: s.species_code,
             prior_same_species: prior_count(s.species_code, s.sighting_id),
+            is_demo_id: s.is_demo_id,
           });
           return (
             <div
@@ -2008,6 +2085,8 @@ function SightingLog({ sighting }: { sighting: Sighting[] }) {
                       : (sp?.common_name ?? s.species_code)}
                   </div>
                   {s.entry_kind === "contribution" && <Pill tone="info">Report</Pill>}
+                  {/* Picked off the recorded reply, not a read of the photo. */}
+                  {s.is_demo_id && <Pill tone="info">Demo ID</Pill>}
                   <Pill tone={status === "verified" ? "native" : status === "duplicate" ? "threatened" : "info"}>
                     {LOCAL_OBS_STATUS_LABEL[status]}
                   </Pill>
@@ -2376,7 +2455,7 @@ function BlindBoxReveal({ stage, onDismiss }: { stage: Stage; onDismiss: () => v
               className="mg-btn-primary"
               style={{
                 marginTop: 10,
-                height: 40,
+                height: 44,
                 padding: "0 24px",
                 borderRadius: 8,
                 fontWeight: 700,
@@ -2387,6 +2466,71 @@ function BlindBoxReveal({ stage, onDismiss }: { stage: Stage; onDismiss: () => v
             </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Trainer level-up — the reveal's card, without the box.
+ *
+ * The HUD's level ticked from 1 to 2 with nothing said. A level is only a way
+ * of displaying points (`level.ts`), so this card claims nothing new: the
+ * level reached and where the next one starts.
+ */
+function LevelUpCard({ level, stage, onDismiss }: { level: number; stage: Stage; onDismiss: () => void }) {
+  const prefers_reduced = useMemo(
+    () => (typeof window !== "undefined" && window.matchMedia
+      ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      : false),
+    [],
+  );
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Trainer level ${level}`}
+      style={{ position: "fixed", inset: 0, zIndex: 90, display: "grid", placeItems: "center" }}
+      onClick={onDismiss}
+    >
+      <div className="absolute inset-0" style={{ background: "rgba(14,32,24,0.45)" }} />
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={prefers_reduced ? "gm-reveal-card" : "yc-reveal-in gm-reveal-card"}
+        style={{
+          position: "relative",
+          animation: prefers_reduced ? undefined : "yc-reveal-in 0.5s ease-out forwards",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 8,
+          width: "min(80vw, 280px)",
+          padding: "22px 22px 20px",
+          borderRadius: 20,
+          background: "var(--mg-surface)",
+          boxShadow: "0 12px 32px rgba(14,32,24,0.28)",
+          textAlign: "center",
+        }}
+      >
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", color: "var(--mg-green-text)" }}>LEVEL UP</div>
+        <span className="gm-avatar" style={{ width: 84, height: 84, borderRadius: 22 }}>
+          <StageSticker stage={stage} size={72} />
+          <span className="gm-level">{level}</span>
+        </span>
+        <div className="mg-heading" style={{ fontWeight: 800, fontSize: 20, color: "rgb(var(--mg-ink-rgb) / 0.92)" }}>
+          Trainer level {level}
+        </div>
+        <div style={{ fontSize: 13, color: "rgb(var(--mg-ink-rgb) / 0.78)", lineHeight: 1.4 }}>
+          Level {level + 1} starts at {levelStart(level + 1)} points.
+        </div>
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="mg-btn-primary"
+          style={{ marginTop: 6, height: 44, padding: "0 24px", borderRadius: 8, fontWeight: 700, fontSize: 14 }}
+        >
+          Continue
+        </button>
       </div>
     </div>
   );
@@ -2436,7 +2580,7 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
             </div>
             <div style={{ fontSize: 18, fontWeight: 800, marginTop: 2 }}>{p.badge_count}</div>
             <div style={{ fontSize: 10, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 1 }}>
-              {p.seen_count} species photographed
+              {p.photographed_count} species photographed
             </div>
           </div>
           <div
@@ -3312,6 +3456,8 @@ export default function App() {
   /** The stage reached on this save, when that save advanced the stage. The
    *  blind-box reveal (T4.5) shows for this; null when there is no reveal. */
   const [reveal, setReveal] = useState<Stage | null>(null);
+  /* The trainer level just reached, shown once as a card. */
+  const [level_up, setLevelUp] = useState<number | null>(null);
   /**
    * Which finds to draw. Empty means all of them — an explicit "off" state, so
    * a student who taps every chip off sees the whole map back rather than an
@@ -3726,6 +3872,10 @@ export default function App() {
          will feel nothing at all (see `haptic.ts`). */
       haptic("success");
       showToast(toast_line ?? `+${result.event.points} ${POINT_LABEL[kind]}`);
+      /* Only a local award can level you up on screen — a sync that pulls in
+         old points does not throw a party for them. */
+      const after = levelOf(result.total_points).level;
+      if (after > levelOf(result.total_points - result.event.points).level) setLevelUp(after);
     }
     return result;
   };
@@ -3802,7 +3952,7 @@ export default function App() {
     showToast(reply.line);
   };
 
-  const saveSighting = ({ photo_data, inat: id, note, entry_kind, reported_name }: SaveInput) => {
+  const saveSighting = ({ photo_data, inat: id, note, entry_kind, reported_name, is_demo_id }: SaveInput) => {
     const is_report = entry_kind === "contribution";
     /* Stage before save — compared after to detect an advance (T4.5 trigger). */
     const prev_stage = stageFor(seenSector(sighting).size);
@@ -3818,10 +3968,11 @@ export default function App() {
       walk_id: walk?.walk_id ?? null,
       entry_kind,
       reported_name,
+      is_demo_id,
     });
     const next_sighting = readSighting();
     setSighting(next_sighting);
-    const award_kind = observeAwardKind({ photo_data, species_code: pick_code });
+    const award_kind = observeAwardKind({ photo_data, species_code: pick_code, is_demo_id });
     const here = geo.fix ? sectorAt(geo.fix) : null;
     noteAward(
       award_kind,
@@ -4090,9 +4241,14 @@ export default function App() {
 
       {is_sheet_open && !picked_sector && (
         is_desktop ? (
-          <div style={{ position: "absolute", left: 18, bottom: 84, width: 380, zIndex: 48, maxHeight: "78%", overflow: "hidden", borderRadius: 16, boxShadow: "var(--mg-shadow-up)" }}>
+          /* A fixed box, not a max-height: the sheet is a column whose Log button
+             is pinned to its foot, and that only holds when the host has a real
+             height. It starts under the HUD and the daily-hunt chip (top 156)
+             instead of over them, and ends above the dock. */
+          <div style={{ position: "absolute", left: 18, top: 156, bottom: 88, width: 380, zIndex: 48, overflow: "hidden", borderRadius: 16, boxShadow: "var(--mg-shadow-up)" }}>
             <NearbySheet
               sp={play_sheet_sp}
+              pool={spawn_world.pool}
               onOpenCard={() => openSpeciesCard(play_sheet_sp.species_code)}
               where={play_sheet_where}
               distance_line={play_sheet_distance}
@@ -4107,6 +4263,7 @@ export default function App() {
         ) : (
           <NearbySheet
             sp={play_sheet_sp}
+            pool={spawn_world.pool}
             onOpenCard={() => openSpeciesCard(play_sheet_sp.species_code)}
             where={play_sheet_where}
             distance_line={play_sheet_distance}
@@ -4223,6 +4380,7 @@ export default function App() {
         ) : (
           <NearbySheet
             sp={sel_sp}
+            pool={spawn_world.pool}
             onOpenCard={() => openSpeciesCard(sel_sp.species_code)}
             where={sel.where}
             distance_line={selected_distance}
@@ -4241,6 +4399,29 @@ export default function App() {
       )}
     </div>
   );
+
+  /* Escape closes the TOP open sheet — one per press, most recent layer
+     first — so a keyboard (or a desktop at the showcase) always has a way out. */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (level_up !== null) setLevelUp(null);
+      else if (reveal) setReveal(null);
+      else if (card) setCard(null);
+      else if (is_camera_open) {
+        setCameraOpen(false);
+        setCameraRarity(null);
+      } else if (receipt) setReceipt(null);
+      else if (is_trainer_open) setTrainerOpen(false);
+      else if (is_nearby_open) setNearbyOpen(false);
+      else if (picked_sector) setPickedSector(null);
+      else if (is_sheet_open) setSheetOpen(false);
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [level_up, reveal, card, is_camera_open, receipt, is_trainer_open, is_nearby_open, picked_sector, is_sheet_open]);
 
   const is_on_map = route === "/" || route === "/map";
   const is_play = is_on_map && map_mode === "play";
@@ -4296,6 +4477,7 @@ export default function App() {
             preference={preference}
             onPreference={savePreference}
             walker_name={me.name}
+            account_name={account.status === "signed_in" ? account.account?.display_name ?? null : null}
             join_code={me.join_code}
             is_live={live.is_live}
             icon={settings_icon}
@@ -4439,6 +4621,9 @@ export default function App() {
           </Suspense>
         )}
         {reveal && <BlindBoxReveal stage={reveal} onDismiss={() => setReveal(null)} />}
+        {level_up !== null && !reveal && (
+          <LevelUpCard level={level_up} stage={stage} onDismiss={() => setLevelUp(null)} />
+        )}
         {toast && <GameToast msg={toast} />}
         {is_booted && alert_queue[0] && (
           <AlertCard

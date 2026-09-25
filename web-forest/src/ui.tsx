@@ -333,3 +333,42 @@ export function GlyphDisc({ children, size = 28 }: { children: ReactNode; size?:
     </span>
   );
 }
+
+/**
+ * A sheet's close: a real 44×44 target with an ×. The 42×5 grab bar it sits
+ * beside was the only way out of three sheets, and a bar that thin is a hint,
+ * not a button.
+ */
+export function SheetClose({
+  onClose,
+  label = "Close",
+  style,
+}: {
+  onClose: () => void;
+  label?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClose}
+      aria-label={label}
+      className="mg-sheet-close"
+      style={{
+        width: 44,
+        height: 44,
+        borderRadius: 999,
+        display: "grid",
+        placeItems: "center",
+        color: "rgb(var(--mg-ink-rgb) / 0.78)",
+        background: "var(--mg-surface-2)",
+        flexShrink: 0,
+        ...style,
+      }}
+    >
+      <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true">
+        <path d="M4 4 L14 14 M14 4 L4 14" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+      </svg>
+    </button>
+  );
+}
