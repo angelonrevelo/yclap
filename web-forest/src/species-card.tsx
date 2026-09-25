@@ -102,12 +102,13 @@ export function SpeciesHero({
   }, [is_model, fact.model_path]);
 
   const portrait_size = Math.round(Math.min(160, height * 0.66));
-  const portrait = (size: number) => (
+  const portrait = (size: number, is_settled = false) => (
     <SpeciesPortrait
       scientific_name={fact.scientific_name}
       species_code={fact.is_curated ? species_code : undefined}
       kind={fact.kind}
       size={size}
+      is_settled={is_settled}
     />
   );
 
@@ -141,9 +142,10 @@ export function SpeciesHero({
             {...motion}
             style={{ width: "100%", height: "100%", "--poster-color": "transparent" } as CSSProperties}
           >
-            {/* Shown until the model is in: the same portrait the fallback uses. */}
+            {/* Shown until the model is in: the same portrait the fallback uses,
+                settled on one picture up front so it never swaps mid-load. */}
             <div slot="poster" style={{ width: "100%", height: "100%", display: "grid", placeItems: "center" }}>
-              {portrait(portrait_size - 10)}
+              {portrait(portrait_size - 10, true)}
             </div>
           </model-viewer>
         ) : (

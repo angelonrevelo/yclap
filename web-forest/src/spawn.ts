@@ -1,4 +1,4 @@
-import { buildingAt, inRestricted } from "./placement.ts";
+import { isWalkable } from "./placement.ts";
 import { CAMPUS_BOX, distanceMeter, type LatLon } from "./geo.ts";
 import { biome_sector, sectorContains, sector as sector_row, type Sector } from "./sector.ts";
 
@@ -320,7 +320,7 @@ function pickSpecies(pool: SpawnPoolEntry[], s: Sector, rng: () => number): Spaw
   return habitat[habitat.length - 1];
 }
 
-/** A point inside the sector ring, outside the restricted grove and every building, or null. */
+/** A point inside the sector ring that the walker can stand on (`isWalkable`), or null. */
 function pointIn(s: Sector, rng: () => number): LatLon | null {
   let lat0 = Infinity, lat1 = -Infinity, lon0 = Infinity, lon1 = -Infinity;
   for (const [lat, lon] of s.point) {
@@ -332,9 +332,10 @@ function pointIn(s: Sector, rng: () => number): LatLon | null {
   for (let tries = 0; tries < 40; tries += 1) {
     const at = { lat: lat0 + rng() * (lat1 - lat0), lon: lon0 + rng() * (lon1 - lon0) };
     if (!sectorContains(s, at)) continue;
-    if (inRestricted(at)) continue;
-    /* A find inside a footprint is a tree in a classroom (09-25 audit). */
-    if (buildingAt(at)) continue;
+    /* The walker's own rule: on campus, not the grove, not a footprint. A find
+       inside a footprint is a tree in a classroom (09-25 audit); one past
+       CAMPUS_BOX is a find walk-to can never reach (round 5). */
+    if (!isWalkable(at)) continue;
     return at;
   }
   return null;
@@ -542,8 +543,7 @@ export function spawnAround(
         lon: (col + rng()) * CELL_LON,
       };
       if (!sectorContains(s, point)) continue;
-      if (inRestricted(point)) continue;
-      if (buildingAt(point)) continue;
+      if (!isWalkable(point)) continue;
 
       out.push({
         spawn_id: `cell-${col}-${row}-w${index}`,

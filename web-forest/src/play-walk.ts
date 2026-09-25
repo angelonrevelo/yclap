@@ -7,13 +7,11 @@
  * footprint — a walk that teaches off-limits ground as walkable is the wrong
  * lesson, and a walker standing on a roof is the wrong picture.
  */
-import { RESTRICTED_POLYGON } from "./data.ts";
-import { buildingAt } from "./placement.ts";
+import { isWalkable } from "./placement.ts";
 import {
   DEMO_WALK,
   bearingDegree,
   distanceMeter,
-  isInsideCampus,
   type LatLon,
 } from "./geo.ts";
 
@@ -149,32 +147,9 @@ export function stickTopPaceMs(span_m: number): number {
   return Math.max(PLAY_PACE_FLOOR_MS, Math.min(PLAY_PACE_CEILING_MS, want));
 }
 
-function inRestricted(point: LatLon): boolean {
-  const ring = RESTRICTED_POLYGON;
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
-    const a = ring[i];
-    const b = ring[j];
-    if (
-      a.lat > point.lat !== b.lat > point.lat &&
-      point.lon < ((b.lon - a.lon) * (point.lat - a.lat)) / (b.lat - a.lat) + a.lon
-    ) {
-      inside = !inside;
-    }
-  }
-  return inside;
-}
-
-/**
- * On campus, outside the grove, and not inside a building.
- *
- * Buildings joined on 09-26: the playtest walked straight across Kostka Hall's
- * footprint, and with the buildings extruded the walker then stood on the
- * roof. A footprint is refused exactly the way the grove is.
- */
-export function isWalkable(point: LatLon): boolean {
-  return isInsideCampus(point) && !inRestricted(point) && buildingAt(point) === null;
-}
+/* `isWalkable` lives in placement.ts beside the spawn rule, so a find can never
+   stand where the walker cannot (round 5: two finds north of CAMPUS_BOX). */
+export { isWalkable };
 
 /**
  * Metres along a compass heading. 0 is north, clockwise — same as `bearingDegree`.

@@ -154,6 +154,7 @@ export default function Viewfinder({
   return (
     <div>
       <div
+        className="gm-viewfinder"
         style={{
           position: "relative",
           aspectRatio: "4 / 3",

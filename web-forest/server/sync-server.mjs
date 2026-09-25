@@ -55,17 +55,50 @@ const { handleIdentify, IDENTIFY_PATH, MAX_FORM_BYTE } = await import(
 );
 
 /* The body streams through a byte cap: a chunked upload past it destroys the
-   request instead of reaching formData(). */
+   request instead of reaching formData(). An early refusal (no token, foreign
+   origin, rate limit) is answered only after the unread upload is drained —
+   answering first reset the socket under the Vite proxy, which then showed a
+   502 instead of the 503 needs_token caption (round 5). */
 async function serveIdentify(req, res) {
-  const response = await handleIdentify(
-    webRequestOf(req, MAX_FORM_BYTE),
-    process.env.INAT_API_TOKEN,
-    undefined,
-    undefined,
-    pageOrigin,
-  );
-  res.writeHead(response.status, { ...Object.fromEntries(response.headers), ...corsOfReq(req) });
-  res.end(Buffer.from(await response.arrayBuffer()));
+  const web = webRequestOf(req, MAX_FORM_BYTE);
+  const response = await handleIdentify(web, process.env.INAT_API_TOKEN, undefined, undefined, pageOrigin);
+  const body = Buffer.from(await response.arrayBuffer());
+  const head = { ...Object.fromEntries(response.headers), ...corsOfReq(req) };
+  const is_drained = response.status !== 413 && (await drainBody(web));
+  if (!is_drained) {
+    /* Oversized (declared or counted): 413 and close, as before — the rest of
+       the upload is never read. */
+    res.writeHead(response.status, { ...head, Connection: "close" });
+    res.end(body, () => req.destroy());
+    return;
+  }
+  res.writeHead(response.status, head);
+  res.end(body);
+}
+
+/**
+ * Read and discard whatever of the upload the handler left unread, through the
+ * same MAX_FORM_BYTE cap and a time limit. True when the body ended cleanly;
+ * false when it ran past the cap, stalled or broke — the caller then closes.
+ */
+async function drainBody(web, timeout_ms = 15000) {
+  if (!web.body || web.bodyUsed) return true;
+  const reader = web.body.getReader();
+  let is_stalled = false;
+  const timer = setTimeout(() => {
+    is_stalled = true;
+    reader.cancel().catch(() => {});
+  }, timeout_ms);
+  try {
+    for (;;) {
+      const { done } = await reader.read();
+      if (done) return !is_stalled;
+    }
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function loadStore() {

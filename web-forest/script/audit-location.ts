@@ -1,8 +1,10 @@
 /**
  * Locations audit — every curated placement and a day of seeded finds, judged
  * by the one rule in src/placement.ts (green sector, not the grove, not inside
- * a building). Prints each failure with the nearest good point, so a bad
- * placement comes with its fix.
+ * a building, on campus) — and every find checked against `isWalkable`, the
+ * rule the walker obeys, so no find stands where walk-to can never arrive.
+ * Prints each failure with the nearest good point, so a bad placement comes
+ * with its fix. `test/placement.test.ts` runs the same audit.
  *
  *   npm run audit:location        # exit 1 on any failure
  */
@@ -11,13 +13,21 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { encounter, landmark } from "../src/data.ts";
 import { DEMO_WALK, type LatLon } from "../src/geo.ts";
-import { nearestPlaceable, placementProblem, walkPoint } from "../src/placement.ts";
+import { isWalkable, nearestPlaceable, placementProblem, walkPoint } from "../src/placement.ts";
 import { biome_sector } from "../src/sector.ts";
 import { poolFromFile, spawnWorld } from "../src/spawn.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-function main() {
+export interface LocationAudit {
+  failure: number;
+  find: number;
+  misplaced: number;
+  unwalkable: number;
+}
+
+export function auditLocation(log: (line: string) => void = () => {}): LocationAudit {
+  const console = { log };
   let failure = 0;
   const report = (label: string, p: LatLon, sector_code?: string) => {
     const problem = placementProblem(p, sector_code);
@@ -56,20 +66,27 @@ function main() {
   const pool = poolFromFile(JSON.parse(readFileSync(join(here, "..", "public", "model", "species-model.json"), "utf8")));
   let find = 0;
   let bad = 0;
+  let unwalkable = 0;
   const start = Date.UTC(2026, 8, 26);
   for (let w = 0; w < 48; w += 1) {
     for (const at of [null, ...DEMO_WALK]) {
       for (const s of spawnWorld(pool, start + w * 30 * 60 * 1000, at)) {
         find += 1;
         if (placementProblem(s, s.sector_code).length) bad += 1;
+        if (!isWalkable(s)) {
+          unwalkable += 1;
+          console.log(`  unwalkable ${s.spawn_id} ${s.common_name} ${s.lat}, ${s.lon}`);
+        }
       }
     }
   }
-  console.log(`seeded finds over 48 windows x ${DEMO_WALK.length + 1} positions: ${find}, misplaced ${bad}`);
-  failure += bad;
+  console.log(`seeded finds over 48 windows x ${DEMO_WALK.length + 1} positions: ${find}, misplaced ${bad}, unwalkable ${unwalkable}`);
+  failure += bad + unwalkable;
 
   console.log(failure ? `${failure} placement failure(s)` : "all placements good");
-  process.exitCode = failure ? 1 : 0;
+  return { failure, find, misplaced: bad, unwalkable };
 }
 
-if (process.argv[1]?.endsWith("audit-location.ts")) main();
+if (process.argv[1]?.endsWith("audit-location.ts")) {
+  process.exitCode = auditLocation((line) => console.log(line)).failure ? 1 : 0;
+}
