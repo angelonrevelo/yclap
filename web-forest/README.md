@@ -154,6 +154,20 @@ The play layer, wired in `src/live.tsx`:
     player — walking does not roll new dice, it brings you to dice already
     cast, which is what keeps two phones agreeing. `spawnWorld` unions that
     with the campus-wide world outside the radius, so no find is drawn twice.
+- **`pet.ts` + `pet-eagle.tsx` — Agila, the pet eagle** (09-25 note, `0:35`–`1:09`:
+  "pet eagle as a companion … and also as a sleep pet"). A Blue Eagle drawn for
+  this app (`src/asset/magi/pet/`, three hand-authored SVG poses: perch, fly,
+  sleep — a mascot nod, not an official Ateneo asset). It stands beside the
+  walker on the play map and trails them with a lag in ground space, flaps
+  while they walk, perches when they stop. It sleeps (dimmed, "Zzz") after
+  **2 min with no movement and no touch**, or when standing still between
+  **22:00 and 06:00** local time. Tap it for its card: rename (kept on this
+  device only), what it is doing and why, and a **bond** that is nothing but
+  the count of journal finds in the last 7 days — shown next to the label, and
+  marked "(demo journal)" when seeded rows are in it. The pet sleeps; nothing
+  tracks the user's sleep, and the card says so. Reduced motion: no follow
+  animation, no flapping. Spec at the top of `pet.ts`; tests in
+  `test/pet.test.ts`.
 - **The camera.** Welded to the walker whenever there is a fix: a drag rotates
   around you instead of panning off you, and the zoom band is **z19–z22**
   (~110 m down to ~14 m across a phone). You cannot pull back to the campus

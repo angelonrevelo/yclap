@@ -24,6 +24,7 @@ import { RARITY_ORDER, type Spawn } from "./spawn";
 import { kindOf } from "./kind";
 import { KindPath, KIND_TONE } from "./kind-mark";
 import RemoteWalkerLayer, { HallCount, useHall } from "./remote-walker";
+import PetEagle from "./pet-eagle";
 
 /**
  * The play view — the map as the owner asked for it on 09-03: "simple pokemon
@@ -415,6 +416,8 @@ export default function PlayMap({
                 </div>
               );
             })()}
+            {/* The pet eagle — companion by day, sleep pet when you stop. See `pet.ts`. */}
+            {fix && <PetEagle projection={projection} fix={fix} size={is_desktop ? 72 : 60} />}
             {/* Birds. Pure atmosphere, screen space, no data behind them —
                 they exist because a still map reads as a diagram. */}
             <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
