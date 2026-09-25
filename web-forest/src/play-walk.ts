@@ -30,14 +30,51 @@ export const PLAY_START: LatLon = DEMO_WALK[0];
  */
 export const STICK_START: LatLon = { lat: 14.63904, lon: 121.07747 };
 
-/** `?at=lat,lon` pins the start for a projector; anything unwalkable falls back. */
-export function stickStartOf(search: string): LatLon {
+/** Nearest and farthest a player's own start sits from `STICK_START`, metres. */
+export const START_SPREAD_MIN_M = 10;
+export const START_SPREAD_MAX_M = 25;
+
+function startHashOf(text: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i += 1) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+/**
+ * This player's own start: a spot on a 10–25 m ring around `STICK_START`,
+ * seeded by `player_id`, so every phone at the showcase hall does not pile its
+ * walker onto one point. Same id, same spot, every load. If the seeded spot is
+ * not walkable (the same `isWalkable` rule the stick obeys) the ring is walked
+ * round in 30° steps; if none of it is, `STICK_START` itself.
+ */
+export function spreadStartOf(player_id: string): LatLon {
+  if (!player_id) return STICK_START;
+  const h = startHashOf(`start:${player_id}`);
+  const angle = h % 360;
+  const span = START_SPREAD_MAX_M - START_SPREAD_MIN_M;
+  const meter = START_SPREAD_MIN_M + ((h >>> 9) % 1000) / 1000 * span;
+  for (let step = 0; step < 12; step += 1) {
+    const at = offsetMeter(STICK_START, (angle + step * 30) % 360, meter);
+    if (isWalkable(at)) return at;
+  }
+  return STICK_START;
+}
+
+/**
+ * `?at=lat,lon` pins the start exactly, for a projector; anything unwalkable
+ * falls back. Without it a known player starts on their own spot near
+ * `STICK_START` (`spreadStartOf`), and an unknown one on `STICK_START`.
+ */
+export function stickStartOf(search: string, player_id = ""): LatLon {
   const raw = new URLSearchParams(search).get("at");
   if (raw) {
     const [lat, lon] = raw.split(",").map(Number);
     if (Number.isFinite(lat) && Number.isFinite(lon) && isWalkable({ lat, lon })) return { lat, lon };
   }
-  return STICK_START;
+  return spreadStartOf(player_id);
 }
 
 export const PLAY_TICK_MS = 50;
