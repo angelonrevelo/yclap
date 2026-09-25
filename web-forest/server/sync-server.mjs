@@ -19,7 +19,10 @@
  * — the handset build on :4177 talking to this server on :8788 — and any
  * origin in HALL_PAGE_ORIGIN (comma-separated). /live/pose sends CORS headers
  * only to such a page on another origin (its own origin, never `*`), and its
- * preflight answers nobody else.
+ * preflight answers nobody else. /auth/*, /account/* and /inat/identify do the
+ * same with Access-Control-Allow-Credentials: true (accountCorsOf), so a Path A
+ * build on :4177 signs in here with its session cookie — same hostname, so
+ * same-site, and SameSite=Lax still sends it; Secure only over https.
  */
 import { createServer } from "node:http";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -54,8 +57,14 @@ const { handleIdentify, IDENTIFY_PATH, MAX_FORM_BYTE } = await import(
 /* The body streams through a byte cap: a chunked upload past it destroys the
    request instead of reaching formData(). */
 async function serveIdentify(req, res) {
-  const response = await handleIdentify(webRequestOf(req, MAX_FORM_BYTE), process.env.INAT_API_TOKEN);
-  res.writeHead(response.status, Object.fromEntries(response.headers));
+  const response = await handleIdentify(
+    webRequestOf(req, MAX_FORM_BYTE),
+    process.env.INAT_API_TOKEN,
+    undefined,
+    undefined,
+    pageOrigin,
+  );
+  res.writeHead(response.status, { ...Object.fromEntries(response.headers), ...corsOfReq(req) });
   res.end(Buffer.from(await response.arrayBuffer()));
 }
 
@@ -71,7 +80,9 @@ const { AccountService, isAccountPath } = await import(
   pathToFileURL(resolve(process.cwd(), "worker/account.ts")).href
 );
 const { SAVE_MAX_BYTE } = await import(pathToFileURL(resolve(process.cwd(), "src/account-core.ts")).href);
-const { pageCorsOf } = await import(pathToFileURL(resolve(process.cwd(), "src/rate-limit.ts")).href);
+const { accountCorsOf, isAccountCorsPath, pageCorsOf } = await import(
+  pathToFileURL(resolve(process.cwd(), "src/rate-limit.ts")).href
+);
 /** Largest account body buffered: a full save plus a little JSON around it. */
 const ACCOUNT_BODY_MAX = SAVE_MAX_BYTE + 16 * 1024;
 const account_db = new DatabaseSync(ACCOUNT_DB_PATH);
@@ -101,7 +112,7 @@ async function serveAccount(req, res, url) {
     }
   }
   const response = await account.handle(new Request(url, { method: req.method, headers, body }));
-  const out = {};
+  const out = { ...corsOfReq(req) };
   response.headers.forEach((value, key) => {
     if (key !== "set-cookie") out[key] = value;
   });
@@ -137,6 +148,11 @@ function refuseBody(res, e) {
   res.end(JSON.stringify({ error: status === 413 ? "body too large" : "bad json" }));
 }
 
+/** accountCorsOf for a node req: an allowed page on another origin, else {}. */
+function corsOfReq(req) {
+  return accountCorsOf(req.headers.origin ?? null, req.headers.host ?? "", pageOrigin);
+}
+
 function cors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -145,6 +161,13 @@ function cors(res) {
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host ?? "localhost"}`);
+  /* A page on another origin (Path A: the build on :4177, this on :8788) signs
+     in and identifies here. Its preflight gets its own origin + credentials;
+     anyone else's gets nothing, so the browser refuses it. */
+  if (req.method === "OPTIONS" && isAccountCorsPath(url.pathname)) {
+    res.writeHead(204, corsOfReq(req)).end();
+    return;
+  }
   if (isAccountPath(url.pathname)) {
     try {
       await serveAccount(req, res, url);
@@ -154,7 +177,7 @@ const server = createServer(async (req, res) => {
     }
     return;
   }
-  /* Same-origin like the Worker's: no CORS header on the iNat proxy. */
+  /* The Worker's rule: CORS only for an allowed page on another origin. */
   if (url.pathname === IDENTIFY_PATH) {
     try {
       await serveIdentify(req, res);

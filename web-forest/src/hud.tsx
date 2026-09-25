@@ -4,7 +4,7 @@ import { game_icon, stage_sticker, sticker } from "./asset/kit";
 import { species } from "./data";
 import type { DailyTask } from "./gamify";
 import { levelOf } from "./level";
-import { TaxonThumb } from "./ui";
+import { SpeciesName, TaxonThumb } from "./ui";
 import { AccountChip } from "./account-panel.tsx";
 
 /**
@@ -123,7 +123,9 @@ export function QuestBanner({
         )}
       </span>
       <span className="gm-quest-body">
-        <span className="gm-quest-name">{daily.common_name}</span>
+        <span className="gm-quest-name">
+          <SpeciesName common_name={daily.common_name} scientific_name={daily.scientific_name} />
+        </span>
         <span className="gm-quest-hint">
           {daily.is_done ? "cleared · back tomorrow" : `· ${daily.sector_name}`}
         </span>
@@ -174,7 +176,7 @@ export function TodayHuntCard({
             )}
           </div>
           <h2 id="gm-today-title" className="gm-today-name">
-            {daily.common_name}
+            <SpeciesName common_name={daily.common_name} scientific_name={daily.scientific_name} />
           </h2>
           <p className="gm-today-where">Out today in {daily.sector_name}</p>
           <span className="gm-today-reward">

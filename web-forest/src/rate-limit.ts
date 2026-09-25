@@ -199,20 +199,68 @@ export function isOwnPage(
  * on another origin than this host (a same-origin page needs none), and never
  * `*`. Empty for everyone else, so a foreign page's preflight fails and it
  * cannot read the roster.
+ *
+ * `is_credential` (the account routes and the identify proxy) adds
+ * `Access-Control-Allow-Credentials: true` — safe only because the origin is
+ * echoed from the allow rule above, never `*` — and `method` widens the verbs
+ * (the save is a PUT).
  */
-export function pageCorsOf(origin: string | null, host: string, allow: readonly string[] = []): Record<string, string> {
+export function pageCorsOf(
+  origin: string | null,
+  host: string,
+  allow: readonly string[] = [],
+  option: { is_credential?: boolean; method?: string } = {},
+): Record<string, string> {
   if (!origin || !isHallOrigin(origin, host, allow)) return {};
   try {
     if (new URL(origin).host === host) return {};
   } catch {
     return {};
   }
-  return {
+  const cors: Record<string, string> = {
     "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": option.method ?? "POST, OPTIONS",
     "Access-Control-Allow-Headers": "content-type",
     Vary: "Origin",
   };
+  if (option.is_credential) cors["Access-Control-Allow-Credentials"] = "true";
+  return cors;
+}
+
+/** Verbs the account routes and the identify proxy answer a cross-origin page. */
+export const ACCOUNT_CORS_METHOD = "GET, POST, PUT, OPTIONS";
+
+/**
+ * /auth/*, /account/* and /inat/identify for a page on another origin (the
+ * Path A build on :4177 talking to the sync server on :8788, or a
+ * HALL_PAGE_ORIGIN page): its own origin echoed, with credentials, so the
+ * session cookie rides. Empty for anyone else — a foreign page's preflight
+ * fails and it can read nothing.
+ */
+export function accountCorsOf(origin: string | null, host: string, allow: readonly string[] = []): Record<string, string> {
+  return pageCorsOf(origin, host, allow, { is_credential: true, method: ACCOUNT_CORS_METHOD });
+}
+
+/** The paths that take `accountCorsOf`. */
+export function isAccountCorsPath(pathname: string): boolean {
+  return pathname.startsWith("/auth/") || pathname.startsWith("/account/") || pathname === "/inat/identify";
+}
+
+/**
+ * `response` with `cors` merged into its headers (a copy when the headers are
+ * immutable). An empty `cors` hands the response back untouched.
+ */
+export function withCors(response: Response, cors: Record<string, string>): Response {
+  const entry = Object.entries(cors);
+  if (!entry.length) return response;
+  try {
+    for (const [key, value] of entry) response.headers.set(key, value);
+    return response;
+  } catch {
+    const headers = new Headers(response.headers);
+    for (const [key, value] of entry) headers.set(key, value);
+    return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+  }
 }
 
 /** The error a capped stream fails with once it has passed its byte cap. */

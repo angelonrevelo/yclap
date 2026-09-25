@@ -1,5 +1,6 @@
 import { DEMO_PIN, species } from "./data.ts";
 import { matchCampus } from "./inat-match.ts";
+import { credentialOf, syncRouteOf } from "./sync.ts";
 
 export interface InatNearby {
   observation_id: number;
@@ -34,8 +35,12 @@ export interface InatSuggestion {
 /** Which road the photo took: the server proxy, or a dev-only direct call. */
 export type IdentifyVia = "proxy" | "direct";
 
-/** Why the recorded demo is on screen instead of a live answer. */
-export type DemoReason = "needs_token" | "token_expired";
+/**
+ * Why the recorded demo is on screen instead of a live answer. `no_proxy`: no
+ * identify server answered at all (a 404, a dev proxy's 502, unreachable) —
+ * not the same as a server that answered but holds no token.
+ */
+export type DemoReason = "needs_token" | "token_expired" | "no_proxy";
 
 export type InatIdentifyState =
   | { status: "idle" }
@@ -44,11 +49,13 @@ export type InatIdentifyState =
   | { status: "empty" }
   | { status: "offline" }
   | { status: "needs_token" }
+  /** No identify server answered: HTTP status it got instead, or null when unreachable. */
+  | { status: "no_proxy"; http_status: number | null }
   /** iNat refused the server's token. iNat API tokens last 24 hours. */
   | { status: "token_expired" }
   | { status: "rate_limited" }
   /** Recorded iNat response replayed on stage. Never a live read of the photo. */
-  | { status: "demo"; suggestion: InatSuggestion[]; reason: DemoReason };
+  | { status: "demo"; suggestion: InatSuggestion[]; reason: DemoReason; http_status?: number | null };
 
 export interface InatObservation {
   id?: number;
@@ -79,7 +86,7 @@ const SUGGEST_COUNT = 10;
 const VIA = "yclap-field-guide/0.1 (Youth CLAP Ateneo CCC; local PWA)";
 const OBSERVATION_URL = "https://api.inaturalist.org/v1/observations";
 const SCORE_IMAGE_URL = "https://api.inaturalist.org/v1/computervision/score_image";
-/** Same-origin proxy (worker/inat.ts). Holds the token so the bundle never does. */
+/** The proxy (worker/inat.ts), on the sync base. Holds the token so the bundle never does. */
 export const IDENTIFY_PATH = "/inat/identify";
 export const TOKEN_URL = "https://www.inaturalist.org/users/api_token";
 
@@ -345,7 +352,8 @@ export async function scorePlantImage(input: {
 /**
  * What the proxy said, or null when nothing that looks like the proxy answered
  * (a static host's 404, Vite's 502 with no sync server running, an HTML page).
- * `needs_token` from the proxy is also null: the proxy exists but cannot help.
+ * `needs_token` from the proxy comes back as needs_token: the proxy exists but
+ * holds no token.
  */
 async function readProxy(res: Response): Promise<InatIdentifyState | null> {
   let body: unknown;
@@ -363,6 +371,7 @@ async function readProxy(res: Response): Promise<InatIdentifyState | null> {
   if (error === "token_expired") return { status: "token_expired" };
   if (error === "rate_limited") return { status: "rate_limited" };
   if (error === "upstream" || error === "upstream_unreachable") return { status: "offline" };
+  if (error === "needs_token") return { status: "needs_token" };
   return null;
 }
 
@@ -392,21 +401,30 @@ export async function identifyPlant(input: {
   form.append("lat", String(input.lat ?? DEMO_PIN.lat));
   form.append("lng", String(input.lng ?? DEMO_PIN.lon));
 
+  /* Same base as sign-in: a Path A build posts to the sync server's proxy. */
+  const route = syncRouteOf(IDENTIFY_PATH);
   let is_unreachable = false;
+  let http_status: number | null = null;
+  let is_needs_token = false;
   try {
-    const res = await fetch_impl(IDENTIFY_PATH, {
+    const res = await fetch_impl(route.url, {
       method: "POST",
       headers: { Accept: "application/json" },
       body: form,
+      credentials: credentialOf(route),
     });
+    http_status = res.status;
     const verdict = await readProxy(res);
-    if (verdict) return verdict;
+    if (verdict?.status === "needs_token") is_needs_token = true;
+    else if (verdict) return verdict;
   } catch {
     is_unreachable = true;
   }
   if (is_unreachable && isOffline()) return { status: "offline" };
-  if (!readToken(input.token)) return { status: "needs_token" };
-  return scorePlantImage({ ...input, filename, fetch: fetch_impl });
+  if (readToken(input.token)) return scorePlantImage({ ...input, filename, fetch: fetch_impl });
+  /* Only a proxy that said so is blamed on a missing token; a 404 or an
+     unreachable server is named as what it was. */
+  return is_needs_token ? { status: "needs_token" } : { status: "no_proxy", http_status };
 }
 
 /**
@@ -457,7 +475,7 @@ const DEMO_SCORE_BODY = {
   ],
 };
 
-export function demoIdentify(reason: DemoReason = "needs_token"): InatIdentifyState {
+export function demoIdentify(reason: DemoReason = "needs_token", http_status: number | null = null): InatIdentifyState {
   const suggestion = mapScoreImage(DEMO_SCORE_BODY);
-  return suggestion.length ? { status: "demo", suggestion, reason } : { status: "empty" };
+  return suggestion.length ? { status: "demo", suggestion, reason, http_status } : { status: "empty" };
 }

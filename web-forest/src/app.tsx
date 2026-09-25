@@ -109,10 +109,11 @@ import { biomePresenceAt, rankEncounter, sectorResident, trayRow, type BiomePres
 import { cosmeticForStage } from "./cosmetic";
 import { BlindboxShelf } from "./blindbox-reveal";
 import { BadgeShelf, loadSpawnPool, RarityPill, reachableSpawn, useLiveWorld, useSpawnWorld, WildShelf, WorldStrip } from "./live";
-import { displayName, kindOf, titleName } from "./kind";
+import { kindOf, speciesLabelOf } from "./kind";
 import { SpeciesPortrait } from "./portrait.tsx";
 import { icon, settings_icon as kit_settings_icon, sticker } from "./asset/kit";
 import type { Rarity, Spawn, SpawnPoolEntry } from "./spawn";
+import { WALK_TO_SHORT_M } from "./play-walk";
 import { receiptHighlight } from "./collection";
 import { demoJournal, isSeededJournal } from "./demo-seed";
 import { fetchJoin, fetchMine, readPlayer, writePlayer, type World } from "./sync";
@@ -127,7 +128,7 @@ import {
 import { matchCampus, suggestedPick } from "./inat-match";
 import { pinReply } from "./pin-reply";
 import InatStrip from "./inat-strip";
-import { Card, Chip, Eyebrow, Fab, GlyphDisc, Pill, PrimaryPill, RADIUS, SheetClose, SpeciesPill, TaxonName, TaxonThumb } from "./ui";
+import { Card, Chip, Eyebrow, Fab, GlyphDisc, Pill, PrimaryPill, RADIUS, SheetClose, SpeciesName, SpeciesPill, TaxonName, TaxonThumb } from "./ui";
 import { DexCard, DexHeader, GameDock, GameToast, PlayerHud, QuestBanner, StageSticker, TodayHuntCard } from "./hud";
 import {
   CameraIcon,
@@ -707,7 +708,7 @@ function NearbySightTray({
                 {/* Up to three lines at 12 px rather than one at 10 cut off
                     with "…" — the tray is only as tall as its longest name. */}
                 <div
-                  title={titleName(s.common_name)}
+                  title={speciesLabelOf(s.common_name, s.scientific_name).text}
                   style={{
                     fontSize: 12,
                     fontWeight: 700,
@@ -722,7 +723,7 @@ function NearbySightTray({
                     color: seen.has(s.species_code) ? "var(--mg-green-text)" : "rgb(var(--mg-ink-rgb) / 0.78)",
                   }}
                 >
-                  {titleName(s.common_name)}
+                  <SpeciesName common_name={s.common_name} scientific_name={s.scientific_name} />
                 </div>
               </button>
             ))}
@@ -886,7 +887,9 @@ function DailyHuntCard({
       <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.04em", color: daily.is_done ? "var(--mg-green-text)" : "var(--mg-gold)" }}>
         {daily.is_done ? "HUNT DONE" : "TODAY"}
       </div>
-      <div style={{ fontWeight: 800, fontSize: 16, marginTop: 2 }}>{daily.common_name}</div>
+      <div style={{ fontWeight: 800, fontSize: 16, marginTop: 2 }}>
+        <SpeciesName common_name={daily.common_name} scientific_name={daily.scientific_name} />
+      </div>
       <div style={{ fontSize: 12, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 2 }}>{daily.sector_name}</div>
     </button>
   );
@@ -1407,18 +1410,29 @@ function BiomeSheet({
   );
 }
 
+/** What happened to the identify call when no proxy answered — never a token. */
+function noProxyOf(http_status: number | null): string {
+  return http_status === null ? "could not be reached" : `did not answer (HTTP ${http_status})`;
+}
+
 function identifyCaption(state: InatIdentifyState): string {  if (state.status === "loading") return "iNaturalist is identifying this photo — not this app.";
   if (state.status === "offline") return "iNaturalist computer vision is unreachable. Pick from the campus list, or try again.";
   if (state.status === "empty") return "iNaturalist returned no taxon suggestion. Identification is still iNaturalist’s, not this app’s.";
   if (state.status === "needs_token") {
     return "iNaturalist computer vision needs a signed-in token on this build. Identification is iNaturalist’s, not this app’s — pick from the list or open Seek.";
   }
+  if (state.status === "no_proxy") return `The identify server ${noProxyOf(state.http_status)}. Pick from the campus list.`;
   if (state.status === "token_expired") {
     return "iNaturalist refused this server’s token — it expired (they last 24 hours). Pick from the campus list for now.";
   }
   if (state.status === "rate_limited") return "iNaturalist is rate-limiting us. Wait a minute and retake, or pick from the campus list.";
   if (state.status === "demo") {
-    const why = state.reason === "token_expired" ? "the server’s iNaturalist token has expired" : "this server has no iNaturalist token";
+    const why =
+      state.reason === "token_expired"
+        ? "the server’s iNaturalist token has expired"
+        : state.reason === "no_proxy"
+          ? `the identify server ${noProxyOf(state.http_status ?? null)}`
+          : "this server has no iNaturalist token";
     return `RECORDED RESPONSE — ${why}, so it is replaying a saved reply for a Narra photo. It has not looked at your photo.`;
   }
   if (state.status === "ready") return "iNaturalist is identifying — not this app. Tap a suggestion to fill the campus list, or pick yourself.";
@@ -1570,7 +1584,11 @@ function CameraSheet({
       /* No usable token on the server — replay the recorded reply so the walk
          still shows the identify step, labelled as recorded and saying why. */
       const shown =
-        next.status === "needs_token" || next.status === "token_expired" ? demoIdentify(next.status) : next;
+        next.status === "needs_token" || next.status === "token_expired"
+          ? demoIdentify(next.status)
+          : next.status === "no_proxy"
+            ? demoIdentify("no_proxy", next.http_status)
+            : next;
       setIdentify(shown);
       /* An EXACT campus match picks the species (`suggestedPick`), so a photo
          of a Narra no longer saves as the daily target the sheet opened on. A
@@ -1715,7 +1733,7 @@ function CameraSheet({
                 }}
               />
               <span style={{ display: "block", fontWeight: 800, fontSize: 11, marginTop: 6, lineHeight: 1.2 }}>
-                {displayName(wild_pick.common_name)}
+                <SpeciesName common_name={wild_pick.common_name} scientific_name={wild_pick.scientific_name} />
               </span>
               <span style={{ display: "block", fontSize: 10, color: "var(--mg-green-text)", marginTop: 2 }}>Sweep</span>
             </button>
@@ -3962,7 +3980,9 @@ export default function App() {
     setPickedSector(null);
     setPinnedId(null);
     if (reply.kind === "walk") {
-      geo.walkTo(row);
+      /* Stop a few metres short, on walkable ground: never on the pin, never
+         inside a building's footprint (walkTargetOf). */
+      geo.walkTo(row, WALK_TO_SHORT_M);
       setFollowing(true);
       showToast(reply.line);
       return;

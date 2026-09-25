@@ -331,6 +331,8 @@ export interface DailyTask {
   day_key: string;
   species_code: string;
   common_name: string;
+  /** For `speciesLabelOf`: shown (in italics) only when there is no common name. */
+  scientific_name: string;
   sector_code: string;
   sector_name: string;
   is_done: boolean;
@@ -380,6 +382,7 @@ export function dailyTaskFor(
     day_key,
     species_code: pick.species_code,
     common_name: pick.common_name,
+    scientific_name: pick.scientific_name,
     sector_code: place.sector_code,
     sector_name: place.name,
     is_done: alreadyAwarded(events, "challenge", dailySubject(day_key)),

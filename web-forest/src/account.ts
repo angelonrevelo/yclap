@@ -3,7 +3,9 @@
  * module-level state that the Settings panel and the HUD chip both read, and
  * the merge-on-sign-in that pulls the account's save onto this device.
  *
- * The session is an HttpOnly cookie — this file never sees the token.
+ * The session is an HttpOnly cookie — this file never sees the token. Every
+ * call goes to the sync base (`syncRouteOf`), with credentials when that is
+ * another origin than the page.
  * Photos stay on the device; only journal rows and the point ledger sync.
  */
 import { useEffect, useSyncExternalStore } from "react";
@@ -16,6 +18,7 @@ import {
 } from "./account-core.ts";
 import { readSighting, writeSighting, type Sighting } from "./journal.ts";
 import { readPointEvents, writePointEvents, type PointEvent } from "./gamify.ts";
+import { credentialOf, syncRouteOf } from "./sync.ts";
 
 /** Fired on window after a sync wrote new rows into this device's storage. */
 export const SAVE_MERGED_EVENT = "magisphere:save-merged";
@@ -77,9 +80,12 @@ async function call<T>(
   method = "GET",
   body?: unknown,
 ): Promise<{ status: number; data: T; protocol: string | null }> {
-  const res = await fetch(path, {
+  /* Same base as the campus world: a Path A build (page on :4177, VITE_SYNC_URL
+     naming :8788) signs in on the sync server, cookie included. */
+  const route = syncRouteOf(path);
+  const res = await fetch(route.url, {
     method,
-    credentials: "same-origin",
+    credentials: credentialOf(route),
     headers: body === undefined ? undefined : { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });

@@ -14,6 +14,9 @@ import type { Sighting } from "../src/journal.ts";
  * It shipped that way because `badge.ts` had no test at all.
  */
 
+/** A photo on the device — the species badges count only photographed finds. */
+const PHOTO = "data:image/jpeg;base64,AAAA";
+
 let seq = 0;
 
 function sight(over: Partial<Sighting> = {}): Sighting {
@@ -84,24 +87,24 @@ test("no two badges are the same test wearing two names", () => {
     [sight({ ...inSector(0) })],
     [sight({ entry_kind: "contribution", reported_name: "a fern" })],
     [sight({ ...inSector(0), created_at: "2026-09-01T01:00:00.000Z" }), sight({ ...inSector(0), created_at: "2026-09-04T01:00:00.000Z" })],
-    Array.from({ length: 6 }, (_, i) => sight({ species_code: `sp-${i}`, ...inSector(i) })),
+    Array.from({ length: 6 }, (_, i) => sight({ species_code: `sp-${i}`, photo_data: PHOTO, ...inSector(i) })),
     /* Five species in ONE ground, and three grounds with ONE species — the two
        journals that pull "Five Species" and "Three Grounds" apart. Without
        them the pair looks identical, which is exactly the trap this test is
        for: a thin fixture makes two different badges read as duplicates. */
-    Array.from({ length: 5 }, (_, i) => sight({ species_code: `one-${i}`, ...inSector(0) })),
+    Array.from({ length: 5 }, (_, i) => sight({ species_code: `one-${i}`, photo_data: PHOTO, ...inSector(0) })),
     Array.from({ length: 3 }, (_, i) => sight({ species_code: "narra", ...inSector(i) })),
     [sight({ created_at: "2026-09-08T22:00:00.000Z", ...inSector(1) })],
     [sight({ created_at: "2026-09-08T13:00:00.000Z", ...inSector(2) })],
-    Array.from({ length: 12 }, (_, i) => sight({ species_code: `many-${i}`, ...inSector(i) })),
+    Array.from({ length: 12 }, (_, i) => sight({ species_code: `many-${i}`, photo_data: PHOTO, ...inSector(i) })),
     /* Sixteen species standing in ONE ground, and one species logged in EVERY
        ground — the pair that separates "Fifteen Species" from "The Whole
        Campus". */
-    Array.from({ length: 16 }, (_, i) => sight({ species_code: `wide-${i}`, ...inSector(0) })),
+    Array.from({ length: 16 }, (_, i) => sight({ species_code: `wide-${i}`, photo_data: PHOTO, ...inSector(0) })),
     biome_sector.map((_, i) => sight({ species_code: "narra", ...inSector(i) })),
     /* Ten finds carrying one walk_id, plus a rare species, so the last two
        badges are reachable too. */
-    Array.from({ length: 10 }, (_, i) => sight({ species_code: `walk-${i}`, walk_id: "w-1", ...inSector(i) })),
+    Array.from({ length: 10 }, (_, i) => sight({ species_code: `walk-${i}`, photo_data: PHOTO, walk_id: "w-1", ...inSector(i) })),
     /* One find of a species with a single campus observation — a Rare Catch
        that is nothing else, so it cannot hide behind Fifteen Species. */
     [sight({ species_code: "scarce", ...inSector(0) })],
@@ -146,16 +149,41 @@ test("Return Visit ignores unlocated finds — an unlocated find is in no ground
 });
 
 test("a badge is timestamped by the sighting that COMPLETED it, not by the newest one", () => {
+  const photo = PHOTO;
   const row = [
-    sight({ species_code: "a", created_at: "2026-09-01T04:00:00.000Z" }),
-    sight({ species_code: "b", created_at: "2026-09-02T04:00:00.000Z" }),
-    sight({ species_code: "c", created_at: "2026-09-03T04:00:00.000Z" }),
-    sight({ species_code: "d", created_at: "2026-09-04T04:00:00.000Z" }),
-    sight({ species_code: "e", created_at: "2026-09-05T04:00:00.000Z" }),
-    sight({ species_code: "f", created_at: "2026-09-06T04:00:00.000Z" }),
+    sight({ species_code: "a", photo_data: photo, created_at: "2026-09-01T04:00:00.000Z" }),
+    sight({ species_code: "b", photo_data: photo, created_at: "2026-09-02T04:00:00.000Z" }),
+    sight({ species_code: "c", photo_data: photo, created_at: "2026-09-03T04:00:00.000Z" }),
+    sight({ species_code: "d", photo_data: photo, created_at: "2026-09-04T04:00:00.000Z" }),
+    sight({ species_code: "e", photo_data: photo, created_at: "2026-09-05T04:00:00.000Z" }),
+    sight({ species_code: "f", photo_data: photo, created_at: "2026-09-06T04:00:00.000Z" }),
   ];
   const five = badgeFor(row).find((a) => a.def.id === "five-species");
   assert.equal(five?.earned_at, "2026-09-05T04:00:00.000Z", "the fifth species earned it, not the sixth");
+});
+
+test("Five Species counts distinct species WITH a photo — six logs, two photographed, earn nothing", () => {
+  const photo = PHOTO;
+  /* The round-4 playtest journal: Dao, Katmon, Lagundi, Mahogany picked from
+     the list with no photo, two more photographed. */
+  const row = [
+    sight({ species_code: "dao", created_at: "2026-09-01T04:00:00.000Z" }),
+    sight({ species_code: "katmon", created_at: "2026-09-02T04:00:00.000Z" }),
+    sight({ species_code: "lagundi", created_at: "2026-09-03T04:00:00.000Z" }),
+    sight({ species_code: "mahogany", created_at: "2026-09-04T04:00:00.000Z" }),
+    sight({ species_code: "narra", photo_data: photo, created_at: "2026-09-05T04:00:00.000Z" }),
+    sight({ species_code: "narra", photo_data: photo, created_at: "2026-09-05T05:00:00.000Z" }),
+    sight({ species_code: "banaba", photo_data: photo, created_at: "2026-09-06T04:00:00.000Z" }),
+  ];
+  assert.equal(badgeFor(row).find((a) => a.def.id === "five-species")?.earned_at, null);
+  /* Photograph three more distinct species and it lands on the fifth. */
+  const more = [
+    ...row,
+    sight({ species_code: "dao", photo_data: photo, created_at: "2026-09-07T04:00:00.000Z" }),
+    sight({ species_code: "katmon", photo_data: photo, created_at: "2026-09-08T04:00:00.000Z" }),
+    sight({ species_code: "lagundi", photo_data: photo, created_at: "2026-09-09T04:00:00.000Z" }),
+  ];
+  assert.equal(badgeFor(more).find((a) => a.def.id === "five-species")?.earned_at, "2026-09-09T04:00:00.000Z");
 });
 
 test("a contribution is not a photographed find, and does not earn First Find", () => {
