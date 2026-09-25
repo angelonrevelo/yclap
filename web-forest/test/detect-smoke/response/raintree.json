@@ -1,0 +1,84 @@
+{
+  "is_recorded": false,
+  "provenance": "CONSTRUCTED for pipeline replay, 2026-09-25 — NOT an iNaturalist response. Taxon ids and ancestor_ids are real (/v1/taxa); the ORDER and SCORES are hand-written. Replace with `npm run smoke:detect -- --record` and a live token.",
+  "status": 200,
+  "body": {
+    "total_results": 3,
+    "page": 1,
+    "per_page": 3,
+    "results": [
+      {
+        "combined_score": 0.88,
+        "taxon": {
+          "id": 281371,
+          "name": "Samanea saman",
+          "rank": "species",
+          "rank_level": 10,
+          "preferred_common_name": "Monkey pod tree",
+          "iconic_taxon_name": "Plantae",
+          "ancestor_ids": [
+            48460,
+            47126,
+            211194,
+            47125,
+            47124,
+            47123,
+            47122,
+            373578,
+            521661,
+            138599,
+            281371
+          ]
+        }
+      },
+      {
+        "combined_score": 0.05,
+        "taxon": {
+          "id": 60832,
+          "name": "Albizia lebbeck",
+          "rank": "species",
+          "rank_level": 10,
+          "preferred_common_name": "lebbeck",
+          "iconic_taxon_name": "Plantae",
+          "ancestor_ids": [
+            48460,
+            47126,
+            211194,
+            47125,
+            47124,
+            47123,
+            47122,
+            373578,
+            521661,
+            47451,
+            60832
+          ]
+        }
+      },
+      {
+        "combined_score": 0.02,
+        "taxon": {
+          "id": 47447,
+          "name": "Leucaena leucocephala",
+          "rank": "species",
+          "rank_level": 10,
+          "preferred_common_name": "White leadtree",
+          "iconic_taxon_name": "Plantae",
+          "ancestor_ids": [
+            48460,
+            47126,
+            211194,
+            47125,
+            47124,
+            47123,
+            47122,
+            373578,
+            479698,
+            47453,
+            47447
+          ]
+        }
+      }
+    ]
+  }
+}

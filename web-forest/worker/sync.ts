@@ -10,10 +10,13 @@ import {
   worldFrom,
   type SightingRow,
 } from "../src/campus-world.ts";
+import { handleIdentify, IDENTIFY_PATH } from "./inat.ts";
 
 export interface Env {
   CAMPUS: DurableObjectNamespace;
   ASSETS: Fetcher;
+  /** iNat API token. `wrangler secret put INAT_API_TOKEN` — never a VITE_ var. */
+  INAT_API_TOKEN?: string;
 }
 
 const SYNC_PATH = new Set(["/world", "/sync", "/live", "/health", "/join", "/mine"]);
@@ -21,6 +24,7 @@ const SYNC_PATH = new Set(["/world", "/sync", "/live", "/health", "/join", "/min
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname === IDENTIFY_PATH) return handleIdentify(request, env.INAT_API_TOKEN);
     if (SYNC_PATH.has(url.pathname)) {
       const id = env.CAMPUS.idFromName("loyola");
       return env.CAMPUS.get(id).fetch(request);

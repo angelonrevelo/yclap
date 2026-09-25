@@ -1,0 +1,84 @@
+{
+  "is_recorded": false,
+  "provenance": "CONSTRUCTED for pipeline replay, 2026-09-25 — NOT an iNaturalist response. Taxon ids and ancestor_ids are real (/v1/taxa); the ORDER and SCORES are hand-written. Replace with `npm run smoke:detect -- --record` and a live token.",
+  "status": 200,
+  "body": {
+    "total_results": 3,
+    "page": 1,
+    "per_page": 3,
+    "results": [
+      {
+        "combined_score": 0.69,
+        "taxon": {
+          "id": 169442,
+          "name": "Swietenia macrophylla",
+          "rank": "species",
+          "rank_level": 10,
+          "preferred_common_name": "Big-leaf Mahogany",
+          "iconic_taxon_name": "Plantae",
+          "ancestor_ids": [
+            48460,
+            47126,
+            211194,
+            47125,
+            47124,
+            47729,
+            53724,
+            1101968,
+            1101987,
+            155941,
+            169442
+          ]
+        }
+      },
+      {
+        "combined_score": 0.18,
+        "taxon": {
+          "id": 497641,
+          "name": "Swietenia mahagoni",
+          "rank": "species",
+          "rank_level": 10,
+          "preferred_common_name": "West Indian Mahogany",
+          "iconic_taxon_name": "Plantae",
+          "ancestor_ids": [
+            48460,
+            47126,
+            211194,
+            47125,
+            47124,
+            47729,
+            53724,
+            1101968,
+            1101987,
+            155941,
+            497641
+          ]
+        }
+      },
+      {
+        "combined_score": 0.05,
+        "taxon": {
+          "id": 359078,
+          "name": "Khaya senegalensis",
+          "rank": "species",
+          "rank_level": 10,
+          "preferred_common_name": "African mahogany",
+          "iconic_taxon_name": "Plantae",
+          "ancestor_ids": [
+            48460,
+            47126,
+            211194,
+            47125,
+            47124,
+            47729,
+            53724,
+            1101968,
+            1101987,
+            126187,
+            359078
+          ]
+        }
+      }
+    ]
+  }
+}

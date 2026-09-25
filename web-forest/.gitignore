@@ -4,3 +4,4 @@ server/yclap-sync.db
 script/data/
 a.json
 script/cert/
+.dev.vars

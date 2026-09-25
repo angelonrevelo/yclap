@@ -1,0 +1,80 @@
+{
+  "is_recorded": false,
+  "provenance": "CONSTRUCTED for pipeline replay, 2026-09-25 — NOT an iNaturalist response. Taxon ids and ancestor_ids are real (/v1/taxa); the ORDER and SCORES are hand-written. Replace with `npm run smoke:detect -- --record` and a live token.",
+  "status": 200,
+  "body": {
+    "total_results": 3,
+    "page": 1,
+    "per_page": 3,
+    "results": [
+      {
+        "combined_score": 0.52,
+        "taxon": {
+          "id": 133332,
+          "name": "Vitex trifolia",
+          "rank": "species",
+          "rank_level": 10,
+          "preferred_common_name": "simpleleaf chastetree",
+          "iconic_taxon_name": "Plantae",
+          "ancestor_ids": [
+            48460,
+            47126,
+            211194,
+            47125,
+            47124,
+            48151,
+            48623,
+            918899,
+            126846,
+            133332
+          ]
+        }
+      },
+      {
+        "combined_score": 0.33,
+        "taxon": {
+          "id": 170273,
+          "name": "Vitex negundo",
+          "rank": "species",
+          "rank_level": 10,
+          "preferred_common_name": "Five-leaved chaste tree",
+          "iconic_taxon_name": "Plantae",
+          "ancestor_ids": [
+            48460,
+            47126,
+            211194,
+            47125,
+            47124,
+            48151,
+            48623,
+            918899,
+            126846,
+            170273
+          ]
+        }
+      },
+      {
+        "combined_score": 0.09,
+        "taxon": {
+          "id": 126846,
+          "name": "Vitex",
+          "rank": "genus",
+          "rank_level": 20,
+          "preferred_common_name": "Chastetrees",
+          "iconic_taxon_name": "Plantae",
+          "ancestor_ids": [
+            48460,
+            47126,
+            211194,
+            47125,
+            47124,
+            48151,
+            48623,
+            918899,
+            126846
+          ]
+        }
+      }
+    ]
+  }
+}

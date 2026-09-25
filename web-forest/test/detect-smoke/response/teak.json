@@ -1,0 +1,58 @@
+{
+  "is_recorded": false,
+  "provenance": "CONSTRUCTED for pipeline replay, 2026-09-25 — NOT an iNaturalist response. Taxon ids and ancestor_ids are real (/v1/taxa); the ORDER and SCORES are hand-written. Replace with `npm run smoke:detect -- --record` and a live token.",
+  "status": 200,
+  "body": {
+    "total_results": 2,
+    "page": 1,
+    "per_page": 2,
+    "results": [
+      {
+        "combined_score": 0.9,
+        "taxon": {
+          "id": 62887,
+          "name": "Tectona grandis",
+          "rank": "species",
+          "rank_level": 10,
+          "preferred_common_name": "Teak",
+          "iconic_taxon_name": "Plantae",
+          "ancestor_ids": [
+            48460,
+            47126,
+            211194,
+            47125,
+            47124,
+            48151,
+            48623,
+            1270940,
+            62892,
+            62887
+          ]
+        }
+      },
+      {
+        "combined_score": 0.04,
+        "taxon": {
+          "id": 120358,
+          "name": "Gmelina arborea",
+          "rank": "species",
+          "rank_level": 10,
+          "preferred_common_name": "Kashmir tree",
+          "iconic_taxon_name": "Plantae",
+          "ancestor_ids": [
+            48460,
+            47126,
+            211194,
+            47125,
+            47124,
+            48151,
+            48623,
+            1270939,
+            120364,
+            120358
+          ]
+        }
+      }
+    ]
+  }
+}
