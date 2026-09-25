@@ -33,16 +33,16 @@ import raintree from "./species/raintree.png";
 import teak from "./species/teak.png";
 import balete from "./species/balete.png";
 import silhouette from "./species/silhouette.png";
-import game_dex from "./magi/icon/dex.svg";
-import game_go from "./magi/icon/go.svg";
-import game_nearby from "./magi/icon/nearby.svg";
-import game_level from "./magi/icon/level.svg";
-import game_lock from "./magi/icon/lock.svg";
-import game_plan from "./magi/icon/plan.svg";
-import game_points from "./magi/icon/points.svg";
-import game_quest from "./magi/icon/quest.svg";
-import game_streak from "./magi/icon/streak.svg";
-import game_trophy from "./magi/icon/trophy.svg";
+import game_dex from "./icon/game/dex.png";
+import game_go from "./icon/game/go.png";
+import game_nearby from "./icon/game/nearby.png";
+import game_level from "./icon/game/level.png";
+import game_lock from "./icon/game/lock.png";
+import game_plan from "./icon/game/plan.png";
+import game_points from "./icon/game/points.png";
+import game_quest from "./icon/game/quest.png";
+import game_streak from "./icon/game/streak.png";
+import game_trophy from "./icon/game/trophy.png";
 import game_buddy from "./magi/icon/buddy.svg";
 import game_pin from "./magi/icon/pin.svg";
 import sticker_buddy_sprout from "./magi/web/buddy-sprout.webp";
@@ -94,10 +94,12 @@ export const icon = {
 };
 
 /**
- * Game icons — Magisphere vector stickers, drawn by
- * `script/magi-asset/build-vector.mjs`: forest outline, flat cel shading, a
- * white sticker border. Vector on purpose — they live at 15–52 px, where a
- * downscaled render goes soft. Replaced the chess.com-style set (09-23).
+ * Game icons — the chess.com-style set is back (Gelo, 09-25 note 1:09–2:16:
+ * "keep the old Chess.com-like icons, but in the new colour scheme"), recoloured
+ * into the Magisphere palette by `script/icon/recolor-game.mjs` from the masters
+ * in `script/icon/game-source/`. `buddy` and `pin` never had a chess.com piece,
+ * so they stay the Magisphere vector stickers; the full vector set remains in
+ * `magi/icon/` for brand and marketing use.
  */
 export const game_icon = {
   buddy: game_buddy,

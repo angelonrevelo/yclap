@@ -18,7 +18,7 @@
 }
 
 :root {
-  --shadow-card: 0 10px 28px rgba(21, 77, 48, 0.10);
+  --shadow-card: 0 1px 4px rgba(24, 32, 28, 0.12);
   --grad-forest: linear-gradient(115deg, #55d334, #008653);
   --grad-lagoon: linear-gradient(115deg, #058cd6, #45c223);
   /* Magisphere brand, sampled off the FINAL Canva publication material

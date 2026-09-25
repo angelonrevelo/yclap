@@ -206,7 +206,7 @@ function HudOrb({
         display: "grid",
         placeItems: "center",
         background: active ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.88)",
-        boxShadow: "0 6px 18px rgba(12, 28, 16, 0.28)",
+        boxShadow: "var(--mg-shadow)",
         border: "3px solid rgba(255,255,255,0.95)",
         overflow: "hidden",
         pointerEvents: "auto",
@@ -415,7 +415,7 @@ function TrainerSheet({
           color: "rgb(var(--mg-ink-rgb) / 0.92)",
           borderTopLeftRadius: 16,
           borderTopRightRadius: 16,
-          boxShadow: "0 -12px 40px rgba(17,75,47,0.18)",
+          boxShadow: "var(--mg-shadow-up)",
           padding: "18px 18px 28px",
         }}
       >
@@ -538,7 +538,7 @@ function NearbySightTray({
           borderRadius: 16,
           background: "var(--mg-surface-glass)",
           color: "rgb(var(--mg-ink-rgb) / 0.92)",
-          boxShadow: "0 10px 28px rgba(17,75,47,0.23)",
+          boxShadow: "var(--mg-shadow)",
           border: "1px solid rgb(var(--mg-ink-rgb) / 0.1)",
         }}
       >
@@ -763,7 +763,7 @@ function NearbyBar({
         borderTop: "1.5px solid rgb(var(--mg-ink-rgb) / 0.1)",
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
-        boxShadow: "0 -8px 20px rgba(17,75,47,0.18)",
+        boxShadow: "var(--mg-shadow-up)",
         zIndex: 45,
         padding: "10px 90px 10px 14px",
         animation: "fgup .28s cubic-bezier(.2,.8,.2,1)",
@@ -835,7 +835,7 @@ function NearbySheet({
         borderTopRightRadius: 16,
         borderBottomLeftRadius: is_panel ? 16 : 0,
         borderBottomRightRadius: is_panel ? 16 : 0,
-        boxShadow: is_panel ? "none" : "0 -16px 40px rgba(17,75,47,0.18)",
+        boxShadow: is_panel ? "none" : "var(--mg-shadow-up)",
         zIndex: 45,
         padding: is_panel ? "10px 18px 18px" : "8px 22px 88px",
         display: "flex",
@@ -850,7 +850,7 @@ function NearbySheet({
       />
 
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", paddingTop: 4, flexShrink: 0 }}>
-        <TaxonThumb species_code={sp.species_code} size={132} style={{ boxShadow: "0 10px 28px rgba(17,75,47,0.18)" }} />
+        <TaxonThumb species_code={sp.species_code} size={132} style={{ boxShadow: "var(--mg-shadow-sm)" }} />
         <div style={{ fontWeight: 800, fontSize: 26, lineHeight: 1.15, marginTop: 14, letterSpacing: "-0.02em" }}>{sp.common_name}</div>
         <div style={{ fontStyle: "italic", fontSize: 14, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 4 }}>{sp.scientific_name}</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 12 }}>
@@ -1141,7 +1141,7 @@ function BiomeBar({ presence, onExpand }: { presence: BiomePresence; onExpand: (
         borderTop: "1.5px solid rgb(var(--mg-ink-rgb) / 0.1)",
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
-        boxShadow: "0 -8px 20px rgba(17,75,47,0.18)",
+        boxShadow: "var(--mg-shadow-up)",
         zIndex: 45,
         padding: "10px 90px 10px 14px",
         animation: "fgup .28s cubic-bezier(.2,.8,.2,1)",
@@ -1206,7 +1206,7 @@ function BiomeSheet({
         color: "rgb(var(--mg-ink-rgb) / 0.92)",
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
-        boxShadow: "0 -12px 28px rgba(17,75,47,0.18)",
+        boxShadow: "var(--mg-shadow-up)",
         zIndex: 45,
         padding: "10px 20px 76px",
         overflowY: "auto",
@@ -1388,7 +1388,7 @@ function CameraSheet({
           borderTopRightRadius: 16,
           overflowY: "auto",
           padding: "16px 20px 28px",
-          boxShadow: "0 -12px 40px rgba(17,75,47,0.18)",
+          boxShadow: "var(--mg-shadow-up)",
           animation: "fgup .3s cubic-bezier(.2,.8,.2,1)",
         }}
       >
@@ -1508,7 +1508,7 @@ function CameraSheet({
                 borderRadius: 999,
                 background: is_reporting ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.88)",
                 border: is_reporting ? "3px solid var(--mg-green)" : "3px solid rgba(255,255,255,0.95)",
-                boxShadow: "0 6px 18px rgba(12, 28, 16, 0.28)",
+                boxShadow: "var(--mg-shadow)",
                 fontWeight: 800,
                 fontSize: 22,
                 color: "#1a3d28",
@@ -2089,7 +2089,7 @@ function BlindBoxReveal({ stage, onDismiss }: { stage: Stage; onDismiss: () => v
               width: 140,
               height: 140,
               borderRadius: 20,
-              background: "linear-gradient(145deg, #FDF6E3, #EBDCBB)",
+              background: "#F6EDD6",
               border: "3px solid #C9B489",
               display: "grid",
               placeItems: "center",
@@ -2655,7 +2655,7 @@ function SectorCard({
           background: "var(--mg-surface)",
           color: "rgb(var(--mg-ink-rgb) / 0.92)",
           borderRadius: is_desktop ? 16 : "16px 16px 0 0",
-          boxShadow: "0 -12px 40px rgba(17,75,47,0.18)",
+          boxShadow: "var(--mg-shadow-up)",
           display: "grid",
           gridTemplateColumns: "1fr auto",
           gap: 14,
@@ -2852,7 +2852,7 @@ function ContextCard({ label, value }: { label: string; value: string }) {
         border: "1px solid rgb(var(--mg-ink-rgb) / 0.1)",
         borderRadius: 10,
         padding: "9px 15px",
-        boxShadow: "0 4px 14px rgba(17,75,47,0.18)",
+        boxShadow: "var(--mg-shadow-sm)",
         minWidth: 0,
       }}
     >
@@ -2903,7 +2903,7 @@ function ModeSwitch({
         borderRadius: 10,
         background: is_field ? "var(--mg-green-deep)" : "var(--mg-surface-glass)",
         color: is_field ? "#fff" : "var(--mg-forest)",
-        boxShadow: "0 4px 14px rgba(17,75,47,0.18)",
+        boxShadow: "var(--mg-shadow-sm)",
         border: "none",
         display: "grid",
         placeItems: "center",
@@ -2951,7 +2951,7 @@ function GeoModeSwitch({
         borderRadius: 10,
         background: tone,
         color: mode === "gps" || mode === "play" ? "#fff" : "var(--mg-forest)",
-        boxShadow: "0 4px 14px rgba(17,75,47,0.18)",
+        boxShadow: "var(--mg-shadow-sm)",
         border: "none",
         display: "grid",
         placeItems: "center",
@@ -3000,7 +3000,7 @@ function Compass({ bearing, onReset }: { bearing: number; onReset: () => void })
         borderRadius: 10,
         background: "var(--mg-surface-glass)",
         border: "none",
-        boxShadow: "0 4px 14px rgba(17,75,47,0.18)",
+        boxShadow: "var(--mg-shadow-sm)",
         display: "grid",
         placeItems: "center",
         cursor: "pointer",
@@ -3765,7 +3765,7 @@ export default function App() {
 
       {is_sheet_open && !picked_sector && (
         is_desktop ? (
-          <div style={{ position: "absolute", left: 18, bottom: 84, width: 380, zIndex: 48, maxHeight: "78%", overflow: "hidden", borderRadius: 16, boxShadow: "0 -8px 34px rgba(17,75,47,0.18)" }}>
+          <div style={{ position: "absolute", left: 18, bottom: 84, width: 380, zIndex: 48, maxHeight: "78%", overflow: "hidden", borderRadius: 16, boxShadow: "var(--mg-shadow-up)" }}>
             <NearbySheet
               sp={play_sheet_sp}
               where={play_sheet_where}
@@ -3847,7 +3847,7 @@ export default function App() {
                 padding: "8px 13px",
                 fontSize: 12,
                 fontWeight: 700,
-                boxShadow: "0 4px 14px rgba(17,75,47,0.18)",
+                boxShadow: "var(--mg-shadow-sm)",
                 whiteSpace: "nowrap",
                 cursor: "pointer",
               }}

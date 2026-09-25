@@ -732,7 +732,7 @@ export default function PlayMap({
                         borderRadius: 999,
                         background: is_logged ? "rgba(47,107,58,0.14)" : "rgba(255,255,255,0.92)",
                         border: `2.5px solid ${is_logged ? "#2F6B3A" : "rgba(47,107,58,0.55)"}`,
-                        boxShadow: "0 6px 16px rgba(24,38,20,0.22)",
+                        boxShadow: "var(--mg-shadow-sm)",
                         display: "grid",
                         placeItems: "center",
                         overflow: "hidden",

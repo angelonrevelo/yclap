@@ -224,7 +224,7 @@ export function Fab({
            the disc is paper and the ring carries the brand colour instead. */
         background: "rgba(255,255,255,0.92)",
         border: is_leaf ? "4px solid var(--mg-green)" : "1.5px solid rgb(var(--mg-ink-rgb) / 0.1)",
-        boxShadow: "0 8px 20px rgba(17,75,47,0.18)",
+        boxShadow: "var(--mg-shadow-sm)",
         flexShrink: 0,
         ...style,
       }}

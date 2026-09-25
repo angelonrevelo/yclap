@@ -190,18 +190,28 @@ Two fingers (or shift-drag) swing the camera 360°; the compass returns north.
 ## Look and feel
 
 The app wears **Magisphere's own look**, taken off the team's poster set
-(2026-09-23): a sky that fades into mint paper, white "sticker" cards with a
-soft forest shadow, wood-plank signs for quests and directions, sunny yellow for
-rewards, Fredoka for headlines. It replaced the chess.com port (charcoal
-`#312E2B` / `#262421`, the inset green button) on 09-23. The posters were the
-**reference**, not the source — nothing from them ships 1:1.
+(2026-09-23): white panels on a neutral off-white ground, wood-plank signs for
+quests and directions, sunny yellow for rewards, Fredoka for headlines. It
+replaced the chess.com port (charcoal `#312E2B` / `#262421`, the inset green
+button) on 09-23. The posters were the **reference**, not the source — nothing
+from them ships 1:1.
+
+**Flat, since 09-25** (Gelo's 09-25 note, 1:09–2:16: no "shadow-ish
+neomorphism", neutral colour, simple and Pokémon-GO-like). Chrome carries at
+most ONE small neutral drop shadow (`--mg-shadow`, `--mg-shadow-sm`,
+`--mg-shadow-up` for bottom sheets); no inset highlights, text shadows or
+gradients on panels and buttons. Anything you press gets its depth from a solid
+darker bottom edge (`0 3px 0 <darker>`: the green button, the plank, the
+joystick knob). The leaf hedge on the tab bar is gone. The colour lives in the
+art, not the panels. The map's sky fade and the Settings hero scene are
+illustration, not chrome, and keep their gradients.
 
 - **`src/game.css`** — the `--mg-*` tokens and every `gm-` / `mg-` class.
   Components read these rather than inventing colours; inline styles use
   `rgb(var(--mg-ink-rgb) / a)` for ink at an alpha.
 - **`src/hud.tsx`** — the play layer's chrome: player card (level, points,
-  weekly streak), the daily hunt as a wood-plank tab, the leafy tab bar
-  (Buddy · Nearby · Go · Dex · About) with the camera as a raised sky lens,
+  weekly streak), the daily hunt as a wood-plank tab, the plain white tab bar
+  (Buddy · Nearby · Go · Dex · About) with the camera as a raised lagoon-ringed disc,
   reward toast, and the Dex field-guide cards.
 - **`src/character.tsx`** — the walker. It draws the stage **sticker** (seed →
   seedling → sapling → tree) and keeps the billboard, contact shadow, bob and
@@ -215,13 +225,19 @@ posters; the list is in `script/magi-asset/build-vector.mjs`):
 | Path | What | Where | Rebuild |
 |---|---|---|---|
 | Generated | Sprout buddy (sprout, cheer, map, sleep, trail), the explorer, the four growth stages | `src/asset/magi/sticker/` (1024 px masters), `src/asset/magi/web/` (400 px WebP the app ships) | `script/magi-asset/sticker.spec.json` via the codex skill's `imagen.mjs` |
-| Drawn by code | Mark, wordmark (Fredoka outlines), lockups, app icon, scenes, wood sign, ornaments, the 12 game icons | `public/brand/magi/*.svg`, `src/asset/magi/icon/*.svg` | `node script/magi-asset/build-vector.mjs` |
+| Drawn by code | Mark, wordmark (Fredoka outlines), lockups, app icon, scenes, wood sign, ornaments, the 12 vector game icons (brand/marketing; in-app only `buddy` and `pin`) | `public/brand/magi/*.svg`, `src/asset/magi/icon/*.svg` | `node script/magi-asset/build-vector.mjs` |
+| Recoloured | The 10 chess.com-style game icons the app uses (dex, go, level, lock, nearby, plan, points, quest, streak, trophy), remapped into the brand palette | `src/asset/icon/game/*.png` (masters: `script/icon/game-source/`) | `node script/icon/recolor-game.mjs` |
 | Rendered | PWA icons, PNG exports, posters, social, OG, banner, sticker and brand sheets | `public/brand/icon-*.png`, `../docs/brand/magisphere/` | `node script/magi-asset/render.mjs` (needs Chrome) |
 
 Stickers are generated on a `#FF00FF` key and **remapped to the 17-colour
 palette** with no dither, so they cannot drift off-brand; each one met its
-contract (size, palette, ink share). Icons are vector on purpose: they live at
-15–52 px, where a downscaled render goes soft. Fonts (OFL) are vendored in
+contract (size, palette, ink share). The in-app game icons are the
+chess.com-style set again (Gelo wanted those back, "in the new colour scheme"):
+`script/icon/palette-remap.mjs` keeps each pixel's lightness and alpha, snaps
+its hue towards the nearest brand colour (green → Leaf, yellow → Sun, orange →
+Sparkle, cyan → Lagoon, blue → Blue, red → `--mg-red`) and pulls saturation
+part-way to it; greys (the lock, the trophy base) are left alone. Tested in
+`test/palette-remap.test.ts`. Fonts (OFL) are vendored in
 `script/magi-asset/font/`, so the wordmark renders identically anywhere. The
 older kit icons and Settings art in `src/asset/icon/` are still the previous
 generation (specs and keyer in `script/icon/`) — see `../docs/brand/magisphere/README.md` for what is still open.
