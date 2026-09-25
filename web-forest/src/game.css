@@ -492,14 +492,17 @@
   align-items: center;
   gap: 10px;
   max-width: calc(100vw - 32px);
+  width: max-content;
   padding: 8px 18px 8px 8px;
-  border-radius: 999px;
+  /* A long line wraps to two instead of ending in "sti…": the toast is the
+     only place some of these sentences are ever said. */
+  border-radius: 26px;
   background: #fff;
   color: var(--mg-text-bolder);
   box-shadow: var(--mg-shadow);
   font-weight: 600;
   font-size: 14px;
-  white-space: nowrap;
+  line-height: 1.3;
   transform: translateX(-50%);
   animation: gm-pop 0.4s cubic-bezier(0.2, 1.3, 0.4, 1);
 }
@@ -521,8 +524,10 @@
 }
 
 .gm-toast-label {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* ── Dex ────────────────────────────────────────────────────────────────── */
@@ -727,5 +732,161 @@
   .gm-go-core,
   .mg-bob {
     animation: none !important;
+  }
+}
+
+/* ── Finds on the play map ──────────────────────────────────────────────── */
+
+@keyframes pm-find-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.pm-find .pm-find-head {
+  animation: pm-find-bob 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pm-find .pm-find-head {
+    animation: none;
+  }
+}
+
+/* ── Today's hunt: the day's first open ─────────────────────────────────── */
+
+.gm-today {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  background: rgba(17, 100, 108, 0.62);
+}
+.gm-today-ribbon {
+  position: relative;
+  z-index: 2;
+  width: min(92vw, 400px);
+  margin-bottom: -18px;
+  padding: 14px 0 12px;
+  text-align: center;
+  background: linear-gradient(180deg, #b8663a 0%, var(--mg-wood) 100%);
+  border: 3px solid #fff;
+  border-radius: 10px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+  animation: al-card-in 380ms var(--mg-bounce) both;
+}
+.gm-today-ribbon::before,
+.gm-today-ribbon::after {
+  /* the swallowtails */
+  content: "";
+  position: absolute;
+  top: 12px;
+  width: 30px;
+  height: 100%;
+  background: var(--mg-wood-dark);
+  z-index: -1;
+}
+.gm-today-ribbon::before {
+  left: -22px;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 34% 50%);
+}
+.gm-today-ribbon::after {
+  right: -22px;
+  clip-path: polygon(0 0, 100% 0, 66% 50%, 100% 100%, 0 100%);
+}
+.gm-today-ribbon span {
+  font-family: var(--mg-heading);
+  font-weight: 600;
+  font-size: 21px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mg-cream);
+  text-shadow: 0 2px 0 rgba(107, 53, 25, 0.6);
+}
+.gm-today-card {
+  width: min(76vw, 300px);
+  border-radius: 20px;
+  overflow: hidden;
+  background: #fff;
+  border: 6px solid var(--mg-sun);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.3);
+  animation: al-card-in 420ms 80ms var(--mg-bounce) both;
+}
+.gm-today-head {
+  padding: 26px 12px 10px;
+  text-align: center;
+  background: var(--mg-sun);
+  font-family: var(--mg-heading);
+  font-weight: 600;
+  font-size: 22px;
+  color: #6b4a05;
+}
+.gm-today-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 16px 20px;
+  text-align: center;
+}
+.gm-today-art {
+  display: grid;
+  place-items: center;
+  width: 140px;
+  height: 140px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 50% 42%, #f3faec 0%, #e3f3d6 70%, #d4ecc3 100%);
+}
+.gm-today-name {
+  margin: 12px 0 2px;
+  font-family: var(--mg-heading);
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 1.15;
+  color: var(--mg-ink);
+}
+.gm-today-where {
+  margin: 0;
+  font-family: "Nunito", var(--mg-heading);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--mg-text-subtle);
+}
+.gm-today-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 12px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #fff5d1;
+  color: var(--mg-gold);
+  font-family: var(--mg-heading);
+  font-weight: 600;
+  font-size: 14px;
+}
+.gm-today-box {
+  display: block;
+  margin-top: 6px;
+  color: var(--mg-ink);
+  font-family: var(--mg-heading);
+  font-weight: 600;
+  font-size: 13px;
+}
+.gm-today-go {
+  margin-top: 26px;
+}
+.gm-today-later {
+  margin-top: 12px;
+  padding: 8px 18px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.9);
+  font-family: "Nunito", var(--mg-heading);
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gm-today-ribbon,
+  .gm-today-card {
+    animation: none;
   }
 }

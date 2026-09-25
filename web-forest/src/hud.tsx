@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { Stage } from "./character";
-import { game_icon, stage_sticker } from "./asset/kit";
+import { game_icon, stage_sticker, sticker } from "./asset/kit";
 import { species } from "./data";
 import type { DailyTask } from "./gamify";
 import { levelOf } from "./level";
@@ -132,6 +132,66 @@ export function QuestBanner({
         <GameIcon src={game_icon.points} size={15} />+{reward}
       </span>
     </button>
+  );
+}
+
+/**
+ * The day's first open: today's hunt, presented the way the genre presents a
+ * daily reward — a ribbon, one card, one button.
+ *
+ * It is not a login bonus, and it gives nothing for opening the app. The
+ * reward on the card is the daily hunt's, already on the quest banner, and it
+ * is paid only when the species is logged. This is the same task, said once
+ * big enough to land, then folded back into the banner.
+ */
+export function TodayHuntCard({
+  daily,
+  reward,
+  streak_weeks,
+  onGo,
+  onLater,
+}: {
+  daily: DailyTask;
+  reward: number;
+  streak_weeks: number;
+  onGo: () => void;
+  onLater: () => void;
+}) {
+  const is_curated = Boolean(species[daily.species_code]);
+  return (
+    <div className="al-scrim al-scrim-dark gm-today" role="dialog" aria-labelledby="gm-today-title">
+      <div className="gm-today-ribbon" aria-hidden>
+        <span>Today's hunt</span>
+      </div>
+      <div className="gm-today-card">
+        <div className="gm-today-head">{streak_weeks > 0 ? `Week ${streak_weeks + 1} streak` : "Day one"}</div>
+        <div className="gm-today-body">
+          <div className="gm-today-art">
+            {is_curated ? (
+              <TaxonThumb species_code={daily.species_code} size={128} style={{ border: "none", background: "transparent" }} />
+            ) : (
+              <img src={sticker.buddy_trail} alt="" width={132} height={132} style={{ objectFit: "contain" }} />
+            )}
+          </div>
+          <h2 id="gm-today-title" className="gm-today-name">
+            {daily.common_name}
+          </h2>
+          <p className="gm-today-where">Out today in {daily.sector_name}</p>
+          <span className="gm-today-reward">
+            <GameIcon src={game_icon.points} size={18} />+{reward} when you log it
+          </span>
+          {/* The hunt's `challenge` event is what earns `hunt:<day>` in
+              `blindbox.ts` — one box per day, opened on the Journal. */}
+          <span className="gm-today-box">+ blind box, opened on your Journal</span>
+        </div>
+      </div>
+      <button type="button" className="al-button gm-today-go" onClick={onGo}>
+        Let's go
+      </button>
+      <button type="button" className="gm-today-later" onClick={onLater}>
+        Later
+      </button>
+    </div>
   );
 }
 

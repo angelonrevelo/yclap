@@ -610,7 +610,7 @@ export default function SettingsScreen({
                   <Td is_head>
                     Buildings
                     <div style={{ display: "flex", gap: 4, marginTop: 7 }}>
-                      {(["shadow", "hollow", "solid"] as const).map((style) => (
+                      {(["block", "shadow", "hollow", "solid"] as const).map((style) => (
                         <button
                           key={style}
                           type="button"
@@ -638,8 +638,9 @@ export default function SettingsScreen({
                     </div>
                   </Td>
                   <Td>
-                    Full walls look most solid but are drawn above the map, so a building can cover a path
-                    that is actually in front of it. Shadow never does.
+                    Block is a low building, a few metres of wall on every one, so it looks built without
+                    hiding much. Full walls look most solid but are drawn above the map, so a building can
+                    cover a path that is actually in front of it. Shadow never does.
                   </Td>
                 </tr>
               </tbody>

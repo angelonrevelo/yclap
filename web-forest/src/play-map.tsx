@@ -20,6 +20,8 @@ import {
   type Sector,
 } from "./sector";
 import TileMap, { type Projection, type View } from "./tile-map";
+import Horizon from "./horizon";
+import Flora, { type Tuft } from "./flora";
 import { RARITY_ORDER, type Spawn } from "./spawn";
 import { kindOf } from "./kind";
 import { KindPath, KIND_TONE } from "./kind-mark";
@@ -60,6 +62,7 @@ import FrameProbe from "./frame-probe";
    it inside `PITCH_MIN`…`PITCH_MAX` (see `camera-feel.ts`). The old fixed 52°
    sat in the middle of that band. */
 const GROUND = "#CFE3BD";
+const GROUND_NIGHT = "#3B5A63";
 /** Closest play camera. Exported so the app's default play zoom cannot outrun it. */
 export const PLAY_MAX_ZOOM = 22;
 /**
@@ -98,11 +101,15 @@ const outside_path = shape.path.filter((p) => p.is_outside);
  * on every render, and computed once because 94 sectors x N tufts is not work
  * to redo sixty times a second.
  */
-function scatterTuft(): { lat: number; lon: number; r: number; dark: boolean }[] {
-  const out: { lat: number; lon: number; r: number; dark: boolean }[] = [];
+function scatterTuft(): Tuft[] {
+  const out: Tuft[] = [];
   for (const s of biome_sector) {
     const veg = s.vegetation_ratio ?? 0;
     if (veg < 0.55) continue;
+    /* A pitch or a lawn measures green and has no trees on it. Painting
+       canopy across the Moro Lorenzo football field was the first thing a
+       look at the result caught. */
+    const is_lawn = s.kind === "open-field" || /(field|court|pitch|track)/i.test(s.name);
     let seed = 0;
     for (let i = 0; i < s.sector_code.length; i += 1) seed = (seed * 31 + s.sector_code.charCodeAt(i)) >>> 0;
     const random = () => {
@@ -114,7 +121,9 @@ function scatterTuft(): { lat: number; lon: number; r: number; dark: boolean }[]
       if (lat < lat0) lat0 = lat; if (lat > lat1) lat1 = lat;
       if (lon < lon0) lon0 = lon; if (lon > lon1) lon1 = lon;
     }
-    const want = Math.min(26, Math.round((s.area_m2 / 900) * veg));
+    const want = is_lawn
+      ? Math.min(8, Math.round((s.area_m2 / 2400) * veg))
+      : Math.min(40, Math.round((s.area_m2 / 600) * veg));
     let tries = 0;
     let made = 0;
     while (made < want && tries < want * 12) {
@@ -122,7 +131,7 @@ function scatterTuft(): { lat: number; lon: number; r: number; dark: boolean }[]
       const lat = lat0 + random() * (lat1 - lat0);
       const lon = lon0 + random() * (lon1 - lon0);
       if (!sectorContains(s, { lat, lon })) continue;
-      out.push({ lat, lon, r: 3.4 + random() * 4.6, dark: s.kind === "wood" || veg > 0.85 });
+      out.push({ lat, lon, r: 3.4 + random() * 4.6, dark: s.kind === "wood" || veg > 0.85, is_shrub_only: is_lawn });
       made += 1;
     }
   }
@@ -185,6 +194,8 @@ interface Props {
   skyline_style?: SkylineStyle;
   /** Level shown to the other walkers in the hall — see `multiplayer.ts`. */
   level?: number;
+  /** Night sky, darker ground. From the weather reading's `is_day`, or the clock. */
+  is_night?: boolean;
 }
 
 type Project = Projection["project"];
@@ -221,6 +232,26 @@ function isNear(ring: [number, number][], project: Project, cull: Cull): boolean
   return dx * dx + dy * dy <= cull.r * cull.r;
 }
 
+/**
+ * The play view's colour grade on a sector fill, done on the number rather
+ * than with a CSS filter: a filter on a group this size makes Chrome drop the
+ * grass pattern and the buildings drawn after it. Lightness order — the
+ * channel the data is in — survives both grades.
+ *
+ * Day takes saturation down (the posters' greens are soft; a lawn at full
+ * chroma filled the phone with one loud colour). Night halves lightness and
+ * leans the hue toward blue, the genre's dusk.
+ */
+function gradeFill(hsl: string, is_night: boolean): string {
+  const m = /hsl\(([\d.]+)\s+([\d.]+)%\s+([\d.]+)%\)/.exec(hsl);
+  if (!m) return hsl;
+  const h = Number(m[1]);
+  const sat = Number(m[2]);
+  const light = Number(m[3]);
+  if (is_night) return `hsl(${(h + 34).toFixed(1)} ${(sat * 0.6).toFixed(1)}% ${(light * 0.5).toFixed(1)}%)`;
+  return `hsl(${h.toFixed(1)} ${(sat * 0.72).toFixed(1)}% ${Math.min(96, light + 1.5).toFixed(1)}%)`;
+}
+
 function ringPath(ring: [number, number][], project: Project, close: boolean): string {
   if (!ring.length) return "";
   let d = "";
@@ -247,7 +278,10 @@ function pickLabel(
 ): LabelPlace[] {
   const placed: LabelPlace[] = [];
   const spoken = new Set<string>();
-  const ordered = [...row].sort((a, b) => {
+  /* The ground underfoot is already named on the HUD card; a second pill of
+     the same name beside the walker was the one label on screen that said
+     nothing new. */
+  const ordered = [...row].filter((s) => s.sector_code !== here?.sector_code).sort((a, b) => {
     if (here) {
       if (a.sector_code === here.sector_code) return -1;
       if (b.sector_code === here.sector_code) return 1;
@@ -279,8 +313,9 @@ function pickLabel(
     /* Not up in the haze, and not down where the stage card and the shutter
        live — a pill behind a button is a pill nobody reads. */
     if (p.y < height * 0.3 || p.y > height * 0.84) continue;
-    /* Not on top of the walker, who is drawn at the centre. */
-    if (avoid && Math.abs(p.x - avoid.x) < half_w + 34 && Math.abs(p.y - avoid.y) < 62) continue;
+    /* Not on top of the walker. `avoid` is their FEET, and the figure stands
+       ~110 px up from there, so the keep-out box runs up the whole body. */
+    if (avoid && Math.abs(p.x - avoid.x) < half_w + 40 && p.y > avoid.y - 150 && p.y < avoid.y + 24) continue;
 
     const hit = placed.some(
       (q) => Math.abs(q.screen_x - p.x) < half_w + halfWidth(q.row) + 10 && Math.abs(q.screen_y - p.y) < 46,
@@ -294,8 +329,8 @@ function pickLabel(
 }
 
 /**
- * The ground: sector fills, grass, building contact patches, walkways, canopy
- * tufts and the restricted gray.
+ * The ground: sector fills, grass, building contact patches, walkways and the
+ * restricted gray. (The trees and bushes stand up in `flora.tsx`.)
  *
  * None of it depends on where the walker is — only on `project`, which the
  * raked camera anchors (see `ANCHOR_GRID` in `tile-map.tsx`). Memoised on
@@ -316,6 +351,7 @@ const Ground = memo(function Ground({
   plane_meter_per_pixel,
   here_code,
   is_restricted_on,
+  is_night,
   cull_x,
   cull_y,
   cull_r,
@@ -324,6 +360,10 @@ const Ground = memo(function Ground({
   plane_meter_per_pixel: number;
   here_code: string | null;
   is_restricted_on: boolean;
+  /* Night is graded on the numbers (`gradeFill`, the path colours) — never a
+     CSS filter on this group: Chrome drops the grass pattern and the
+     buildings under one. */
+  is_night: boolean;
   /* Primitives rather than a `Cull` object, so `memo` compares them by value. */
   cull_x: number;
   cull_y: number;
@@ -333,7 +373,9 @@ const Ground = memo(function Ground({
   const near = (ring: [number, number][]) => isNear(ring, project, cull);
   return (
     <>
-      {/* 1 · sector fills — the map itself */}
+      {/* 1 · sector fills — the map itself, through `gradeFill`. The
+             paths carry their own night colours: one grade over
+             everything turned a sand path into mud. */}
       {sector_row.map((row) => {
         if (!near(row.point)) return null;
         const is_here = here_code === row.sector_code;
@@ -341,7 +383,7 @@ const Ground = memo(function Ground({
           <path
             key={row.sector_code}
             d={ringPath(row.point, project, true)}
-            fill={sectorFill(row)}
+            fill={gradeFill(sectorFill(row), is_night)}
             fillOpacity={is_here ? 1 : 0.95}
             stroke={is_here ? "#F0B429" : sectorStroke(row)}
             strokeWidth={is_here ? 4.5 : 1}
@@ -395,59 +437,60 @@ const Ground = memo(function Ground({
           key={`po${i}`}
           d={ringPath(p.point, project, false)}
           fill="none"
-          stroke="rgba(255,255,255,0.34)"
+          stroke={is_night ? "rgba(160,176,214,0.3)" : "rgba(255,255,255,0.34)"}
           strokeWidth={roadWidthPx(p.is_road, plane_meter_per_pixel) * 0.7}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
       ))}
 
-      {/* 3b · the ways the sectors were cut along — casing then fill,
-             at their real width (`roadWidthPx`), so at the street
-             camera they read as GO's wide pale roads, not hairlines */}
-      {campus_path.map((p, i) => near(p.point) && (
-        <path
-          key={`pc${i}`}
-          d={ringPath(p.point, project, false)}
-          fill="none"
-          stroke="rgba(150,140,112,0.32)"
-          strokeWidth={roadCasingPx(roadWidthPx(p.is_road, plane_meter_per_pixel))}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      ))}
-      {campus_path.map((p, i) => near(p.point) && (
-        <path
-          key={`pf${i}`}
-          d={ringPath(p.point, project, false)}
-          fill="none"
-          stroke={p.is_road ? "#FBF5E6" : "#FFFBF2"}
-          strokeWidth={roadWidthPx(p.is_road, plane_meter_per_pixel)}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      ))}
-
-      {/* 4 · ambient life. Deterministic, decorative, and never a
-             claim: these are not surveyed trees, they are texture so a
-             wooded sector looks wooded. `is_biome` gates them, so
-             nothing sprouts on a car park. */}
-      {/* The old 0.55 group opacity is folded into the fill: a `<g
-             opacity>` per tuft was one compositing effect per tuft. */}
-      {tuft.map((t, i) => {
-        const p = project({ lat: t.lat, lon: t.lon });
-        if ((p.x - cull.x) ** 2 + (p.y - cull.y) ** 2 > cull.r * cull.r) return null;
+      {/* 3b · the ways the sectors were cut along, at their real width.
+             Widths are metres turned into plane pixels (`roadWidthPx`: a
+             campus road 5.5 m, a footpath 2.6 m), so a path is as wide as
+             the ground it covers at every zoom instead of a fixed 9 px that
+             was a ribbon at z19 and a thread at z22. An edge, a sand-coloured
+             walk, and on roads a dashed centre line once there is room. */}
+      {(() => {
+        const road_fill = roadWidthPx(true, plane_meter_per_pixel);
+        const dash = Math.max(4, 1.6 / Math.max(plane_meter_per_pixel, 0.001));
+        const shown = campus_path.filter((p) => near(p.point));
         return (
-          <ellipse
-            key={`t${i}`}
-            cx={p.x}
-            cy={p.y}
-            rx={t.r}
-            ry={t.r * 0.72}
-            fill={t.dark ? "rgba(28,74,34,0.3)" : "rgba(44,110,50,0.21)"}
-          />
+          <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+            {shown.map((p, i) => (
+              <path
+                key={`pc${i}`}
+                d={ringPath(p.point, project, false)}
+                stroke={is_night ? (p.is_road ? "#9A86C0" : "#8E88BC") : p.is_road ? "#C8BD9F" : "#DCC188"}
+                strokeWidth={roadCasingPx(roadWidthPx(p.is_road, plane_meter_per_pixel))}
+              />
+            ))}
+            {shown.map((p, i) => (
+              <path
+                key={`pf${i}`}
+                d={ringPath(p.point, project, false)}
+                stroke={is_night ? (p.is_road ? "#3E4A86" : "#6C6AA2") : p.is_road ? "#ECE5D2" : "#F4E6BC"}
+                strokeWidth={roadWidthPx(p.is_road, plane_meter_per_pixel)}
+              />
+            ))}
+            {road_fill > 16 &&
+              shown
+                .filter((p) => p.is_road)
+                .map((p, i) => (
+                  <path
+                    key={`pd${i}`}
+                    d={ringPath(p.point, project, false)}
+                    stroke={is_night ? "rgba(255,246,220,0.45)" : "rgba(255,255,255,0.95)"}
+                    strokeWidth={Math.max(1.5, road_fill * 0.035)}
+                    strokeDasharray={`${dash * 1.6} ${dash * 1.4}`}
+                    strokeLinecap="butt"
+                  />
+                ))}
+          </g>
         );
-      })}
+      })()}
+
+      {/* 4 · ambient life now stands up — see `flora.tsx`, drawn in screen
+             space over the skyline. Nothing flat is painted here. */}
 
       {/* 4 · restricted ground: quiet flat gray, drawn over the green
              and its tufts so nothing living seems to grow there. No
@@ -457,9 +500,9 @@ const Ground = memo(function Ground({
       {is_restricted_on && (
         <path
           d={ringPath(RESTRICTED_POLYGON.map((p) => [p.lat, p.lon] as [number, number]), project, true)}
-          fill="#9A9E99"
+          fill={is_night ? "#4A4F57" : "#9A9E99"}
           fillOpacity={0.92}
-          stroke="#80847F"
+          stroke={is_night ? "#3A3E45" : "#80847F"}
           strokeWidth="1.5"
           strokeLinejoin="round"
         />
@@ -539,10 +582,16 @@ export default function PlayMap({
   is_camera_locked = false,
   skyline_style,
   level = 1,
+  is_night = false,
 }: Props) {
   /* The hall: other phones' walkers, live. Only while this view is mounted. */
   const hall = useHall({ fix, stage, level });
   const here = useMemo(() => (fix ? sectorAt(fix) : null), [fix]);
+  /* Every find, and the walker: painted scenery keeps off all of them. */
+  const keep_clear = useMemo<LatLon[]>(
+    () => [...marker, ...spawn, ...(fix ? [fix] : [])],
+    [spawn, fix?.lat, fix?.lon],
+  );
 
   /* Pitch = the zoom's resting pitch plus whatever two fingers added. Kept as
      an OFFSET so zooming still eases the tilt after somebody has adjusted it,
@@ -590,7 +639,7 @@ export default function PlayMap({
       bearing_degree={bearing_degree}
       onBearing={onBearing}
       is_tile_hidden
-      ground={GROUND}
+      ground={is_night ? GROUND_NIGHT : GROUND}
       overlay_attribution={`${SECTOR_ATTRIBUTION} · ${BUILDING_ATTRIBUTION}`}
       /* ODbL credit has to stay readable: sit it just above the game dock (156 px). */
       credit_offset={158}
@@ -605,32 +654,32 @@ export default function PlayMap({
       onTap={onWalkTo}
       overlay={(projection) => {
         /* Only real biomes speak. A car park does not get a pill. */
-        const label = pickLabel(
-          biome_sector,
-          here,
-          projection,
-          fix ? projection.toScreen(projection.project(fix)) : null,
-        );
+        const walker_at = fix ? projection.toScreen(projection.project(fix)) : null;
+        const label = pickLabel(biome_sector, here, projection, walker_at);
         return (
           <>
-            {/* The rake opens a band of empty ground above the campus. Left
-                flat it reads as a rendering bug; a sky hazing into the ground
-                reads as distance instead, which is what it actually is. */}
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                pointerEvents: "none",
-                background:
-                  "linear-gradient(180deg, #8FD0F7 0%, #C6E8FB 10%, rgba(214,238,210,0.9) 18%, rgba(214,238,206,0.5) 25%, rgba(214,238,206,0) 33%)",
-              }}
-            />
             {/* The campus, standing up. Under the sky, over the ground, and
                 below every marker — see `skyline.tsx` on why it cannot live
                 in the tilted plane with the rest of the map. */}
-            <Skyline projection={projection} centre={view} style={skyline_style} />
+            <Skyline projection={projection} centre={view} style={skyline_style} avoid={walker_at} is_night={is_night} />
             <RemoteWalkerLayer hall={hall} projection={projection} bearing_degree={bearing_degree} is_desktop={is_desktop} />
             <HallCount hall={hall} />
+            <Flora
+              tuft={tuft}
+              projection={projection}
+              centre={view}
+              keep_clear={keep_clear}
+              walker_screen_y={walker_at ? walker_at.y : null}
+              walker_x={walker_at ? walker_at.x : null}
+              is_night={is_night}
+            />
+            {/* The rake opens a band of empty ground above the campus. A flat
+                gradient there read as "the map ends"; a horizon reads as
+                distance — see `horizon.tsx` for why its hills and towers sit
+                where they do. Painted AFTER the skyline and the trees: whatever
+                is far enough away to reach the horizon should dissolve into
+                it, not stand on top of the sky. */}
+            <Horizon width={projection.width} height={projection.height} bearing_degree={bearing_degree} is_night={is_night} />
 
             {/* The walker, drawn on the glass rather than in the ground.
                 It used to live inside the tilted plane and counter-rotate out
@@ -727,6 +776,7 @@ export default function PlayMap({
                        shrinks with distance so it belongs to its ground. */
                     transform: `translate(-50%, -50%) scale(${Math.max(0.72, Math.min(1.1, scale)).toFixed(2)})`,
                     pointerEvents: "none",
+                    zIndex: 4,
                     whiteSpace: "nowrap",
                     fontSize: is_here ? 13 : 11.5,
                     fontWeight: is_here ? 800 : 700,
@@ -753,7 +803,19 @@ export default function PlayMap({
         return (
           <>
             <svg
-              style={{ position: "absolute", left: 0, top: 0, overflow: "visible", pointerEvents: "none" }}
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                overflow: "visible",
+                pointerEvents: "none",
+                /* Night is the same ground under a blue dusk. The data keeps its
+                   order of light to dark, which is what has to survive. By day
+                   the same ramp is taken down in saturation only: the posters'
+                   greens are soft, and a lawn at full chroma filled the screen
+                   with one loud colour. Lightness, the channel the data is in,
+                   is untouched. */
+              }}
               width={width}
               height={height}
             >
@@ -765,8 +827,8 @@ export default function PlayMap({
                   <path
                     d="M6,14 q1,-6 -2,-9 q5,3 5,9 q1,-7 5,-10 q-3,5 -2,10 M28,36 q1,-6 -2,-9 q5,3 5,9 q1,-7 5,-10 q-3,5 -2,10"
                     fill="none"
-                    stroke="rgba(18,78,38,0.26)"
-                    strokeWidth="1.6"
+                    stroke="rgba(18,78,38,0.16)"
+                    strokeWidth="1.5"
                     strokeLinecap="round"
                   />
                   <path d="M30,10 q2,-4 5,-5 M12,34 q2,-4 5,-5" fill="none" stroke="rgba(255,255,220,0.35)" strokeWidth="1.6" strokeLinecap="round" />
@@ -782,6 +844,7 @@ export default function PlayMap({
                 plane_meter_per_pixel={Number(projection.plane_meter_per_pixel.toPrecision(4))}
                 here_code={here?.sector_code ?? null}
                 is_restricted_on={is_restricted_on}
+                is_night={is_night}
                 /* The anchor sits at the container centre in plane pixels.
                    The radius covers the raked view out to the sky haze at the
                    steepest pitch, in plane pixels (hence the zoom scale), plus
@@ -966,22 +1029,55 @@ export default function PlayMap({
                     filter: in_range ? "drop-shadow(0 0 8px rgba(255,255,255,0.55))" : undefined,
                   }}
                 >
-                  <svg width="48" height="58" viewBox="0 0 48 58" aria-label={`${row.common_name} — ${kind}${row.rarity ? `, ${row.rarity}` : ""}`}>
-                    <ellipse cx="24" cy="54" rx="10" ry="3.6" fill="rgba(28,74,34,0.22)" />
-                    <line x1="24" y1="50" x2="24" y2="34" stroke={tone} strokeWidth="1.3" strokeDasharray="2 2" opacity="0.8" />
-                    {Array.from({ length: tick }, (_, i) => (
-                      <circle key={i} cx="24" cy={49 - i * 3.4} r="1.5" fill={tone} />
-                    ))}
-                    <circle cx="24" cy="18" r="16" fill={is_logged ? tone : "#FFFFFF"} stroke={tone} strokeWidth="2" />
-                    <g
-                      transform="translate(10 4) scale(1.15)"
-                      fill="none"
-                      stroke={is_logged ? "#FFFFFF" : tone}
-                      strokeWidth="1.9"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <KindPath kind={kind} />
+                  {/* A sticker on a stalk, in the kit's grammar: white
+                      border, a disc in the taxon's tone, the kind mark, and
+                      the rarity as a count of sparkles (a SHAPE, so it survives
+                      greyscale — the same rule the rarity pill keeps). It
+                      bobs, because a find that sits still reads as a pin. */}
+                  <svg
+                    className="pm-find"
+                    width="58"
+                    height="76"
+                    viewBox="0 0 58 76"
+                    style={{ overflow: "visible", animationDelay: `${-(row.spawn_id.length % 7) * 0.31}s` }}
+                    aria-label={`${row.common_name} — ${kind}${row.rarity ? `, ${row.rarity}` : ""}`}
+                  >
+                    <ellipse cx="29" cy="71" rx="13" ry="4.6" fill="rgba(20,60,30,0.26)" />
+                    {in_range && <ellipse cx="29" cy="71" rx="22" ry="7.5" fill="none" stroke="#fff" strokeWidth="2" opacity="0.9" />}
+                    <path d="M29 68 L29 46" stroke="#fff" strokeWidth="5" strokeLinecap="round" />
+                    <path d="M29 68 L29 46" stroke={tone} strokeWidth="2.2" strokeLinecap="round" />
+                    <g className="pm-find-head">
+                      <circle cx="29" cy="24" r="21" fill="#fff" />
+                      <circle cx="29" cy="24" r="17.5" fill={is_logged ? tone : "#FFFFFF"} stroke={tone} strokeWidth="2.6" />
+                      <circle cx="23" cy="17" r="5" fill="#fff" opacity={is_logged ? 0.35 : 0} />
+                      <g
+                        transform="translate(15.2 10.2) scale(1.15)"
+                        fill="none"
+                        stroke={is_logged ? "#FFFFFF" : tone}
+                        strokeWidth="1.9"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <KindPath kind={kind} />
+                      </g>
+                      {tick >= 2 && (
+                        <g transform="translate(29 -2)">
+                          {Array.from({ length: tick - 1 }, (_, i) => {
+                            const x = (i - (tick - 2) / 2) * 11;
+                            return (
+                              <path
+                                key={i}
+                                transform={`translate(${x} 0)`}
+                                d="M0 -6 Q1 -1 6 0 Q1 1 0 6 Q-1 1 -6 0 Q-1 -1 0 -6 Z"
+                                fill={tick === 4 ? "#F5C842" : "#F59A23"}
+                                stroke="#fff"
+                                strokeWidth="1.6"
+                                strokeLinejoin="round"
+                              />
+                            );
+                          })}
+                        </g>
+                      )}
                     </g>
                   </svg>
                 </div>

@@ -8,6 +8,8 @@ import {
   PLAY_RUN_MULTIPLIER,
   PLAY_SPAN_PER_SECOND,
   PLAY_START,
+  STICK_START,
+  stickStartOf,
   headingFromKey,
   isWalkable,
   offsetMeter,
@@ -150,5 +152,18 @@ describe("play walk", () => {
       assert.ok(pace >= last, `pace fell from ${last} to ${pace} at ${span} m`);
       last = pace;
     }
+  });
+});
+
+describe("stick start", () => {
+  it("is walkable ground, on campus, off the stage loop's lawn", () => {
+    assert.equal(isWalkable(STICK_START), true);
+    assert.notDeepEqual(STICK_START, PLAY_START);
+  });
+  it("takes ?at= when it is walkable and ignores it when it is not", () => {
+    assert.deepEqual(stickStartOf("?at=14.63935,121.07789"), { lat: 14.63935, lon: 121.07789 });
+    assert.deepEqual(stickStartOf("?at=0,0"), STICK_START);
+    assert.deepEqual(stickStartOf("?at=nonsense"), STICK_START);
+    assert.deepEqual(stickStartOf(""), STICK_START);
   });
 });
