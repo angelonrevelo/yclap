@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { building, ringCentre } from "../src/building.ts";
 import { RESTRICTED_POLYGON } from "../src/data.ts";
 import { DEMO_WALK, WALK_PACE_MS, bearingDegree, distanceMeter, isInsideCampus, type LatLon } from "../src/geo.ts";
 import { buildingAt } from "../src/placement.ts";
+import { poolFromFile, spawnWorld } from "../src/spawn.ts";
 import {
   PLAY_PACE_CEILING_MS,
   PLAY_PACE_FLOOR_MS,
@@ -19,6 +21,8 @@ import {
   stepPlayWalk,
   stepToward,
   stickTopPaceMs,
+  walkTargetOf,
+  WALK_TO_SHORT_M,
 } from "../src/play-walk.ts";
 
 describe("play walk", () => {
@@ -231,9 +235,70 @@ describe("buildings are not walkable", () => {
     }
   });
 
+  it("a walk-to target inside a footprint is backed out to walkable ground on the walker's side", () => {
+    const { from } = outsideOf(inside);
+    const end = walkTargetOf(from, inside);
+    assert.equal(isWalkable(end), true);
+    assert.equal(buildingAt(end), null);
+    assert.ok(distanceMeter(end, from) <= distanceMeter(inside, from), "it stops short, it never overshoots");
+    /* It is the FIRST walkable point back along the line: half a metre nearer
+       the building is still inside. */
+    assert.equal(isWalkable(offsetMeter(end, bearingDegree(end, inside), 0.6)), false);
+  });
+
+  it("a walk-to to a find ends WALK_TO_SHORT_M short of it, not on the pin", () => {
+    const from = STICK_START;
+    /* A walkable spot 20 m off, with walkable ground all the way back. */
+    const heading = [0, 45, 90, 135, 180, 225, 270, 315].find((h) =>
+      [3, 17, 20].every((m) => isWalkable(offsetMeter(STICK_START, h, m))),
+    );
+    assert.notEqual(heading, undefined, "no open ground round STICK_START");
+    const find = offsetMeter(STICK_START, heading!, 20);
+    const end = walkTargetOf(from, find, WALK_TO_SHORT_M);
+    assert.ok(Math.abs(distanceMeter(end, find) - WALK_TO_SHORT_M) < 0.1);
+    assert.deepEqual(walkTargetOf(from, from, WALK_TO_SHORT_M), from);
+  });
+
   it("keeps every place the walk starts walkable", () => {
     assert.equal(isWalkable(STICK_START), true);
     assert.equal(isWalkable(PLAY_START), true);
     assert.deepEqual(stickStartOf(`?at=${inside.lat},${inside.lon}`), STICK_START, "?at= inside a building falls back");
+  });
+});
+
+/* ── the location audit, walked: every seeded find, reached by a walk-to ── */
+
+describe("walk-to audit", () => {
+  const pool = poolFromFile(JSON.parse(readFileSync(new URL("../public/model/species-model.json", import.meta.url), "utf8")));
+  const start = Date.UTC(2026, 8, 26);
+
+  it("no seeded find stands inside a footprint, and a walk-to to each one never enters one and ends on walkable ground", () => {
+    let walked = 0;
+    for (let w = 0; w < 4; w += 1) {
+      const now = start + w * 30 * 60 * 1000;
+      for (const at of [STICK_START, ...DEMO_WALK.filter((_, i) => i % 3 === 0)]) {
+        for (const find of spawnWorld(pool, now, at)) {
+          assert.equal(buildingAt(find), null, `${find.spawn_id} stands inside a building`);
+          if (distanceMeter(at, find) > 120) continue;
+          /* use-geo's walk-to: the target from walkTargetOf, then stepToward
+             at the ceiling pace (~2 m a tick) with the same stall rule. */
+          const target = walkTargetOf(at, find, WALK_TO_SHORT_M);
+          assert.equal(isWalkable(target), true, `${find.spawn_id}: walk-to target is not walkable`);
+          let pos = at;
+          let stall = 0;
+          for (let tick = 0; tick < 400; tick += 1) {
+            const before = distanceMeter(pos, target);
+            pos = stepToward(pos, target, 2);
+            assert.equal(buildingAt(pos), null, `${find.spawn_id}: the walk entered a building`);
+            const after = distanceMeter(pos, target);
+            stall = after > before - 0.4 ? stall + 1 : 0;
+            if (after < 0.6 || stall >= 20) break;
+          }
+          assert.equal(isWalkable(pos), true);
+          walked += 1;
+        }
+      }
+    }
+    assert.ok(walked > 50, `only ${walked} walks tried`);
   });
 });

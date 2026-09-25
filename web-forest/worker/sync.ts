@@ -14,7 +14,7 @@ import { AccountService, isAccountPath, type AccountEnv, type SqlValue } from ".
 import { handleIdentify, IDENTIFY_PATH } from "./inat.ts";
 import { freshFindOf } from "../src/multiplayer.ts";
 import { LIVE_PATH, LiveHall } from "./live-socket.ts";
-import { pageOriginListOf } from "../src/rate-limit.ts";
+import { accountCorsOf, isAccountCorsPath, pageOriginListOf, withCors } from "../src/rate-limit.ts";
 
 export interface Env extends AccountEnv {
   CAMPUS: DurableObjectNamespace;
@@ -33,7 +33,18 @@ const SYNC_PATH = new Set(["/world", "/sync", "/live", "/health", "/join", "/min
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-    if (url.pathname === IDENTIFY_PATH) return handleIdentify(request, env.INAT_API_TOKEN);
+    /* Accounts and identify answer a page on another origin (a preview deploy,
+       a LAN build pointed here) with its own origin + credentials, never `*`. */
+    if (isAccountCorsPath(url.pathname)) {
+      const allow = pageOriginListOf(env.HALL_PAGE_ORIGIN);
+      const cors = accountCorsOf(request.headers.get("Origin"), url.host, allow);
+      if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+      if (url.pathname === IDENTIFY_PATH) {
+        return withCors(await handleIdentify(request, env.INAT_API_TOKEN, undefined, undefined, allow), cors);
+      }
+      const id = env.CAMPUS.idFromName("loyola");
+      return withCors(await env.CAMPUS.get(id).fetch(request), cors);
+    }
     if (SYNC_PATH.has(url.pathname) || LIVE_PATH.has(url.pathname) || isAccountPath(url.pathname)) {
       const id = env.CAMPUS.idFromName("loyola");
       return env.CAMPUS.get(id).fetch(request);

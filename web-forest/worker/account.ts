@@ -7,7 +7,11 @@
  * server/sync-server.mjs. Both are handed in as a `SqlRun`, so this file never
  * knows which one it is talking to and the tests drive it on `node:sqlite`.
  *
- * Routes (same-origin only — no CORS on purpose, the cookie must not travel):
+ * Routes. CORS is the host's job, never `*`: the Worker and the LAN server add
+ * accountCorsOf (src/rate-limit.ts) — the page's own origin plus
+ * Allow-Credentials — only for an allowed page on another origin, so the
+ * session cookie rides from the Path A build on :4177 to :8788 (same hostname,
+ * so same-site: SameSite=Lax still sends it) and nowhere else:
  *   GET  /auth/me               → { account | null, is_google }
  *   POST /auth/signup           { username, password, display_name? }
  *   POST /auth/login            { username, password }

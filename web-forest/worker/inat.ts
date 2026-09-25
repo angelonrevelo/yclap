@@ -18,8 +18,9 @@
  *   403 foreign_origin  the POST came from another site's page
  *   400 / 405 / 413 / 415  bad request from the client
  *
- * Same-origin only. There is no CORS header, so a foreign page cannot READ an
- * answer — but a `no-cors` multipart POST from any site still arrives, so the
+ * Own page only. CORS headers go only to an allowed page on another origin
+ * (accountCorsOf, added by the host: the Worker and server/sync-server.mjs),
+ * never `*`, so a foreign page cannot READ an answer — but a `no-cors` multipart POST from any site still arrives, so the
  * Origin / Sec-Fetch-Site check (isOwnPage) refuses it before the rate window,
  * the body or the token is touched. The body is counted as it streams and cut
  * at MAX_FORM_BYTE, so a chunked upload with no Content-Length cannot get past
@@ -68,9 +69,11 @@ export async function handleIdentify(
   token: string | undefined,
   fetch_impl: typeof fetch = globalThis.fetch,
   limit: RateWindow = identify_limit,
+  /** Extra page origins (HALL_PAGE_ORIGIN) that count as this app's own page. */
+  allow: readonly string[] = [],
 ): Promise<Response> {
   if (request.method !== "POST") return json(405, { error: "method_not_allowed", allow: "POST" }, { Allow: "POST" });
-  if (!isOwnPage(request)) return json(403, { error: "foreign_origin" });
+  if (!isOwnPage(request, undefined, allow)) return json(403, { error: "foreign_origin" });
 
   /* Before anything is read: the size the client declared, then this IP's rate. */
   const declared = Number(request.headers.get("Content-Length"));

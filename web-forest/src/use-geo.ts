@@ -13,6 +13,7 @@ import {
   stepPlayWalk,
   stepToward,
   throttleFromStick,
+  walkTargetOf,
   type PlayHeld,
   type PlayStick,
 } from "./play-walk";
@@ -93,7 +94,8 @@ export function useGeo(
   view_span_m = PLAY_DEFAULT_SPAN_M,
 ): GeoState & {
   is_off_campus: boolean;
-  walkTo: (point: LatLon) => void;
+  /** Walk to `point`, ending `short_m` short of it and never inside a footprint (`walkTargetOf`). */
+  walkTo: (point: LatLon, short_m?: number) => void;
   steer: (stick: PlayStick) => void;
 } {
   const [state, setState] = useState<GeoState>({ status: "idle", fix: null, message: null });
@@ -129,9 +131,11 @@ export function useGeo(
   }, []);
 
   const walkTo = useCallback(
-    (point: LatLon) => {
+    (point: LatLon, short_m = 0) => {
       if (mode !== "play") return;
-      destination.current = point;
+      /* The walk ends on ground the stick can stand on: a find beside a wall
+         or a tap on a roof stops short, outside the footprint. */
+      destination.current = walkTargetOf(play_at.current, point, short_m);
       stall.current = 0;
       held.current = IDLE_HELD;
       stick.current = IDLE_STICK;

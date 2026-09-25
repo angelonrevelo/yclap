@@ -53,11 +53,13 @@ origin (`worker/inat.ts`). That proxy forwards it to iNaturalist's
 `/v1/computervision/score_image` with the campus lat/lng (iNat's geo prior) and
 the **`INAT_API_TOKEN` secret, which lives only on the server** — it is not in
 the bundle. The client (`identifyPlant` in `src/inat.ts`) tries the proxy
-first. Under `npm run dev` only, if no proxy answers, it falls back to a direct
+first, on the sync base (see *Accounts*). Under `npm run dev` only, if no proxy answers, it falls back to a direct
 call with `VITE_INAT_API_TOKEN` from `.env`; a production build compiles that
 read away (checked: the token is not in `dist/` even with it in `.env`). With
 neither, the sheet replays a recorded Narra reply labelled **RECORDED
-RESPONSE**, never presented as an identification of your photo.
+RESPONSE**, never presented as an identification of your photo — and says why:
+a proxy that answered `needs_token` is "no iNaturalist token"; a 404 or an
+unreachable server is named as that (`no_proxy`), not blamed on a token.
 
 When the answer's first **exact** campus match is one species, the sheet picks
 it in "What did you see?" and says so ("suggested by iNaturalist", plus
@@ -273,7 +275,10 @@ The play layer, wired in `src/live.tsx`:
   the same `play` source WASD drives, under the same rules (inside
   `CAMPUS_BOX`, outside the restricted grove, outside every building
   footprint — a blocked stick step slides along the wall at up to 75°, and a
-  walk-to that stops closing in for a second gives up), so a stick walk and a GPS walk
+  walk-to that stops closing in for a second gives up; a walk-to target is set
+  on walkable ground first — `walkTargetOf` backs a target inside a footprint
+  out toward the walker, and a walk to a find stops 3 m short of its pin), so a
+  stick walk and a GPS walk
   produce the same journal. Its PACE, though, is its own: the stick moves at a
   fraction of the visible ground per second (`stickTopPaceMs`), not at
   `WALK_PACE_MS`. 1.3 m/s is the real preferred walking speed and it is a claim
@@ -311,11 +316,15 @@ The play layer, wired in `src/live.tsx`:
   journal. `badge.test.ts` enforces two rules: no badge may name or describe a
   fact outside the journal (*synced*, *leaderboard*, *rank* are a pinned
   regex), and no two badges may fire identically while every badge stays
-  reachable.
+  reachable. *Five Species* / *Fifteen Species* count distinct species with a
+  photo on this device, like the Journal's "species photographed" — a pick off
+  the list with no photo is a find, not a photograph.
 - **`kind.ts` / `kind-mark.tsx`** — only 25 of 1,098 species have curated
   artwork, so the rest say what taxon group they are, as one of eleven
   schematic shapes shared by the list row and the map marker. Nothing pretends
-  to be a species portrait.
+  to be a species portrait. `speciesLabelOf` is the one display name for a
+  sweep species — the Nearby tray, the hunt tab and the day's hunt card: Title
+  Case common name, the scientific name in italics only when there is none.
 - **`sync.ts` + `campus-world.ts` + `worker/sync.ts`** — same-origin live
   campus world. Production hits `/sync` `/world` `/live` on the PWA host
   (Durable Object). Locally, `npm run sync` on port **8788** and Vite proxies
@@ -436,7 +445,15 @@ If the project outgrows one Durable Object, the SQL moves to Neon unchanged.
 - **Routes** (`worker/account.ts`, hooked into `worker/sync.ts` in two lines):
   `POST /auth/signup` `/auth/login` `/auth/logout` `/auth/password`,
   `GET /auth/me`, `GET /auth/google` + `/auth/google/callback`,
-  `GET|PUT /account/save`. Same-origin only; POSTs must be JSON.
+  `GET|PUT /account/save`. POSTs must be JSON. The client sends every account
+  call (and `/inat/identify`) to the same base the campus world uses
+  (`syncRouteOf` in `sync.ts`: `?sync=`, `VITE_SYNC_URL`, else this origin),
+  with `credentials: "include"` when that is another origin — a Path A build
+  on :4177 signs in on the sync server on :8788. The servers answer such a
+  page (another port of the LAN host, or `HALL_PAGE_ORIGIN`) with its own
+  origin and `Access-Control-Allow-Credentials: true`, never `*`, and nobody
+  else (`accountCorsOf` in `rate-limit.ts`). The cookie stays `SameSite=Lax`
+  (same hostname on another port is same-site); `Secure` only over https.
 - **Passwords:** PBKDF2-SHA256, 100,000 iterations — the most the Workers
   runtime accepts, and short of OWASP's 600,000 for this hash, which the rate
   limits below partly make up for — 16-byte per-account salt, constant-time

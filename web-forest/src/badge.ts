@@ -74,6 +74,15 @@ function nthDistinct(
   return null;
 }
 
+/**
+ * A find with a photo on this device — what "N species photographed" may
+ * claim. Same rule as the Journal's `photographed_count`: a log picked from
+ * the list with no photo is a find, not a photograph.
+ */
+function isPhotographed(s: Sighting): boolean {
+  return isBadge(s) && Boolean(s.photo_data);
+}
+
 export const BADGE_LIST: BadgeDef[] = [
   {
     id: "first-find",
@@ -101,14 +110,14 @@ export const BADGE_LIST: BadgeDef[] = [
     name: "Five Species",
     blurb: "Five distinct species photographed.",
     group: "find",
-    check: (row) => nthDistinct(row.filter(isBadge), (s) => s.species_code, 5),
+    check: (row) => nthDistinct(row.filter(isPhotographed), (s) => s.species_code, 5),
   },
   {
     id: "fifteen-species",
     name: "Fifteen Species",
     blurb: "Fifteen distinct species photographed.",
     group: "find",
-    check: (row) => nthDistinct(row.filter(isBadge), (s) => s.species_code, 15),
+    check: (row) => nthDistinct(row.filter(isPhotographed), (s) => s.species_code, 15),
   },
   {
     id: "three-grounds",

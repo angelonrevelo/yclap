@@ -230,6 +230,32 @@ export function stepPlayWalk(from: LatLon, heading_degree: number, meter: number
   return from;
 }
 
+/** How far short of a find a walk-to stops, so the walker does not stand on its pin. */
+export const WALK_TO_SHORT_M = 3;
+
+/** Probe spacing, metres, when a walk-to target is backed out of a footprint. */
+const WALK_TO_PROBE_M = 0.5;
+
+/**
+ * Where a walk-to from `from` should actually end: `to` itself, `short_m`
+ * back along the line toward `from` — and never on ground the stick refuses.
+ * A target inside a footprint (a tap on a roof, a find beside a wall) is
+ * backed out along that same line to the first walkable point, so the walk
+ * ends standing on the ground outside the building instead of grinding
+ * against its wall until the stall timer gives up. Nothing walkable on the
+ * line → `from`: the walker stays where it is.
+ */
+export function walkTargetOf(from: LatLon, to: LatLon, short_m = 0): LatLon {
+  const gap = distanceMeter(from, to);
+  if (gap === 0) return from;
+  const heading = bearingDegree(to, from);
+  for (let back = Math.min(short_m, gap); back < gap; back += WALK_TO_PROBE_M) {
+    const at = back === 0 ? to : offsetMeter(to, heading, back);
+    if (isWalkable(at)) return at;
+  }
+  return from;
+}
+
 /** Walk toward `to`. Arriving lands on it when the remaining gap is one step. */
 export function stepToward(from: LatLon, to: LatLon, meter: number): LatLon {
   const gap = distanceMeter(from, to);

@@ -114,3 +114,24 @@ export function displayName(common_name: string): string {
 export function titleName(common_name: string): string {
   return common_name.replace(/(^|[\s(/-])(\p{Ll})/gu, (_m, lead: string, letter: string) => lead + letter.toUpperCase());
 }
+
+export interface SpeciesLabel {
+  text: string;
+  /** No common name: `text` is the scientific name, shown in italics. */
+  is_scientific: boolean;
+}
+
+/**
+ * THE display name for a sweep species, wherever it is listed — the Nearby
+ * tray, the hunt chip, the day's hunt card. Title Case common name
+ * (`titleName`); the scientific name only when there is no common name (an
+ * empty one, or the sweep's fallback of the scientific name itself), flagged
+ * so the caller sets it in italics. One function, so "Rain tree" on the hunt
+ * chip can never sit beside "Rain Tree" in Nearby again.
+ */
+export function speciesLabelOf(common_name: string | null | undefined, scientific_name: string | null | undefined): SpeciesLabel {
+  const common = (common_name ?? "").trim();
+  const scientific = (scientific_name ?? "").trim();
+  if (common && common.toLowerCase() !== scientific.toLowerCase()) return { text: titleName(common), is_scientific: false };
+  return { text: scientific || common, is_scientific: true };
+}

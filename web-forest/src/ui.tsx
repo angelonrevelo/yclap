@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import Botanical from "./botanical";
 import { species, type Origin, type Species } from "./data";
+import { speciesLabelOf } from "./kind";
 
 /**
  * Shared surface language.
@@ -151,6 +152,12 @@ export function TaxonThumb({
       )}
     </div>
   );
+}
+
+/** A sweep species' display name (`speciesLabelOf`): italic only when it is the scientific name. */
+export function SpeciesName({ common_name, scientific_name }: { common_name: string; scientific_name?: string | null }) {
+  const label = speciesLabelOf(common_name, scientific_name);
+  return label.is_scientific ? <i>{label.text}</i> : <>{label.text}</>;
 }
 
 /** Name over italic scientific name. The two-line block every surface reuses. */

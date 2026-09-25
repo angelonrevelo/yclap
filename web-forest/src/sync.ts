@@ -162,6 +162,46 @@ export function syncUrl(): string | null {
   }
 }
 
+function pageOrigin(): string | null {
+  try {
+    return window.location.origin;
+  } catch {
+    return null;
+  }
+}
+
+export interface SyncRoute {
+  url: string;
+  /** The sync base is another origin than this page: send the cookie along. */
+  is_cross_origin: boolean;
+}
+
+/**
+ * A server path (/auth/me, /account/save, /inat/identify) on the same base the
+ * campus world uses (`syncUrl`). Same origin — or no window at all — keeps the
+ * bare path; a Path A build (VITE_SYNC_URL or `?sync=` naming :8788 while the
+ * page is on :4177) gets the absolute URL and `is_cross_origin`.
+ */
+export function syncRouteOf(
+  path: string,
+  base: string | null = syncUrl(),
+  page_origin: string | null = pageOrigin(),
+): SyncRoute {
+  if (base === null || base === page_origin) return { url: path, is_cross_origin: false };
+  let base_origin: string;
+  try {
+    base_origin = new URL(base).origin;
+  } catch {
+    return { url: path, is_cross_origin: false };
+  }
+  return { url: `${base}${path}`, is_cross_origin: base_origin !== page_origin };
+}
+
+/** `credentials` for a fetch to `route`: include across origins, else same-origin. */
+export function credentialOf(route: SyncRoute): RequestCredentials {
+  return route.is_cross_origin ? "include" : "same-origin";
+}
+
 export interface PlayerSummary {
   stage: string;
   level: number;
