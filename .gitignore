@@ -33,3 +33,6 @@ pnpm-debug.log*
 
 # Pre-deplate originals — regenerate with script/deplate.py
 web-forest/script/asset-with-plate/
+
+# TypeScript incremental build cache
+*.tsbuildinfo
