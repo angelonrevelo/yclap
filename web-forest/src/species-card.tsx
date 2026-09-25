@@ -72,9 +72,8 @@ export default function SpeciesCard({ species_code, pool, is_seen, learn, action
   const choice = chooseVisual({ model_path: fact.model_path, is_online, model_state });
   const is_model = choice.visual === "model" && fact.model_path !== null;
 
-  useEffect(() => {
-    setModelState("loading");
-  }, [fact.model_path]);
+  /* One card per species: app.tsx keys this component by species_code, so
+     `model_state` starts fresh for each species without a reset effect. */
 
   useEffect(() => {
     const el = viewer_ref.current;

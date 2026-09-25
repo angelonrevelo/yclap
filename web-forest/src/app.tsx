@@ -4287,6 +4287,7 @@ export default function App() {
         {card && (
           <Suspense fallback={null}>
             <SpeciesCard
+              key={card.species_code}
               species_code={card.species_code}
               pool={spawn_world.pool}
               is_seen={seen.has(card.species_code)}
