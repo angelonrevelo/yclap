@@ -50,6 +50,12 @@ export const POSE_PER_SECOND = 2;
  * booth of phones on one wifi is one public IP.
  */
 export const POSE_IP_PER_SECOND = 60;
+/**
+ * Distinct polled walkers one IP may hold in the hall at once. Polling is the
+ * fallback when a socket will not open, so a real phone holds one; without
+ * this, one script re-posing 200 made-up walker ids keeps every seat taken.
+ */
+export const POLL_IP_WALKER_MAX = 4;
 
 const STAGE = new Set(["egg", "sprout", "sapling", "tree"]);
 const SOURCE = new Set<FixSource>(["gps", "demo", "play"]);

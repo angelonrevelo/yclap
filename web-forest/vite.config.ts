@@ -12,6 +12,8 @@ import tailwindcss from "@tailwindcss/vite";
  * half-built app to a conference wifi.
  */
 const HOST = process.env.MAGISPHERE_HOST ?? "127.0.0.1";
+/** `npm run sync` — server/sync-server.mjs. */
+const SYNC_TARGET = "http://127.0.0.1:8788";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -19,18 +21,16 @@ export default defineConfig({
     host: HOST,
     port: 4177,
     strictPort: true,
-    proxy: {
-      "/world": "http://127.0.0.1:8788",
-      "/sync": "http://127.0.0.1:8788",
-      /* `ws` so the hall socket (/live/socket) upgrades through the proxy too. */
-      "/live": { target: "http://127.0.0.1:8788", ws: true },
-      "/health": "http://127.0.0.1:8788",
-      "/join": "http://127.0.0.1:8788",
-      "/mine": "http://127.0.0.1:8788",
-      "/auth/": "http://127.0.0.1:8788",
-      "/account/": "http://127.0.0.1:8788",
-      "/inat/identify": "http://127.0.0.1:8788",
-    },
+    /* Every route goes to the LAN sync server with `xfwd: true`, so it can
+       tell the phones apart: it trusts X-Forwarded-For only from loopback
+       (this proxy) and reads the last entry, the one the proxy appended. */
+    proxy: Object.fromEntries(
+      ["/world", "/sync", "/live", "/health", "/join", "/mine", "/auth/", "/account/", "/inat/identify"].map((path) => [
+        path,
+        /* `ws` so the hall socket (/live/socket) upgrades through the proxy too. */
+        { target: SYNC_TARGET, xfwd: true, ws: path === "/live" },
+      ]),
+    ),
   },
   preview: { host: HOST, port: 4178, strictPort: true },
 });

@@ -193,9 +193,9 @@ test("the Worker hall's polled walkers are capped and rate-limited", async () =>
   assert.equal((await post("p-1"))?.status, 200);
   assert.equal((await post("p-1"))?.status, 200);
   assert.equal((await post("p-1"))?.status, 429);
-  hall.ip_limit.max = 1_000_000;
-  for (let i = 2; i <= multiplayer.HALL_WALKER_MAX; i++) assert.equal((await post(`p-${i}`))?.status, 200);
-  assert.equal((await post("one-too-many"))?.status, 503);
+  /* One address per walker, so the per-IP seat cap stays out of the way. */
+  for (let i = 2; i <= multiplayer.HALL_WALKER_MAX; i++) assert.equal((await post(`p-${i}`, `198.18.${i >> 8}.${i & 255}`))?.status, 200);
+  assert.equal((await post("one-too-many", "198.19.0.1"))?.status, 503);
 });
 
 /* ── the LAN hall ────────────────────────────────────────────────────── */

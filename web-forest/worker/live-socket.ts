@@ -11,8 +11,10 @@
  * them to an eviction costs one poll, not a walker. Nothing here touches
  * storage: presence is never persisted.
  *
- * Brakes: the upgrade must come from this host's page (or a localhost dev
- * server); at most HALL_WALKER_MAX sockets and polled walkers; poses are
+ * Brakes: the upgrade and POST /live/pose must come from this host's page (or
+ * a localhost dev server), and /live/pose answers with no CORS header; at most
+ * HALL_WALKER_MAX sockets and polled walkers, and at most POLL_IP_WALKER_MAX
+ * polled walkers per IP, so one address cannot hold every seat; poses are
  * dropped past POSE_PER_SECOND per socket / polled walker and
  * POSE_IP_PER_SECOND per IP. A socket's IP and id ride in its tags, so they
  * survive hibernation too.
@@ -20,6 +22,7 @@
 import type { WorldFind } from "../src/campus-world.ts";
 import {
   HALL_WALKER_MAX,
+  POLL_IP_WALKER_MAX,
   POSE_IP_PER_SECOND,
   POSE_PER_SECOND,
   rosterOf,
@@ -28,7 +31,7 @@ import {
   type HallMessage,
   type Pose,
 } from "../src/multiplayer.ts";
-import { RateWindow, clientIp, isHallOrigin } from "../src/rate-limit.ts";
+import { RateWindow, clientIp, isHallOrigin, isOwnPage } from "../src/rate-limit.ts";
 
 export const LIVE_PATH = new Set(["/live/socket", "/live/pose", "/live/walker"]);
 
@@ -36,6 +39,8 @@ export class LiveHall {
   ctx: DurableObjectState;
   cors: (headers?: HeadersInit) => Headers;
   polled: Map<string, Pose> = new Map();
+  /** walker_id → the IP that polls it, for the per-IP seat cap. */
+  polled_ip: Map<string, string> = new Map();
   recent_find: { at: number; find: WorldFind }[] = [];
   pose_limit: RateWindow = new RateWindow(POSE_PER_SECOND, 1000);
   ip_limit: RateWindow = new RateWindow(POSE_IP_PER_SECOND, 1000);
@@ -50,7 +55,18 @@ export class LiveHall {
   }
 
   prunePolled(now: number): void {
-    for (const [id, pose] of this.polled) if (now - pose.at > STALE_MS) this.polled.delete(id);
+    for (const [id, pose] of this.polled) {
+      if (now - pose.at <= STALE_MS) continue;
+      this.polled.delete(id);
+      this.polled_ip.delete(id);
+    }
+  }
+
+  /** Polled walkers this IP holds right now. */
+  polledBy(ip: string): number {
+    let count = 0;
+    for (const holder of this.polled_ip.values()) if (holder === ip) count += 1;
+    return count;
   }
 
   snapshot(): HallMessage {
@@ -81,6 +97,14 @@ export class LiveHall {
     return new Response(JSON.stringify(body), {
       status,
       headers: this.cors({ "Content-Type": "application/json", "Cache-Control": "no-store" }),
+    });
+  }
+
+  /** /live/pose answers its own page only: no Access-Control-Allow-Origin. */
+  plainJson(body: unknown, status = 200): Response {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
     });
   }
 
@@ -119,26 +143,37 @@ export class LiveHall {
       return this.json(this.snapshot());
     }
 
+    if (url.pathname === "/live/pose" && request.method === "OPTIONS") {
+      return new Response(null, { status: 204 });
+    }
+
     if (url.pathname === "/live/pose" && request.method === "POST") {
+      if (!isOwnPage(request, url.host)) return this.plainJson({ error: "this hall only takes poses from its own page" }, 403);
       let raw: unknown;
       try {
         raw = await request.json();
       } catch {
-        return this.json({ error: "bad json" }, 400);
+        return this.plainJson({ error: "bad json" }, 400);
       }
       const now = Date.now();
       const pose = sanitizePose(raw, now);
-      if (!pose) return this.json({ error: "pose needs player_id and a lat/lon inside the campus frame" }, 400);
-      if (!this.allowPose(`poll:${pose.walker_id}`, clientIp(request), now)) {
-        return this.json({ error: "too many poses" }, 429);
+      if (!pose) return this.plainJson({ error: "pose needs player_id and a lat/lon inside the campus frame" }, 400);
+      const ip = clientIp(request);
+      if (!this.allowPose(`poll:${pose.walker_id}`, ip, now)) {
+        return this.plainJson({ error: "too many poses" }, 429);
       }
       this.prunePolled(now);
-      if (!this.polled.has(pose.walker_id) && this.polled.size >= HALL_WALKER_MAX) {
-        return this.json({ error: "the hall is full" }, 503);
+      if (!this.polled.has(pose.walker_id)) {
+        if (ip && this.polledBy(ip) >= POLL_IP_WALKER_MAX) {
+          return this.plainJson({ error: "too many walkers from one address" }, 429);
+        }
+        if (this.polled.size >= HALL_WALKER_MAX) return this.plainJson({ error: "the hall is full" }, 503);
       }
       this.polled.set(pose.walker_id, pose);
+      if (ip) this.polled_ip.set(pose.walker_id, ip);
+      else this.polled_ip.delete(pose.walker_id);
       this.broadcast({ type: "pose", walker: pose });
-      return this.json(this.snapshot());
+      return this.plainJson(this.snapshot());
     }
 
     return this.json({ error: "not found" }, 404);

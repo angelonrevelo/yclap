@@ -102,7 +102,8 @@ export class CampusWorld {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     if (isAccountPath(url.pathname)) return this.account().handle(request);
-    if (request.method === "OPTIONS") {
+    /* /live/pose answers its own page only: no CORS, not even on the preflight. */
+    if (request.method === "OPTIONS" && url.pathname !== "/live/pose") {
       return new Response(null, { status: 204, headers: this.cors() });
     }
 

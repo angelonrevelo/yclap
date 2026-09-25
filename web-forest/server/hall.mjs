@@ -7,8 +7,15 @@
  * the minimum RFC 6455 a browser needs — the SHA-1 handshake, unmasking client
  * text frames, unmasked server text frames, ping → pong, close. No
  * extensions, no binary. That is all the hall speaks.
+ *
+ * Brakes, as on the Worker: the upgrade must come from this host's page or a
+ * localhost dev server (403 otherwise); at most HALL_WALKER_MAX sockets and
+ * polled walkers, at most POLL_IP_WALKER_MAX polled walkers per IP; poses past
+ * POSE_PER_SECOND per socket / polled walker and POSE_IP_PER_SECOND per IP are
+ * dropped.
  */
 import { createHash } from "node:crypto";
+import { RateWindow, isHallOrigin } from "../src/rate-limit.ts";
 
 const GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 const MAX_FRAME = 64 * 1024;
@@ -137,6 +144,16 @@ export function createHall(lib) {
   let recent_find = [];
   const walker_max = lib.HALL_WALKER_MAX ?? 200;
   const pose_per_second = lib.POSE_PER_SECOND ?? 2;
+  const poll_ip_walker_max = lib.POLL_IP_WALKER_MAX ?? 4;
+  /** walker_id → the IP polling it, for the per-IP seat cap. */
+  const polled_ip = new Map();
+  const poll_limit = new RateWindow(pose_per_second, 1000);
+  const ip_limit = new RateWindow(lib.POSE_IP_PER_SECOND ?? 60, 1000);
+  const polledBy = (ip) => {
+    let count = 0;
+    for (const holder of polled_ip.values()) if (holder === ip) count += 1;
+    return count;
+  };
 
   /** Same per-socket brake as worker/live-socket.ts: at most N poses a second. */
   const isPoseAllowed = (s, now) => {
@@ -149,7 +166,11 @@ export function createHall(lib) {
   const snapshot = () => {
     const now = Date.now();
     recent_find = recent_find.filter((f) => now - f.at < lib.STALE_MS);
-    for (const [id, pose] of polled) if (now - pose.at > lib.STALE_MS) polled.delete(id);
+    for (const [id, pose] of polled) {
+      if (now - pose.at <= lib.STALE_MS) continue;
+      polled.delete(id);
+      polled_ip.delete(id);
+    }
     const live_pose = [...socket].map((s) => s.pose).filter(Boolean);
     return {
       type: "roster",
@@ -199,6 +220,10 @@ export function createHall(lib) {
         raw_socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
         return true;
       }
+      if (!isHallOrigin(req.headers.origin ?? null, req.headers.host ?? "")) {
+        raw_socket.end("HTTP/1.1 403 Forbidden\r\n\r\n");
+        return true;
+      }
       if (socket.size >= walker_max) {
         raw_socket.end("HTTP/1.1 503 Service Unavailable\r\n\r\n");
         return true;
@@ -216,17 +241,29 @@ export function createHall(lib) {
       return true;
     },
     snapshot,
-    /** POST /live/pose body in; snapshot out, or null if the pose is refused. */
-    pose(raw) {
-      const pose = lib.sanitizePose(raw, Date.now());
-      if (!pose) return null;
+    /**
+     * POST /live/pose body in, from `ip` (null: a local caller, no per-IP
+     * brake). Out: `{ status, body }` — 200 + the roster, or the refusal.
+     */
+    pose(raw, ip = null) {
+      const now = Date.now();
+      const pose = lib.sanitizePose(raw, now);
+      if (!pose) return { status: 400, body: { error: "pose needs player_id and a lat/lon inside the campus frame" } };
+      if (ip && ip_limit.retryAfter(ip, now) > 0) return { status: 429, body: { error: "too many poses" } };
+      if (poll_limit.take(pose.walker_id, now) > 0) return { status: 429, body: { error: "too many poses" } };
+      if (ip) ip_limit.note(ip, now);
       if (!polled.has(pose.walker_id)) {
         snapshot(); /* drops stale polled walkers first */
-        if (polled.size >= walker_max) return null;
+        if (ip && polledBy(ip) >= poll_ip_walker_max) {
+          return { status: 429, body: { error: "too many walkers from one address" } };
+        }
+        if (polled.size >= walker_max) return { status: 503, body: { error: "the hall is full" } };
       }
       polled.set(pose.walker_id, pose);
+      if (ip) polled_ip.set(pose.walker_id, ip);
+      else polled_ip.delete(pose.walker_id);
       broadcast({ type: "pose", walker: pose });
-      return snapshot();
+      return { status: 200, body: snapshot() };
     },
     announce(find) {
       if (!find.length) return;
