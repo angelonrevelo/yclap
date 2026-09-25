@@ -15,6 +15,9 @@
  *   ungrounded    the model's lowest point is far from y = 0, so it floats over
  *                 or sinks into the ground plane `<model-viewer>` puts it on
  *   size_mismatch the manifest's `bytes` disagrees with the file on disk
+ *   dangling_track an animation channel targets a node that is missing or not
+ *                 in the default scene — three.js logs "PropertyBinding: No
+ *                 target node found" and that part of the idle never plays
  *   orphan        a .glb under public/model/ that nothing references
  *
  * Reads the shipped bytes only. Header-level by default (every chunk, every
@@ -259,6 +262,23 @@ export function auditGlb(buf, { is_flyer = false, is_mound = false } = {}) {
   };
   for (const root of scene.nodes) visit(root, identity());
 
+  /* Every animation channel must drive a node the scene actually draws. A
+     track aimed at a node outside the scene loads without error and does
+     nothing but warn — every file in the pack shipped one (`root.scale`, the
+     whole-model breathe) before the builder put its root in the scene. */
+  const dangling = [];
+  for (const clip of json.animations ?? []) {
+    for (const channel of clip.channels ?? []) {
+      const target = channel.target?.node;
+      if (target === undefined) continue; // an extension's target: not ours to judge
+      if (!seen.has(target)) dangling.push(`${json.nodes?.[target]?.name ?? `node ${target}`}.${channel.target.path}`);
+    }
+  }
+  if (dangling.length) {
+    out.flag.push("dangling_track");
+    out.problem.push(`animation targets outside the scene: ${[...new Set(dangling)].join(", ")}`);
+  }
+
   if (Number.isFinite(min[0])) {
     out.bound = { min: min.map((v) => +v.toFixed(4)), max: max.map((v) => +v.toFixed(4)) };
     const size = [0, 1, 2].map((k) => max[k] - min[k]);
@@ -342,6 +362,7 @@ export function auditPack(model_dir = MODEL_DIR) {
     degenerate: count("degenerate"),
     ungrounded: count("ungrounded"),
     size_mismatch: count("size_mismatch"),
+    dangling_track: count("dangling_track"),
     orphan: orphan.length,
     duplicate: duplicate.length,
     triangle_median: triangle[Math.floor(triangle.length / 2)] ?? 0,
@@ -361,7 +382,8 @@ function main() {
     console.log(`models: ${s.file} referenced, ${s.ok} clean`);
     console.log(
       `missing ${s.missing} · broken ${s.broken} · empty ${s.empty} · oversize ${s.oversize} · degenerate ${s.degenerate}` +
-        ` · ungrounded ${s.ungrounded} · size_mismatch ${s.size_mismatch} · orphan ${s.orphan} · duplicate ${s.duplicate}`,
+        ` · ungrounded ${s.ungrounded} · size_mismatch ${s.size_mismatch} · dangling_track ${s.dangling_track}` +
+        ` · orphan ${s.orphan} · duplicate ${s.duplicate}`,
     );
     console.log(
       `triangles: median ${s.triangle_median}, max ${s.triangle_max} · size: ${(s.byte_total / 1024 / 1024).toFixed(1)} MB total, largest ${(s.byte_max / 1024).toFixed(0)} kB`,

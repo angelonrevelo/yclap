@@ -3425,6 +3425,7 @@ export default function App() {
       setFollowing(true);
       return;
     }
+    setFollowing(false);
     setView((prev) => ({ ...prev, lat: place.label_point[0], lon: place.label_point[1], zoom: Math.max(prev.zoom, 17) }));
   };
   /* The day's first open shows today's hunt once, big, after boot and after
@@ -3543,11 +3544,30 @@ export default function App() {
   const presence = useMemo(() => (geo.fix ? biomePresenceAt(geo.fix) : null), [geo.fix]);
   const showing_biome = presence !== null && pinned_id === null;
 
-  /* Follow the walker until a gesture says otherwise. */
-  useEffect(() => {
-    if (!is_following || !geo.fix) return;
-    setView((prev) => ({ ...prev, lat: geo.fix!.lat, lon: geo.fix!.lon }));
-  }, [is_following, geo.fix?.lat, geo.fix?.lon]);
+  /* Follow the walker until a gesture says otherwise.
+
+     DERIVED, not copied. This used to be an effect that called `setView` on
+     every fix — so every 50 ms stick tick rendered the app twice, and because
+     each of those renders ran effects that set state again, React's dev build
+     counted a long walk-to as a runaway update loop ("Maximum update depth
+     exceeded"). The camera's target is simply the fix while following; the
+     easing is the map's own frame loop (`glideStep` in `tile-map.tsx`), which
+     chases this target through a ref and never touches React state per frame
+     of the walk. `view` itself now changes only on discrete events: a zoom, a
+     gesture, a recentre, a jump somewhere. */
+  const camera_view = useMemo<View>(
+    () => (is_following && geo.fix ? { ...view, lat: geo.fix.lat, lon: geo.fix.lon } : view),
+    [view, is_following, geo.fix],
+  );
+  /* A gesture ends following: the camera stays where the walker was rather
+     than snapping back to wherever `view` was last written. */
+  const stopFollowing = () => {
+    if (is_following && geo.fix) {
+      const here = geo.fix;
+      setView((prev) => ({ ...prev, lat: here.lat, lon: here.lon }));
+    }
+    setFollowing(false);
+  };
 
   /* GPS is the default. If this device will not give a fix, Play walk still
      puts you on campus at street zoom rather than leaving the map empty. */
@@ -4003,9 +4023,9 @@ export default function App() {
   const playBody = (
     <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
       <PlayMap
-        view={view}
+        view={camera_view}
         onView={setView}
-        onGesture={() => setFollowing(false)}
+        onGesture={stopFollowing}
         fix={geo.fix}
         seen_sector={seen_sector}
         stage={stage}
@@ -4143,9 +4163,9 @@ export default function App() {
           openLearnSheet(row?.species_code);
           setRestricted(true);
         }}
-        view={view}
+        view={camera_view}
         onView={setView}
-        onGesture={() => setFollowing(false)}
+        onGesture={stopFollowing}
         layer={layer}
         fix={geo.fix}
         is_restricted_on={is_restricted}

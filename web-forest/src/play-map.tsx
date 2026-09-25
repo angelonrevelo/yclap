@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import campus_shape from "./asset/campus-shape.json" with { type: "json" };
 import Botanical from "./botanical";
 import { BUILDING_ATTRIBUTION, building as campus_building } from "./building";
@@ -27,7 +27,7 @@ import { kindOf } from "./kind";
 import { KindPath, KIND_TONE } from "./kind-mark";
 import RemoteWalkerLayer, { HallCount, type Hall } from "./remote-walker";
 import PetEagle from "./pet-eagle";
-import { avatarPx, clampPitch, pitchForZoom, roadCasingPx, roadWidthPx } from "./camera-feel";
+import { avatarPx, clampPitch, pitchForZoom, roadCasingPx, roadWidthPx, walkStopMs } from "./camera-feel";
 import FrameProbe from "./frame-probe";
 
 /**
@@ -740,10 +740,26 @@ export default function PlayMap({
       last_fix.current = { lat: fix.lat, lon: fix.lon, at: Date.now() };
     } else if (!prev) {
       last_fix.current = { lat: fix.lat, lon: fix.lon, at: Date.now() };
-    } else if (Date.now() - prev.at > 2500) {
-      travel.current = { ...travel.current, is_walking: false };
     }
   }
+
+  /* Gait. The step animation used to be switched off only by a render that
+     happened to land 2.5 s after the last move — and when the walker stops,
+     nothing renders, so they marched on the spot forever. Now every move
+     (re)arms a timer, and the timer is what says "stopped": it clears the flag
+     and asks for the one render that shows it. `travel.current.is_walking` is
+     the single boolean the walker's render reads, whatever draws the walker. */
+  const [, setGaitCount] = useState(0);
+  const moved_at = last_fix.current?.at ?? 0;
+  const fix_source = fix?.source;
+  useEffect(() => {
+    if (!travel.current.is_walking) return;
+    const timer = window.setTimeout(() => {
+      travel.current = { ...travel.current, is_walking: false };
+      setGaitCount((n) => n + 1);
+    }, walkStopMs(fix_source));
+    return () => window.clearTimeout(timer);
+  }, [moved_at, fix_source]);
 
   return (
     <TileMap
@@ -917,6 +933,7 @@ export default function PlayMap({
               return (
                 <>
                 <div
+                  className="pm-walker"
                   style={{
                     position: "absolute",
                     left: at.x,

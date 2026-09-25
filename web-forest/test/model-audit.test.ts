@@ -11,7 +11,12 @@ import { auditGlb, auditPack, groundOffset, LIMIT } from "../script/audit-model.
  */
 
 /** A minimal valid glb: one triangle, `lift` metres above y=0, in a node. */
-function tinyGlb({ lift = 0, flat = false, magic = 0x46546c67, extra_count = 0 } = {}): Uint8Array {
+/**
+ * `track` adds a one-channel idle clip aimed at that node index: 0 is the drawn
+ * node, 1 is a node that exists but is not in the scene (the pack's old
+ * detached `root`), 9 does not exist at all.
+ */
+function tinyGlb({ lift = 0, flat = false, magic = 0x46546c67, extra_count = 0, track = -1 } = {}): Uint8Array {
   const y = flat ? 0 : 1;
   const position = new Float32Array([0, lift, 0, 1, lift, 0, 0, lift + y, 1]);
   const bin = new Uint8Array(position.buffer);
@@ -26,7 +31,15 @@ function tinyGlb({ lift = 0, flat = false, magic = 0x46546c67, extra_count = 0 }
     ],
     bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: bin.byteLength }],
     buffers: [{ byteLength: bin.byteLength }],
-  };
+  } as Record<string, unknown>;
+  if (track >= 0) {
+    json.nodes = [{ mesh: 0 }, { name: "root" }];
+    /* The clip's sampler reuses the POSITION accessor for input and output:
+       the audit reads channel TARGETS, not keyframes. */
+    json.animations = [
+      { name: "idle", channels: [{ sampler: 0, target: { node: track, path: "scale" } }], samplers: [{ input: 0, output: 0 }] },
+    ];
+  }
   let text = JSON.stringify(json);
   while (text.length % 4) text += " ";
   const json_byte = new TextEncoder().encode(text);
@@ -79,6 +92,17 @@ describe("auditGlb — one file", () => {
     assert.deepEqual(auditGlb(tinyGlb({ lift: 0.3 }), { is_flyer: true }).flag, []);
   });
 
+  it("passes an idle clip aimed at a node the scene draws", () => {
+    assert.deepEqual(auditGlb(tinyGlb({ track: 0 })).flag, []);
+  });
+
+  it("flags a track aimed at a node outside the scene, or at no node at all", () => {
+    const detached = auditGlb(tinyGlb({ track: 1 }));
+    assert.deepEqual(detached.flag, ["dangling_track"]);
+    assert.match(detached.problem[0], /root\.scale/);
+    assert.deepEqual(auditGlb(tinyGlb({ track: 9 })).flag, ["dangling_track"]);
+  });
+
   it("flags anything sunk through the floor, flyer or not", () => {
     assert.ok(auditGlb(tinyGlb({ lift: -0.3 }), { is_flyer: true }).flag.includes("ungrounded"));
   });
@@ -100,7 +124,7 @@ describe("groundOffset — the rule the builder fixes by and the audit checks by
 describe("the shipped pack", () => {
   const report = auditPack();
 
-  it("has no missing, broken, empty, oversize, degenerate or ungrounded model", () => {
+  it("has no missing, broken, empty, oversize, degenerate, ungrounded or dangling-track model", () => {
     const bad = report.row.filter((r: { flag: string[] }) => r.flag.length);
     assert.deepEqual(
       bad.map((r: { file: string; flag: string[] }) => `${r.file}: ${r.flag.join(",")}`),

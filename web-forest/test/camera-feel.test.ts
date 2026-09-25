@@ -21,6 +21,9 @@ import {
   roadCasingPx,
   roadWidthPx,
   type Glide,
+  walkStopMs,
+  WALK_STOP_GPS_MS,
+  WALK_STOP_TICK_MS,
 } from "../src/camera-feel.ts";
 
 describe("glideStep — the camera eases toward the walker", () => {
@@ -195,5 +198,19 @@ describe("tick interpolation — the camera between stick ticks", () => {
     assert.ok(s.span_ms >= 16);
     s = tickLerpNext(s, a, 5200);
     assert.ok(s.span_ms <= 120);
+  });
+});
+
+describe("walkStopMs — when the walker stops stepping", () => {
+  it("stops a stick or demo walker within a few missed ticks", () => {
+    assert.equal(walkStopMs("play"), WALK_STOP_TICK_MS);
+    assert.equal(walkStopMs("demo"), WALK_STOP_TICK_MS);
+    /* Longer than a stick tick (50 ms) with margin, short enough to read as "let go". */
+    assert.ok(WALK_STOP_TICK_MS >= 150 && WALK_STOP_TICK_MS <= 500);
+  });
+  it("gives GPS more than two missed one-second fixes", () => {
+    assert.equal(walkStopMs("gps"), WALK_STOP_GPS_MS);
+    assert.equal(walkStopMs(undefined), WALK_STOP_GPS_MS);
+    assert.ok(WALK_STOP_GPS_MS > 2000);
   });
 });

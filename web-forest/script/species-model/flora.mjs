@@ -1511,6 +1511,30 @@ function crownCore(p, pl, node, form, th, cw, leaf, deep) {
   return { coreR, coreY };
 }
 
+/** The height `Plant.place` lands a slot's centre on, in axis units. */
+function slotY(s) {
+  return (s.band + 0.35 + (0.55 * (s.i + 0.5)) / Math.max(1, s.n)) / 6;
+}
+
+/**
+ * How far the finished axis (trunk + crown core, already normalised to [0,1])
+ * reaches from the centre line at height `y` toward azimuth `a` (the
+ * `[cos a, ·, sin a]` convention every slot places by), measured off its own
+ * vertices so it holds for every crown form. Zero above the crown: a part
+ * there belongs ON the axis, sitting on top, not held out on a stick.
+ */
+function crownRadiusAt(p, y, a, tolerance = 0.035, window = 0.45) {
+  let r = 0;
+  for (const part of p.spineNode?.parts ?? []) {
+    for (const q of part.positions) {
+      if (Math.abs(q[1] - y) > tolerance) continue;
+      const off = Math.abs(((Math.atan2(q[2], q[0]) - a + 3 * Math.PI) % TAU) - Math.PI);
+      if (off <= window) r = Math.max(r, Math.hypot(q[0], q[2]));
+    }
+  }
+  return r;
+}
+
 /**
  * Conifers, picked by GENUS. The tiered-conical crown path already existed and
  * Araucaria columnaris found it because the routing table happened to name it;
@@ -1635,7 +1659,14 @@ function tree(k, col, opt = {}) {
         /* Out at the crown SURFACE. At 0.62 of the reach the flowers were
            genuinely in the file — a hundred and seventy red vertices on the
            African tulip — and every one of them was buried inside the foliage. */
-        const r = reachOf(pl, a, 1.0);
+        /* ...but ON the surface, not past it. The full reach is the footprint's
+           half-width, wider than the crown core everywhere and far wider near
+           its top, so a top-band flower hung in the air a crown-radius out and
+           `anchor` drew a bare horizontal stick back to the axis to hold it —
+           the stray branch across the top of the Narra. The crown's own radius
+           at the height `place` will put this slot is the surface, and the
+           flower stands clear of it on a short stalk. */
+        const r = Math.min(reachOf(pl, a, 1.0), crownRadiusAt(p, slotY(s), a) + spec.r * 1.5);
         /* Deliberately over the per-part budget. addFlower falls back to a
            three-scale BUD under 58 triangles, and a bud is invisible at
            gallery size — which is the whole complaint about the flowering

@@ -236,3 +236,19 @@ export function tickLerpNext(state: TickLerp | null, to: TickPoint, now: number)
       : Math.max(TICK_LERP_MIN_MS, Math.min(TICK_LERP_MAX_MS, gap));
   return { from: tickLerpAt(state, now), to: { lat: to.lat, lon: to.lon }, at: now, span_ms };
 }
+
+/* ── gait: when the walker counts as stopped ────────────────────────────────
+ *
+ * The walker's step animation is on while the fix keeps MOVING and off once it
+ * has sat still for a beat. The beat depends on who is publishing the fix: the
+ * stick and the demo loop publish every 50–120 ms while they move, so 450 ms
+ * of silence (a few ticks, with room for a busy frame) means the thumb came
+ * off; a phone's GPS publishes about once a second, so it needs more than two
+ * of those missing before "stopped" is a fact rather than a gap between fixes.
+ */
+export const WALK_STOP_TICK_MS = 450;
+export const WALK_STOP_GPS_MS = 2500;
+
+export function walkStopMs(source: string | undefined): number {
+  return source === "play" || source === "demo" ? WALK_STOP_TICK_MS : WALK_STOP_GPS_MS;
+}
