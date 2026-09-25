@@ -342,7 +342,7 @@ export function DexCard({
         species_code={species_code}
         size={size}
         is_dim={!is_seen}
-        style={{ margin: "0 auto", background: is_seen ? "rgba(255,255,255,0.92)" : "rgb(var(--mg-ink-rgb) / 0.05)", border: "none" }}
+        style={{ margin: "0 auto", background: is_seen ? "#fff" : "#eceeeb", border: "none" }}
       />
       {is_seen && sp ? (
         <>

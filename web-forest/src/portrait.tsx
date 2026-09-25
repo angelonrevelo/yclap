@@ -71,18 +71,44 @@ export function SpeciesPortrait({
         boxShadow: "var(--mg-shadow-sm)",
         display: "grid",
         placeItems: "center",
+        position: "relative",
         ...style,
       }}
     >
-      {src && !is_dim ? (
-        <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-      ) : species_code ? (
-        <div style={{ width: "86%", opacity: is_dim ? 0.55 : 1, filter: is_dim ? "grayscale(1)" : undefined }}>
-          <Botanical species_code={species_code} is_silhouette={is_dim || !sp} />
+      {/* The drawing (or kind mark) is always laid down first, and the photo
+          fades in over it once it has actually loaded — a remote iNat photo
+          used to leave a blank grey disc for as long as it took. */}
+      {sp && species_code ? (
+        <div style={{ gridArea: "1 / 1", width: "86%", opacity: is_dim ? 0.55 : 1, filter: is_dim ? "grayscale(1)" : undefined }}>
+          <Botanical species_code={species_code} is_silhouette={is_dim} />
         </div>
       ) : (
-        <KindThumb kind={mark} size={size - 4} />
+        <div style={{ gridArea: "1 / 1", opacity: is_dim ? 0.55 : 1, display: "grid", placeItems: "center" }}>
+          <KindThumb kind={mark} size={size - 4} />
+        </div>
       )}
+      {src && !is_dim && <PortraitPhoto key={src} src={src} />}
     </div>
+  );
+}
+
+function PortraitPhoto({ src }: { src: string }) {
+  const [is_loaded, setLoaded] = useState(false);
+  return (
+    <img
+      src={src}
+      alt=""
+      onLoad={() => setLoaded(true)}
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        display: "block",
+        opacity: is_loaded ? 1 : 0,
+        transition: "opacity 180ms ease",
+      }}
+    />
   );
 }

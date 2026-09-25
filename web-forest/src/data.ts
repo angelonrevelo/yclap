@@ -363,6 +363,15 @@ export const journal_order: string[] = [
   "slot-c",
 ];
 
+/**
+ * What the Dex grid draws: the journal order without its unnamed padding.
+ *
+ * The three `slot-*` entries were locked cards numbered #010–#012 beside a
+ * counter reading "1 / 9", so the grid and the count disagreed about how big
+ * the set is. The set is the nine curated species; so is the grid.
+ */
+export const dex_order: string[] = journal_order.filter((code) => !code.startsWith("slot-"));
+
 export const picker_order: string[] = [
   "narra",
   "molave",

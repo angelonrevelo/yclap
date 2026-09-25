@@ -326,9 +326,12 @@ export default function SettingsScreen({
             gap: 4,
             marginTop: 10,
             padding: 4,
-            borderRadius: RADIUS.tile,
-            background: "rgba(17,75,47,0.11)",
-            border: `1px solid ${TONE.edge}`,
+            /* Flat: a white bar with the one small shadow, and the active tab
+               marked by a solid green bottom edge — not a grey tray with an
+               inset, pressed-in tab. */
+            borderRadius: 14,
+            background: TONE.card,
+            boxShadow: "var(--mg-sticker)",
           }}
         >
           {PANEL.map((row) => {
@@ -347,9 +350,10 @@ export default function SettingsScreen({
                   alignItems: "center",
                   gap: 2,
                   padding: "7px 2px 6px",
-                  borderRadius: 7,
+                  borderRadius: 0,
                   border: "none",
-                  background: is_on ? TONE.green_soft : "transparent",
+                  background: "transparent",
+                  boxShadow: is_on ? "inset 0 -3px 0 0 var(--mg-green)" : "none",
                   color: is_on ? "var(--mg-green-text)" : TONE.dim,
                   fontWeight: 800,
                   fontSize: 11,
