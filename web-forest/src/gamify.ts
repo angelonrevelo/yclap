@@ -9,7 +9,12 @@
  */
 
 import { readPlayer } from "./sync.ts";
-import type { SpawnPoolEntry } from "./spawn.ts";
+import { areaName, isUnnamedSector } from "./area-name.ts";
+import { species } from "./data.ts";
+import type { LatLon } from "./geo.ts";
+import { isWalkable } from "./placement.ts";
+import { sectorContains, type Sector } from "./sector.ts";
+import { habitatWeight, rarityFor, type Spawn, type SpawnPoolEntry } from "./spawn.ts";
 
 export type PointKind = "explore" | "learn" | "observe" | "challenge" | "verified_discovery";
 
@@ -334,7 +339,13 @@ export interface DailyTask {
   /** For `speciesLabelOf`: shown (in italics) only when there is no common name. */
   scientific_name: string;
   sector_code: string;
+  /** Always a real place — `areaName`, never a "Sector N" row id. */
   sector_name: string;
+  /** Where the hunt's own find stands: inside the sector, on walkable ground. */
+  lat: number;
+  lon: number;
+  /** The id of the find `huntFind` places — the same for the whole day. */
+  spawn_id: string;
   is_done: boolean;
 }
 
@@ -358,34 +369,153 @@ function hashText(text: string): number {
   return h >>> 0;
 }
 
+function seeded(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 /**
- * One tree + one biome, deterministic for this player on this day.
- * Challenges stay trees-only (`2:04:17`).
+ * Fewest campus observations a hunt species needs. A tree logged once on
+ * campus is a "once on campus" story, not something you can be sent to find
+ * today; five is the smallest count where the tree is plainly still here.
+ */
+export const HUNT_MIN_COUNT = 5;
+
+/** True when the sweep gave the species a common name of its own. */
+export function hasCommonName(entry: Pick<SpawnPoolEntry, "common_name" | "scientific_name" | "species_code">): boolean {
+  const name = entry.common_name.trim();
+  return name !== "" && name !== entry.scientific_name.trim() && name !== entry.species_code;
+}
+
+/**
+ * The species a daily hunt may name.
+ *
+ * Trees only (`2:04:17`), with a common name, seen at least `HUNT_MIN_COUNT`
+ * times on campus. A species the data flags `Exotic` is left out unless the
+ * curated field guide chose to teach it (Rain tree, Teak) — the hunt should
+ * send people to trees that belong here, and to the guide's own cards.
+ */
+export function huntPool(pool: SpawnPoolEntry[], curated: ReadonlySet<string> = new Set()): SpawnPoolEntry[] {
+  return pool.filter(
+    (e) =>
+      isTreeEntry(e) &&
+      hasCommonName(e) &&
+      (e.count ?? 0) >= HUNT_MIN_COUNT &&
+      (e.origin !== "Exotic" || curated.has(e.species_code)),
+  );
+}
+
+/** Green, and named — a hunt never sends anyone to a "Sector N". */
+export function isHuntArea(row: Pick<Sector, "is_biome" | "name">): boolean {
+  return row.is_biome && !isUnnamedSector(row);
+}
+
+/** A walkable point inside the sector, the same one on every device for this seed. */
+function huntPoint(row: Sector, rng: () => number): LatLon | null {
+  let lat0 = Infinity, lat1 = -Infinity, lon0 = Infinity, lon1 = -Infinity;
+  for (const [lat, lon] of row.point) {
+    if (lat < lat0) lat0 = lat;
+    if (lat > lat1) lat1 = lat;
+    if (lon < lon0) lon0 = lon;
+    if (lon > lon1) lon1 = lon;
+  }
+  for (let tries = 0; tries < 80; tries += 1) {
+    const at = { lat: lat0 + rng() * (lat1 - lat0), lon: lon0 + rng() * (lon1 - lon0) };
+    if (sectorContains(row, at) && isWalkable(at)) return at;
+  }
+  const label = { lat: row.label_point[0], lon: row.label_point[1] };
+  return sectorContains(row, label) && isWalkable(label) ? label : null;
+}
+
+/**
+ * One tree, one named area, one spot — the same for every phone all day.
+ *
+ * The hunt used to pick the species and the area independently and then say
+ * "Out today in X" about a pairing the spawn world never made. Now the hunt IS
+ * a find: `huntFind` places this species at `lat/lon` in this area for every
+ * window of the day, so the claim is true by construction, and a window
+ * rolling over cannot make it false. Seeded by the day alone (not the player),
+ * so two people comparing phones are on the same hunt.
+ *
+ * Curated guide species are drawn four times as often as the rest of the
+ * pool, and an area is chosen where the tree's habitat fit is at least even.
  */
 export function dailyTaskFor(
   pool: SpawnPoolEntry[],
-  sector: { sector_code: string; name: string; is_biome: boolean }[],
+  sector: Sector[],
   now: Date,
-  player_id: string,
   events: PointEvent[],
+  curated: ReadonlySet<string> = new Set(Object.keys(species)),
 ): DailyTask | null {
   const day_key = dayKey(now);
   if (day_key === "invalid") return null;
-  const tree = pool.filter(isTreeEntry);
-  const biome = sector.filter((s) => s.is_biome);
-  if (!tree.length || !biome.length) return null;
-  const seed = hashText(`${day_key}:${player_id}`);
-  const pick = tree[seed % tree.length];
-  const place = biome[Math.floor(seed / 97) % biome.length];
+  const tree = huntPool(pool, curated);
+  const area = sector.filter(isHuntArea);
+  if (!tree.length || !area.length) return null;
+  const rng = seeded(hashText(`hunt:${day_key}`));
+
+  const weight = tree.map((e) => (curated.has(e.species_code) ? 4 : 1));
+  let remainder = rng() * weight.reduce((a, b) => a + b, 0);
+  let pick = tree[tree.length - 1];
+  for (let i = 0; i < tree.length; i += 1) {
+    remainder -= weight[i];
+    if (remainder <= 0) {
+      pick = tree[i];
+      break;
+    }
+  }
+
+  const fit = area.filter((s) => habitatWeight(s.kind, pick) >= 1);
+  const ring = fit.length ? fit : area;
+  const start = Math.floor(rng() * ring.length);
+  for (let k = 0; k < ring.length; k += 1) {
+    const place = ring[(start + k) % ring.length];
+    const at = huntPoint(place, seeded(hashText(`hunt:${day_key}:${place.sector_code}`)));
+    if (!at) continue;
+    return {
+      task_id: `daily:${day_key}`,
+      day_key,
+      species_code: pick.species_code,
+      common_name: pick.common_name,
+      scientific_name: pick.scientific_name,
+      sector_code: place.sector_code,
+      sector_name: areaName(place),
+      lat: at.lat,
+      lon: at.lon,
+      spawn_id: `hunt-${day_key}`,
+      is_done: alreadyAwarded(events, "challenge", dailySubject(day_key)),
+    };
+  }
+  return null;
+}
+
+/**
+ * The hunt's own find, for the spawn world. It stands for the whole UTC day,
+ * which is how long the hunt is — the card may say "out today" honestly.
+ */
+export function huntFind(task: DailyTask, pool: SpawnPoolEntry[]): Spawn | null {
+  const entry = pool.find((e) => e.species_code === task.species_code);
+  if (!entry) return null;
+  const starts_ms = Date.parse(`${task.day_key}T00:00:00.000Z`);
   return {
-    task_id: `daily:${day_key}`,
-    day_key,
-    species_code: pick.species_code,
-    common_name: pick.common_name,
-    scientific_name: pick.scientific_name,
-    sector_code: place.sector_code,
-    sector_name: place.name,
-    is_done: alreadyAwarded(events, "challenge", dailySubject(day_key)),
+    spawn_id: task.spawn_id,
+    species_code: entry.species_code,
+    common_name: entry.common_name,
+    scientific_name: entry.scientific_name,
+    lat: task.lat,
+    lon: task.lon,
+    sector_code: task.sector_code,
+    rarity: rarityFor(entry.count),
+    iconic_taxon_name: entry.iconic_taxon_name,
+    archetype: entry.archetype,
+    starts_at: new Date(starts_ms).toISOString(),
+    ends_at: new Date(starts_ms + 24 * 60 * 60 * 1000).toISOString(),
   };
 }
 
