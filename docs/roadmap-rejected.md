@@ -37,3 +37,10 @@ Ideas surfaced by the Aug 15 / Aug 22 Plaud recordings that this repo will not p
 The 09-09 Working Doc + Angelo's override **supersede the public-leaderboard row above for a LOCAL / demo board only** (seeded cohort + this device, labelled “demo / not AIS”). See [`plaud/2026-09-09-gamified-map-pitch-showcase.md`](plaud/2026-09-09-gamified-map-pitch-showcase.md) A8 / `1:30:04`. **Official AIS ranks remain rejected.** The old row stays as the record of the 08-26 / 08-29 position.
 
 Walk-step / calorie points also stay rejected unless the device actually measures them. Speaker 1 asked for Pokémon GO steps at `21:31`; that is the same class of fabrication as the Whistler row above — triage, not a must-ship number we invent.
+
+## 2026-09-26 — showcase panel
+
+| Idea | Source | Reason (verbatim position) |
+|------|--------|----------------------------|
+| Health or other non-biodiversity uses inside Magisphere | `plaud/2026-09-26-showcase-panel.md` A3 `266:01` | Magisphere answers the urban-forest problem tree. The engine (areas, quests, journal) can be forked for another brief; the product does not widen |
+| A carbon / CO₂ panel on the climate dashboard | `plaud/2026-09-26-showcase-panel.md` A6 `267:58` | Repeat of the ForestDrop and no-carbon-product rows above. The conditions card shows hazards and heat only |

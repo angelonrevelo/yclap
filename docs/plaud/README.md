@@ -19,6 +19,7 @@ Fifteen recordings from Youth CLAP sessions (Aug 15 LEARN · Aug 22 BUILD · Aug
 | [2026-09-02-pulong-website-biome-showcase.md](2026-09-02-pulong-website-biome-showcase.md) | Ateneo CCC weekly — **biome pivot**, gamification, showcase tasks | 1:16:50 | 9 labels, diarization suspect |
 | [2026-09-09-gamified-map-pitch-showcase.md](2026-09-09-gamified-map-pitch-showcase.md) | Ateneo CCC + AVP — **gamified map**, pitch, showcase prep (omit rounds) | 2:18:22 | 6 labels, diarization suspect |
 | [2026-09-25-demo-readiness-backend.md](2026-09-25-demo-readiness-backend.md) | Solo note, eve of the showcase — **accounts, database, pet eagle, GO look, detection smoke test** | 4:55 | solo (Gelo) |
+| [2026-09-26-showcase-panel.md](2026-09-26-showcase-panel.md) | Showcase panel after the demo — **safety quest, who verifies, parks, conditions card, fun facts** | 263:04–267:58 excerpt | panel (pasted transcript, not a Plaud file) |
 
 Known recording-quality caveats (apply everywhere): diarization frequently merges or splits people; names garble (Borje/Borja, Porio/"Estenssoro", SPS five ways); several `[AI note]`-only "assignment" lists were never spoken and must not be treated as asks.
 
