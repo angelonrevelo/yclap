@@ -219,8 +219,10 @@ bias toward native species therefore reaches 0.8% of the world today.
 - **Buildings default to `block`**: every building gets a low plinth of 3.2 m
   of wall. It reads as built without hiding the path behind it. `solid` still
   draws real heights.
-- The stick walk now starts on the footpath by Schmitt Hall and the Zen Garden
-  (`STICK_START`), not on the empty football field.
+- The stick walk now starts on the footpath through the International Residence
+  Halls grounds (`STICK_START`), not on the empty football field. The spot was
+  chosen by measuring finds within 60 m over 48 windows. The near-field density
+  went from 0.34 to 0.62 so a first screen is never empty.
 
 Projector parameters: `?boot=off` skips the boot, `?weather=storm|rain|heat|clear|night`
 pins a reading (the card says it is pinned), `?time=day|night` pins the sky,

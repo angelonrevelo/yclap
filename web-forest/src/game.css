@@ -888,3 +888,79 @@
     animation: none;
   }
 }
+
+/* Curated finds: a glass bubble on a stalk, drawn to match `toon.tsx`. */
+.pm-bubble-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.pm-bubble {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 999px;
+  /* the outline, then the cel band as an inset crescent on the unlit side */
+  border: 2.6px solid #1e4a2c;
+  background: radial-gradient(circle at 34% 28%, #ffffff 0%, #f6fbf1 58%, #e3efd8 60%, #d6e8c8 100%);
+  box-shadow: inset -7px -9px 0 rgba(11, 42, 24, 0.1), 0 3px 0 rgba(11, 42, 24, 0.12);
+}
+.pm-bubble[data-logged="true"] {
+  background: radial-gradient(circle at 34% 28%, #eef6e8 0%, #dcebd0 58%, #c9dfba 60%, #bdd6ab 100%);
+}
+.pm-bubble-shine {
+  position: absolute;
+  left: 16%;
+  top: 9%;
+  width: 36%;
+  height: 22%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0));
+  transform: rotate(-24deg);
+  pointer-events: none;
+}
+.pm-bubble-stalk {
+  width: 7px;
+  height: 14px;
+  margin-top: -1px;
+  border: 2px solid #1e4a2c;
+  border-top: 0;
+  border-radius: 0 0 4px 4px;
+  background: linear-gradient(90deg, #f6f1e4 0%, #ede7d8 55%, #cfc8b6 57%, #c4bca8 100%);
+}
+.pm-bubble-disc {
+  width: 30px;
+  height: 8px;
+  margin-top: -2px;
+  border-radius: 999px;
+  background: rgba(62, 154, 74, 0.22);
+  border: 1.5px solid rgba(62, 154, 74, 0.7);
+}
+
+/* In range: the disc breathes, so you know you can log it without reading. */
+@keyframes pm-find-ring {
+  0% { opacity: 0.95; transform: scale(0.7); }
+  100% { opacity: 0; transform: scale(1.25); }
+}
+.pm-find-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pm-find-ring 1.6s ease-out infinite;
+}
+
+/* Flora sways a degree or two from the base, like a toy in a breeze. */
+@keyframes fl-sway {
+  0%, 100% { transform: rotate(-1.1deg); }
+  50% { transform: rotate(1.1deg); }
+}
+.fl-sway {
+  transform-origin: 50% 100%;
+  animation: fl-sway 5.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fl-sway,
+  .pm-find-ring {
+    animation: none;
+  }
+}

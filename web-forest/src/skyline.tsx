@@ -240,7 +240,9 @@ export default function Skyline({
           overflow: "visible",
           pointerEvents: "none",
           zIndex: 1,
-          filter: is_night ? "brightness(0.5) saturate(0.7) hue-rotate(200deg)" : undefined,
+          /* Darker, not bluer: a hue turn put warm roofs on flat blue-grey and
+             they stopped reading as buildings after dark. */
+          filter: is_night ? "brightness(0.62) saturate(0.8)" : undefined,
         }}
         width={width}
         height={height}
@@ -271,7 +273,7 @@ export default function Skyline({
             <path
               key={`sh-${row.building_code ?? "b"}-${i}`}
               d={ground}
-              fill="rgba(46,58,38,0.26)"
+              fill="rgba(46,58,38,0.12)"
               filter="url(#sky-contact)"
             />
           ))}
@@ -285,9 +287,14 @@ export default function Skyline({
                   <path
                     key={j}
                     d={w.d}
-                    fill={shade(colour, w.light)}
-                    stroke={style === "block" ? "rgba(96,84,64,0.35)" : undefined}
-                    strokeWidth={style === "block" ? 0.8 : undefined}
+                    /* Block walls are cel-shaded: two bands, lit or not, the
+                       way the trees' balls are — a smooth ramp read as
+                       concrete, two flat tones read as a toy. */
+                    fill={shade(colour, style === "block" ? (w.light > 0.5 ? 0.95 : 0.4) : w.light)}
+                    /* Toon: every wall carries the ink line the trees and
+                       finds do, so a building reads as the same kind of toy. */
+                    stroke={style === "block" ? "rgba(58,44,28,0.72)" : undefined}
+                    strokeWidth={style === "block" ? 1.3 : undefined}
                     strokeLinejoin="round"
                   />
                 ))}
@@ -307,10 +314,11 @@ export default function Skyline({
                 d={style === "shadow" ? ground : roof}
                 fill={colour}
                 fillOpacity={style === "hollow" ? 0.92 : 1}
-                stroke="rgba(96,84,64,0.42)"
-                strokeWidth={0.9}
+                stroke={style === "block" ? "rgba(58,44,28,0.72)" : "rgba(96,84,64,0.42)"}
+                strokeWidth={style === "block" ? 1.3 : 0.9}
                 strokeLinejoin="round"
               />
+              {style === "block" && <path d={roof} fill="url(#toon-roof)" />}
             </g>
           );
         })}

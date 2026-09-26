@@ -71,18 +71,45 @@ export function SpeciesPortrait({
         boxShadow: "0 4px 12px rgba(12,28,16,0.22)",
         display: "grid",
         placeItems: "center",
+        position: "relative",
         ...style,
       }}
     >
-      {src && !is_dim ? (
-        <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-      ) : species_code ? (
+      {/* The mark is always drawn, and the photo fades in over it once it
+          has actually loaded. A 09-26 playtest found the Nearby tray and the
+          camera's picker as rows of empty grey circles for the seconds a
+          remote photo takes to arrive, and for good when it never does. */}
+      {species_code && sp ? (
         <div style={{ width: "86%", opacity: is_dim ? 0.55 : 1, filter: is_dim ? "grayscale(1)" : undefined }}>
           <Botanical species_code={species_code} is_silhouette={is_dim || !sp} />
         </div>
       ) : (
         <KindThumb kind={mark} size={size - 4} />
       )}
+      {src && !is_dim && <PortraitImage key={src} src={src} />}
     </div>
+  );
+}
+
+function PortraitImage({ src }: { src: string }) {
+  const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
+  if (state === "failed") return null;
+  return (
+    <img
+      src={src}
+      alt=""
+      onLoad={() => setState("ready")}
+      onError={() => setState("failed")}
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        display: "block",
+        opacity: state === "ready" ? 1 : 0,
+        transition: "opacity 220ms ease",
+      }}
+    />
   );
 }

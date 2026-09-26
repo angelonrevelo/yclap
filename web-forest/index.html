@@ -22,7 +22,12 @@
     />
   </head>
   <body>
-    <div id="root"></div>
+    <!-- The splash, painted by the HTML itself. React draws the real one, but
+         only after every module has loaded: a 09-26 playtest measured 2 s of
+         blank white on a cold start first. This is the same lockup on the same
+         white, so the hand-off to React's splash is invisible. createRoot
+         replaces it on mount. -->
+    <div id="root"><div style="position:fixed;inset:0;display:grid;place-items:center;background:#fff"><img src="/brand/magi/lockup-stacked.svg" alt="Magisphere — Rediscovering home." style="width:min(78vw,420px);height:auto" /></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

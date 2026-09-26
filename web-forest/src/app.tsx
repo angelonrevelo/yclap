@@ -91,7 +91,7 @@ import {
   type GamifySnapshot,
   type PointEvent,
 } from "./gamify";
-import { CAMPUS_CENTER, distanceMeter, formatLatLon, formatMeter, formatWalkMinute, meterPerPixel, WALK_PACE_MS, type GeoState } from "./geo";
+import { CAMPUS_CENTER, distanceMeter, formatLatLon, formatMeter, formatWalkMinute, meterPerPixel, WALK_PACE_MS, type GeoState, type LatLon } from "./geo";
 import { LAYER_ORDER, nextLayer, prefetchCampus, SOURCE, type Layer, type View } from "./tile-map";
 import { geoModeLabel, nextGeoMode, useGeo, type GeoMode } from "./use-geo";
 import { biomePresenceAt, rankEncounter, sectorResident, type BiomePresence } from "./nearby";
@@ -142,7 +142,14 @@ const WALK_ZOOM = 18;
  * on the walker the way a GO play-view does — buildings and paths at standing
  * scale, avatar large in frame.
  */
-const PLAY_ZOOM = PLAY_MAX_ZOOM;
+const PLAY_ZOOM = 20;
+/*
+ * z20, not the z22 ceiling, since a 09-26 playtest. At z22 a phone shows about
+ * fifteen metres of ground, which is the walker and a lawn: finds were within
+ * reach but none was on screen, so the first view of the game had nothing in
+ * it to walk toward. z20 holds four or five finds, the trees and the paths
+ * between them, which is the genre's camera. Pinch still goes all the way in.
+ */
 
 const CARD_RADIUS = RADIUS.card;
 const TILE_RADIUS = RADIUS.tile;
@@ -192,6 +199,8 @@ const SPEED_ALERT: AlertSpec = {
 };
 /** Faster than this, sustained between two GPS fixes, is not a walk. */
 const SPEED_WARN_MS = 7;
+/** How far short of a tapped find a stick walk stops, in metres. */
+const STOP_SHORT_M = 12;
 
 function weatherAlert(w: Weather): AlertSpec {
   return {
@@ -3136,7 +3145,7 @@ export default function App() {
     const asked = Number(raw);
     const zoom =
       raw !== null && Number.isFinite(asked)
-        ? Math.max(PLAY_MIN_ZOOM, Math.min(PLAY_MAX_ZOOM, Math.round(asked)))
+        ? Math.max(PLAY_MIN_ZOOM, Math.min(PLAY_MAX_ZOOM, asked))
         : PLAY_ZOOM;
     return { ...CAMPUS_CENTER, zoom };
   });
@@ -3593,6 +3602,18 @@ export default function App() {
    * camera from across campus: a find you log without standing at it is a
    * record of nothing, and this app's one useful output is the location.
    */
+  const walk_goal = useRef<{ row: Spawn; target: LatLon } | null>(null);
+  /* Arrival: say so, and say what to do. The orb is in front of the walker
+     and inside reach, so one more tap opens the camera. */
+  useEffect(() => {
+    const goal = walk_goal.current;
+    if (!goal || !geo.fix) return;
+    if (distanceMeter(geo.fix, goal.target) > 1.5) return;
+    walk_goal.current = null;
+    haptic("bump");
+    showToast(`${goal.row.common_name} is in reach. Tap it to log.`);
+  }, [geo.fix?.lat, geo.fix?.lon]);
+
   const walkToSpawn = (row: Spawn) => {
     const reach = reachableSpawn(spawn_world.spawn, geo.fix).some((r) => r.spawn_id === row.spawn_id);
     if (reach) {
@@ -3606,7 +3627,21 @@ export default function App() {
     setPickedSector(null);
     setPinnedId(null);
     if (geo_mode === "play") {
-      geo.walkTo(row);
+      /* Stop short of the find, not on it. Walked all the way, the walker
+         stood on the orb and hid it — a 09-26 playtest arrived at a find and
+         had nothing left on screen to tap. STOP_SHORT_M is well inside
+         REACH_RADIUS_M, so the next tap still opens the camera. */
+      const from = geo.fix;
+      const gap = from ? distanceMeter(from, row) : 0;
+      const target =
+        from && gap > STOP_SHORT_M
+          ? {
+              lat: from.lat + (row.lat - from.lat) * ((gap - STOP_SHORT_M) / gap),
+              lon: from.lon + (row.lon - from.lon) * ((gap - STOP_SHORT_M) / gap),
+            }
+          : row;
+      geo.walkTo(target);
+      walk_goal.current = { row, target };
       setFollowing(true);
       showToast(`Walking to ${row.common_name}`);
       return;
@@ -3882,7 +3917,12 @@ export default function App() {
         }
         control={
           <>
-            {weather && <WeatherChip weather={weather} onOpen={() => pushAlert(weatherAlert(weather), true)} />}
+            {/* The glyph follows the sky the map is drawing (`?time=` included), so
+                a pinned daytime demo on a night clock does not hang a moon over
+                a sunny map. The reading itself is unchanged. */}
+            {weather && (
+              <WeatherChip weather={{ ...weather, is_day: !is_night }} onOpen={() => pushAlert(weatherAlert(weather), true)} />
+            )}
             <ModeSwitch mode={map_mode} onMode={setMode} />
             <GeoModeSwitch
               mode={geo_mode}
