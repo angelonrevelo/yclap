@@ -24,6 +24,7 @@ import {
   weeklyStreak,
   type PointEvent,
 } from "../src/gamify.ts";
+import { sector, sectorByCode } from "../src/sector.ts";
 
 function ev(over: Partial<PointEvent> & Pick<PointEvent, "kind" | "subject_key" | "at">): PointEvent {
   return {
@@ -200,7 +201,7 @@ describe("observe + daily hunt", () => {
     assert.equal(b.awarded, false);
   });
 
-  it("picks one tree + biome per player-day and marks done after hunt award", () => {
+  it("picks one tree + named green area per day and marks done after hunt award", () => {
     const pool = [
       {
         species_code: "narra",
@@ -223,21 +224,19 @@ describe("observe + daily hunt", () => {
         file: "species/weaver.glb",
       },
     ];
-    const sector = [
-      { sector_code: "bellarmine", name: "Bellarmine Field", is_biome: true },
-      { sector_code: "asphalt", name: "Car park", is_biome: false },
-    ];
     const now = new Date("2026-09-12T04:00:00.000Z");
-    const a = dailyTaskFor(pool, sector, now, "player-a", []);
-    const b = dailyTaskFor(pool, sector, now, "player-a", []);
+    const a = dailyTaskFor(pool, sector, now, []);
+    const b = dailyTaskFor(pool, sector, now, []);
     assert.ok(a);
+    assert.equal(a?.species_code, "narra");
     assert.equal(a?.species_code, b?.species_code);
-    assert.equal(a?.sector_code, "bellarmine");
+    assert.equal(a?.sector_code, b?.sector_code);
+    assert.equal(sectorByCode(a?.sector_code ?? "")?.is_biome, true);
     assert.equal(isTreeEntry(pool[0]), true);
     assert.equal(isTreeEntry(pool[1]), false);
     assert.equal(a?.is_done, false);
     const awarded = awardPoints([], "challenge", dailySubject(dayKey(now)));
-    const done = dailyTaskFor(pool, sector, now, "player-a", awarded.events);
+    const done = dailyTaskFor(pool, sector, now, awarded.events);
     assert.equal(done?.is_done, true);
   });
 });

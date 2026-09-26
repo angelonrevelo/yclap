@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { walkPoint } from "./placement.ts";
+import { areaName, sectorName } from "./area-name.ts";
 import CampusMap from "./campus-map";
 import Joystick from "./joystick";
 import {
@@ -46,7 +46,7 @@ const SpeciesCard = lazy(() => import("./species-card"));
 /* The pin sheet's hero is the card's own turning model — same lazy chunk. */
 const SpeciesHero = lazy(() => import("./species-card").then((m) => ({ default: m.SpeciesHero })));
 import { learnSubject } from "./species-card-core";
-import { biome_sector, sectorAt, sectorByCode, sector as sector_row, type Sector } from "./sector";
+import { biome_sector, sectorAt, sector as sector_row, type Sector } from "./sector";
 import Viewfinder, { type Shot } from "./camera";
 import {
   aisDueNote,
@@ -2196,7 +2196,7 @@ function WalkReceiptSheet({
   pool: SpawnPoolEntry[];
 }) {
   const sector_name = receipt.sector_code
-    .map((code) => sectorByCode(code)?.name)
+    .map((code) => sectorName(code))
     .filter(Boolean)
     .slice(0, 4);
   const curated_name = useMemo(
@@ -3632,34 +3632,25 @@ export default function App() {
   const seen = seenCode(sighting);
   const gamify = useMemo(() => gamifySnapshot(point_events), [point_events]);
   const daily = useMemo(
-    () => dailyTaskFor(spawn_world.pool, biome_sector, new Date(), readPlayer().player_id, point_events),
-    [spawn_world.pool, point_events],
+    /* The same instant the spawn world was built for, so the hunt named here is
+       the hunt find standing in the world (live.tsx places it). */
+    () => dailyTaskFor(spawn_world.pool, biome_sector, new Date(Date.parse(spawn_world.ends_at) - 1), point_events),
+    [spawn_world.pool, spawn_world.ends_at, point_events],
   );
   const goDaily = () => {
     if (!daily) return;
-    const place = sectorByCode(daily.sector_code);
-    if (!place) return;
+    /* The hunt is a find of its own (`huntFind`), on walkable ground inside
+       its area, so the camera lands ON it rather than on the area's label.
+       In Play walk the walker also sets off for it along the footpaths; the
+       camera does not wait for the walk — the find is on screen now, and
+       Recentre goes back to the walker. No way there says so. */
+    const find = { lat: daily.lat, lon: daily.lon };
     if (geo_mode === "play") {
-      if (geo.walkTo(walkPoint(place), 0, place.name)) setFollowing(true);
-      else showToast(noRouteLine(place.name));
-      return;
+      const name = sectorName(daily.sector_code) ?? "today's hunt";
+      if (!geo.walkTo(find, WALK_TO_SHORT_M, name)) showToast(noRouteLine(name));
     }
     setFollowing(false);
-    /* Fly to the hunt's finds, not the sector's label. The label is the
-       middle of the area, and the playtest found the pins you were sent to
-       left at the screen's edge (x ≈ 12 on a 375 px phone). The hunt species
-       itself when this window has spawned it; otherwise the middle of the
-       finds standing in the hunt's sector; the label only when it has none. */
-    const same = spawn_world.spawn.find((s) => s.species_code === daily.species_code && s.sector_code === daily.sector_code);
-    const in_sector = spawn_world.spawn.filter((s) => s.sector_code === daily.sector_code);
-    const focus = same
-      ? [same]
-      : in_sector.length > 0
-        ? in_sector
-        : [{ lat: place.label_point[0], lon: place.label_point[1] }];
-    const lat = focus.reduce((sum, f) => sum + f.lat, 0) / focus.length;
-    const lon = focus.reduce((sum, f) => sum + f.lon, 0) / focus.length;
-    setView((prev) => ({ ...prev, lat, lon, zoom: Math.max(prev.zoom, 17) }));
+    setView((prev) => ({ ...prev, lat: find.lat, lon: find.lon, zoom: Math.max(prev.zoom, 17) }));
   };
   /* The day's first open shows today's hunt once, big, after boot and after
      any safety card. Keyed by the hunt's own day. */
@@ -4029,7 +4020,7 @@ export default function App() {
     const reply = pinReply({
       target: row,
       common_name: row.common_name,
-      sector_name: sectorByCode(row.sector_code)?.name ?? null,
+      sector_name: sectorName(row.sector_code),
       fix: geo.fix,
       is_reach,
       is_walk_mode: geo_mode === "play",
@@ -4038,7 +4029,7 @@ export default function App() {
       /* You are close enough and the camera is opening — the moment the whole
          walk is for. */
       haptic("bump");
-      openCamera(row.species_code, sectorByCode(row.sector_code)?.name, row.rarity);
+      openCamera(row.species_code, sectorName(row.sector_code) ?? undefined, row.rarity);
       return;
     }
     haptic("tap");
@@ -4251,7 +4242,7 @@ export default function App() {
    * asked for on 09-03.
    */
   const play_sheet_sp = species[pick_code] ?? sel_sp;
-  const play_sheet_where = camera_where ?? (here_sector?.name ?? "Campus");
+  const play_sheet_where = camera_where ?? (here_sector ? areaName(here_sector) : "Campus");
   const play_sheet_distance = (() => {
     if (!geo.fix) return null;
     const hit = ranked.find((n) => n.row.species_code === play_sheet_sp.species_code);
@@ -4324,7 +4315,7 @@ export default function App() {
             points={live_snap.total_points}
             streak_weeks={live_snap.streak_weeks}
             is_week_active={live_snap.participated_this_week}
-            place={here_sector ? here_sector.name : "Between sectors"}
+            place={here_sector ? areaName(here_sector) : "Between sectors"}
             stage={stage}
             vigor={vigor}
             onOpen={() => {
@@ -4402,7 +4393,7 @@ export default function App() {
           resident={sectorResident(picked_sector)}
           progress={sectorProgress(sighting, picked_sector)}
           is_desktop={is_desktop}
-          onLog={(code) => openCamera(code, picked_sector.name)}
+          onLog={(code) => openCamera(code, areaName(picked_sector))}
           onDismiss={() => setPickedSector(null)}
         />
       )}
@@ -4546,6 +4537,7 @@ export default function App() {
   const is_on_map = route === "/" || route === "/map";
   const is_play = is_on_map && map_mode === "play";
 
+  const here_area = here_sector ? areaName(here_sector) : undefined;
   const pressGo = () => {
     setTrainerOpen(false);
     setNearbyOpen(false);
@@ -4555,12 +4547,14 @@ export default function App() {
          land in the same render. Walking to a find is left for the map. */
       setMode("play");
       go("/");
-      if (daily && !daily.is_done) openCamera(daily.species_code, daily.sector_name);
-      else openCamera(here_sector?.species_code[0] ?? pick_code, here_sector?.name);
+      if (daily && !daily.is_done) openCamera(daily.species_code, here_area);
+      else openCamera(here_sector?.species_code[0] ?? pick_code, here_area);
       return;
     }
     if (daily && !daily.is_done) {
-      openCamera(daily.species_code, daily.sector_name);
+      /* The sheet's title is where you are standing; the hunt tile inside it
+         still names the hunt and its area. */
+      openCamera(daily.species_code, here_area);
       return;
     }
     const near = spawn_world.spawn[0];
@@ -4568,7 +4562,7 @@ export default function App() {
       walkToSpawn(near);
       return;
     }
-    openCamera(here_sector?.species_code[0] ?? pick_code, here_sector?.name);
+    openCamera(here_sector?.species_code[0] ?? pick_code, here_area);
   };
 
   return (
@@ -4645,15 +4639,7 @@ export default function App() {
             onCycleMode={() => setGeoMode((m) => nextGeoMode(m))}
             onHunt={() => {
               setTrainerOpen(false);
-              if (daily) {
-                const place = sectorByCode(daily.sector_code);
-                if (place && geo_mode === "play") {
-                  if (geo.walkTo(walkPoint(place), 0, place.name)) setFollowing(true);
-                  else showToast(noRouteLine(place.name));
-                } else if (place) {
-                  setView((prev) => ({ ...prev, lat: place.label_point[0], lon: place.label_point[1], zoom: Math.max(prev.zoom, 17) }));
-                }
-              }
+              if (daily) goDaily();
               setMode("play");
               go("/");
             }}

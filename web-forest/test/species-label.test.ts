@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { speciesLabelOf } from "../src/kind.ts";
 import { dailyTaskFor } from "../src/gamify.ts";
+import { biome_sector } from "../src/sector.ts";
 import type { SpawnPoolEntry } from "../src/spawn.ts";
 
 test("a common name is Title Case, and never italic", () => {
@@ -28,17 +29,18 @@ test("no common name → the scientific name, flagged for italics", () => {
 test("the daily hunt carries the scientific name, so the chip can label it the same way", () => {
   const pool: SpawnPoolEntry[] = [
     {
-      species_code: "wendlandia",
-      common_name: "Wendlandia uvariifolia",
-      scientific_name: "Wendlandia uvariifolia",
-      count: 3,
-      origin: "native",
+      species_code: "raintree",
+      common_name: "Rain tree",
+      scientific_name: "Samanea saman",
+      count: 72,
+      origin: "Exotic",
       iconic_taxon_name: "Plantae",
       archetype: "tree",
       file: "x.glb",
     },
   ];
-  const task = dailyTaskFor(pool, [{ sector_code: "s1", name: "Grounds", is_biome: true }], new Date("2026-09-26T04:00:00Z"), "p", []);
+  const task = dailyTaskFor(pool, biome_sector, new Date("2026-09-26T04:00:00Z"), []);
   assert.ok(task);
-  assert.deepEqual(speciesLabelOf(task.common_name, task.scientific_name), { text: "Wendlandia uvariifolia", is_scientific: true });
+  assert.equal(task.scientific_name, "Samanea saman");
+  assert.deepEqual(speciesLabelOf(task.common_name, task.scientific_name), { text: "Rain Tree", is_scientific: false });
 });

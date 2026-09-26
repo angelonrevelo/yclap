@@ -141,6 +141,24 @@ function useGlideClock(track: Map<string, Track>): number {
   return now;
 }
 
+/** Screen margin a name tag keeps, px. */
+const TAG_MARGIN = 6;
+
+/**
+ * How far to slide a walker's name tag so it stays on screen, in the tag's own
+ * (pre-scale) pixels, and the widest it may be. The width is estimated from the
+ * text — 11 px heavy type runs about 6.4 px a character — which is close
+ * enough for a margin, and cheaper than measuring every walker every frame.
+ */
+export function tagShift(text: string, x: number, width: number, scale: number): { shift: number; max_width: number } {
+  const max_width = Math.max(40, (width - TAG_MARGIN * 2) / scale);
+  const half = (Math.min(max_width, text.length * 6.4 + 20) * scale) / 2;
+  let shift = 0;
+  if (x - half < TAG_MARGIN) shift = TAG_MARGIN - (x - half);
+  else if (x + half > width - TAG_MARGIN) shift = width - TAG_MARGIN - (x + half);
+  return { shift: shift / scale, max_width };
+}
+
 export default function RemoteWalkerLayer({
   hall,
   projection,
@@ -165,6 +183,7 @@ export default function RemoteWalkerLayer({
         if (at.x < -80 || at.y < -120 || at.x > width + 80 || at.y > height + 120) return null;
         /* Same clamp as your own walker, so two phones side by side agree. */
         const scale = Math.max(0.6, Math.min(1.35, at.scale));
+        const tag = tagShift(`${one.pose.name} · Lv ${one.pose.level} · ${SOURCE_LABEL[one.pose.source]}`, at.x, width, scale);
         return (
           <div
             key={one.pose.walker_id}
@@ -193,6 +212,12 @@ export default function RemoteWalkerLayer({
                 padding: "2px 8px",
                 marginBottom: 2,
                 boxShadow: "0 2px 6px rgba(24,38,20,0.2)",
+                /* Kept inside the screen: a walker at the edge used to have
+                   half its name cut off at 375 px. */
+                maxWidth: tag.max_width,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                transform: tag.shift ? `translateX(${tag.shift.toFixed(1)}px)` : undefined,
               }}
             >
               {one.pose.name} · Lv {one.pose.level}
