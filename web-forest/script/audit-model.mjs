@@ -38,6 +38,12 @@ export const CHARACTER_FILE = [
   "character-seedling.glb",
   "character-sapling.glb",
   "character-tree.glb",
+  /* Agila and the trainer (`script/art/build-eagle-glb.mjs`) — what the app now renders. */
+  "agila-egg.glb",
+  "agila-hatchling.glb",
+  "agila-eaglet.glb",
+  "agila-eagle.glb",
+  "agila-trainer.glb",
 ];
 
 export const LIMIT = {
@@ -52,6 +58,8 @@ export const LIMIT = {
  * pose, not a bug — these may float, but may never sink through the ground.
  */
 export const FLYER = new Set([
+  /* Agila full-grown hovers — `agila-eagle.glb`. */
+  "character-flyer",
   "lepidoptera", "lepidoptera-moth", "lepidoptera-hawk", "lepidoptera-skipper",
   "odonata", "odonata-damsel",
   "diptera", "diptera-mosquito", "diptera-crane", "diptera-mothfly", "diptera-hover",
@@ -302,7 +310,12 @@ export function auditPack(model_dir = MODEL_DIR) {
   const manifest = JSON.parse(readFileSync(join(model_dir, "species-model.json"), "utf8"));
   const reference = [
     ...manifest.model.map((e) => ({ file: e.file, species_code: e.species_code, archetype: e.archetype, manifest_byte: e.bytes ?? null })),
-    ...CHARACTER_FILE.map((file) => ({ file, species_code: null, archetype: "character", manifest_byte: null })),
+    ...CHARACTER_FILE.map((file) => ({
+      file,
+      species_code: null,
+      archetype: file === "agila-eagle.glb" ? "character-flyer" : "character",
+      manifest_byte: null,
+    })),
   ];
 
   const row = [];

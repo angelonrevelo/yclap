@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { RADIUS } from "./ui";
-import { sticker } from "./asset/kit";
+import { Art } from "./art/art";
+import { mascot } from "./art";
 import {
   ESSAY,
   LIMIT,
@@ -59,6 +60,7 @@ const TONE = {
   gold: "var(--mg-gold)",
 };
 
+/** Inline SVG markup per section (`art/svg/glyph/settings-*`), rendered by `<Art>`. */
 export interface SettingsIcon {
   account?: string;
   pref?: string;
@@ -313,7 +315,7 @@ export default function SettingsScreen({
               </span>
             </div>
           </div>
-          <img className="mg-bob" src={sticker.buddy_map} alt="" width={84} height={84} style={{ flexShrink: 0 }} />
+          <Art className="mg-bob art-sway" svg={mascot.map} size={84} />
         </div>
 
         {/* ── the tab bar. Five fixed columns, so it never scrolls sideways. ── */}
@@ -362,7 +364,7 @@ export default function SettingsScreen({
                 }}
               >
                 {art ? (
-                  <img src={art} alt="" width={22} height={22} style={{ opacity: is_on ? 1 : 0.55 }} />
+                  <Art svg={art} size={22} style={{ opacity: is_on ? 1 : 0.55 }} />
                 ) : (
                   <span aria-hidden="true" style={{ height: 22 }} />
                 )}

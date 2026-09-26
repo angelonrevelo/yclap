@@ -1,5 +1,5 @@
 import { memo, type ReactNode } from "react";
-import { byDepth, isCovering } from "./depth";
+import { byDepth, isCovering, isOverWalker } from "./depth";
 import type { LatLon } from "./geo";
 import type { Projection } from "./tile-map";
 
@@ -193,6 +193,7 @@ export default function Flora({ tuft, find, projection, centre, keep_clear, walk
   standee.sort(byDepth);
   /* In front of the walker when nearer the camera than them. Finds and trees
      share the two bands so the painter's order above holds inside each. */
+  const walker = walker_screen_y !== null && walker_x !== null ? { x: walker_x, y: walker_screen_y } : null;
   const zOf = (y: number) => (walker_screen_y !== null && y > walker_screen_y ? 7 : 5);
   return (
     /* No z-index, opacity or filter on this wrapper: any of them would make it
@@ -201,18 +202,22 @@ export default function Flora({ tuft, find, projection, centre, keep_clear, walk
       {standee.map((s) => {
         if (s.kind === "find") {
           const f = s.find;
+          /* A find in front of the walker and over them lets them show through,
+             the same rule the trees below keep. */
+          const is_find_over_walker = isOverWalker(f, walker);
           return (
-            <div key={`find-${f.key}`} style={{ position: "absolute", left: 0, top: 0, zIndex: zOf(f.y), pointerEvents: "auto" }}>
+            <div
+              key={`find-${f.key}`}
+              style={{ position: "absolute", left: 0, top: 0, zIndex: zOf(f.y), pointerEvents: "auto", opacity: is_find_over_walker ? 0.55 : undefined }}
+            >
               {f.node}
             </div>
           );
         }
         const d = s.tree;
-        const is_front = walker_screen_y !== null && d.y > walker_screen_y;
         /* A tree between the camera and the walker goes see-through where it
            would cover them. You never lose yourself behind scenery. */
-        const is_over_walker =
-          is_front && walker_x !== null && Math.abs(d.x - walker_x) < d.w / 2 + 40 && d.y - d.h < (walker_screen_y ?? 0);
+        const is_over_walker = isOverWalker(d, walker);
         /* And the same for a find: a tree nearer the camera than a find, and
            over it, lets it show through. */
         const is_over_find = find.some((f) => isCovering(d, f));

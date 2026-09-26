@@ -21,6 +21,18 @@ interface ModelViewerAttributes extends HTMLAttributes<HTMLElement> {
   autoplay?: boolean;
   /** "none" hides the hand-wave hint that model-viewer shows over a still model. */
   "interaction-prompt"?: string;
+  /** "<theta> <phi> <radius>" — where the camera sits around the model. */
+  "camera-orbit"?: string;
+  "field-of-view"?: string;
+  /** Upper bound on the orbit — the radius defaults to "auto", which clamps a pulled-back camera. */
+  "max-camera-orbit"?: string;
+  /** "<roll> <pitch> <yaw>" — turns the model itself, e.g. to face its heading. */
+  orientation?: string;
+  "environment-image"?: string;
+  "disable-zoom"?: boolean;
+  "disable-pan"?: boolean;
+  "animation-name"?: string;
+  "time-scale"?: string;
   /** "eager" | "lazy" | "auto". */
   loading?: string;
   /** Listeners for `load` / `error` are attached through the ref (see SpeciesCard). */
