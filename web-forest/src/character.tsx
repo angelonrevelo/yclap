@@ -83,6 +83,7 @@ interface Props {
 const CharacterModel = lazy(() => import("./character-model"));
 /* Kept in step with `character-model.tsx`; a string here keeps the viewer chunk lazy. */
 const TRAINER_MODEL = "/model/agila-trainer.glb";
+const TRAINER_POSTER = "/model/agila-trainer-poster.webp";
 
 /**
  * The map avatar — you, as a 3D trainer (`character-model.tsx`), seen from
@@ -92,13 +93,19 @@ const TRAINER_MODEL = "/model/agila-trainer.glb";
  */
 export function Walker({
   stage,
-  vigor = 1,
   size = 92,
   is_walking = false,
   heading_degree = 0,
 }: Pick<Props, "stage" | "vigor" | "size" | "is_walking" | "heading_degree">) {
-  const flat = <Character stage={stage} vigor={vigor} size={size} is_walking={is_walking} heading_degree={heading_degree} />;
   const px = Math.round(size * 1.3);
+  /* While the viewer chunk loads: the trainer still in the model's own box, so
+     the swap to 3D is the same figure starting to move, not an egg turning
+     into a person. */
+  const flat = (
+    <div style={{ width: px, height: px, marginBottom: -Math.round(px * 0.1) }}>
+      <img src={TRAINER_POSTER} alt="" aria-hidden="true" width={px} height={px} style={{ display: "block", width: px, height: px }} />
+    </div>
+  );
   return (
     <Suspense fallback={flat}>
       {/* The model is framed with air around it; pull the feet down onto the anchor. */}

@@ -293,7 +293,9 @@ export default function SettingsScreen({
         padding: is_desktop ? "22px 56px 190px" : "14px 14px 190px",
       }}
     >
-      <div style={{ maxWidth: 720, margin: is_desktop ? "0 auto" : undefined }}>
+      {/* Centred at every width: a tablet between the phone and desktop layouts
+          used to sit on the left gutter with the slack all on the right. */}
+      <div style={{ maxWidth: 720, margin: "0 auto" }}>
         {/* ── identity strip: the stage first, because it qualifies the rest ── */}
         <div
           style={{
@@ -634,7 +636,18 @@ export default function SettingsScreen({
                 <tr>
                   <Td is_head>
                     Buildings
-                    <div style={{ display: "flex", gap: 4, marginTop: 7 }}>
+                    {/* 2×2 on a phone: four across in a 42 % cell left each
+                        button ~30 px, and the Td's overflowWrap: anywhere broke
+                        "Shadow" into Sha/do/w. The grid widens to four across
+                        once the cell can hold every label whole. */}
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(62px, 1fr))",
+                        gap: 4,
+                        marginTop: 7,
+                      }}
+                    >
                       {(["block", "shadow", "hollow", "solid"] as const).map((style) => (
                         <button
                           key={style}
@@ -642,9 +655,11 @@ export default function SettingsScreen({
                           aria-pressed={preference.skyline_style === style}
                           onClick={() => onPreference({ ...preference, skyline_style: style })}
                           style={{
-                            flex: 1,
                             minWidth: 0,
-                            padding: "5px 2px",
+                            padding: "5px 4px",
+                            whiteSpace: "nowrap",
+                            overflowWrap: "normal",
+                            wordBreak: "keep-all",
                             borderRadius: 7,
                             border: `1.5px solid ${
                               preference.skyline_style === style ? TONE.green : TONE.edge

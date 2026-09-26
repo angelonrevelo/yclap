@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import Botanical from "./botanical";
 import { species, type Origin, type Species } from "./data";
-import { speciesLabelOf } from "./kind";
+import { displayName, speciesLabelOf } from "./kind";
 
 /**
  * Shared surface language.
@@ -154,10 +154,22 @@ export function TaxonThumb({
   );
 }
 
-/** A sweep species' display name (`speciesLabelOf`): italic only when it is the scientific name. */
+/**
+ * A sweep species' display name: italic only when it is the scientific name
+ * (`speciesLabelOf` decides that). The common name is cased the way the map
+ * orb, the toast, the species card and the guide print it — `displayName`,
+ * first letter only — so Nearby says "Rain tree" like everything around it
+ * instead of Title-Casing it into "Rain Tree".
+ */
+export function speciesNameText(common_name: string | null | undefined, scientific_name?: string | null): string {
+  const label = speciesLabelOf(common_name, scientific_name);
+  return label.is_scientific ? label.text : displayName((common_name ?? "").trim());
+}
+
 export function SpeciesName({ common_name, scientific_name }: { common_name: string; scientific_name?: string | null }) {
   const label = speciesLabelOf(common_name, scientific_name);
-  return label.is_scientific ? <i>{label.text}</i> : <>{label.text}</>;
+  const text = speciesNameText(common_name, scientific_name);
+  return label.is_scientific ? <i>{text}</i> : <>{text}</>;
 }
 
 /** Name over italic scientific name. The two-line block every surface reuses. */

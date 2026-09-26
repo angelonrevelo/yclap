@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { WorldFind } from "./campus-world";
-import Character, { type Stage } from "./character";
+import Character, { Walker, type Stage } from "./character";
 import { avatarPx, REMOTE_WALKER_SHARE } from "./camera-feel";
 import { isInsideCampus, type Fix } from "./geo";
 import {
@@ -23,6 +23,8 @@ import {
 } from "./multiplayer";
 import { screenAngleOf, signedAngle } from "./play-walk";
 import { readPlayer, syncUrl } from "./sync";
+import { depthZ } from "./depth";
+import { keepTag, spreadWalker } from "./walker-spread";
 import type { Projection } from "./tile-map";
 
 /**
@@ -144,6 +146,14 @@ function useGlideClock(track: Map<string, Track>): number {
 /** Screen margin a name tag keeps, px. */
 const TAG_MARGIN = 6;
 
+/** How many other walkers stand in 3D at once; the rest keep the sticker. */
+const REMOTE_MODEL_MAX = 3;
+
+/** The walker scale clamp your own walker uses, so two phones side by side agree. */
+function clampScale(scale: number): number {
+  return Math.max(0.6, Math.min(1.35, scale));
+}
+
 /**
  * How far to slide a walker's name tag so it stays on screen, in the tag's own
  * (pre-scale) pixels, and the widest it may be. The width is estimated from the
@@ -164,12 +174,29 @@ export default function RemoteWalkerLayer({
   projection,
   bearing_degree,
   zoom,
+  avoid_rect = [],
+  part,
 }: {
   hall: Hall;
   projection: Projection;
   bearing_degree: number;
   /** The camera zoom your own walker is sized by — remote walkers follow it, a size down. */
   zoom: number;
+  /**
+   * Screen boxes a name tag must not cover — the area pills, the finds and
+   * the stick, placed first (centre and half-extents, as skyline.tsx
+   * `LabelRect`). The tag yields; the walker under it still shows.
+   */
+  avoid_rect?: readonly { x: number; y: number; half_w: number; half_h: number }[];
+  /**
+   * Which half to draw. The figures go INSIDE Flora's stacking context (as its
+   * children, like the buddy), where each one's `depthZ` sorts it against the
+   * trees and finds — drawn in their own layer, a palm in front of a walker
+   * could never cover them, nor one behind be covered. The name tags and the
+   * live feed stay a layer of their own, over every standee. Omitted, both
+   * are drawn here, the old way.
+   */
+  part?: "figure" | "overlay";
 }) {
   const now = useGlideClock(hall.track);
   const { width, height } = projection;
@@ -178,67 +205,155 @@ export default function RemoteWalkerLayer({
 
   return (
     <>
-      {[...hall.track.values()].map((one) => {
-        const at = projection.toScreen(projection.project(positionOf(one, now)));
-        if (at.x < -80 || at.y < -120 || at.x > width + 80 || at.y > height + 120) return null;
-        /* Same clamp as your own walker, so two phones side by side agree. */
-        const scale = Math.max(0.6, Math.min(1.35, at.scale));
-        const tag = tagShift(`${one.pose.name} · Lv ${one.pose.level} · ${SOURCE_LABEL[one.pose.source]}`, at.x, width, scale);
-        return (
-          <div
-            key={one.pose.walker_id}
-            style={{
-              position: "absolute",
-              left: at.x,
-              top: at.y,
-              transform: `translate(-50%, -100%) scale(${scale.toFixed(3)})`,
-              transformOrigin: "50% 100%",
-              pointerEvents: "none",
-              zIndex: 5,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-            }}
-          >
+      {(() => {
+        /* Place everybody first, then draw: positions stay true, only the
+           drawing is nudged off a spot someone nearer already holds — see
+           `walker-spread.ts`. You claim the camera centre, where your own
+           walker stands while the camera follows it. */
+        const on_glass = [...hall.track.values()]
+          .map((one) => {
+            const plane = projection.project(positionOf(one, now));
+            return { one, at: projection.toScreen(plane), fog: projection.fogOf(plane) };
+          })
+          /* Past the world's far edge (solid fog, or above the horizon row)
+             nobody is drawn: at z22 the far walkers stood in a row on the
+             horizon line, floating over the sky. */
+          .filter(({ at, fog }) => fog < 0.95 && at.y >= projection.horizon.y)
+          .filter(({ at }) => !(at.x < -80 || at.y < -120 || at.x > width + 80 || at.y > height + 120));
+        const self = projection.toScreen(projection.project(projection.centre));
+        const placed = spreadWalker(
+          on_glass.map(({ one, at }) => ({ id: one.pose.walker_id, x: at.x, y: at.y, scale: clampScale(at.scale) })),
+          self,
+          size * 0.9,
+          /* Half your figure plus half theirs, a little apart. */
+          (size / REMOTE_WALKER_SHARE + size) * 0.62,
+        );
+        /* The nearest few stand in 3D like you; the rest keep the sticker, so
+           a crowd does not open a WebGL view per walker. */
+        const nearest = new Set(
+          [...on_glass].sort((a, b) => b.at.y - a.at.y).slice(0, REMOTE_MODEL_MAX).map(({ one }) => one.pose.walker_id),
+        );
+        const tag_of = (one: Track) => `${one.pose.name} · Lv ${one.pose.level} · ${SOURCE_LABEL[one.pose.source]}`;
+        /* The figure's LAYOUT height, pre-scale — what the tag sits on. The
+           model is framed in a box 1.3× the size, pulled down 10 % onto the
+           anchor (`Walker`); the sticker is the 100×115 frame (`Character`). */
+        const figureH = (id: string) => {
+          if (!nearest.has(id)) return size * 1.15;
+          const px = Math.round(size * 1.3);
+          return px - Math.round(px * 0.1);
+        };
+        /* Your own walker is an obstacle too: a tag drawn across your trainer
+           hides the one figure you are steering. Its box is the body plus
+           the buddy beside it, at your size (a remote walker is a size down). */
+        const own_px = size / REMOTE_WALKER_SHARE;
+        const own_box = { id: "self", x: self.x + own_px * 0.25, y: self.y - own_px * 1.3, w: own_px * 1.9, h: own_px * 1.3 };
+        const shown_tag = keepTag(
+          on_glass.map(({ one, at }) => {
+            const scale = clampScale(at.scale);
+            const p = placed.get(one.pose.walker_id) ?? at;
+            const figure_h = figureH(one.pose.walker_id) * scale;
+            return { id: one.pose.walker_id, x: p.x, y: p.y - figure_h - 22 * scale, w: Math.min(tag_of(one).length * 6.4 + 20, width - 12) * scale, h: 20 * scale };
+          }),
+          own_box,
+          avoid_rect.map((r, i) => ({ id: `avoid-${i}`, x: r.x, y: r.y - r.half_h, w: r.half_w * 2, h: r.half_h * 2 })),
+        );
+        const figure = on_glass.map(({ one, at }) => {
+          const p = placed.get(one.pose.walker_id) ?? at;
+          /* Same clamp as your own walker, so two phones side by side agree. */
+          const scale = clampScale(at.scale);
+          const stage = (one.pose.stage as Stage) ?? "egg";
+          const is_walking = isGliding(one, now);
+          const heading_degree = signedAngle(screenAngleOf(one.heading, bearing_degree));
+          return (
             <div
+              key={one.pose.walker_id}
               style={{
-                whiteSpace: "nowrap",
-                fontSize: 11,
-                fontWeight: 800,
-                color: "#1B2E16",
-                background: "rgba(255,255,255,0.94)",
-                border: "1.5px solid #7FB3E0",
-                borderRadius: 999,
-                padding: "2px 8px",
-                marginBottom: 2,
-                boxShadow: "0 2px 6px rgba(24,38,20,0.2)",
-                /* Kept inside the screen: a walker at the edge used to have
-                   half its name cut off at 375 px. */
-                maxWidth: tag.max_width,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                transform: tag.shift ? `translateX(${tag.shift.toFixed(1)}px)` : undefined,
+                position: "absolute",
+                left: p.x,
+                top: p.y,
+                transform: `translate(-50%, -100%) scale(${scale.toFixed(3)})`,
+                transformOrigin: "50% 100%",
+                pointerEvents: "none",
+                /* Inside Flora: painter's order with the trees, by the foot's row. */
+                zIndex: part === "figure" ? depthZ(p.y) : 5,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
               }}
             >
-              {one.pose.name} · Lv {one.pose.level}
-              <span style={{ fontWeight: 600, color: "rgba(27,46,22,0.6)" }}> · {SOURCE_LABEL[one.pose.source]}</span>
+              {nearest.has(one.pose.walker_id) ? (
+                <Walker stage={stage} size={size} is_walking={is_walking} heading_degree={heading_degree} />
+              ) : (
+                <Character stage={stage} size={size} is_idle_animated={false} is_walking={is_walking} heading_degree={heading_degree} />
+              )}
             </div>
-            <Character
-              stage={(one.pose.stage as Stage) ?? "egg"}
-              size={size}
-              is_idle_animated={false}
-              is_walking={isGliding(one, now)}
-              heading_degree={signedAngle(screenAngleOf(one.heading, bearing_degree))}
-            />
-          </div>
+          );
+        });
+
+        /* Name tags in their own layer over every standee (5) and your own
+           walker, under the hall count (8): drawn inside the walker's column,
+           a palm or another walker nearer the camera painted over the name.
+           `keepTag` keeps a tag off your trainer, the area pills, the finds and the stick. */
+        const name_tag = on_glass.map(({ one, at }) => {
+          const id = one.pose.walker_id;
+          const p = placed.get(id) ?? at;
+          const scale = clampScale(at.scale);
+          /* A walker whose middle is off the glass keeps no tag: pulled back
+             on screen by `tagShift`, it floated with nobody under it. */
+          if (!shown_tag.has(id) || p.x < 0 || p.x > width) return null;
+          const fit = tagShift(tag_of(one), p.x, width, scale);
+          return (
+            <div
+              key={`tag-${id}`}
+              style={{
+                position: "absolute",
+                left: p.x,
+                top: p.y - figureH(id) * scale,
+                transform: `translate(-50%, -100%) scale(${scale.toFixed(3)})`,
+                transformOrigin: "50% 100%",
+                pointerEvents: "none",
+                zIndex: 7,
+              }}
+            >
+              <div
+                style={{
+                  whiteSpace: "nowrap",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: "#1B2E16",
+                  background: "rgba(255,255,255,0.94)",
+                  border: "1.5px solid #7FB3E0",
+                  borderRadius: 999,
+                  padding: "2px 8px",
+                  marginBottom: 2,
+                  boxShadow: "0 2px 6px rgba(24,38,20,0.2)",
+                  /* Kept inside the screen: a walker at the edge used to have
+                     half its name cut off at 375 px. */
+                  maxWidth: fit.max_width,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  transform: fit.shift ? `translateX(${fit.shift.toFixed(1)}px)` : undefined,
+                }}
+              >
+                {one.pose.name} · Lv {one.pose.level}
+                <span style={{ fontWeight: 600, color: "rgba(27,46,22,0.6)" }}> · {SOURCE_LABEL[one.pose.source]}</span>
+              </div>
+            </div>
+          );
+        });
+        return (
+          <>
+            {part !== "overlay" && figure}
+            {part !== "figure" && name_tag}
+          </>
         );
-      })}
+      })()}
 
       {/* The live feed ("Ana logged Molave") reads as a band under the player
           card, stacked, never pinned to the find: a find is usually a few
           metres from the walker, so a callout drawn at it sat across your own
           walker and the pet painted over it. zIndex 9 keeps it over the pet. */}
-      {hall.callout.length > 0 && (
+      {part !== "figure" && hall.callout.length > 0 && (
         <div
           aria-live="polite"
           style={{

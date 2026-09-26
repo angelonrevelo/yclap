@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { aheadOfRow, facingOf, fogOfAhead, FOG_FAR_H, FOG_NEAR_H, groundScreen } from "./tile-map";
 
 /**
  * The sky and the far distance above the raked ground.
@@ -9,18 +10,38 @@ import { memo } from "react";
  * exactly that: sky, a pale city skyline, rolling green hills.
  *
  * It is not invented scenery, and the one fact it carries is WHERE things are.
- * The strip is a 360° panorama keyed to compass bearing, so turning the camera
- * turns the horizon with it, and the pieces sit where they really are from
- * Loyola Heights: the Sierra Madre foothills to the east over Marikina, the
- * Ortigas and Eastwood towers to the south and south-west, the Quezon City
+ * The silhouette is a 360° panorama keyed to compass bearing, so turning the
+ * camera turns the horizon with it, and the pieces sit where they really are
+ * from Loyola Heights: the Sierra Madre foothills to the east over Marikina,
+ * the Ortigas and Eastwood towers to the south and south-west, the Quezon City
  * skyline west. Shapes are schematic; directions are not.
  *
- * Night is the same strip under a darker sky, picked by the local hour or by
+ * One projection, not a decal. The camera is left exactly as it is; the sky
+ * follows it. The world ends `FOG_FAR_H` ahead of the walker — a straight row
+ * on the glass, found with `groundScreen`, the plane's own arithmetic — and
+ * the panorama stands on that row at infinity: a bearing `δ` off the way the
+ * ground faces lands at `F·tan δ`, where `F` is that distance times its
+ * perspective scale, i.e. exactly the rate the far ground turns at on the
+ * centre line (within ~10 % at a phone's edge, inside solid fog). Tilting
+ * moves the row, and the hills with it. It used to be a strip slid by a
+ * hard-coded 75° field of view at a fixed 6–26 % of the glass, keyed to the
+ * bearing with the opposite sign to the ground, so the two slid past each
+ * other on every turn. There are no tiles, so there is no seam and no wrap to
+ * get wrong at 359° → 0°. Sun, clouds and stars ride the same mapping.
+ *
+ * The sky is opaque down to that row, so no ground past the edge ghosts
+ * through it. The fog is by DISTANCE: each ground row gets the opacity
+ * `fogOfAhead` gives the distance it shows, and the standees fade by the same
+ * rule (`projection.fogOf`) — nothing is sliced by a screen-aligned slab.
+ *
+ * Night is the same scene under a darker sky, picked by the local hour or by
  * the weather reading's `is_day`.
  */
 
-/** How many screen widths one full turn of the camera spans. ≈75° field of view. */
-const TURN_SCREEN = 4.8;
+const DEG = Math.PI / 180;
+
+/** A bearing further than this off the centre line is not on the glass. */
+const EDGE_DEGREE = 80;
 
 type Band = { from: number; to: number; tall: number };
 
@@ -43,28 +64,6 @@ function hash(i: number): number {
   return (h % 10000) / 10000;
 }
 
-/**
- * A periodic ridge line across [0, width]: sums of sines at integer turns, so
- * the path's two ends meet and the panorama wraps without a seam.
- */
-function ridgePath(width: number, base: number, amp: number, harmonic: [number, number, number][], lift?: (deg: number) => number): string {
-  const step = 12;
-  let d = `M0 ${base + 400}`;
-  /* Always land on x = width exactly, or the two tiles meet with a gap. */
-  const xs: number[] = [];
-  for (let x = 0; x < width; x += step) xs.push(x);
-  xs.push(width);
-  for (const x of xs) {
-    const t = (x / width) * Math.PI * 2;
-    let y = 0;
-    for (const [k, a, p] of harmonic) y += Math.sin(t * k + p) * a;
-    const deg = (x / width) * 360;
-    y = base - y * amp - (lift ? lift(deg) : 0);
-    d += ` L${x} ${y.toFixed(1)}`;
-  }
-  return `${d} L${width} ${base + 400} Z`;
-}
-
 function inBand(deg: number, band: Band[]): number {
   for (const b of band) {
     if (deg >= b.from && deg <= b.to) {
@@ -76,161 +75,259 @@ function inBand(deg: number, band: Band[]): number {
   return 0;
 }
 
-function cityRect(width: number, base: number, height: number): { x: number; y: number; w: number; h: number }[] {
-  const out: { x: number; y: number; w: number; h: number }[] = [];
+/** −180…180. */
+function signedDegree(degree: number): number {
+  return ((((degree + 180) % 360) + 360) % 360) - 180;
+}
+
+/** 0…360. */
+function compassDegree(degree: number): number {
+  return ((degree % 360) + 360) % 360;
+}
+
+/**
+ * A ridge's height above the horizon, in degrees of elevation, at a compass
+ * bearing. Sums of sines at integer turns, so it is periodic and 359° meets 0°.
+ */
+type Ridge = { base: number; amp: number; harmonic: [number, number, number][]; lift?: (deg: number) => number };
+
+const RIDGE_RANGE: Ridge = {
+  base: 1.5,
+  amp: 0.7,
+  harmonic: [[3, 1, 0.4], [7, 0.6, 1.3], [13, 0.3, 2.1]],
+  lift: (deg) => inBand(deg, RANGE) * 4.2,
+};
+const RIDGE_HILL: Ridge = { base: 0.55, amp: 0.8, harmonic: [[5, 1, 0.2], [9, 0.7, 2.4], [17, 0.25, 1.1]] };
+const RIDGE_NEAR: Ridge = { base: -0.1, amp: 0.45, harmonic: [[4, 1, 1.7], [11, 0.6, 0.3], [19, 0.3, 2.9]] };
+
+function ridgeAt(r: Ridge, deg: number): number {
+  const t = deg * DEG;
+  let y = 0;
+  for (const [k, a, p] of r.harmonic) y += Math.sin(t * k + p) * a;
+  return r.base + y * r.amp + (r.lift ? r.lift(compassDegree(deg)) : 0);
+}
+
+/** City blocks, in bearing and elevation degrees. Built once. */
+const CITY_BLOCK: { az: number; w: number; h: number; lit: boolean; lit_at: number }[] = (() => {
+  const out: { az: number; w: number; h: number; lit: boolean; lit_at: number }[] = [];
   for (let i = 0; i < 360; i += 1.6) {
     const tall = inBand(i, CITY);
     if (tall <= 0.05) continue;
     const n = hash(Math.round(i * 10));
     if (n < 0.28) continue;
-    const w = (width / 360) * (0.9 + n * 1.2);
-    const h = height * tall * (0.35 + n * 0.75);
-    out.push({ x: (i / 360) * width, y: base - h, w, h });
+    out.push({ az: i, w: 0.9 + n * 1.2, h: 3.4 * tall * (0.35 + n * 0.75), lit: hash(out.length + 77) > 0.55, lit_at: 0.2 + hash(out.length) * 0.4 });
   }
   return out;
-}
+})();
+
+/** Clouds on the dome: bearing, elevation (degrees), size, drift period. */
+const CLOUD = [
+  { az: 12, elev: 7, scale: 1, duration: 140 },
+  { az: 48, elev: 11, scale: 0.7, duration: 190 },
+  { az: 95, elev: 5, scale: 0.85, duration: 165 },
+  { az: 140, elev: 9, scale: 1.1, duration: 150 },
+  { az: 188, elev: 6, scale: 0.75, duration: 175 },
+  { az: 226, elev: 12, scale: 0.9, duration: 160 },
+  { az: 262, elev: 7.5, scale: 1, duration: 185 },
+  { az: 305, elev: 10, scale: 0.8, duration: 145 },
+  { az: 338, elev: 5.5, scale: 0.95, duration: 170 },
+];
+
+const STAR = Array.from({ length: 180 }, (_, i) => ({
+  az: hash(i + 5) * 360,
+  elev: 1.5 + Math.pow(hash(i + 911), 0.8) * 34,
+  size: hash(i + 3) > 0.8 ? 2.4 : 1.4,
+  opacity: 0.4 + hash(i + 51) * 0.5,
+}));
 
 interface Props {
   width: number;
   height: number;
   bearing_degree: number;
+  tilt_degree: number;
   is_night: boolean;
 }
 
-/** The panorama, drawn once per size and slid by bearing. */
-const Panorama = memo(function Panorama({ tile_w, band_h, is_night }: { tile_w: number; band_h: number; is_night: boolean }) {
-  const base = band_h;
-  const tone = is_night
-    ? { range: "#34507A", city: "#2B4470", window: "#F5C842", hill: "#2C4F5E", near: "#2A465E" }
-    : { range: "#9CC6DA", city: "#A9CDEA", window: "", hill: "#A8DB78", near: "#8CCB62" };
-  const range = ridgePath(tile_w, base - band_h * 0.18, band_h * 0.1, [[3, 1, 0.4], [7, 0.6, 1.3], [13, 0.3, 2.1]], (deg) =>
-    inBand(deg, RANGE) * band_h * 0.42,
-  );
-  const hill = ridgePath(tile_w, base - band_h * 0.05, band_h * 0.12, [[5, 1, 0.2], [9, 0.7, 2.4], [17, 0.25, 1.1]]);
-  const near = ridgePath(tile_w, base + band_h * 0.08, band_h * 0.09, [[4, 1, 1.7], [11, 0.6, 0.3], [19, 0.3, 2.9]]);
-  const city = cityRect(tile_w, base - band_h * 0.02, band_h * 0.62);
+const TONE = {
+  day: {
+    sky: ["#4FA8EC", "#86C9F6", "#BCE2F6", "#D2EBF1"],
+    fog: "208,233,238",
+    range: "#A3CCDD",
+    city: "#B0D2EA",
+    window: "",
+    hill: "#A6D58A",
+    near: "#9BCB86",
+  },
+  night: {
+    sky: ["#0B1735", "#172C56", "#2A4674", "#2F4C78"],
+    fog: "46,70,108",
+    range: "#34507A",
+    city: "#2B4470",
+    window: "#F5C842",
+    hill: "#2C4F5E",
+    near: "#2E4E62",
+  },
+};
+
+function Horizon({ width, height, bearing_degree, tilt_degree, is_night }: Props) {
+  if (width <= 0 || height <= 0 || !tilt_degree) return null;
+  const tone = is_night ? TONE.night : TONE.day;
+  const fog = (a: number) => `rgba(${tone.fog},${a.toFixed(3)})`;
+  const facing = facingOf(bearing_degree);
+  const far = FOG_FAR_H * height;
+  const edge = groundScreen(0, -far, width, height, tilt_degree, 0);
+  if (!edge) return null;
+  const horizon_y = edge.y;
+  const focal = far * edge.scale;
+  const ppd = focal * DEG;
+  const cx = width / 2;
+  const xOf = (az: number): number | null => {
+    const d = signedDegree(az - facing);
+    if (Math.abs(d) >= EDGE_DEGREE) return null;
+    return cx + focal * Math.tan(d * DEG);
+  };
+  /* Silhouettes, sampled across the glass: the bearing at a screen x is the
+     inverse of `xOf`. */
+  const ridge = (r: Ridge): string => {
+    const step = 6;
+    const base = (horizon_y + 3).toFixed(1);
+    let d = `M-2 ${base}`;
+    for (let x = -2; x <= width + step; x += step) {
+      const az = facing + Math.atan((x - cx) / focal) / DEG;
+      d += ` L${x} ${(horizon_y - ridgeAt(r, az) * ppd).toFixed(1)}`;
+    }
+    return `${d} L${width + step} ${base} Z`;
+  };
+
+  const city: { x: number; y: number; w: number; h: number; lit: boolean; lit_at: number }[] = [];
+  for (const b of CITY_BLOCK) {
+    const x0 = xOf(b.az);
+    const x1 = xOf(b.az + b.w);
+    if (x0 === null || x1 === null || x1 < 0 || x0 > width) continue;
+    const h = b.h * ppd;
+    city.push({ x: x0, y: horizon_y - 0.1 * ppd - h, w: Math.max(1, x1 - x0), h: h + 0.1 * ppd + 3, lit: b.lit, lit_at: b.lit_at });
+  }
+
+  /* Distance fog on the ground: one stop per sampled row, at the opacity the
+     distance that row shows is fogged to. A flat plane's row IS its depth, so
+     this is exact; the standees fade by the same `fogOfAhead`. */
+  const near_y = groundScreen(0, -FOG_NEAR_H * height, width, height, tilt_degree, 0)?.y ?? horizon_y;
+  const fog_top = horizon_y - 0.6 * ppd;
+  const fog_stop: string[] = [];
+  const N = 14;
+  for (let i = 0; i <= N; i += 1) {
+    const y = fog_top + ((near_y - fog_top) * i) / N;
+    /* Above the edge row the veil softens the foot of the hills. */
+    const a = y <= horizon_y ? 0.9 * (1 - (horizon_y - y) / (0.6 * ppd)) : fogOfAhead(aheadOfRow(y, height, tilt_degree), height);
+    fog_stop.push(`${fog(Math.max(0, Math.min(1, a)))} ${((i / N) * 100).toFixed(1)}%`);
+  }
+
+  const sun_x = !is_night ? xOf(new Date().getHours() < 12 ? 105 : 255) : null;
+  const sky = `linear-gradient(180deg, ${tone.sky[0]} 0%, ${tone.sky[1]} 50%, ${tone.sky[2]} 85%, ${tone.sky[3]} 100%)`;
+
   return (
-    <svg width={tile_w} height={band_h + 60} viewBox={`0 0 ${tile_w} ${band_h + 60}`} style={{ display: "block", marginRight: -1 }}>
-      <path d={range} fill={tone.range} opacity={is_night ? 0.9 : 0.85} />
-      <g fill={tone.city} opacity={is_night ? 0.95 : 0.8}>
-        {city.map((r, i) => (
-          <rect key={i} x={r.x} y={r.y} width={r.w} height={r.h} rx={1.5} />
-        ))}
-      </g>
-      {is_night && (
-        <g fill={tone.window} opacity={0.75}>
-          {city
-            .filter((_, i) => hash(i + 77) > 0.55)
-            .map((r, i) => (
-              <rect key={i} x={r.x + r.w * 0.35} y={r.y + r.h * (0.2 + hash(i) * 0.4)} width={1.6} height={1.6} />
-            ))}
-        </g>
+    /* zIndex 1: over the ground plane, under the skyline (2), the labels (4)
+       and every standee (5). The standees fade by their own distance. */
+    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "clip", zIndex: 1 }} aria-hidden>
+      {/* Opaque down to the world's edge: past it there is no ground, and a
+          see-through sky let the far plane ghost through above the hills. */}
+      {horizon_y > 0 && (
+        <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: horizon_y + 2, background: sky }} />
       )}
-      <path d={hill} fill={tone.hill} />
-      <path d={near} fill={tone.near} />
-    </svg>
-  );
-});
-
-const CLOUD = [
-  { top: 5, left: 8, scale: 1, duration: 140 },
-  { top: 11, left: 52, scale: 0.7, duration: 190 },
-  { top: 3, left: 78, scale: 0.85, duration: 165 },
-];
-
-export default function Horizon({ width, height, bearing_degree, is_night }: Props) {
-  if (width <= 0 || height <= 0) return null;
-  const tile_w = Math.round(width * TURN_SCREEN);
-  /* The ridge sits where the rake's haze used to start: the top fifth of the glass. */
-  const band_h = Math.round(height * 0.2);
-  const shift = (((width / 2 - (bearing_degree / 360) * tile_w) % tile_w) + tile_w) % tile_w;
-  const sky = is_night
-    ? "linear-gradient(180deg, #0F1E3F 0%, #1D3561 12%, #33507E 20%, rgba(51,80,126,0.55) 26%, rgba(51,80,126,0) 34%)"
-    : "linear-gradient(180deg, #5FB6F0 0%, #9ED4F8 10%, #CDEBFF 18%, rgba(226,244,230,0.85) 24%, rgba(214,238,206,0.4) 29%, rgba(214,238,206,0) 35%)";
-  return (
-    /* zIndex 3: over the skyline (1–2), under labels, trees and the walker. */
-    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden", zIndex: 3 }} aria-hidden>
-      <div style={{ position: "absolute", inset: 0, background: sky }} />
-      {!is_night && (
+      {sun_x !== null && (
         <div
           style={{
             position: "absolute",
-            left: "-10%",
-            top: "-12%",
-            width: "70%",
-            height: "40%",
+            left: sun_x - width * 0.45,
+            top: horizon_y - 14 * ppd - height * 0.14,
+            width: width * 0.9,
+            height: height * 0.28,
             background: "radial-gradient(closest-side, rgba(255,248,214,0.85), rgba(255,248,214,0))",
           }}
         />
       )}
-      {is_night && (
-        <div style={{ position: "absolute", inset: "0 0 auto 0", height: "22%" }}>
-          {Array.from({ length: 34 }, (_, i) => (
+      {is_night &&
+        STAR.map((st, i) => {
+          const x = xOf(st.az);
+          const y = horizon_y - st.elev * ppd;
+          if (x === null || x < 0 || x > width || y < 0) return null;
+          return (
             <span
               key={i}
-              style={{
-                position: "absolute",
-                left: `${(hash(i + 5) * 100).toFixed(2)}%`,
-                top: `${(hash(i + 911) * 100).toFixed(2)}%`,
-                width: hash(i + 3) > 0.8 ? 2.4 : 1.4,
-                height: hash(i + 3) > 0.8 ? 2.4 : 1.4,
-                borderRadius: 999,
-                background: "#FFF6DC",
-                opacity: 0.4 + hash(i + 51) * 0.5,
-              }}
+              style={{ position: "absolute", left: x, top: y, width: st.size, height: st.size, borderRadius: 999, background: "#FFF6DC", opacity: st.opacity }}
             />
-          ))}
-        </div>
-      )}
-      {CLOUD.map((c, i) => (
-        <svg
-          key={i}
-          className="hz-cloud"
-          width={120 * c.scale}
-          height={44 * c.scale}
-          viewBox="-84 -48 168 70"
+          );
+        })}
+      {CLOUD.map((c, i) => {
+        const x = xOf(c.az);
+        const w = 120 * c.scale;
+        const h = 44 * c.scale;
+        if (x === null) return null;
+        const y = horizon_y - c.elev * ppd - h;
+        if (x < -w - 60 || x > width + w + 60 || y + h < 0) return null;
+        return (
+          <div key={i} style={{ position: "absolute", left: x - w / 2, top: y }}>
+            <svg
+              className="hz-cloud"
+              width={w}
+              height={h}
+              viewBox="-84 -48 168 70"
+              style={{
+                display: "block",
+                opacity: is_night ? 0.18 : 0.95,
+                /* Its own slow drift on top of the turn: the dome is still, the weather is not. */
+                animation: `hz-cloud ${c.duration}s linear ${-i * 40}s infinite alternate`,
+              }}
+            >
+              <path d="M-60,20 C-80,20 -84,-4 -64,-8 C-66,-30 -36,-38 -24,-22 C-18,-46 22,-48 28,-20 C44,-32 70,-18 60,2 C80,4 78,20 60,20 Z" fill="#fff" />
+              <path d="M-60,20 C-70,20 -76,12 -72,6 C-50,14 20,14 74,8 C76,16 70,20 60,20 Z" fill="#AADCFC" opacity="0.7" />
+            </svg>
+          </div>
+        );
+      })}
+      {/* Only as tall as the tallest ridge: repainted on every turn. */}
+      {(() => {
+        const band_top = horizon_y - 7.6 * ppd;
+        const band_h = Math.max(1, Math.ceil(horizon_y + 6 - band_top));
+        return (
+          <svg
+            width={width}
+            height={band_h}
+            viewBox={`0 ${band_top.toFixed(1)} ${width} ${band_h}`}
+            style={{ position: "absolute", left: 0, top: band_top, display: "block" }}
+          >
+            <path d={ridge(RIDGE_RANGE)} fill={tone.range} opacity={is_night ? 0.9 : 0.85} />
+            <g fill={tone.city} opacity={is_night ? 0.95 : 0.8}>
+              {city.map((r, i) => (
+                <rect key={i} x={r.x} y={r.y} width={r.w} height={r.h} rx={1.5} />
+              ))}
+            </g>
+            {is_night && (
+              <g fill={tone.window} opacity={0.75}>
+                {city
+                  .filter((r) => r.lit)
+                  .map((r, i) => (
+                    <rect key={i} x={r.x + r.w * 0.35} y={r.y + r.h * r.lit_at} width={1.6} height={1.6} />
+                  ))}
+              </g>
+            )}
+            <path d={ridge(RIDGE_HILL)} fill={tone.hill} />
+            <path d={ridge(RIDGE_NEAR)} fill={tone.near} />
+          </svg>
+        );
+      })()}
+      {near_y > fog_top && (
+        <div
           style={{
             position: "absolute",
-            top: `${c.top}%`,
-            left: `${c.left}%`,
-            opacity: is_night ? 0.18 : 0.95,
-            animation: `hz-cloud ${c.duration}s linear ${-i * 40}s infinite alternate`,
+            left: 0,
+            right: 0,
+            top: fog_top,
+            height: near_y - fog_top,
+            background: `linear-gradient(180deg, ${fog_stop.join(", ")})`,
           }}
-        >
-          <path d="M-60,20 C-80,20 -84,-4 -64,-8 C-66,-30 -36,-38 -24,-22 C-18,-46 22,-48 28,-20 C44,-32 70,-18 60,2 C80,4 78,20 60,20 Z" fill="#fff" />
-          <path d="M-60,20 C-70,20 -76,12 -72,6 C-50,14 20,14 74,8 C76,16 70,20 60,20 Z" fill="#AADCFC" opacity="0.7" />
-        </svg>
-      ))}
-      <div
-        style={{
-          position: "absolute",
-          left: 0,
-          top: height * 0.06,
-          display: "flex",
-          transform: `translateX(${(shift - tile_w).toFixed(1)}px)`,
-          willChange: "transform",
-        }}
-      >
-        <Panorama tile_w={tile_w} band_h={band_h} is_night={is_night} />
-        <Panorama tile_w={tile_w} band_h={band_h} is_night={is_night} />
-      </div>
-      {/* Haze: the far ground dissolves into the hills instead of meeting
-          them at a line. Clear at both edges and thickest in the middle, so
-          neither the ridge nor the ground gets a ruled border. */}
-      <div
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          top: height * 0.2,
-          height: height * 0.22,
-          /* Opaque across 0.29–0.34 of the glass, where the raked plane's far
-             edge lands, so that edge is never a ruled line. */
-          background: is_night
-            ? "linear-gradient(180deg, rgba(44,62,96,0) 0%, rgba(44,62,96,1) 40%, rgba(44,62,96,1) 66%, rgba(44,62,96,0) 100%)"
-            : "linear-gradient(180deg, rgba(206,236,190,0) 0%, rgba(206,236,190,1) 40%, rgba(210,237,198,1) 66%, rgba(214,238,206,0) 100%)",
-        }}
-      />
+        />
+      )}
       <style>{`
         @keyframes hz-cloud { from { transform: translateX(-40px) } to { transform: translateX(40px) } }
         @media (prefers-reduced-motion: reduce) { .hz-cloud { animation: none !important } }
@@ -238,3 +335,5 @@ export default function Horizon({ width, height, bearing_degree, is_night }: Pro
     </div>
   );
 }
+
+export default memo(Horizon);

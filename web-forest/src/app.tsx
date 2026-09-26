@@ -45,7 +45,7 @@ const CharacterModel = lazy(() => import("./character-model"));
 const SpeciesCard = lazy(() => import("./species-card"));
 /* The pin sheet's hero is the card's own turning model — same lazy chunk. */
 const SpeciesHero = lazy(() => import("./species-card").then((m) => ({ default: m.SpeciesHero })));
-import { learnSubject } from "./species-card-core";
+import { cardFact, learnSubject } from "./species-card-core";
 import { biome_sector, sectorAt, sector as sector_row, type Sector } from "./sector";
 import Viewfinder, { type Shot } from "./camera";
 import {
@@ -99,6 +99,7 @@ import {
   observeSubject,
   persistAward,
   readPointEvents,
+  writePointEvents,
   withLiveWalker,
   type DailyTask,
   type GamifySnapshot,
@@ -111,8 +112,9 @@ import { noRouteLine } from "./route";
 import { biomePresenceAt, rankEncounter, sectorResident, trayRow, type BiomePresence } from "./nearby";
 import { cosmeticForStage } from "./cosmetic";
 import { BlindboxShelf } from "./blindbox-reveal";
+import { earnedBadges } from "./badge";
 import { BadgeShelf, loadSpawnPool, RarityPill, reachableSpawn, useLiveWorld, useSpawnWorld, WildShelf, WorldStrip } from "./live";
-import { kindOf, speciesLabelOf } from "./kind";
+import { kindOf } from "./kind";
 import { SpeciesPortrait } from "./portrait.tsx";
 /* Alert marks still hand a sticker URL to alert.tsx, which renders an <img>. */
 import { sticker } from "./asset/kit";
@@ -121,7 +123,7 @@ import { glyph, settings_glyph } from "./art";
 import type { Rarity, Spawn, SpawnPoolEntry } from "./spawn";
 import { WALK_TO_SHORT_M } from "./play-walk";
 import { receiptHighlight } from "./collection";
-import { demoJournal, isSeededJournal } from "./demo-seed";
+import { demoJournal, demoPointEvent, isSeededJournal } from "./demo-seed";
 import { fetchJoin, fetchMine, readPlayer, writePlayer, type World } from "./sync";
 
 import {
@@ -134,7 +136,7 @@ import {
 import { matchCampus, suggestedPick } from "./inat-match";
 import { pinReply } from "./pin-reply";
 import InatStrip from "./inat-strip";
-import { Card, Chip, Eyebrow, Fab, GlyphDisc, Pill, PrimaryPill, RADIUS, SheetClose, SpeciesName, SpeciesPill, TaxonName, TaxonThumb } from "./ui";
+import { Card, Chip, Eyebrow, Fab, GlyphDisc, Pill, PrimaryPill, RADIUS, SheetClose, SpeciesName, SpeciesPill, speciesNameText, TaxonName, TaxonThumb } from "./ui";
 import { DexCard, DexHeader, GameDock, GameToast, PlayerHud, QuestBanner, StageSticker, TodayHuntCard } from "./hud";
 import {
   CameraIcon,
@@ -342,7 +344,7 @@ function PartnerCard({
     <Card style={{ padding: 14 }}>
       <div className="flex items-center justify-between">
         <Eyebrow>WALKING PARTNERS</Eyebrow>
-        <StreakFlame weeks={group.weeks} size={30} is_group />
+        <StreakFlame weeks={group.weeks} size={30} is_group tone="surface" />
       </div>
 
       <div style={{ fontSize: 12, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 8, lineHeight: 1.45 }}>
@@ -550,7 +552,7 @@ function TrainerSheet({
             </div>
             <div style={{ fontSize: 13, opacity: 0.75 }}>{walker_name}</div>
             <div className="flex items-center gap-2" style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>
-              <StreakFlame weeks={snap.streak_weeks} size={26} />
+              <StreakFlame weeks={snap.streak_weeks} size={26} tone="surface" />
               <span style={{ opacity: 0.8 }}>· {STAGE_LABEL[stage]}</span>
             </div>
             <div style={{ fontSize: 11, marginTop: 4, letterSpacing: "0.08em", fontWeight: 800 }}>
@@ -736,7 +738,7 @@ function NearbySightTray({
                 {/* Up to three lines at 12 px rather than one at 10 cut off
                     with "…" — the tray is only as tall as its longest name. */}
                 <div
-                  title={speciesLabelOf(s.common_name, s.scientific_name).text}
+                  title={speciesNameText(s.common_name, s.scientific_name)}
                   style={{
                     fontSize: 12,
                     fontWeight: 700,
@@ -2095,8 +2097,12 @@ function ExportRow({ sighting }: { sighting: Sighting[] }) {
   );
 }
 
-function SightingLog({ sighting }: { sighting: Sighting[] }) {
+function SightingLog({ sighting, pool }: { sighting: Sighting[]; pool: SpawnPoolEntry[] }) {
   const row = [...sighting].reverse().slice(0, 12);
+  /* Names and thumbs come off the whole campus sweep, the way "Beyond the
+     guide" reads them — the curated nine alone left a wild find here as its
+     raw code ("abroma-augustum") over a blank silhouette. */
+  const by_code = useMemo(() => new Map(pool.map((e) => [e.species_code, e])), [pool]);
   const prior_count = (code: string, before_id: string) => {
     const self = sighting.find((y) => y.sighting_id === before_id);
     if (!self) return 0;
@@ -2114,6 +2120,7 @@ function SightingLog({ sighting }: { sighting: Sighting[] }) {
       <div style={{ marginTop: 8, border: "1.5px solid rgb(var(--mg-ink-rgb) / 0.1)", borderRadius: 10, overflow: "hidden", background: "rgb(var(--mg-ink-rgb) / 0.06)" }}>
         {row.map((s, i) => {
           const sp = species[s.species_code];
+          const fact = cardFact(s.species_code, sp, by_code.get(s.species_code));
           const status = localObsStatus({
             photo_data: s.photo_data,
             species_code: s.species_code,
@@ -2126,14 +2133,25 @@ function SightingLog({ sighting }: { sighting: Sighting[] }) {
               className="flex items-start gap-3"
               style={{ padding: "12px 14px", borderTop: i === 0 ? "none" : "1px solid rgb(var(--mg-ink-rgb) / 0.1)" }}
             >
-              <TaxonThumb species_code={s.species_code} size={52} photo_data={s.photo_data} />
+              {sp || s.entry_kind === "contribution" ? (
+                <TaxonThumb species_code={s.species_code} size={52} photo_data={s.photo_data} />
+              ) : (
+                <SpeciesPortrait
+                  scientific_name={fact.scientific_name}
+                  species_code={s.species_code}
+                  kind={fact.kind}
+                  photo_data={s.photo_data}
+                  size={52}
+                  style={{ background: "var(--mg-surface-2)" }}
+                />
+              )}
               <div style={{ minWidth: 0 }}>
                 <div className="flex items-baseline gap-2" style={{ flexWrap: "wrap" }}>
                   {/* A report is not a species badge and must not read as one. */}
                   <div style={{ fontWeight: 700, fontSize: 14.5 }}>
                     {s.entry_kind === "contribution"
                       ? (s.reported_name ?? "Unknown")
-                      : (sp?.common_name ?? s.species_code)}
+                      : fact.common_name}
                   </div>
                   {s.entry_kind === "contribution" && <Pill tone="info">Report</Pill>}
                   {/* Picked off the recorded reply, not a read of the photo. */}
@@ -2617,8 +2635,21 @@ function LevelUpCard({ level, stage, onDismiss }: { level: number; stage: Stage;
  * This is the personal "account" — a local identity for progression, not a
  * social profile. There is no server and no cross-user field anywhere in it.
  */
-function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; is_desktop: boolean; gamify: GamifySnapshot }) {
+function ProgressCard({
+  sighting,
+  is_desktop,
+  gamify,
+  pool_count,
+}: {
+  sighting: Sighting[];
+  is_desktop: boolean;
+  gamify: GamifySnapshot;
+  pool_count: ReadonlyMap<string, number | null>;
+}) {
   const p = progressOf(sighting);
+  /* The same count the badge shelf heads with ("8 of 13 earned") — the tile
+     used to print `badge_count`, which is sightings, and read as 13 badges. */
+  const earned_count = useMemo(() => earnedBadges(sighting, { pool_count }).length, [sighting, pool_count]);
   const stage_label = STAGE_LABEL[p.stage];
   const next = p.next_stage;
   /* The denominator for the bar is the next stage's sector threshold, read off
@@ -2648,7 +2679,7 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
             <div style={{ fontSize: 9.5, fontWeight: 800, color: "var(--mg-green-text)", letterSpacing: "0.02em" }}>
               BADGES
             </div>
-            <div style={{ fontSize: 18, fontWeight: 800, marginTop: 2 }}>{p.badge_count}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, marginTop: 2 }}>{earned_count}</div>
             <div style={{ fontSize: 10, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 1 }}>
               {p.photographed_count} species photographed
             </div>
@@ -2831,7 +2862,7 @@ function JournalScreen({
         {seen.size > 0 && (
           <>
             <div style={{ marginTop: 22 }}>
-              <ProgressCard sighting={sighting} is_desktop={is_desktop} gamify={gamify} />
+              <ProgressCard sighting={sighting} is_desktop={is_desktop} gamify={gamify} pool_count={pool_count} />
             </div>
             <div style={{ marginTop: 22 }}>
               <BlindboxShelf refresh_key={gamify.total_points} />
@@ -2845,7 +2876,7 @@ function JournalScreen({
             <div style={{ marginTop: 26 }}>
               <BadgeShelf sighting={sighting} pool_count={pool_count} is_desktop={is_desktop} />
             </div>
-            <SightingLog sighting={sighting} />
+            <SightingLog sighting={sighting} pool={pool} />
             <ExportRow sighting={sighting} />
           </>
         )}
@@ -2978,7 +3009,10 @@ function MapNote({ is_desktop, layer }: { is_desktop: boolean; layer: Layer }) {
       className="absolute"
       style={{
         left: is_desktop ? 18 : 12,
-        bottom: is_desktop ? 30 : 176,
+        /* On a phone the Nearest / Biome bar sits at bottom:100 and stands about
+           104 px tall, so its top edge is ~204 px up. 176 put the note two
+           thirds under it; 222 clears the bar and its shadow with a gap. */
+        bottom: is_desktop ? 30 : 222,
         zIndex: 20,
         maxWidth: is_desktop ? 330 : 250,
         background: "var(--mg-surface-glass)",
@@ -3446,7 +3480,10 @@ function Compass({ bearing, onReset }: { bearing: number; onReset: () => void })
         cursor: "pointer",
       }}
     >
-      <svg width="22" height="22" viewBox="0 0 24 24" style={{ transform: `rotate(${-bearing}deg)` }}>
+      {/* The ground is turned by `rotateZ(+bearing)` (clockwise on the glass),
+          so north on the map sits `bearing` degrees clockwise of straight up —
+          the needle turns the same way, or it points away from the map's north. */}
+      <svg width="22" height="22" viewBox="0 0 24 24" style={{ transform: `rotate(${bearing}deg)` }}>
         <path d="M12 3 L15.4 13 L12 11 L8.6 13 Z" fill="#C0392B" />
         <path d="M12 21 L8.6 11 L12 13 L15.4 11 Z" fill="#9AA3A0" />
       </svg>
@@ -3631,6 +3668,13 @@ export default function App() {
     const seeded = demoJournal(spawn_world.pool, picker_order);
     writeSighting(seeded);
     setSighting(readSighting());
+    /* The points those finds would have earned, so the HUD and the Buddy sheet
+       do not say "0 pts · 0 wk" beside a full Dex. Same guard as above: never
+       over a device that already has points of its own. */
+    if (readPointEvents().length === 0) {
+      writePointEvents(demoPointEvent(seeded));
+      setPointEvents(readPointEvents());
+    }
   }, [spawn_world.pool]);
 
   /* Drives the banner. Keyed off the rows themselves, so it cannot be left on
@@ -4032,14 +4076,16 @@ export default function App() {
     if (distanceMeter(geo.fix, goal) > WALK_TO_SHORT_M + 1.5) return;
     walk_goal.current = null;
     haptic("bump");
-    showToast(`${goal.common_name} is in reach. Tap it to log.`);
+    showToast(`${speciesNameText(goal.common_name, goal.scientific_name)} is in reach. Tap it to log.`);
   }, [geo.fix?.lat, geo.fix?.lon]);
 
   const walkToSpawn = (row: Spawn) => {
     const is_reach = reachableSpawn(spawn_world.spawn, geo.fix).some((r) => r.spawn_id === row.spawn_id);
+    /* Cased the way Nearby, the card and the map print it (`speciesNameText`). */
+    const name = speciesNameText(row.common_name, row.scientific_name);
     const reply = pinReply({
       target: row,
-      common_name: row.common_name,
+      common_name: name,
       sector_name: sectorName(row.sector_code),
       fix: geo.fix,
       is_reach,
@@ -4059,9 +4105,9 @@ export default function App() {
       /* Routed round the buildings (route.ts), stopping a few metres short
          on walkable ground. No route from here → say so; never a toast that
          promises a walk and then stands still. */
-      if (!geo.walkTo(row, WALK_TO_SHORT_M, row.common_name)) {
+      if (!geo.walkTo(row, WALK_TO_SHORT_M, name)) {
         walk_goal.current = null;
-        showToast(noRouteLine(row.common_name));
+        showToast(noRouteLine(name));
         return;
       }
       walk_goal.current = row;
@@ -4274,7 +4320,10 @@ export default function App() {
       : `${formatMeter(hit.distance_m)} ${hit.compass} of you · ${formatWalkMinute(hit.distance_m)}`;
   })();
   const playBody = (
-    <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+    /* `clip`, not `hidden`: a hidden box is still a scroll container, and at
+       1800 px its content ran 25 px past it, so a drag scrolled the whole play
+       screen sideways. A clipped box cannot scroll. */
+    <div style={{ position: "absolute", inset: 0, overflow: "clip" }}>
       <PlayMap
         view={camera_view}
         onView={setView}

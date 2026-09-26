@@ -27,6 +27,12 @@ export const STAGE_MODEL: Record<Stage, string> = {
 
 /** You on the map: the trainer (`script/art/build-eagle-glb.mjs`), clips `idle` and `walk`. */
 export const TRAINER_MODEL = "/model/agila-trainer.glb";
+/**
+ * The trainer as a still, rendered from `agila-trainer.glb` itself at the map's
+ * idle framing (62° orbit, 28° field of view, turned 24°). It is the poster
+ * while the .glb loads, so a cold start shows YOU, not the buddy's egg.
+ */
+export const TRAINER_POSTER = "/model/agila-trainer-poster.webp";
 
 interface Props {
   stage: Stage;
@@ -47,6 +53,9 @@ interface Props {
   /** Degrees clockwise from screen-up — the direction of travel. */
   heading_degree?: number;
 }
+
+/** The slice of model-viewer's element API the facing uses (`StagingMixin`). */
+type Turntable = HTMLElement & { resetTurntableRotation(theta?: number): void };
 
 /** Three-quarter view when standing still — a face, not a profile. */
 const IDLE_YAW = 24;
@@ -75,11 +84,17 @@ export default function CharacterModel({
   const target = is_walker && is_walking ? 180 - heading_degree : IDLE_YAW;
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    const el = ref.current as Turntable | null;
+    if (!el || typeof el.resetTurntableRotation !== "function") return;
+    /* Turn the scene pivot, not the `orientation` attribute. A new orientation
+       sends model-viewer 4.3.1 through `ARRenderer.onUpdateScene`, which with no
+       AR session calls `presentedScene.add` on null and throws before the frame
+       is queued — every rAF of a turn. The turntable is the same yaw about Y,
+       with no update cycle behind it. */
+    const turn = (degree: number) => el.resetTurntableRotation((degree * Math.PI) / 180);
     if (reduced) {
       yaw.current = target;
-      el.setAttribute("orientation", `0deg 0deg ${target}deg`);
+      turn(target);
       return;
     }
     let frame = 0;
@@ -87,7 +102,7 @@ export default function CharacterModel({
       /* Shortest way round, then a fixed fraction per frame. */
       const delta = ((((target - yaw.current) % 360) + 540) % 360) - 180;
       yaw.current += delta * 0.18;
-      el.setAttribute("orientation", `0deg 0deg ${yaw.current.toFixed(1)}deg`);
+      turn(yaw.current);
       if (Math.abs(delta) > 0.5) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
@@ -125,10 +140,11 @@ export default function CharacterModel({
       } as CSSProperties}
     >
       {/* The flat sticker stands in until the .glb is in — the pot used to be
-          blank for a second and a half on a cold load. */}
+          blank for a second and a half on a cold load. The trainer gets its
+          own still: the egg in its place read as the wrong character. */}
       <img
         slot="poster"
-        src={stage_sticker[stage]}
+        src={src === TRAINER_MODEL ? TRAINER_POSTER : stage_sticker[stage]}
         alt=""
         aria-hidden="true"
         style={{ width: "100%", height: "100%", objectFit: "contain" }}

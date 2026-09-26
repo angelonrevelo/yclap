@@ -121,7 +121,11 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  width: min(292px, calc(100vw - 88px));
+  /* Grows with the area name on wide screens instead of ellipsing it; the
+     88px keeps the right-hand orbs clear on phones. */
+  width: max-content;
+  min-width: min(292px, calc(100vw - 88px));
+  max-width: min(460px, calc(100vw - 88px));
   padding: 8px 12px 8px 8px;
   border-radius: 20px;
   background: var(--mg-surface-glass);
@@ -794,7 +798,10 @@
 
 /* ── Today's hunt: the day's first open ─────────────────────────────────── */
 
-.gm-today {
+/* Doubled with .al-scrim on purpose: boot.css loads after this file and its
+   .al-scrim {display: grid; place-items: center} would otherwise win, split
+   ribbon and card into two grid rows and lose the -18px overlap. */
+.al-scrim.gm-today {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -806,7 +813,9 @@
 .gm-today-ribbon {
   position: relative;
   z-index: 2;
-  width: min(92vw, 400px);
+  flex-shrink: 0;
+  /* 48px leaves room for both 22px swallowtails inside the scrim padding */
+  width: min(calc(100% - 48px), 400px);
   margin-bottom: -18px;
   padding: 14px 0 12px;
   text-align: center;
@@ -845,6 +854,7 @@
   text-shadow: 0 2px 0 rgba(107, 53, 25, 0.6);
 }
 .gm-today-card {
+  flex-shrink: 0;
   width: min(76vw, 300px);
   border-radius: 20px;
   overflow: hidden;

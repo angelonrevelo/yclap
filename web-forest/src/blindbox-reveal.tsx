@@ -79,8 +79,19 @@ export function BlindboxShelf({ refresh_key }: { refresh_key?: unknown }) {
           type="button"
           onClick={openNext}
           disabled={waiting.length === 0}
-          className="mg-btn-primary"
-          style={{ height: 44, padding: "0 18px", borderRadius: 8, fontWeight: 700, fontSize: 14, opacity: waiting.length === 0 ? 0.45 : 1 }}
+          /* The alert pill (`boot.css`), sized down to sit in the row: its own
+             26 px top margin and 210 px minimum are for a centred card. */
+          className="al-button"
+          style={{
+            flexShrink: 0,
+            marginTop: 0,
+            minWidth: 0,
+            height: 44,
+            padding: "0 20px",
+            fontSize: 14,
+            opacity: waiting.length === 0 ? 0.45 : 1,
+            cursor: waiting.length === 0 ? "default" : "pointer",
+          }}
         >
           Open
         </button>
@@ -135,14 +146,10 @@ function BlindboxReveal({ result, onDismiss }: { result: OpenResult; onDismiss: 
   }, [prefers_reduced]);
 
   return (
-    <div
-      role="dialog"
-      aria-label="Blind box"
-      style={{ position: "fixed", inset: 0, zIndex: 90, display: "grid", placeItems: "center" }}
-      onClick={onDismiss}
-    >
-      <div style={{ position: "absolute", inset: 0, background: "rgba(17,75,47,0.32)" }} />
-      <div onClick={(e) => e.stopPropagation()} style={{ position: "relative", textAlign: "center", padding: 20 }}>
+    /* The shared alert chrome (`boot.css`): the same blurred dark scrim and
+       pill button as the weather, safety and daily-hunt cards. */
+    <div role="dialog" aria-label="Blind box" className="al-scrim al-scrim-dark" onClick={onDismiss}>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: "relative", textAlign: "center" }}>
         {phase !== "done" && (
           <div
             className={phase === "burst" ? "yc-burst-out" : "yc-box-shake"}
@@ -156,18 +163,13 @@ function BlindboxReveal({ result, onDismiss }: { result: OpenResult; onDismiss: 
         )}
         {phase === "done" && (
           <div
-            className={prefers_reduced ? "" : "yc-reveal-in"}
+            className={prefers_reduced ? "al-card al-light" : "al-card al-light yc-reveal-in"}
             style={{
-              animation: prefers_reduced ? undefined : "yc-reveal-in 0.6s ease-out forwards",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
+              /* The charm's own scale-in replaces the card's bounce. */
+              animation: prefers_reduced ? "none" : "yc-reveal-in 0.6s ease-out forwards",
+              width: "min(100%, 320px)",
               gap: 8,
-              background: "var(--mg-surface)",
-              borderRadius: 20,
-              padding: "22px 26px",
-              boxShadow: "var(--mg-shadow-sm)",
-              maxWidth: 300,
+              padding: "26px 26px 24px",
             }}
           >
             <CharmGlyphMark cosmetic={result.cosmetic} size={96} />
@@ -178,12 +180,7 @@ function BlindboxReveal({ result, onDismiss }: { result: OpenResult; onDismiss: 
               {result.cosmetic.name}
             </div>
             <div style={{ fontSize: 13, lineHeight: 1.4, color: "rgb(var(--mg-ink-rgb) / 0.78)" }}>{result.cosmetic.blurb}</div>
-            <button
-              type="button"
-              onClick={onDismiss}
-              className="mg-btn-primary"
-              style={{ marginTop: 8, height: 44, padding: "0 24px", borderRadius: 8, fontWeight: 700, fontSize: 14 }}
-            >
+            <button type="button" onClick={onDismiss} className="al-button" style={{ marginTop: 12 }}>
               Keep it
             </button>
           </div>

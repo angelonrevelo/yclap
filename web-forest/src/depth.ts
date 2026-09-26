@@ -73,3 +73,30 @@ export function isBuildingOverWalker(ring: readonly { x: number; y: number }[], 
   }
   return near_y > walker.y && top < walker.y;
 }
+
+/**
+ * A standee's `zIndex` inside the play map's standee layer: its foot's screen
+ * row. Painter's order as a number, so the walker and the buddy — which are
+ * drawn by their own components — sort against the trees and finds exactly as
+ * the trees sort against each other, instead of sitting in two fixed bands.
+ *
+ * Only meaningful inside Flora's wrapper, which is its own stacking context;
+ * the offset keeps a foot a little above the glass positive.
+ */
+export function depthZ(foot_y: number): number {
+  return Math.max(1, Math.round(foot_y) + 400);
+}
+
+/**
+ * Does this standee stand just BEHIND the walker and sit inside their figure?
+ *
+ * Such a find is hidden by the walker's body — which is the one moment it
+ * must not be: it is in reach and the toast is asking for a tap. The walker's
+ * box is `walker.w` wide and `walker.h` tall, standing on (`x`, `y`).
+ */
+export function isUnderWalker(s: Standee, walker: Standee | null): boolean {
+  if (!walker || s.y > walker.y) return false;
+  const is_overlap_x = Math.abs(s.x - walker.x) < (s.w + walker.w) / 2 * 0.8;
+  const is_overlap_y = s.y > walker.y - walker.h;
+  return is_overlap_x && is_overlap_y;
+}

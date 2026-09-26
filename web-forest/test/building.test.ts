@@ -3,7 +3,9 @@ import { test } from "node:test";
 import {
   building,
   buildingNear,
+  clipDepth,
   extrude,
+  NEAR_SCALE,
   landmark_building,
   riseAtScale1,
   ringBox,
@@ -217,4 +219,27 @@ test("ringBox", async (t) => {
     assert.equal(box.west, 121.07);
     assert.equal(box.east, 121.072);
   });
+});
+
+test("clipDepth cuts a footprint at the near plane and at the world's far edge, and leaves one inside alone", () => {
+  /* 1/scale rises 0.001 per plane px up the glass (y negative is ahead): y = 1000 is the eye. */
+  const invScale = (p: { x: number; y: number }) => 1 - p.y / 1000;
+  const inside = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }];
+  assert.equal(clipDepth(inside, invScale, 0.5), inside);
+  /* Runs from 1,000 px ahead to 2,000 behind: behind the eye and past a far edge at scale 0.5 (500 ahead). */
+  const cut = clipDepth([{ x: 0, y: -1000 }, { x: 10, y: -1000 }, { x: 10, y: 2000 }, { x: 0, y: 2000 }], invScale, 0.5);
+  assert.equal(cut.length, 4);
+  for (const p of cut) {
+    assert.ok(invScale(p) >= 1 / NEAR_SCALE - 1e-9, "in front of the near plane");
+    assert.ok(invScale(p) <= 2 + 1e-9, "no further than the far edge");
+  }
+  assert.deepEqual(clipDepth([{ x: 0, y: 1500 }, { x: 10, y: 1500 }, { x: 5, y: 1800 }], invScale), []);
+});
+
+test("clipDepth takes a nearer cut when asked, as the skyline does just below the glass", () => {
+  const invScale = (p: { x: number; y: number }) => 1 - p.y / 1000;
+  /* Near cut at scale 1.5: 1/scale ≥ 2/3, i.e. y ≤ 333. */
+  const cut = clipDepth([{ x: 0, y: -100 }, { x: 10, y: -100 }, { x: 10, y: 900 }, { x: 0, y: 900 }], invScale, 0, 1.5);
+  assert.equal(cut.length, 4);
+  for (const p of cut) assert.ok(p.y <= 1000 / 3 + 1e-6, "no nearer than the asked-for cut");
 });

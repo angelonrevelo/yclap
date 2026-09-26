@@ -131,6 +131,55 @@ export function signedArea(ring: { x: number; y: number }[]): number {
   return sum / 2;
 }
 
+/**
+ * The nearest a footprint may come to the eye, as a perspective scale. Past
+ * it — and certainly past the eye itself, where the scale turns negative — a
+ * vertex projects mirrored up over the horizon, and a footprint with corners
+ * on both sides of the eye came out as a pale wedge rising from the walker
+ * into the sky (z21–22, where 85 m behind you is already past the eye). At
+ * scale 4 the cut is far below the bottom of the glass.
+ */
+export const NEAR_SCALE = 4;
+
+/** One Sutherland–Hodgman pass: the part of `ring` where `g` ≥ 0, cut exactly where `g` is linear. */
+function clipBy(ring: { x: number; y: number }[], g: number[]): { x: number; y: number }[] {
+  if (g.every((v) => v >= 0)) return ring;
+  const out: { x: number; y: number }[] = [];
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
+    const a = ring[j];
+    const b = ring[i];
+    const ga = g[j];
+    const gb = g[i];
+    if ((ga >= 0) !== (gb >= 0)) {
+      const t = ga / (ga - gb);
+      out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    }
+    if (gb >= 0) out.push(b);
+  }
+  return out;
+}
+
+/**
+ * Cut a PLANE ring to the depth band the camera can show: in front of the
+ * near plane (`NEAR_SCALE`), and — given `far_scale`, the perspective scale
+ * at the world's far edge — no further than that edge, so no footprint runs
+ * on past the fog to stand up in the sky as a pale slab. `invScale` is
+ * 1/scale of a plane point, which is linear in the point under the raked
+ * camera (1 − z/depth), so both cuts are exact. `near_scale` moves the near
+ * cut closer — the skyline puts it just below the glass (see `skyline.tsx`).
+ */
+export function clipDepth(
+  ring: { x: number; y: number }[],
+  invScale: (point: { x: number; y: number }) => number,
+  far_scale = 0,
+  near_scale = NEAR_SCALE,
+): { x: number; y: number }[] {
+  const inv = ring.map(invScale);
+  const near = clipBy(ring, inv.map((v) => v - 1 / Math.max(near_scale, 1e-6)));
+  if (far_scale <= 0 || near.length < 3) return near;
+  return clipBy(near, near.map((p) => 1 / far_scale - invScale(p)));
+}
+
 /** Sun direction on screen, as a unit vector. From the upper left, low. */
 const SUN = { x: -0.78, y: -0.63 };
 

@@ -76,6 +76,119 @@ const PLAYER_SCREEN_Y = 0.70;
  */
 const ANCHOR_GRID = 2048;
 
+/**
+ * Distance fog, as a distance AHEAD of the walker along the view, in screen
+ * heights (measured at perspective scale 1, so it holds at every zoom).
+ *
+ * The camera is not changed for it — pitch, focal length and how the bearing
+ * turns the plane are exactly what they were. Under that camera the plane's
+ * true vanishing line is above the glass at every allowed pitch, so the world
+ * is closed off the way a game does it: ground `FOG_FAR_H` ahead is the far
+ * edge, a straight row on the glass. The sky is opaque above that row, and the
+ * hills stand on it at the distance's own angular scale (`horizon.tsx` reads
+ * both from `groundScreen`, the plane's own arithmetic), so they turn at the
+ * ground's rate and tilt with it. Fog starts at `FOG_NEAR_H` and is solid by
+ * the edge; standees fade by the same depth (`Projection.fogOf`), so nothing is
+ * cut at a fixed screen line.
+ */
+export const FOG_NEAR_H = 0.55;
+export const FOG_FAR_H = 1.1;
+
+/** The plane's CSS perspective distance for a container height. */
+export function depthOf(height: number): number {
+  return Math.max(600, height * 1.6);
+}
+
+/**
+ * Where a ground point lands on the glass, given its offset from the camera
+ * centre in scale-1 screen px (`east`, `south`). The same arithmetic as
+ * `toScreen` — same pivot, depth, pitch, bearing and post-projection shift —
+ * kept pure so the sky can be memoised on primitives. `null` behind the eye.
+ */
+export function groundScreen(
+  east: number,
+  south: number,
+  width: number,
+  height: number,
+  tilt_degree: number,
+  bearing_degree: number,
+): { x: number; y: number; scale: number } | null {
+  const depth = depthOf(height);
+  const rad = (tilt_degree * Math.PI) / 180;
+  const bear = (bearing_degree * Math.PI) / 180;
+  const dx = east * Math.cos(bear) - south * Math.sin(bear);
+  const dy = east * Math.sin(bear) + south * Math.cos(bear);
+  const den = depth - dy * Math.sin(rad);
+  if (den <= 1) return null;
+  const scale = depth / den;
+  return {
+    x: width / 2 + dx * scale,
+    y: height / 2 + dy * Math.cos(rad) * scale + height * (PLAYER_SCREEN_Y - 0.5),
+    scale,
+  };
+}
+
+/**
+ * The compass bearing the ground actually shows straight up the glass under a
+ * camera `bearing_degree`. The plane is turned by `rotateZ(+bearing)`, so it is
+ * the NEGATIVE of the camera bearing (see `headingFromStick`).
+ */
+export function facingOf(bearing_degree: number): number {
+  return (((-bearing_degree) % 360) + 360) % 360;
+}
+
+/** Fog for a distance ahead of the walker in scale-1 screen px. Smoothstep between the two bounds. */
+export function fogOfAhead(distance_px: number, height: number): number {
+  const t = (distance_px - FOG_NEAR_H * height) / Math.max(1, (FOG_FAR_H - FOG_NEAR_H) * height);
+  const c = Math.max(0, Math.min(1, t));
+  return c * c * (3 - 2 * c);
+}
+
+/** Inverse of the row mapping: the scale-1 distance ahead a screen row shows (Infinity at/above the vanishing line). */
+export function aheadOfRow(y: number, height: number, tilt_degree: number): number {
+  const depth = depthOf(height);
+  const rad = (tilt_degree * Math.PI) / 180;
+  const u = height * PLAYER_SCREEN_Y - y;
+  if (u <= 0) return 0;
+  const den = Math.cos(rad) * depth - u * Math.sin(rad);
+  return den <= 0 ? Infinity : (u * depth) / den;
+}
+
+/**
+ * The ground the raked camera can show, as a box in the VIEW's frame (x across
+ * the glass, `ahead` up it), in scale-1 screen px: from `back` behind the
+ * walker (the glass bottom plus `pad_px` rows) to the world's far edge
+ * (`FOG_FAR_H`), `half` either side at its widest (the far edge).
+ *
+ * The ground layer is sized from this rather than from a circle round the
+ * camera. A circle big enough to reach the fog AHEAD reaches just as far
+ * BEHIND — at z21–22 past the eye itself (1,856 px back at 64°), so the plane
+ * layer carried content the camera magnified without limit or saw from behind.
+ * That layer is what Chrome dropped, leaving the walker on bare pale green.
+ */
+export function groundBox(
+  width: number,
+  height: number,
+  tilt_degree: number,
+  pad_px = 0,
+): { ahead: number; back: number; half: number } {
+  const depth = depthOf(height);
+  const rad = (tilt_degree * Math.PI) / 180;
+  const ahead = FOG_FAR_H * height;
+  const edge = groundScreen(0, -ahead, width, height, tilt_degree, 0);
+  const half = width / 2 / Math.max(edge?.scale ?? 0.3, 0.1);
+  /* The row `pad_px` below the glass: u < 0, so the "ahead" it shows is negative. */
+  const u = height * PLAYER_SCREEN_Y - (height + pad_px);
+  const den = Math.cos(rad) * depth - u * Math.sin(rad);
+  const back = den > 0 ? (-u * depth) / den : ahead;
+  return { ahead, back, half };
+}
+
+/** The world's far edge on the glass: the row `FOG_FAR_H` ahead. Nothing stands above it. Flat camera: −Infinity. */
+export interface HorizonLine {
+  y: number;
+}
+
 /** A camera further than this from its goal jumps instead of gliding across campus. */
 const GLIDE_SNAP_DEGREE = 0.0012;
 /** Close enough, in degrees (~1 mm), with speed to match, to stop the frame loop. */
@@ -132,6 +245,16 @@ export interface Projection {
   centre: LatLon;
   /** Inverse of `toScreen` then `project`: a click on the glass → lat/lon. */
   fromScreen: (x: number, y: number) => LatLon;
+  /** The world's far edge — see `HorizonLine`. */
+  horizon: HorizonLine;
+  /** Fog, 0…1, for a PLANE point, by how far ahead of the camera centre it is. */
+  fogOf: (point: { x: number; y: number }) => number;
+  /**
+   * How far from the camera centre, in PLANE px, there is anything to see:
+   * the solid-fog distance ahead and across the glass at that depth. Ground
+   * geometry past it is behind the fog.
+   */
+  ground_far_px: number;
 }
 
 interface Props {
@@ -812,6 +935,30 @@ export default function TileMap({
   );
   from_screen.current = fromScreen;
 
+  const horizon: HorizonLine = {
+    y: tilt_degree
+      ? (groundScreen(0, -FOG_FAR_H * size.height, size.width, size.height, tilt_degree, 0)?.y ?? 0)
+      : -Infinity,
+  };
+  const fogOf = useCallback(
+    (point: { x: number; y: number }) => {
+      if (!tilt_degree) return 0;
+      /* Same rotation as `toScreen`; −dy is the distance ahead. */
+      const dx0 = (point.x - shift.x - size.width / 2) * zoom_scale;
+      const dy0 = (point.y - shift.y - size.height / 2) * zoom_scale;
+      return fogOfAhead(-(dx0 * Math.sin(bear) + dy0 * Math.cos(bear)), size.height);
+    },
+    [tilt_degree, size.width, size.height, shift.x, shift.y, zoom_scale, bear],
+  );
+  /* The world's edge, `FOG_FAR_H` ahead, out to the sides of the glass at
+     that depth. */
+  const ground_far_px = (() => {
+    if (!tilt_degree) return Math.hypot(size.width, size.height) / 2 / zoom_scale;
+    const far = FOG_FAR_H * size.height;
+    const edge = groundScreen(0, -far, size.width, size.height, tilt_degree, 0);
+    return Math.hypot(far, size.width / 2 / Math.max(edge?.scale ?? 0.3, 0.1)) / zoom_scale;
+  })();
+
   const projection: Projection = {
     project,
     /* Ground metres per SCREEN pixel, so it has to divide by the plane scale:
@@ -828,6 +975,9 @@ export default function TileMap({
     toScreen,
     fromScreen,
     centre,
+    horizon,
+    fogOf,
+    ground_far_px,
   };
 
   /**
@@ -882,7 +1032,8 @@ export default function TileMap({
       style={{
         position: "absolute",
         inset: 0,
-        overflow: "hidden",
+        /* `clip`: full bleed, never a scroll container (see app.tsx playBody). */
+        overflow: "clip",
         background: ground ?? "#dfe3d8",
         touchAction: is_interactive ? "none" : undefined,
         cursor: is_interactive ? (drag.current ? "grabbing" : "grab") : "default",

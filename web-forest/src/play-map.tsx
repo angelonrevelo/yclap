@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import campus_shape from "./asset/campus-shape.json" with { type: "json" };
 import Botanical from "./botanical";
 import { BUILDING_ATTRIBUTION, building as campus_building } from "./building";
-import Skyline, { type SkylineStyle } from "./skyline";
+import Skyline, { type LabelRect, type SkylineStyle } from "./skyline";
 import { Walker, type Stage } from "./character";
 import { AT_TREE_RADIUS_M, RESTRICTED_POLYGON, species, type Encounter } from "./data";
 import { residentBySector } from "./nearby";
@@ -19,7 +19,7 @@ import {
   sector as sector_row,
   type Sector,
 } from "./sector";
-import TileMap, { type Projection, type View } from "./tile-map";
+import TileMap, { groundBox, type Projection, type View } from "./tile-map";
 import Horizon from "./horizon";
 import Flora, { type GlassFind, type Tuft } from "./flora";
 import { ToonDefs, ToonFind } from "./toon";
@@ -28,8 +28,10 @@ import { kindOf } from "./kind";
 import { KindPath, KIND_TONE } from "./kind-mark";
 import RemoteWalkerLayer, { HallCount, type Hall } from "./remote-walker";
 import PetEagle from "./pet-eagle";
-import { avatarPx, clampPitch, pitchForZoom, roadCasingPx, roadWidthPx, walkStopMs } from "./camera-feel";
+import { avatarPx, clampPitch, PITCH_MAX, PITCH_MIN, pitchForZoom, roadCasingPx, roadWidthPx, walkStopMs } from "./camera-feel";
 import FrameProbe from "./frame-probe";
+import { JOYSTICK_BOX } from "./joystick";
+import { speciesNameText } from "./ui";
 
 /**
  * The play view — the map as the owner asked for it on 09-03: "simple pokemon
@@ -102,6 +104,46 @@ const outside_path = shape.path.filter((p) => p.is_outside);
  * on every render, and computed once because 94 sectors x N tufts is not work
  * to redo sixty times a second.
  */
+/** Is this point inside a `[lat, lon]` ring? Even-odd ray cast. */
+function ringContains(ring: [number, number][], at: LatLon): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
+    const [ay, ax] = ring[i];
+    const [by, bx] = ring[j];
+    if (ay > at.lat !== by > at.lat && at.lon < ((bx - ax) * (at.lat - ay)) / (by - ay) + ax) inside = !inside;
+  }
+  return inside;
+}
+
+/** Building footprints with their boxes, padded by about a metre, for the tuft test. */
+const building_box = campus_building.map((b) => {
+  let lat0 = Infinity, lat1 = -Infinity, lon0 = Infinity, lon1 = -Infinity;
+  for (const [lat, lon] of b.point) {
+    if (lat < lat0) lat0 = lat; if (lat > lat1) lat1 = lat;
+    if (lon < lon0) lon0 = lon; if (lon > lon1) lon1 = lon;
+  }
+  const pad = 1.2 / 111_320;
+  return { ring: b.point, lat0: lat0 - pad, lat1: lat1 + pad, lon0: lon0 - pad, lon1: lon1 + pad };
+});
+
+/**
+ * On a roof, or so close to a wall its canopy would sit on one. Sectors carry
+ * a `built_ratio`, so a wooded sector still has buildings in it, and a tuft
+ * checked only against the sector stood on the Skyline's roofs.
+ */
+function isOnBuilding(at: LatLon): boolean {
+  const m = 2.5 / 111_320;
+  for (const b of building_box) {
+    if (at.lat < b.lat0 || at.lat > b.lat1 || at.lon < b.lon0 || at.lon > b.lon1) continue;
+    if (ringContains(b.ring, at)) return true;
+    /* A metre or two outside the wall still puts the crown over the roof. */
+    for (const [dy, dx] of [[m, 0], [-m, 0], [0, m], [0, -m]]) {
+      if (ringContains(b.ring, { lat: at.lat + dy, lon: at.lon + dx })) return true;
+    }
+  }
+  return false;
+}
+
 function scatterTuft(): Tuft[] {
   const out: Tuft[] = [];
   for (const s of biome_sector) {
@@ -132,6 +174,7 @@ function scatterTuft(): Tuft[] {
       const lat = lat0 + random() * (lat1 - lat0);
       const lon = lon0 + random() * (lon1 - lon0);
       if (!sectorContains(s, { lat, lon })) continue;
+      if (isOnBuilding({ lat, lon })) continue;
       out.push({ lat, lon, r: 3.4 + random() * 4.6, dark: s.kind === "wood" || veg > 0.85, is_shrub_only: is_lawn });
       made += 1;
     }
@@ -281,6 +324,8 @@ function pickLabel(
   here: Sector | null,
   projection: Projection,
   avoid: { x: number; y: number } | null,
+  /* The finds on the glass: a pin's head and sparkle over a name hides both. */
+  find_rect: readonly LabelRect[],
 ): LabelPlace[] {
   const placed: LabelPlace[] = [];
   const spoken = new Set<string>();
@@ -315,10 +360,10 @@ function pickLabel(
 
     /* Fully on screen, pill included — a clipped label is worse than none. */
     if (p.x - half_w < 6 || p.x + half_w > width - 6) continue;
-    /* Not up in the haze, where the rake makes a pill unreadable. */
-    /* Not up in the haze, and not down where the stage card and the shutter
-       live — a pill behind a button is a pill nobody reads. */
-    if (p.y < height * 0.3 || p.y > height * 0.84) continue;
+    /* Not up in the fog, where the rake makes a pill unreadable and the
+       ground it names has faded out, and not down where the stage card and
+       the shutter live — a pill behind a button is a pill nobody reads. */
+    if (projection.fogOf(project({ lat: s.label_point[0], lon: s.label_point[1] })) > 0.3 || p.y < projection.horizon.y + 30 || p.y > height * 0.84) continue;
     /* Not under the right-hand control column (weather, layers, locate,
        compass and the walker count — ~300 px tall on every screen size). */
     if (p.x + half_w > width - CONTROL_KEEP_OUT_X && p.y < CONTROL_KEEP_OUT_Y) continue;
@@ -330,6 +375,7 @@ function pickLabel(
       (q) => Math.abs(q.screen_x - p.x) < half_w + halfWidth(q.row) + 10 && Math.abs(q.screen_y - p.y) < 46,
     );
     if (hit) continue;
+    if (find_rect.some((f) => Math.abs(f.x - p.x) < f.half_w + half_w && Math.abs(f.y - p.y) < f.half_h + 14)) continue;
 
     spoken.add(base);
     placed.push({ row: s, screen_x: p.x, screen_y: p.y, scale: p.scale });
@@ -337,14 +383,27 @@ function pickLabel(
   return placed;
 }
 
+/** A sector pill's screen box, for the skyline's names to keep off. */
+function pillRectOf(place: LabelPlace, is_here: boolean): LabelRect {
+  const k = Math.max(0.72, Math.min(1.1, place.scale));
+  const chars = Math.min(place.row.name.length, 24);
+  return {
+    x: place.screen_x,
+    y: place.screen_y,
+    half_w: ((chars * (is_here ? 7.4 : 6.6) + (is_here ? 24 : 18)) / 2) * k + 4,
+    half_h: ((is_here ? 28 : 22) / 2) * k + 4,
+  };
+}
+
 /**
  * The ground: sector fills, grass, building contact patches, walkways and the
  * restricted gray. (The trees and bushes stand up in `flora.tsx`.)
  *
- * None of it depends on where the walker is — only on `project`, which the
- * raked camera anchors (see `ANCHOR_GRID` in `tile-map.tsx`). Memoised on
- * exactly that, so the 20 Hz walker updates and the 60 Hz camera glide leave
- * it alone; it is re-rendered when the anchor steps, the zoom changes, or the
+ * None of it depends on where the walker is to the pixel — only on `project`,
+ * which the raked camera anchors (see `ANCHOR_GRID` in `tile-map.tsx`), and on
+ * the cull circle, which moves in `CULL_GRID` steps. Memoised on exactly that,
+ * so the 20 Hz walker updates and the 60 Hz camera glide leave it alone; it is
+ * re-rendered when the anchor or the cull steps, the zoom changes, or the
  * sector underfoot changes.
  *
  * And CULLED to a circle around the camera. The whole campus is ~1,400
@@ -353,7 +412,7 @@ function pickLabel(
  * layerisation on every frame the plane moved. Measured in a headless Chrome
  * (390x844, moving only the plane's transform): ~20 fps with the whole campus
  * in the SVG, ~65 fps with only what is near. Past the circle the view is
- * sky haze and flat ground colour anyway.
+ * solid distance fog anyway (`horizon.tsx`).
  */
 const Ground = memo(function Ground({
   project,
@@ -421,20 +480,8 @@ const Ground = memo(function Ground({
           <path key={`g${row.sector_code}`} d={ringPath(row.point, project, true)} fill="url(#pm-grass)" stroke="none" />
         ))}
 
-      {/* 2 · where each building MEETS the ground.
-             The building itself is a prism drawn in screen space by
-             `Skyline` — this is only its contact patch, which has to
-             stay in the plane so it stays welded to the sector under
-             it. Drawn dark rather than pale: a prism rising out of a
-             light block looks like it is floating on one. */}
-      {campus_building.map((b, i) => near(b.point) && (
-        <path
-          key={`b${i}`}
-          d={ringPath(b.point, project, true)}
-          fill="rgba(104,96,78,0.30)"
-          stroke="none"
-        />
-      ))}
+      {/* 2 · where each building meets the ground is drawn by `Skyline`
+             with the building itself, so a patch never outlives its prism. */}
 
       {/* 3a · the city outside, at a whisper.
              Cutting it entirely left campus floating in a void, which
@@ -522,6 +569,16 @@ const Ground = memo(function Ground({
     </>
   );
 });
+
+/** The ground's cull circle moves in steps of this many plane px. See `Ground`. */
+const CULL_GRID = 256;
+
+/** The ground layer's box turns with the camera in steps of this many degrees. */
+const BOX_STEP = 15;
+/** Rows of ground kept below the glass, so a turn never shows the box's near edge. */
+const BOX_PAD_ROW = 48;
+/** Plane px of slack for the glide trailing its target. */
+const BOX_LAG_PX = 128;
 
 /**
  * Pulses are capped in size. At the street camera the 40 m reach is three
@@ -631,7 +688,7 @@ const SpawnSticker = memo(function SpawnSticker({
       sparkle={Math.max(0, tick - 1)}
       is_in_range={in_range}
       glyph={<KindPath kind={kind} />}
-      label={`${row.common_name} — ${kind}${row.rarity ? `, ${row.rarity}` : ""}`}
+      label={`${speciesNameText(row.common_name, row.scientific_name)} — ${kind}${row.rarity ? `, ${row.rarity}` : ""}`}
       delay_s={-(row.spawn_id.length % 7) * 0.31}
     />
   );
@@ -670,7 +727,14 @@ export default function PlayMap({
   /* Pitch = the zoom's resting pitch plus whatever two fingers added. Kept as
      an OFFSET so zooming still eases the tilt after somebody has adjusted it,
      and local to this view so a tilt does not re-render the app. */
-  const [pitch_offset, setPitchOffset] = useState(0);
+  /* `?pitch=` is the twin of `?bearing=` and `?zoom=`: a view parameter so a
+     screenshot at a known rake is reproducible. Clamped by `clampPitch` below,
+     so it cannot reach a pitch the gesture cannot. */
+  const [pitch_offset, setPitchOffset] = useState(() => {
+    const raw = new URLSearchParams(window.location.search).get("pitch");
+    const degree = Number(raw);
+    return raw !== null && Number.isFinite(degree) ? degree - pitchForZoom(view.zoom) : 0;
+  });
   const tilt_degree = clampPitch(pitchForZoom(view.zoom) + pitch_offset);
 
   /* Heading and gait come from the fix actually MOVING, not from a flag
@@ -686,9 +750,9 @@ export default function PlayMap({
       travel.current = {
         /* `atan2(east, north)` is a real compass heading; the character is
            drawn on the glass, so it needs the angle that heading APPEARS at
-           under the current camera. That is `screenAngleOf`, and it adds the
-           bearing — subtracting it leaned the walker away from the direction
-           they were actually walking as soon as the camera turned. */
+           under the current camera. That is `screenAngleOf` — the inverse of
+           the stick's `headingFromStick`, so a walker leans the way they are
+           going at every bearing. */
         heading: signedAngle(
           screenAngleOf((Math.atan2(dx, dy) * 180) / Math.PI, bearing_degree),
         ),
@@ -745,19 +809,38 @@ export default function PlayMap({
       overlay={(projection) => {
         /* Only real biomes speak. A car park does not get a pill. */
         const walker_at = fix ? projection.toScreen(projection.project(fix)) : null;
-        /* A find's spot on the glass, its size, and whether it stands in front
-           of the walker. Null when it is past the plane's far edge or off the
-           glass, so nothing floats in the sky. The size is the perspective
-           scale — what the plane's rake gave a find when it lived there —
-           eased with zoom: at the wide end a full-size orb covered a sector. */
+        /* A find's spot on the glass, its size, and how far into the fog it
+           stands. Null once the fog has swallowed it or it is off the glass —
+           faded out by distance on the way, so it never blinks into being at
+           a fixed line. The size is the perspective scale — what the plane's
+           rake gave a find when it lived there — eased with zoom: at the wide
+           end a full-size orb covered a sector. */
         const find_zoom_k = Math.min(1.05, Math.max(0.6, 0.6 + (projection.zoom - 19) * 0.15));
+        /* The stick's box on the glass (it is only there on a stick walk). */
+        const stick =
+          fix?.source === "play"
+            ? {
+                x0: JOYSTICK_BOX.left - 6,
+                x1: JOYSTICK_BOX.left + JOYSTICK_BOX.size + 6,
+                y0: projection.height - JOYSTICK_BOX.bottom - JOYSTICK_BOX.size - 6,
+                y1: projection.height - JOYSTICK_BOX.bottom + 6,
+              }
+            : null;
         const toScreenFind = (point: LatLon) => {
-          const at = projection.toScreen(projection.project(point));
-          if (at.scale <= 0 || at.y < projection.height * 0.34 || at.y > projection.height + 40) return null;
+          const plane = projection.project(point);
+          const at = projection.toScreen(plane);
+          if (at.scale <= 0 || at.y < projection.horizon.y || at.y > projection.height + 40) return null;
           if (at.x < -60 || at.x > projection.width + 60) return null;
+          const fog = projection.fogOf(plane);
+          if (fog > 0.95) return null;
           const k = Math.min(1.3, Math.max(0.5, at.scale * find_zoom_k));
-          return { x: at.x, y: at.y, k, is_front: walker_at !== null && at.y > walker_at.y };
+          return { x: at.x, y: at.y, k, fog };
         };
+        /* Under the stick a find can be seen and not tapped — the stick is on
+           top and takes the touch as a walk. So it is not drawn there: step or
+           turn and it comes back out, where a thumb can reach it. */
+        const isUnderStick = (x: number, y: number, w: number, h: number) =>
+          stick !== null && x + w / 2 > stick.x0 && x - w / 2 < stick.x1 && y > stick.y0 && y - h < stick.y1;
         /* Finds, on the GLASS rather than in the ground.
            They used to live in the tilted plane, which welded them to their
            spot for free — and put them under everything on the glass, because
@@ -776,17 +859,20 @@ export default function PlayMap({
           const is_logged = seen_species.has(e.species_code);
           const in_range = fix ? distanceMeter(fix, e) <= AT_TREE_RADIUS_M : false;
           const model = is_desktop ? 64 : 56;
+          if (isUnderStick(p.x, p.y, model * p.k, (model + 15) * p.k)) continue;
           glass_find.push({
             key: `pin-${e.encounter_id}`,
             x: p.x,
             y: p.y,
             w: model * p.k,
             h: (model + 15) * p.k,
+            fog: p.fog,
+            is_in_reach: in_range,
             node: (
               <div
                 data-play-marker="1"
                 onClick={() => onSelectEncounter(e)}
-                title={sp ? `${sp.common_name} — demo-map position` : e.where}
+                title={sp ? `${speciesNameText(sp.common_name, sp.scientific_name)} — demo-map position` : e.where}
                 style={{
                   position: "absolute",
                   left: p.x,
@@ -797,7 +883,7 @@ export default function PlayMap({
                   filter: in_range ? "drop-shadow(0 0 10px rgba(255,255,255,0.65))" : undefined,
                 }}
               >
-                <ResidentOrb species_code={e.species_code} is_logged={is_logged} model={model} label={`${sp?.common_name ?? "A find"} — ${pin_kind}`} />
+                <ResidentOrb species_code={e.species_code} is_logged={is_logged} model={model} label={`${sp ? speciesNameText(sp.common_name, sp.scientific_name) : "A find"} — ${pin_kind}`} />
               </div>
             ),
           });
@@ -808,17 +894,20 @@ export default function PlayMap({
           if (!p) continue;
           const kind = kindOf(row.iconic_taxon_name, row.archetype);
           const in_range = fix ? distanceMeter(fix, row) <= AT_TREE_RADIUS_M : false;
+          if (isUnderStick(p.x, p.y, 66 * p.k, 96 * p.k)) continue;
           glass_find.push({
             key: row.spawn_id,
             x: p.x,
             y: p.y,
             w: 66 * p.k,
             h: 96 * p.k,
+            fog: p.fog,
+            is_in_reach: in_range,
             node: (
               <div
                 data-play-marker="1"
                 onClick={onSelectSpawn ? () => onSelectSpawn(row) : undefined}
-                title={`${row.common_name}${row.rarity ? ` — ${row.rarity}` : ""}, out until ${new Date(row.ends_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`}
+                title={`${speciesNameText(row.common_name, row.scientific_name)}${row.rarity ? ` — ${row.rarity}` : ""}, out until ${new Date(row.ends_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`}
                 style={{
                   position: "absolute",
                   left: p.x,
@@ -834,75 +923,61 @@ export default function PlayMap({
             ),
           });
         }
-        const label = pickLabel(biome_sector, here, projection, walker_at);
-        return (
-          <>
-            {/* The campus, standing up. Under the sky, over the ground, and
-                below every marker — see `skyline.tsx` on why it cannot live
-                in the tilted plane with the rest of the map. */}
-            {/* The toon kit's gradients, once: the skyline's roofs, the trees
-                and the finds all point at these ids. */}
-            <ToonDefs />
-            <Skyline projection={projection} centre={view} style={skyline_style} avoid={walker_at} is_night={is_night} />
-            <RemoteWalkerLayer hall={hall} projection={projection} bearing_degree={bearing_degree} zoom={view.zoom} />
-            <HallCount hall={hall} />
-            <Flora
-              tuft={tuft}
-              find={glass_find}
-              projection={projection}
-              centre={view}
-              keep_clear={keep_clear}
-              walker_screen_y={walker_at ? walker_at.y : null}
-              walker_x={walker_at ? walker_at.x : null}
-              is_night={is_night}
-            />
-            {/* The rake opens a band of empty ground above the campus. A flat
-                gradient there read as "the map ends"; a horizon reads as
-                distance — see `horizon.tsx` for why its hills and towers sit
-                where they do. Painted AFTER the skyline and the trees: whatever
-                is far enough away to reach the horizon should dissolve into
-                it, not stand on top of the sky. */}
-            <Horizon width={projection.width} height={projection.height} bearing_degree={bearing_degree} is_night={is_night} />
+        /* The finds' boxes (a pin's head, its sparkle), for the names to avoid. */
+        const find_rect: LabelRect[] = glass_find.map((f) => ({ x: f.x, y: f.y - f.h / 2, half_w: f.w / 2 + 4, half_h: f.h / 2 + 4 }));
+        /* The stick covers whatever name sits under it, so names yield to it too. */
+        const stick_rect: LabelRect[] = stick
+          ? [{ x: (stick.x0 + stick.x1) / 2, y: (stick.y0 + stick.y1) / 2, half_w: (stick.x1 - stick.x0) / 2, half_h: (stick.y1 - stick.y0) / 2 }]
+          : [];
+        const label = pickLabel(biome_sector, here, projection, walker_at, [...find_rect, ...stick_rect]);
+        /* Building names yield to the sector pills, the finds and the stick. */
+        const label_rect = label.map((l) => pillRectOf(l, here?.sector_code === l.row.sector_code));
+        const name_avoid: LabelRect[] = [
+          ...label_rect,
+          ...find_rect,
+          ...stick_rect,
+        ];
+        /* The walker, drawn on the glass rather than in the ground — and in
+           the standee layer with the trees, finds and buddy, so depth decides
+           who covers whom. (It used to live inside the tilted plane and
+           counter-rotate out of it; the skyline is painted above the plane, so
+           a walker down there went behind the first building they stood near.
+           Up here `toScreen` has already applied the rake, so the figure is
+           simply upright.)
 
-            {/* The walker, drawn on the glass rather than in the ground.
-                It used to live inside the tilted plane and counter-rotate out
-                of it, which was right while nothing was ever painted above the
-                plane. The skyline is painted above the plane — it has to be,
-                there is no "up" inside a plane — so a walker left down there
-                goes behind the first building they stand near, and behind the
-                football pitch if that pitch is ever mistaken for a building.
-                Up here the rake is already applied by `toScreen`, so the
-                character no longer counter-rotates for it: `tilt_degree` is 0
-                and the figure is simply upright, which is what it was always
-                trying to look like. */}
-            {fix && (() => {
-              /* Welded camera: the walker IS the camera centre, so it is drawn
-                 at the centre the camera is gliding through this frame, not at
-                 the fix the camera is still easing toward. Drawn at the fix it
-                 stepped across the glass at 20 Hz over smoothly moving ground,
-                 which was most of the "jittery" in the 09-25 note. The 25 m
-                 guard covers a camera sent somewhere else while locked. */
-              /* Following (the view's target IS the fix) counts too: the
-                 camera is gliding after the walker either way, and a walker
-                 drawn at the raw fix steps at the tick rate over ground that
-                 glides. */
-              const is_on_camera =
-                (is_camera_locked || (view.lat === fix.lat && view.lon === fix.lon)) && distanceMeter(view, fix) < 25;
-              const anchor = is_on_camera ? projection.centre : fix;
-              const at = projection.toScreen(projection.project(anchor));
-              const avatar_px = avatarPx(view.zoom, Math.min(projection.width, projection.height));
-              return (
-                <>
+           Welded camera: the walker IS the camera centre, so it is drawn at the
+           centre the camera is gliding through this frame, not at the fix the
+           camera is still easing toward. Drawn at the fix it stepped across the
+           glass at 20 Hz over smoothly moving ground, which was most of the
+           "jittery" in the 09-25 note. Following (the view's target IS the fix)
+           counts too. The 25 m guard covers a camera sent somewhere else while
+           locked. */
+        const walker = (() => {
+          if (!fix) return null;
+          const is_on_camera =
+            (is_camera_locked || (view.lat === fix.lat && view.lon === fix.lon)) && distanceMeter(view, fix) < 25;
+          const anchor = is_on_camera ? projection.centre : fix;
+          const at = projection.toScreen(projection.project(anchor));
+          const avatar_px = avatarPx(view.zoom, Math.min(projection.width, projection.height));
+          const scale = Math.max(0.6, Math.min(1.35, at.scale));
+          return {
+            anchor,
+            avatar_px,
+            standee: {
+              x: at.x,
+              y: at.y,
+              w: avatar_px * scale * 0.7,
+              h: avatar_px * scale,
+              node: (
                 <div
                   className="pm-walker"
                   style={{
                     position: "absolute",
                     left: at.x,
                     top: at.y,
-                    transform: `translate(-50%, -100%) scale(${Math.max(0.6, Math.min(1.35, at.scale)).toFixed(3)})`,
+                    transform: `translate(-50%, -100%) scale(${scale.toFixed(3)})`,
                     transformOrigin: "50% 100%",
                     pointerEvents: "none",
-                    zIndex: 6,
                   }}
                 >
                   {/* No `tilt_degree`, no `bearing_degree`. Those props exist
@@ -920,14 +995,70 @@ export default function PlayMap({
                     heading_degree={travel.current.heading}
                   />
                 </div>
-                {/* The pet eagle — companion by day, sleep pet when you stop. See `pet.ts`. */}
-                <PetEagle projection={projection} fix={fix} anchor={anchor} avatar_px={avatar_px} stage={stage} />
-                </>
-              );
-            })()}
+              ),
+            },
+          };
+        })();
+        return (
+          <>
+            {/* The campus, standing up. Under the sky, over the ground, and
+                below every marker — see `skyline.tsx` on why it cannot live
+                in the tilted plane with the rest of the map. */}
+            {/* The toon kit's gradients, once: the skyline's roofs, the trees
+                and the finds all point at these ids. */}
+            <ToonDefs />
+            {/* The sky, the far hills and the distance fog — all from the same
+                projection as the ground (`groundScreen`), so the ridge stands on
+                the world's edge ring and turns at the ground's own rate. See
+                `horizon.tsx`. Under the skyline and every standee: those fade
+                into the fog by their own distance instead. */}
+            <Horizon
+              width={projection.width}
+              height={projection.height}
+              bearing_degree={bearing_degree}
+              tilt_degree={tilt_degree}
+              is_night={is_night}
+            />
+            <Skyline
+              projection={projection}
+              centre={view}
+              style={skyline_style}
+              avoid={walker_at}
+              is_night={is_night}
+              avoid_rect={name_avoid}
+            />
+            <RemoteWalkerLayer
+              hall={hall}
+              projection={projection}
+              bearing_degree={bearing_degree}
+              zoom={view.zoom}
+              /* Tags draw over the standees, so they yield to the finds and
+                 the stick as well as the area pills. */
+              avoid_rect={name_avoid}
+              part="overlay"
+            />
+            <HallCount hall={hall} />
+            <Flora
+              tuft={tuft}
+              find={glass_find}
+              projection={projection}
+              centre={view}
+              keep_clear={keep_clear}
+              walker={walker?.standee ?? null}
+              is_night={is_night}
+            >
+              {/* The pet eagle — companion by day, sleep pet when you stop. See
+                  `pet.ts`. It sorts itself against the walker and the trees. */}
+              {fix && walker && (
+                <PetEagle projection={projection} fix={fix} anchor={walker.anchor} avatar_px={walker.avatar_px} stage={stage} />
+              )}
+              {/* Everybody else, sorted against the trees the same way; their
+                  name tags stay in the overlay above. */}
+              <RemoteWalkerLayer hall={hall} projection={projection} bearing_degree={bearing_degree} zoom={view.zoom} part="figure" />
+            </Flora>
             {/* Birds. Pure atmosphere, screen space, no data behind them —
                 they exist because a still map reads as a diagram. */}
-            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "clip" }}>
               <style>{`
                 @keyframes yc-fly-a { from { transform: translate(-12vw, 0) } to { transform: translate(112vw, -22px) } }
                 @keyframes yc-fly-b { from { transform: translate(-18vw, 0) } to { transform: translate(118vw, 14px) } }
@@ -969,7 +1100,10 @@ export default function PlayMap({
                        shrinks with distance so it belongs to its ground. */
                     transform: `translate(-50%, -50%) scale(${Math.max(0.72, Math.min(1.1, scale)).toFixed(2)})`,
                     pointerEvents: "none",
-                    zIndex: 4,
+                    /* Over the standees (5): a tree or a walker nearer the
+                       camera hid the name it stood in front of. `pickLabel`
+                       keeps the pill off your walker and the finds. */
+                    zIndex: 7,
                     whiteSpace: "nowrap",
                     fontSize: is_here ? 13 : 11.5,
                     fontWeight: is_here ? 800 : 700,
@@ -991,16 +1125,70 @@ export default function PlayMap({
       }}
     >
       {(projection) => {
-        const { project, width, height } = projection;
-
+        const { project } = projection;
+        /* The ground's cull circle. Centred on the camera's target, snapped to
+           `CULL_GRID` so the `Ground` memo holds between steps (the ground is
+           re-cut every ~9 m of walking at the street camera, not every frame).
+           The radius is how far there is anything to see — out to the solid
+           fog and across the glass at that depth (`ground_far_px`) — plus the
+           snap's slack. Past it the fog is opaque, so nothing beyond can ghost
+           up through the sky. */
+        const target = project(view);
+        const cull_x = Math.round(target.x / CULL_GRID) * CULL_GRID;
+        const cull_y = Math.round(target.y / CULL_GRID) * CULL_GRID;
+        const cull_r = Math.ceil((projection.ground_far_px + CULL_GRID * 0.71) / 256) * 256;
+        /* The layer the ground is painted into: a box turned to face the
+           camera (bearing in `BOX_STEP` steps), from just below the glass to
+           the fog — see `groundBox`. It used to be the square round the cull
+           circle, which ran as far behind the walker as ahead of them: past
+           the eye at z21–22, where Chrome dropped the whole plane layer. The
+           cull circle still picks WHICH shapes are kept; this box clips them.
+           Sized for every pitch the camera allows, so a pitch flick never
+           re-cuts it, and padded for the bearing step, the cull snap and the
+           glide's lag. */
+        const zoom_scale = projection.plane_meter_per_pixel / Math.max(projection.meter_per_pixel, 1e-9);
+        const box_turn = Math.round(projection.bearing_degree / BOX_STEP) * BOX_STEP;
+        const box = [PITCH_MIN, PITCH_MAX, projection.tilt_degree].reduce(
+          (m, pitch) => {
+            const b = groundBox(projection.width, projection.height, pitch, BOX_PAD_ROW);
+            const swing = Math.hypot(b.half, b.ahead) * Math.sin(((BOX_STEP / 2) * Math.PI) / 180);
+            return {
+              ahead: Math.max(m.ahead, b.ahead + swing),
+              back: Math.max(m.back, b.back + swing),
+              half: Math.max(m.half, b.half + swing),
+            };
+          },
+          { ahead: 0, back: 0, half: 0 },
+        );
+        const box_slack = CULL_GRID * 0.71 + BOX_LAG_PX;
+        const box_left = -Math.ceil(box.half / zoom_scale + box_slack);
+        const box_top = -Math.ceil(box.ahead / zoom_scale + box_slack);
+        const box_w = -2 * box_left;
+        const box_h = Math.ceil(box.back / zoom_scale + box_slack) - box_top;
         return (
           <>
-            <svg
+            {/* Turned so its axes face the camera: the plane turns by the
+                bearing, this by minus its step, so the box's top edge runs
+                across the glass and the SVG inside is turned back. */}
+            <div
               style={{
                 position: "absolute",
-                left: 0,
-                top: 0,
-                overflow: "visible",
+                left: cull_x,
+                top: cull_y,
+                width: 0,
+                height: 0,
+                transform: `rotate(${-box_turn}deg)`,
+                transformOrigin: "0 0",
+                pointerEvents: "none",
+              }}
+            >
+            <svg
+              viewBox={`${box_left} ${box_top} ${box_w} ${box_h}`}
+              style={{
+                position: "absolute",
+                left: box_left,
+                top: box_top,
+                overflow: "hidden",
                 pointerEvents: "none",
                 /* No `filter` here, by day or night. Both grades are done on
                    the numbers inside `Ground` — `gradeFill` takes the sector
@@ -1009,8 +1197,8 @@ export default function PlayMap({
                    Chrome drops the grass pattern and the buildings under a
                    filter on this plane. */
               }}
-              width={width}
-              height={height}
+              width={box_w}
+              height={box_h}
             >
               <defs>
                 {/* Grass, the posters' way: tufts and the odd plumeria over the
@@ -1030,6 +1218,7 @@ export default function PlayMap({
                 </pattern>
               </defs>
 
+              <g transform={`rotate(${box_turn}) translate(${-cull_x} ${-cull_y})`}>
               <Ground
                 project={project}
                 /* Four figures: the exact value drifts with latitude on every
@@ -1038,17 +1227,12 @@ export default function PlayMap({
                 here_code={here?.sector_code ?? null}
                 is_restricted_on={is_restricted_on}
                 is_night={is_night}
-                /* The anchor sits at the container centre in plane pixels.
-                   The radius covers the raked view out to the sky haze at the
-                   steepest pitch, in plane pixels (hence the zoom scale), plus
-                   the anchor's own slack. */
-                cull_x={width / 2}
-                cull_y={height / 2}
-                cull_r={Math.round(
-                  (Math.max(width, height) * 3.2 * projection.meter_per_pixel) /
-                    Math.max(projection.plane_meter_per_pixel, 1e-6) +
-                    1500,
-                )}
+                /* See the cull circle above. It used to be centred on the
+                   2,048 px anchor and padded to match, which drew about twice
+                   the ground. */
+                cull_x={cull_x}
+                cull_y={cull_y}
+                cull_r={cull_r}
               />
 
               {/* 5 · soft ground contact under each find (and in-range ripples).
@@ -1123,7 +1307,9 @@ export default function PlayMap({
                     </g>
                   );
                 })}
+              </g>
             </svg>
+            </div>
 
             {/* The pulses, as composited HTML rather than animated SVG. */}
             {marker.map((e) => {

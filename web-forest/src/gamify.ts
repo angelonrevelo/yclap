@@ -565,12 +565,12 @@ export interface LeaderboardRow {
   is_seed: boolean;
 }
 
-/** Seeded cohort for hall demos — obvious fake names, fixed scores. */
+/** Seeded cohort for hall demos — fixed scores. The board marks each row "· demo" off `is_seed`, so the name does not say it a second time. */
 export const DEMO_COHORT: Omit<LeaderboardRow, "is_you">[] = [
-  { player_id: "seed-narra", name: "Narra Block (demo)", points: 180, streak_weeks: 3, is_seed: true },
-  { player_id: "seed-molave", name: "Molave Walk (demo)", points: 120, streak_weeks: 2, is_seed: true },
-  { player_id: "seed-lagundi", name: "Lagundi Lane (demo)", points: 70, streak_weeks: 1, is_seed: true },
-  { player_id: "seed-katmon", name: "Katmon Corner (demo)", points: 40, streak_weeks: 1, is_seed: true },
+  { player_id: "seed-narra", name: "Narra Block", points: 180, streak_weeks: 3, is_seed: true },
+  { player_id: "seed-molave", name: "Molave Walk", points: 120, streak_weeks: 2, is_seed: true },
+  { player_id: "seed-lagundi", name: "Lagundi Lane", points: 70, streak_weeks: 1, is_seed: true },
+  { player_id: "seed-katmon", name: "Katmon Corner", points: 40, streak_weeks: 1, is_seed: true },
 ];
 
 export function localLeaderboard(

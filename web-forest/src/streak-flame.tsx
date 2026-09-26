@@ -32,11 +32,24 @@ interface Props {
   is_group?: boolean;
   /** Names the surface uses; here only for the accessible label. */
   label?: string;
+  /**
+   * What the flame sits on. The heat ramp's pale cores are picked for the dark
+   * HUD; on the cream sheet (`var(--mg-surface)`) a `#FFD08A` digit is about
+   * 1.4:1 and a cold white one vanishes, so there the number takes the ink.
+   */
+  tone?: "hud" | "surface";
 }
 
-export default function StreakFlame({ weeks, size = 34, is_group = false, label }: Props) {
+export default function StreakFlame({ weeks, size = 34, is_group = false, label, tone = "hud" }: Props) {
   const heat = heatFor(weeks);
   const is_cold = weeks <= 0;
+  const is_surface = tone === "surface";
+  const digit_color = is_surface
+    ? `rgb(var(--mg-ink-rgb) / ${is_cold ? 0.6 : 0.92})`
+    : is_cold
+      ? "rgba(255,255,255,0.55)"
+      : heat.core;
+  const cold_ring = is_surface ? "rgb(var(--mg-ink-rgb) / 0.25)" : "rgba(255,255,255,0.3)";
   /* Size moves by at most FLAME_MAX_GROWTH across the whole range — rule 2. */
   const scale = flameScale(weeks);
 
@@ -66,7 +79,7 @@ export default function StreakFlame({ weeks, size = 34, is_group = false, label 
           borderRadius: "50%",
           /* The ring is the group marker, and the only size difference between
              the two flames. */
-          border: is_group ? `2px solid ${is_cold ? "rgba(255,255,255,0.3)" : heat.edge}` : "none",
+          border: is_group ? `2px solid ${is_cold ? cold_ring : heat.edge}` : "none",
           background: is_cold ? "transparent" : `radial-gradient(circle, ${heat.glow} 0%, rgba(0,0,0,0) 70%)`,
         }}
       >
@@ -106,7 +119,7 @@ export default function StreakFlame({ weeks, size = 34, is_group = false, label 
         style={{
           fontWeight: 800,
           fontSize: size * 0.42,
-          color: is_cold ? "rgba(255,255,255,0.55)" : heat.core,
+          color: digit_color,
           fontVariantNumeric: "tabular-nums",
         }}
       >

@@ -90,6 +90,18 @@ function bootTask(): Promise<unknown>[] {
     preloadImage(sticker.buddy_map),
     preloadImage(sticker.hiker),
     preloadImage(sticker.buddy_cheer),
+    /* The map opens on your trainer in 3D: fetch the viewer chunk, the model
+       and its still while the splash is up, so the first map frame is not a
+       placeholder. Each resolves either way; none can fail the boot. */
+    import("./character-model").then(
+      () => undefined,
+      () => undefined,
+    ),
+    fetch("/model/agila-trainer.glb").then(
+      (r) => r.arrayBuffer().then(() => undefined),
+      () => undefined,
+    ),
+    preloadImage("/model/agila-trainer-poster.webp"),
   ];
 }
 

@@ -29,7 +29,7 @@
  * itself (`/`, `/index.html`) is always network-first, so a reload is enough
  * to pick up the new build.
  */
-const CACHE_VERSION = "magisphere-v8";
+const CACHE_VERSION = "magisphere-v9";
 /* Deliberately NOT renamed with the shell. The cache key is what a device's
    warmed campus is stored under; renaming it on the Magisphere rename would
    have thrown away every tile banked by "Save offline" on the eve of the
@@ -62,10 +62,15 @@ const TILE_LIMIT = 1400;
    pack under /model/species/ is deliberately NOT listed: it loads on demand
    and precaching it would blow the device budget. */
 const CHARACTER_MODELS = [
-  "/model/character-egg.glb",
-  "/model/character-seedling.glb",
-  "/model/character-sapling.glb",
-  "/model/character-tree.glb",
+  /* The trainer you walk as, its still, and Agila's four stages — what the
+     map and the Journal draw since the 3D trainer landed. The old
+     character-*.glb pots are no longer drawn anywhere on the map. */
+  "/model/agila-trainer.glb",
+  "/model/agila-trainer-poster.webp",
+  "/model/agila-egg.glb",
+  "/model/agila-hatchling.glb",
+  "/model/agila-eaglet.glb",
+  "/model/agila-eagle.glb",
 ];
 /* The spawn pool. 422 KB of real sweep data and the ONLY input to the rotating
    world — without it offline, "Out right now" silently renders nothing, which

@@ -1,4 +1,5 @@
-import { biome_sector } from "./sector.ts";
+import { biome_sector, sectorAt } from "./sector.ts";
+import { observeSubject, POINT_VALUE, type PointEvent, type PointKind } from "./gamify.ts";
 import type { Sighting } from "./journal.ts";
 import type { SpawnPoolEntry } from "./spawn.ts";
 
@@ -136,4 +137,35 @@ export function demoJournal(
   });
 
   return row;
+}
+
+/**
+ * The points a walker who logged `row` would have earned — so the seeded demo
+ * does not open on a full Dex beside "0 pts · LV 1 · 0 wk".
+ *
+ * Derived from the rows rather than written as a fixed total, with the SAME
+ * subject keys the live save uses (`observeSubject`, `sector:<code>`): one
+ * Explore per sector walked, one Observe per species+sector. That keeps the
+ * dedup honest — logging a seeded species again in a seeded sector on stage
+ * pays nothing, exactly as it would for a real walker — and it dates each
+ * event at its find, so the weekly streak counts the weeks the seed spans.
+ * Contributions earn nothing here, as in the app.
+ */
+export function demoPointEvent(row: Sighting[]): PointEvent[] {
+  const out: PointEvent[] = [];
+  const taken = new Set<string>();
+  const add = (kind: PointKind, subject_key: string, at: string) => {
+    const key = `${kind}|${subject_key}`;
+    if (taken.has(key)) return;
+    taken.add(key);
+    out.push({ event_id: `${DEMO_PREFIX}${kind}-${subject_key}`, kind, points: POINT_VALUE[kind], at, subject_key });
+  };
+  const ordered = [...row].sort((a, b) => a.created_at.localeCompare(b.created_at));
+  for (const s of ordered) {
+    if (s.entry_kind !== "badge") continue;
+    const sector = s.lat !== null && s.lon !== null ? sectorAt({ lat: s.lat, lon: s.lon }) : null;
+    if (sector) add("explore", `sector:${sector.sector_code}`, s.created_at);
+    add("observe", observeSubject(s.species_code, sector?.sector_code), s.created_at);
+  }
+  return out;
 }

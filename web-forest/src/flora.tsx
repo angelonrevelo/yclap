@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { byDepth, isCovering, isOverWalker } from "./depth";
+import { byDepth, depthZ, isCovering, isOverWalker, isUnderWalker, type Standee } from "./depth";
 import type { LatLon } from "./geo";
 import type { Projection } from "./tile-map";
 import { ToonPlant, TOON_ASPECT, type ToonShape } from "./toon";
@@ -26,6 +26,16 @@ import { ToonPlant, TOON_ASPECT, type ToonShape } from "./toon";
  * every find — even a tree fifty metres behind it. Now a find behind a tree is
  * behind it and one in front is in front, and a tree that stands in front of a
  * find goes see-through where it covers it, the way it does for the walker.
+ *
+ * The walker and the buddy stand in the same layer. Each standee's `zIndex` is
+ * its foot's screen row (`depthZ`), so the buddy trailing behind the walker is
+ * behind them, and an egg a step further back than a tree is behind the tree —
+ * instead of both living in fixed bands where whoever rendered last won.
+ *
+ * Distance is fog, not a cut. Every standee fades by `projection.fogOf` of its
+ * own perspective scale — the rule the ground rows are fogged by in
+ * `horizon.tsx` — and is dropped only once it has faded out, so nothing blinks
+ * into existence at a fixed line on the glass.
  */
 
 export interface Tuft extends LatLon {
@@ -83,6 +93,10 @@ export interface GlassFind {
   w: number;
   h: number;
   node: ReactNode;
+  /** 0 clear … 1 lost in the fog, from its distance (`projection.fogOf`). */
+  fog: number;
+  /** Close enough to log. Never hidden behind the walker — see `isUnderWalker`. */
+  is_in_reach: boolean;
 }
 
 interface Props {
@@ -93,34 +107,42 @@ interface Props {
   centre: LatLon;
   /** Finds and the walker: nothing is painted on top of these. */
   keep_clear: readonly LatLon[];
-  walker_screen_y: number | null;
-  walker_x: number | null;
+  /** The walker, standing in this layer: foot, drawn size, and the figure itself. */
+  walker: (Standee & { node: ReactNode }) | null;
   is_night: boolean;
+  /** The buddy. It sorts itself (`depthZ` of its own foot) inside this layer. */
+  children?: ReactNode;
 }
 
-export default function Flora({ tuft, find, projection, centre, keep_clear, walker_screen_y, walker_x, is_night }: Props) {
-  const { project, toScreen, width, height, meter_per_pixel } = projection;
-  const drawn: { key: number; x: number; y: number; w: number; h: number; shape: Shape; dark: boolean }[] = [];
+export default function Flora({ tuft, find, projection, centre, keep_clear, walker, is_night, children }: Props) {
+  const { project, toScreen, width, height, meter_per_pixel, fogOf } = projection;
+  let drawn: { key: number; x: number; y: number; w: number; h: number; shape: Shape; dark: boolean; fade: number; meter: number }[] = [];
   const lat_span = DRAW_RADIUS_M / 111_320;
   const lon_span = lat_span / Math.cos((centre.lat * Math.PI) / 180);
   for (let i = 0; i < tuft.length; i += 1) {
     const t = tuft[i];
     if (Math.abs(t.lat - centre.lat) > lat_span || Math.abs(t.lon - centre.lon) > lon_span) continue;
     if (keep_clear.some((k) => meterBetween(k, t) < CLEAR_RADIUS_M)) continue;
-    const at = toScreen(project(t));
+    const meter = meterBetween(centre, t);
+    if (meter > DRAW_RADIUS_M) continue;
+    const plane = project(t);
+    const at = toScreen(plane);
     if (at.scale <= 0) continue;
+    /* Faded by distance, twice: the fog, and the edge of the draw radius, so
+       neither the fog line nor the radius is a line a tree pops across. */
+    const fade = (1 - fogOf(plane)) * Math.min(1, (DRAW_RADIUS_M - meter) / (DRAW_RADIUS_M * 0.25));
+    if (fade < 0.03) continue;
     const shape = shapeOf(t, i);
     const h_m = heightOf(shape, t);
     const px_per_m = at.scale / Math.max(meter_per_pixel, 0.001);
     const h = Math.min(300, Math.max(16, h_m * px_per_m));
     const w = h * TOON_ASPECT[shape];
-    /* 0.36: the raked plane's far edge sits at about a third of the glass,
-       under the haze. Past it there is no ground to stand a tree on, and one
-       drawn there floats in the sky. */
-    if (at.x + w / 2 < 0 || at.x - w / 2 > width || at.y < height * 0.36 || at.y - h > height) continue;
-    drawn.push({ key: i, x: at.x, y: at.y, w, h, shape, dark: t.dark });
-    if (drawn.length >= MAX_DRAWN) break;
+    if (at.x + w / 2 < 0 || at.x - w / 2 > width || at.y < projection.horizon.y || at.y - h > height) continue;
+    drawn.push({ key: i, x: at.x, y: at.y, w, h, shape, dark: t.dark, fade, meter });
   }
+  /* The nearest `MAX_DRAWN`, not the first found: past the cap it is the far,
+     already faint ones that go. */
+  if (drawn.length > MAX_DRAWN) drawn = drawn.sort((a, b) => a.meter - b.meter).slice(0, MAX_DRAWN);
   /* Painter's order, trees and finds together: further up the glass is
      further away, and paints first. */
   const standee: ({ kind: "tree"; tree: (typeof drawn)[number]; y: number } | { kind: "find"; find: GlassFind; y: number })[] = [
@@ -128,24 +150,39 @@ export default function Flora({ tuft, find, projection, centre, keep_clear, walk
     ...find.map((f) => ({ kind: "find" as const, find: f, y: f.y })),
   ];
   standee.sort(byDepth);
-  /* In front of the walker when nearer the camera than them. Finds and trees
-     share the two bands so the painter's order above holds inside each. */
-  const walker = walker_screen_y !== null && walker_x !== null ? { x: walker_x, y: walker_screen_y } : null;
-  const zOf = (y: number) => (walker_screen_y !== null && y > walker_screen_y ? 7 : 5);
+  const walker_z = walker ? depthZ(walker.y) : 0;
   return (
-    /* No z-index, opacity or filter on this wrapper: any of them would make it
-       a stacking context, and then no tree could stand in front of the walker. */
-    <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+    /* One stacking context for everything that stands: its z-index (5) puts
+       the lot over the labels (4), the skyline (2) and the sky and fog (1);
+       inside it each standee's own `depthZ` is the painter's order. */
+    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 5 }}>
+      {walker && (
+        <div style={{ position: "absolute", left: 0, top: 0, zIndex: walker_z }}>{walker.node}</div>
+      )}
+      {children}
       {standee.map((s) => {
         if (s.kind === "find") {
           const f = s.find;
           /* A find in front of the walker and over them lets them show through,
              the same rule the trees below keep. */
           const is_find_over_walker = isOverWalker(f, walker);
+          /* One just BEHIND them, inside their figure, and in reach — the toast
+             is saying "tap it" — is lifted over the walker and drawn the same
+             see-through way, so arriving at a find looks the same from either
+             side instead of hiding it behind your own body. */
+          const is_lifted = f.is_in_reach && isUnderWalker(f, walker);
+          const opacity = is_find_over_walker || is_lifted ? 0.55 * (1 - f.fog) : 1 - f.fog;
           return (
             <div
               key={`find-${f.key}`}
-              style={{ position: "absolute", left: 0, top: 0, zIndex: zOf(f.y), pointerEvents: "auto", opacity: is_find_over_walker ? 0.55 : undefined }}
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                zIndex: is_lifted ? walker_z + 1 : depthZ(f.y),
+                pointerEvents: f.fog > 0.6 ? "none" : "auto",
+                opacity: opacity < 0.999 ? opacity : undefined,
+              }}
             >
               {f.node}
             </div>
@@ -168,9 +205,9 @@ export default function Flora({ tuft, find, projection, centre, keep_clear, walk
             top: d.y - d.h,
             width: d.w,
             height: d.h,
-            zIndex: zOf(d.y),
-            /* A distant tree is also a hazier one. */
-            opacity: is_over_walker || is_over_find ? 0.4 : Math.min(1, 0.55 + (d.y / height) * 0.6),
+            zIndex: depthZ(d.y),
+            /* A distant tree is a fogged one — see `fade`. */
+            opacity: is_over_walker || is_over_find ? Math.min(0.4, d.fade) : d.fade < 0.999 ? d.fade : undefined,
           }}
         >
           <div className="fl-sway" style={{ width: "100%", height: "100%", animationDelay: `${-(d.key % 13) * 0.43}s` }}>
