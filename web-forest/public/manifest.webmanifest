@@ -7,8 +7,8 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#F9F9F9",
-  "theme_color": "#008653",
+  "background_color": "#312E2B",
+  "theme_color": "#262421",
   "categories": ["education", "navigation"],
   "icons": [
     {
@@ -24,13 +24,13 @@
       "purpose": "any"
     },
     {
-      "src": "/brand/icon-512.png",
+      "src": "/brand/icon-512-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/brand/mark-plant.svg",
+      "src": "/brand/magi/app-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1600" width="800" height="1600" role="img" preserveAspectRatio="xMidYMin slice">
+<title>Magisphere app backdrop</title>
+<defs><linearGradient id="ab" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8FD0F7"/><stop offset="0.35" stop-color="#E4F6FF"/><stop offset="0.36" stop-color="#EAF8E4"/><stop offset="1" stop-color="#F4FBEF"/></linearGradient></defs>
+  <rect width="800" height="1600" fill="url(#ab)"/>
+  <g transform="translate(139.54 115.2) scale(1)">
+    <path d="M-60,20 C-80,20 -84,-4 -64,-8 C-66,-30 -36,-38 -24,-22 C-18,-46 22,-48 28,-20 C44,-32 70,-18 60,2 C80,4 78,20 60,20 Z" fill="#fff"/>
+    <path d="M-60,20 C-70,20 -76,12 -72,6 C-50,14 20,14 74,8 C76,16 70,20 60,20 Z" fill="#AADCFC" opacity="0.7"/>
+  </g><g transform="translate(435.62 152.93) scale(1.06)">
+    <path d="M-60,20 C-80,20 -84,-4 -64,-8 C-66,-30 -36,-38 -24,-22 C-18,-46 22,-48 28,-20 C44,-32 70,-18 60,2 C80,4 78,20 60,20 Z" fill="#fff"/>
+    <path d="M-60,20 C-70,20 -76,12 -72,6 C-50,14 20,14 74,8 C76,16 70,20 60,20 Z" fill="#AADCFC" opacity="0.7"/>
+  </g><g transform="translate(711.64 248.82) scale(1)">
+    <path d="M-60,20 C-80,20 -84,-4 -64,-8 C-66,-30 -36,-38 -24,-22 C-18,-46 22,-48 28,-20 C44,-32 70,-18 60,2 C80,4 78,20 60,20 Z" fill="#fff"/>
+    <path d="M-60,20 C-70,20 -76,12 -72,6 C-50,14 20,14 74,8 C76,16 70,20 60,20 Z" fill="#AADCFC" opacity="0.7"/>
+  </g>
+  <path d="M0,560 Q200,500 400,548 T800,530 L800,600 L0,600 Z" fill="#CFEFB4"/>
+  <path d="M0,580 Q220,540 430,574 T800,560 L800,620 L0,620 Z" fill="#B6E394" opacity="0.7"/>
+</svg>

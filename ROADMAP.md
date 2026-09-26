@@ -69,8 +69,9 @@ Suggested Ma'am walkthrough: Home (points + local leaderboard), then Map with De
 | Local leaderboard (P0) | Seeded demo cohort + device user; explicit demo/local labelling |
 | Challenges + Buddy (P1) | Optional goals with progress; Buddy stages from weekly participation |
 | Local obs statuses (P2 scaffold) | Verified / Needs ID / Duplicate as journal labels only |
-| Game UI | chess.com design system across every surface (dark charcoal, green primary, Nunito); trainer level shown from points; Dex as numbered collectible cards. See `web-forest/README.md` § Look and feel |
-| Illustrated icon set | 26 full-colour game icons (Go, Dex, Nearby, Plan, streak, trophy, points, quest, lock, and every kit icon), generated and keyed to RGBA. Regeneration in `web-forest/script/icon/` |
+| Game UI | chess.com design system across every surface (dark charcoal, green primary with chess.com's full inset lighting, Go as a pressable key, Nunito) with the Magisphere Sprout as the walker and avatar; trainer level shown from points; Dex as numbered collectible cards. A light poster chrome was tried 09-23 and rolled back 09-24. See `web-forest/README.md` § Look and feel |
+| Illustrated icon set | 26 full-colour chess.com-style game and kit icons (Go, Dex, Nearby, Plan, streak, trophy, points, quest, lock, and every kit icon) plus the Settings art, generated and keyed to RGBA. Regeneration in `web-forest/script/icon/` |
+| Magisphere asset kit | Sprout buddy + explorer + four stage stickers (codex, palette-locked; the stages are the in-app walker), vector mark / wordmark / lockups / app icon / scenes / 12 print icons, and a rendered marketing kit (poster, social, OG, banner, sticker + brand sheets). `docs/brand/magisphere/` |
 | Street-level play camera | Play map opens at z22, so a street fills the phone screen |
 
 Older cohort desk work (canvas, rubrics, worksheets) remains in `docs/`. It is program support, not Magisphere app features.

@@ -21,31 +21,10 @@
   --shadow-card: 0 10px 28px rgba(21, 77, 48, 0.10);
   --grad-forest: linear-gradient(115deg, #55d334, #008653);
   --grad-lagoon: linear-gradient(115deg, #058cd6, #45c223);
-  /* Magisphere brand, sampled off the FINAL Canva publication material
-     (2026-09-09 export, boards 2/3/5/8) — not the earlier "ecomon" kit sheet,
-     which the export still carries as board 9 and which is superseded. The
-     app was briefly repainted from that older sheet; bark/lime/ultramarine is
-     not the brand and is gone.
-
-       forest  #154D30  the wordmark
-       green   #3E9A5E  section pills
-       blue    #3463B5  the secondary pill colour on the boards
-       mist    #EBFDEF  the pale ground the content cards sit on
-  */
-  --brand-forest: #154d30;
-  --brand-green: #3e9a5e;
-  --brand-blue: #3463b5;
-  --brand-mist: #ebfdef;
-  --brand-cream: #f7faf6;
-  --grad-brand: linear-gradient(115deg, #154d30, #3e9a5e 55%, #3463b5);
-  /* The two ROLES the one green used to serve, still separated — that split
-     was right and survives the repaint. --ui-accent is chrome: nav, buttons,
-     section headings, the app's frame. --eco-green is meaning: Native, a
-     walked sector, a living thing. They must stay distinguishable, so chrome
-     takes the brand's DEEP forest and ecology keeps the lighter #008653. */
-  --ui-accent: #154d30;
-  --ui-accent-ink: #0b3a20;
-  --eco-green: #008653;
+  /* The game chrome palette is the chess.com `--cc-*` set in game.css; the
+     Magisphere character art is locked to its own palette (docs/brand/
+     magisphere). The 09-09 `--brand-*` / `--ui-accent` sample that sat here
+     was never read by any rule, and was removed. */
 }
 
 html,

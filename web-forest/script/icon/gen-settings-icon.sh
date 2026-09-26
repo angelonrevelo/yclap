@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Generate the Settings-tab icon set through codex's image_gen tool.
 #
-# Same contract as the 26-icon game set already in src/asset/icon/game: rendered
+# Same contract as the 26-icon set in src/asset/icon (the game ten of which were
+# replaced by the vector set in src/asset/magi/icon on 09-23): rendered
 # on a FLAT MAGENTA ground, keyed out afterwards by keyer.py, restricted to the
 # chess.com-ish palette in icon-spec.json. Magenta is the key colour and must
 # therefore never appear in the art itself — that is the one rule that, broken,

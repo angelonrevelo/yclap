@@ -357,7 +357,7 @@ export default function PlayMap({
                 inset: 0,
                 pointerEvents: "none",
                 background:
-                  "linear-gradient(180deg, #BCD9EA 0%, #C9E1E3 10%, rgba(210,232,210,0.9) 18%, rgba(214,234,206,0.5) 25%, rgba(214,234,206,0) 33%)",
+                  "linear-gradient(180deg, #8FD0F7 0%, #C6E8FB 10%, rgba(214,238,210,0.9) 18%, rgba(214,238,206,0.5) 25%, rgba(214,238,206,0) 33%)",
               }}
             />
             {/* The campus, standing up. Under the sky, over the ground, and
@@ -485,6 +485,21 @@ export default function PlayMap({
                   <rect width="10" height="10" fill="rgba(120,86,58,0.14)" />
                   <line x1="0" y1="0" x2="0" y2="10" stroke="rgba(96,66,40,0.5)" strokeWidth="2.4" />
                 </pattern>
+                {/* Grass, the posters' way: tufts and the odd plumeria over the
+                    measured fill. It only ever sits on biome ground, so asphalt
+                    stays asphalt; the fill underneath still carries the data. */}
+                <pattern id="pm-grass" width="46" height="46" patternUnits="userSpaceOnUse">
+                  <path
+                    d="M6,14 q1,-6 -2,-9 q5,3 5,9 q1,-7 5,-10 q-3,5 -2,10 M28,36 q1,-6 -2,-9 q5,3 5,9 q1,-7 5,-10 q-3,5 -2,10"
+                    fill="none"
+                    stroke="rgba(18,78,38,0.26)"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                  />
+                  <path d="M30,10 q2,-4 5,-5 M12,34 q2,-4 5,-5" fill="none" stroke="rgba(255,255,220,0.35)" strokeWidth="1.6" strokeLinecap="round" />
+                  <circle cx="40" cy="22" r="2.1" fill="rgba(255,255,255,0.8)" />
+                  <circle cx="40" cy="22" r="0.8" fill="rgba(245,200,66,0.95)" />
+                </pattern>
               </defs>
 
               {/* 1 · sector fills — the map itself */}
@@ -517,6 +532,11 @@ export default function PlayMap({
                   />
                 );
               })}
+              {sector_row
+                .filter((row) => row.is_biome)
+                .map((row) => (
+                  <path key={`g${row.sector_code}`} d={ringPath(row.point, project, true)} fill="url(#pm-grass)" stroke="none" />
+                ))}
 
               {/* 2 · where each building MEETS the ground.
                      The building itself is a prism drawn in screen space by

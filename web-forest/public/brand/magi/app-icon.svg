@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img">
+<title>Magisphere app icon</title>
+<defs>
+    <linearGradient id="ai-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7FC8F5"/>
+      <stop offset="0.62" stop-color="#E4F6FF"/>
+      <stop offset="0.62" stop-color="#7CC84A"/>
+      <stop offset="1" stop-color="#3E9A4A"/>
+    </linearGradient>
+    <clipPath id="ai-tile"><rect width="512" height="512" rx="116"/></clipPath>
+  </defs>
+  <g clip-path="url(#ai-tile)">
+  <rect width="512" height="512" fill="url(#ai-sky)"/>
+  <path d="M0,330 C120,300 200,340 290,322 C380,304 440,320 512,300 L512,512 L0,512 Z" fill="#7CC84A"/>
+  <path d="M0,392 C110,360 230,410 330,384 C420,362 470,380 512,372 L512,512 L0,512 Z" fill="#3E9A4A"/>
+  </g>
+  <g transform="translate(51.2 122.93) scale(1.71)"><defs>
+    <linearGradient id="ai-m-sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8ED3FA"/>
+      <stop offset="0.6" stop-color="#58B8E8"/>
+      <stop offset="1" stop-color="#2F80D8"/>
+    </linearGradient>
+    <linearGradient id="ai-m-orbit" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7CC84A"/>
+      <stop offset="0.55" stop-color="#3E9A4A"/>
+      <stop offset="1" stop-color="#279CAD"/>
+    </linearGradient>
+    <clipPath id="ai-m-dome"><path d="M42,150 A78,78 0 0 1 198,150 Z"/></clipPath>
+  </defs>
+  <path d="M42,150 A78,78 0 0 1 198,150 Z" fill="url(#ai-m-sea)"/>
+  <g clip-path="url(#ai-m-dome)">
+    <path d="M40,120 C58,104 76,112 88,100 C98,90 92,78 106,76 C120,74 124,90 116,104 C108,118 124,126 118,140 C112,154 84,152 70,156 L40,156 Z" fill="#7CC84A"/>
+    <path d="M40,138 C54,130 70,138 78,150 L40,156 Z" fill="#3E9A4A"/>
+    <path d="M88,100 C98,90 92,78 106,76 C112,76 116,82 114,90 C104,86 96,94 88,100 Z" fill="#C8E88C"/>
+    <path d="M140,96 C152,84 172,88 180,100 C190,112 204,112 206,130 L206,156 L162,156 C170,140 150,138 146,124 C142,112 132,106 140,96 Z" fill="#7CC84A"/>
+    <path d="M162,156 C170,140 150,138 146,124 C156,134 176,136 186,156 Z" fill="#3E9A4A"/>
+    <path d="M132,60 C142,54 156,58 154,68 C150,76 136,76 132,60 Z" fill="#7CC84A"/>
+    <path d="M56,100 C80,78 140,60 178,90" fill="none" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <path d="M42,150 A78,78 0 0 1 198,150 Z" fill="none" stroke="#0E3B2A" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M24,156 A98,92 0 0 1 206,86" fill="none" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round"/>
+  <path d="M24,156 A98,92 0 0 1 206,86" fill="none" stroke="url(#ai-m-orbit)" stroke-width="11" stroke-linecap="round"/>
+  <g transform="translate(204 88) rotate(-58)">
+    <path d="M0,0 C12.32,-15.84 34.32,-14.26 44,0 C34.32,14.26 12.32,15.84 0,0 Z" fill="#7CC84A" stroke="#0E3B2A" stroke-width="3.08" stroke-linejoin="round"/>
+    <path d="M5.28,2.2 C17.6,8.8 33,6.16 40.48,0 C30.8,10.56 13.2,11.44 5.28,2.2 Z" fill="#3E9A4A"/>
+    <path d="M4.4,0 Q22,-1.32 37.84,0" fill="none" stroke="#0E3B2A" stroke-width="1.69" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(206 92) rotate(8)">
+    <path d="M0,0 C10.64,-13.68 29.64,-12.31 38,0 C29.64,12.31 10.64,13.68 0,0 Z" fill="#7CC84A" stroke="#0E3B2A" stroke-width="2.66" stroke-linejoin="round"/>
+    <path d="M4.56,1.9 C15.2,7.6 28.5,5.32 34.96,0 C26.6,9.12 11.4,9.88 4.56,1.9 Z" fill="#3E9A4A"/>
+    <path d="M3.8,0 Q19,-1.14 32.68,0" fill="none" stroke="#0E3B2A" stroke-width="1.46" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(30 150) rotate(-150)">
+    <path d="M0,0 C7.28,-9.36 20.28,-8.42 26,0 C20.28,8.42 7.28,9.36 0,0 Z" fill="#7CC84A" stroke="#0E3B2A" stroke-width="1.82" stroke-linejoin="round"/>
+    <path d="M3.12,1.3 C10.4,5.2 19.5,3.64 23.92,0 C18.2,6.24 7.8,6.76 3.12,1.3 Z" fill="#3E9A4A"/>
+    <path d="M2.6,0 Q13,-0.78 22.36,0" fill="none" stroke="#0E3B2A" stroke-width="1" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(30 152) rotate(160)">
+    <path d="M0,0 C6.16,-7.92 17.16,-7.13 22,0 C17.16,7.13 6.16,7.92 0,0 Z" fill="#C8E88C" stroke="#0E3B2A" stroke-width="1.54" stroke-linejoin="round"/>
+    <path d="M2.64,1.1 C8.8,4.4 16.5,3.08 20.24,0 C15.4,5.28 6.6,5.72 2.64,1.1 Z" fill="#7CC84A"/>
+    <path d="M2.2,0 Q11,-0.66 18.92,0" fill="none" stroke="#0E3B2A" stroke-width="0.85" stroke-linecap="round"/>
+  </g>
+  <path transform="translate(188 32)" d="M0,-20 Q4,-4 20,0 Q4,4 0,20 Q-4,4 -20,0 Q-4,-4 0,-20 Z" fill="#FFFFFF"/>
+  <path transform="translate(188 32)" d="M0,-15 Q3,-3 15,0 Q3,3 0,15 Q-3,3 -15,0 Q-3,-3 0,-15 Z" fill="#F59A23"/>
+  <path transform="translate(214 58)" d="M0,-6 Q1.2,-1.2 6,0 Q1.2,1.2 0,6 Q-1.2,1.2 -6,0 Q-1.2,-1.2 0,-6 Z" fill="#F5C842"/></g>
+</svg>

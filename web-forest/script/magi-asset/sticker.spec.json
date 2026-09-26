@@ -1,0 +1,76 @@
+{
+  "out": "src/asset/magi/sticker",
+  "anchor": "buddy-sprout",
+  "timeoutSec": 720,
+  "contract": {
+    "width": 1024,
+    "height": 1024,
+    "palette": [
+      "#FF00FF",
+      "#FFFFFF",
+      "#0E3B2A",
+      "#114B2F",
+      "#11646C",
+      "#279CAD",
+      "#3E9A4A",
+      "#7CC84A",
+      "#C8E88C",
+      "#AADCFC",
+      "#2F80D8",
+      "#F5C842",
+      "#F59A23",
+      "#FFF6DC",
+      "#A8582C",
+      "#6B3519",
+      "#E8483A"
+    ],
+    "maxDistinct": 17,
+    "keyOut": true,
+    "opaque": false,
+    "minInkShare": 0.06
+  },
+  "style": "STYLE: a cheerful hand-drawn STICKER illustration for a nature-exploration game about native Philippine trees on a university campus. Chunky rounded shapes, friendly and bouncy, like a premium kids' nature app sticker sheet. Every subject has a confident dark forest-green outline (about 2% of canvas width, uniform, rounded joins) and then a thick clean WHITE sticker border around the whole silhouette. FLAT CEL SHADING ONLY: each surface is one base colour plus at most one darker shadow shape and one lighter highlight shape, all hard-edged. COLOURS: use only lush leaf greens, deep forest green, teal, sky blue, sunny yellow, warm orange, cream, warm wood brown and a little tomato red. BANNED: any pink, magenta, purple or violet anywhere inside the subject; gradients; airbrush; soft glow; drop shadows; noise; paper texture; stippling; hatching; photorealism; 3D render look; text, letters, numbers, logos or watermarks of any kind; chess pieces or boards; dark or black backgrounds.",
+  "framing": "FRAMING: one single subject, centred, filling about 70% of a square canvas, with generous even margin on all sides and nothing touching the edge. BACKGROUND: a perfectly flat, uniform #FF00FF magenta, edge to edge, with no scenery, no floor, no cast shadow and no vignette; magenta is ground only and is keyed out afterwards, so it must never appear inside the subject. Save the raw image; do not crop, resize, recolour or post-process it.",
+  "item": [
+    {
+      "name": "buddy-sprout",
+      "subject": "the game's companion mascot 'Sprout': a small round chubby cream-white seed-bean creature with a soft pear-shaped body, two big glossy dark eyes with white shine dots, rosy orange cheeks, a tiny happy open smile, stubby little arms raised in a wave, and two fat bright-green leaves sprouting from the top of its head like a seedling. Front three-quarter view, standing."
+    },
+    {
+      "name": "buddy-cheer",
+      "subject": "the same Sprout mascot jumping with joy, both stubby arms up, eyes closed in happy arcs, mouth wide open laughing, head leaves flared up, three small orange four-point sparkles around it"
+    },
+    {
+      "name": "buddy-map",
+      "subject": "the same Sprout mascot holding open a small folded green-and-teal campus map with both hands, peeking over it with a curious happy face"
+    },
+    {
+      "name": "buddy-sleep",
+      "subject": "the same Sprout mascot curled up asleep on a small round green leaf, eyes closed, a tiny smile, head leaves drooping gently, one small cream crescent moon floating beside it"
+    },
+    {
+      "name": "stage-seed",
+      "subject": "a single glossy cream-and-yellow seed egg with a tiny green sprout curl poking out of a small crack at its top, sitting on a little mound of green grass, with a cute sleepy face on the seed"
+    },
+    {
+      "name": "stage-seedling",
+      "subject": "a tiny seedling version of the Sprout mascot: a small cream bean body with a happy face, only two small round green leaves on top, standing in a little patch of grass"
+    },
+    {
+      "name": "stage-sapling",
+      "subject": "a sapling version of the Sprout mascot: taller cream body with a happy face, a slender green stem growing from its head carrying five fresh leaves in a small bushy crown, standing proudly"
+    },
+    {
+      "name": "stage-tree",
+      "subject": "a fully grown friendly tree character: a thick warm-brown trunk with a gentle happy face and rosy cheeks, a big round cloud-like crown of lush layered green leaves with a few yellow blossoms, sturdy roots on a small grassy mound"
+    },
+    {
+      "name": "hiker",
+      "subject": "a second mascot, the Explorer: a round sunny-yellow bean-shaped creature with a big open happy grin and dot eyes, carrying a leaf-green backpack with a rolled sleeping mat, striding forward mid-walk with one fist pumped, energetic and adventurous. Side three-quarter view."
+    },
+    {
+      "name": "buddy-trail",
+      "subject": "the same Sprout mascot wearing a leaf-green hiking backpack with a rolled mat, holding up and reading a paper trail map, mouth open in excitement"
+    }
+  ]
+}

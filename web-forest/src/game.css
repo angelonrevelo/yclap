@@ -40,25 +40,55 @@
   font-weight: 800;
 }
 
-/* The chess.com primary: green gradient, inset light on top, inset shade underneath. */
+/* The chess.com primary, the whole recipe off chess.com's own `.cc-bg-primary`
+   (purplegradient/megathread/chess): a green gradient lit by four inset layers —
+   a hairline of light on top, a soft glow under it, a dark rim at the bottom
+   and a shade above that rim — then two small drop shadows. The first cut
+   copied only the two hairlines and read as a flat green rectangle. The
+   pressed state sinks: the drop shadows go and it moves down a pixel. */
 .cc-btn-primary {
   color: #fff;
+  font-family: var(--cc-heading);
+  font-weight: 800;
   background: linear-gradient(180deg, var(--cc-green-300) 0%, var(--cc-green-400) 100%);
-  box-shadow: inset 0 1px 0 0 rgba(178, 224, 104, 0.4), inset 0 -1px 0 0 var(--cc-green-500);
+  box-shadow:
+    inset 0 1px 0 0 rgba(216, 250, 157, 0.4),
+    inset 0 2px 4px 0 rgba(178, 224, 104, 0.5),
+    inset 0 -1px 0 0 var(--cc-green-500),
+    inset 0 -2px 4px 0 rgba(69, 117, 60, 0.5),
+    0 1px 2px 0 rgba(0, 0, 0, 0.14),
+    0 2px 4px 0 rgba(0, 0, 0, 0.1);
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
-  transition: filter var(--cc-motion);
+  transition: filter var(--cc-motion), transform var(--cc-motion);
 }
 .cc-btn-primary:hover {
   filter: brightness(1.06);
 }
 .cc-btn-primary:active {
   filter: brightness(0.94);
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 1px 0 0 rgba(216, 250, 157, 0.3),
+    inset 0 -1px 0 0 var(--cc-green-500),
+    inset 0 -2px 4px 0 rgba(69, 117, 60, 0.5);
 }
 
 .cc-btn-secondary {
   color: var(--cc-text-boldest);
+  font-weight: 800;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.06) 100%);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 0 rgba(0, 0, 0, 0.25);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.3),
+    0 1px 2px 0 rgba(0, 0, 0, 0.14),
+    0 2px 4px 0 rgba(0, 0, 0, 0.1);
+  transition: filter var(--cc-motion), transform var(--cc-motion);
+}
+.cc-btn-secondary:hover {
+  filter: brightness(1.12);
+}
+.cc-btn-secondary:active {
+  transform: translateY(1px);
 }
 
 .gm-ico {
@@ -399,13 +429,25 @@
   border-radius: 16px;
   display: grid;
   place-items: center;
-  box-shadow: inset 0 1px 0 0 rgba(178, 224, 104, 0.45), inset 0 -2px 0 0 var(--cc-green-500), 0 8px 20px rgba(0, 0, 0, 0.4);
-  background: linear-gradient(180deg, var(--cc-green-300) 0%, var(--cc-green-400) 100%);
-  transition: filter var(--cc-motion), transform var(--cc-motion);
+  /* The primary's lighting, standing on a solid 4 px lip of the deepest green
+     so it reads as a key you press, not a tile. Pressing sinks it onto the lip. */
+  box-shadow:
+    inset 0 1px 0 0 rgba(216, 250, 157, 0.5),
+    inset 0 3px 6px 0 rgba(178, 224, 104, 0.45),
+    inset 0 -3px 6px 0 rgba(69, 117, 60, 0.45),
+    0 4px 0 0 var(--cc-green-500),
+    0 10px 22px rgba(0, 0, 0, 0.45);
+  background: linear-gradient(180deg, var(--cc-green-200) 0%, var(--cc-green-300) 45%, var(--cc-green-400) 100%);
+  transition: filter var(--cc-motion), transform 90ms ease, box-shadow 90ms ease;
 }
 .gm-go:active .gm-go-core {
   filter: brightness(0.94);
-  transform: translateY(1px);
+  transform: translateY(3px);
+  box-shadow:
+    inset 0 1px 0 0 rgba(216, 250, 157, 0.35),
+    inset 0 -3px 6px 0 rgba(69, 117, 60, 0.45),
+    0 1px 0 0 var(--cc-green-500),
+    0 4px 10px rgba(0, 0, 0, 0.4);
 }
 .gm-go-core .gm-ico {
   width: 46px;

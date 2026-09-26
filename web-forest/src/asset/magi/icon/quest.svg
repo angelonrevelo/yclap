@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img">
+<title>Quest — the trail sign</title>
+<defs><filter id="sticker" x="-20%" y="-20%" width="140%" height="140%">
+  <feMorphology in="SourceAlpha" operator="dilate" radius="4" result="grow"/>
+  <feFlood flood-color="#fff"/><feComposite in2="grow" operator="in" result="edge"/>
+  <feMerge><feMergeNode in="edge"/><feMergeNode in="SourceGraphic"/></feMerge>
+</filter></defs>
+<g filter="url(#sticker)">
+
+  <rect x="42" y="30" width="10" height="54" rx="3" fill="#6B3519" stroke="#0E3B2A" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M14,20 L66,20 L82,34 L66,48 L14,48 Z" fill="#A8582C" stroke="#0E3B2A" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M20,28 L60,28" stroke="#6B3519" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+  <path d="M22,40 L54,40" stroke="#6B3519" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+  <path d="M28,86 Q30,72 36,68 Q36,78 40,86 Z M54,86 Q58,70 64,66 Q62,78 60,86 Z" fill="#7CC84A" stroke="#0E3B2A" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M18,86 L78,86" stroke="#0E3B2A" stroke-width="3.5" stroke-linecap="round"/>
+  <g transform="translate(70 74)"><ellipse cx="0" cy="-4.95" rx="3.78" ry="5.4" transform="rotate(0)" fill="#FFFFFF" stroke="#0E3B2A" stroke-opacity="0.18" stroke-width="0.54"/><ellipse cx="0" cy="-4.95" rx="3.78" ry="5.4" transform="rotate(72)" fill="#FFFFFF" stroke="#0E3B2A" stroke-opacity="0.18" stroke-width="0.54"/><ellipse cx="0" cy="-4.95" rx="3.78" ry="5.4" transform="rotate(144)" fill="#FFFFFF" stroke="#0E3B2A" stroke-opacity="0.18" stroke-width="0.54"/><ellipse cx="0" cy="-4.95" rx="3.78" ry="5.4" transform="rotate(216)" fill="#FFFFFF" stroke="#0E3B2A" stroke-opacity="0.18" stroke-width="0.54"/><ellipse cx="0" cy="-4.95" rx="3.78" ry="5.4" transform="rotate(288)" fill="#FFFFFF" stroke="#0E3B2A" stroke-opacity="0.18" stroke-width="0.54"/><circle r="2.34" fill="#F5C842"/></g>
+</g>
+</svg>

@@ -43,6 +43,16 @@ import game_points from "./icon/game/points.png";
 import game_quest from "./icon/game/quest.png";
 import game_streak from "./icon/game/streak.png";
 import game_trophy from "./icon/game/trophy.png";
+import sticker_buddy_sprout from "./magi/web/buddy-sprout.webp";
+import sticker_buddy_cheer from "./magi/web/buddy-cheer.webp";
+import sticker_buddy_map from "./magi/web/buddy-map.webp";
+import sticker_buddy_sleep from "./magi/web/buddy-sleep.webp";
+import sticker_buddy_trail from "./magi/web/buddy-trail.webp";
+import sticker_hiker from "./magi/web/hiker.webp";
+import sticker_stage_seed from "./magi/web/stage-seed.webp";
+import sticker_stage_seedling from "./magi/web/stage-seedling.webp";
+import sticker_stage_sapling from "./magi/web/stage-sapling.webp";
+import sticker_stage_tree from "./magi/web/stage-tree.webp";
 import empty_journal from "./spot/empty_journal.png";
 import success_log from "./spot/success_log.png";
 import log_sighting from "./spot/log_sighting.png";
@@ -85,6 +95,7 @@ export const icon = {
  * Game icons — chess.com-style illustrated set generated with `codex` (gpt-image-2)
  * on a magenta key, keyed to RGBA with soft edges (09-14). Full colour on purpose:
  * these sit on the dark chess.com surfaces, not on paper like the kit glyphs above.
+ * Kept over the flat vector set in `magi/icon` (09-24): the 3D ones read as a game.
  */
 export const game_icon = {
   dex: game_dex,
@@ -97,6 +108,29 @@ export const game_icon = {
   quest: game_quest,
   streak: game_streak,
   trophy: game_trophy,
+};
+
+/**
+ * The Magisphere sticker set — the Sprout buddy, its four growth stages and the
+ * explorer, generated with `codex` (gpt-image-2) on a magenta key and remapped
+ * to the brand palette (`script/magi-asset/sticker.spec.json`). 1024 px masters
+ * sit in `magi/sticker`; these are the trimmed 400 px WebP copies the app ships.
+ */
+export const sticker = {
+  buddy_sprout: sticker_buddy_sprout,
+  buddy_cheer: sticker_buddy_cheer,
+  buddy_map: sticker_buddy_map,
+  buddy_sleep: sticker_buddy_sleep,
+  buddy_trail: sticker_buddy_trail,
+  hiker: sticker_hiker,
+};
+
+/** One sticker per growth stage, keyed like `Stage` in stage.ts. */
+export const stage_sticker = {
+  egg: sticker_stage_seed,
+  sprout: sticker_stage_seedling,
+  sapling: sticker_stage_sapling,
+  tree: sticker_stage_tree,
 };
 
 export const mark = {
