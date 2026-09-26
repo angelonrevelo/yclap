@@ -54,7 +54,8 @@ export {
 } from "./stage.ts";
 import type { Stage } from "./stage.ts";
 import { STAGE_LABEL, STAGE_ORDER } from "./stage.ts";
-import { stage_sticker } from "./asset/kit";
+import { eagle } from "./art";
+import "./art/art.css";
 
 interface Props {
   stage: Stage;
@@ -76,6 +77,11 @@ interface Props {
   is_walking?: boolean;
   /** Degrees clockwise from screen-up. Leans into the direction of travel. */
   heading_degree?: number;
+}
+
+/** Seat the stage art in the 100×115 frame, feet on the contact shadow. */
+function placed(svg: string): string {
+  return svg.replace(/^<svg /, '<svg x="2" y="8" width="96" height="100" preserveAspectRatio="xMidYMax meet" ');
 }
 
 export default function Character({
@@ -149,20 +155,16 @@ export default function Character({
         {/* Contact shadow — the single strongest cue that this sits ON ground. */}
         <ellipse cx="50" cy="105" rx={stage === "egg" ? 22 : 28} ry="6.5" fill="url(#yc-shadow)" />
 
-        {/* The Magisphere stage sticker (codex set, `asset/magi`). Its white
-            sticker border is what keeps it legible over any sector colour. */}
+        {/* Agila, inline vector (`art/svg/eagle`). Its white sticker edge is
+            what keeps it legible over any sector colour. The egg rocks now and
+            then; the grown eagle flaps. */}
         <g
           className={sway ? "yc-sway" : undefined}
-          style={{ transformOrigin: "50px 106px", animation: is_idle_animated ? sway : undefined }}
+          style={{ transformOrigin: "50px 106px", animation: is_idle_animated ? sway : undefined, filter: tired }}
         >
-          <image
-            href={stage_sticker[stage]}
-            x="2"
-            y="8"
-            width="96"
-            height="100"
-            preserveAspectRatio="xMidYMax meet"
-            style={{ filter: tired }}
+          <g
+            className={is_idle_animated ? (stage === "tree" ? "art-flap" : stage === "egg" ? "art-wobble" : undefined) : undefined}
+            dangerouslySetInnerHTML={{ __html: placed(eagle[stage]) }}
           />
         </g>
       </svg>

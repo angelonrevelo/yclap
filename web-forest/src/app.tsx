@@ -97,7 +97,8 @@ import { BlindboxShelf } from "./blindbox-reveal";
 import { BadgeShelf, loadSpawnPool, RarityPill, reachableSpawn, useLiveWorld, useSpawnWorld, WildShelf, WorldStrip } from "./live";
 import { displayName, kindOf } from "./kind";
 import { SpeciesPortrait } from "./portrait.tsx";
-import { icon, settings_icon as kit_settings_icon } from "./asset/kit";
+import { Art } from "./art/art";
+import { glyph, settings_glyph } from "./art";
 import type { Rarity, Spawn, SpawnPoolEntry } from "./spawn";
 import { receiptHighlight } from "./collection";
 import { demoJournal, isSeededJournal } from "./demo-seed";
@@ -703,7 +704,7 @@ function BuddyLine({ snap }: { snap: GamifySnapshot }) {
       Biodiversity Buddy: <strong>{snap.buddy.label}</strong>
       {next
         ? ` · ${next.remaining} more week${next.remaining === 1 ? "" : "s"} toward ${next_label}`
-        : " · fully grown"}
+        : " · fully fledged"}
       . Grows with weekly participation.
     </p>
   );
@@ -2259,7 +2260,7 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
         <div style={{ marginTop: 12 }}>
           <div className="flex items-center justify-between" style={{ fontSize: 12.5 }}>
             <span style={{ fontWeight: 700, color: "rgb(var(--mg-ink-rgb) / 0.92)" }}>
-              {next ? `To ${STAGE_LABEL[next.stage]}` : "Fully grown"}
+              {next ? `To ${STAGE_LABEL[next.stage]}` : "Fully fledged"}
             </span>
             <span style={{ color: "rgb(var(--mg-ink-rgb) / 0.78)", fontVariantNumeric: "tabular-nums" }}>
               {next ? `${p.sector_seen_count}/${next_total}` : "—"}
@@ -2720,7 +2721,7 @@ function SectorCard({
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
           <HudOrb label="Log what you see here" onClick={() => onLog(resident[0]?.species_code ?? "narra")} size={HUD_ORB}>
-            <img src={icon.go_camera} alt="" width={HUD_ORB} height={HUD_ORB} style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
+            <Art svg={glyph.go_camera} size={HUD_ORB} style={{ display: "block", width: "100%", height: "100%" }} />
           </HudOrb>
           <HudOrb label={is_open ? "Hide sources" : "Where does this come from?"} active={is_open} onClick={() => setOpen((o) => !o)} size={HUD_ORB}>
             <span style={{ fontWeight: 800, fontSize: 22, color: "#1a3d28" }}>i</span>
@@ -3168,10 +3169,10 @@ export default function App() {
     setHapticEnabled(row.is_haptic);
     return row;
   });
-  /* Section art. Filled from `asset/kit.ts` once the generated set is keyed and
-     committed; every section renders headed-but-unillustrated until then, which
-     is why `SettingsIcon` is all-optional. */
-  const settings_icon: SettingsIcon = kit_settings_icon;
+  /* Section art — inline vector markup (`art/svg/glyph/settings-*`). A section
+     still renders headed-but-plain when a piece is missing, which is why
+     `SettingsIcon` stays all-optional. */
+  const settings_icon: SettingsIcon = settings_glyph;
 
   const savePreference = (next: Preference) => {
     setPreference(next);
