@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Stage } from "./character";
-import { game_icon, stage_sticker, sticker } from "./asset/kit";
+import { Art } from "./art/art";
+import { eagle, game, mascot } from "./art";
 import { species } from "./data";
 import type { DailyTask } from "./gamify";
 import { levelOf } from "./level";
@@ -15,24 +16,21 @@ import { AccountChip } from "./account-panel.tsx";
  */
 
 function GameIcon({ src, size, alt = "" }: { src: string; size: number; alt?: string }) {
-  return <img className="gm-ico" src={src} width={size} height={size} alt={alt} aria-hidden={alt ? undefined : true} />;
+  return <Art className="gm-ico" svg={src} size={size} label={alt || undefined} />;
 }
 
 /**
- * The buddy as a sticker, one per growth stage. Vigor keeps its meaning from
- * `Character`: an unwalked buddy fades toward grey and walking brings the colour
- * back — the look changes, the stage never does.
+ * The buddy — Agila the eagle — one pose per growth stage. Vigor keeps its
+ * meaning from `Character`: an unwalked buddy fades toward grey and walking
+ * brings the colour back — the look changes, the stage never does.
  */
 export function StageSticker({ stage, vigor = 1, size }: { stage: Stage; vigor?: number; size: number }) {
   const v = Math.max(0, Math.min(1, vigor));
   return (
-    <img
+    <Art
       className="gm-ico"
-      src={stage_sticker[stage]}
-      width={size}
-      height={size}
-      alt=""
-      aria-hidden
+      svg={eagle[stage]}
+      size={size}
       style={{ filter: v < 1 ? `saturate(${0.35 + 0.65 * v}) brightness(${0.92 + 0.08 * v})` : undefined }}
     />
   );
@@ -72,7 +70,7 @@ export function PlayerHud({
         <span className="gm-hud-top">
           <span className="gm-place">{place}</span>
           <span className="gm-streak" data-idle={!is_week_active} title="Weekly streak">
-            <GameIcon src={game_icon.streak} size={18} />
+            <GameIcon src={game.streak} size={18} />
             {streak_weeks}
           </span>
         </span>
@@ -119,7 +117,7 @@ export function QuestBanner({
         {species[daily.species_code] ? (
           <TaxonThumb species_code={daily.species_code} size={28} style={{ background: "rgba(255,255,255,0.92)", border: "none" }} />
         ) : (
-          <GameIcon src={game_icon.quest} size={24} />
+          <GameIcon src={game.quest} size={24} />
         )}
       </span>
       <span className="gm-quest-body">
@@ -131,7 +129,7 @@ export function QuestBanner({
         </span>
       </span>
       <span className="gm-reward">
-        <GameIcon src={game_icon.points} size={15} />+{reward} pts
+        <GameIcon src={game.points} size={15} />+{reward} pts
       </span>
     </button>
   );
@@ -172,7 +170,7 @@ export function TodayHuntCard({
             {is_curated ? (
               <TaxonThumb species_code={daily.species_code} size={128} style={{ border: "none", background: "transparent" }} />
             ) : (
-              <img src={sticker.buddy_trail} alt="" width={132} height={132} style={{ objectFit: "contain" }} />
+              <Art svg={mascot.trail} size={132} className="art-sway" />
             )}
           </div>
           <h2 id="gm-today-title" className="gm-today-name">
@@ -180,7 +178,7 @@ export function TodayHuntCard({
           </h2>
           <p className="gm-today-where">Out today in {daily.sector_name}</p>
           <span className="gm-today-reward">
-            <GameIcon src={game_icon.points} size={18} />+{reward} pts when you log it
+            <GameIcon src={game.points} size={18} />+{reward} pts when you log it
           </span>
           {/* The hunt's `challenge` event is what earns `hunt:<day>` in
               `blindbox.ts` — one box per day, opened on the Journal. */}
@@ -253,15 +251,15 @@ export function GameDock({
         <DockButton label="Buddy" onClick={onAvatar}>
           <StageSticker stage={stage} vigor={vigor} size={34} />
         </DockButton>
-        <DockButton label="Nearby" is_active={is_nearby_open} icon={game_icon.nearby} onClick={onNearby} />
+        <DockButton label="Nearby" is_active={is_nearby_open} icon={game.nearby} onClick={onNearby} />
         <button type="button" className="gm-go" aria-label="Go — log a sighting" onClick={onGo}>
           <span className="gm-go-core">
-            <GameIcon src={game_icon.go} size={50} />
+            <GameIcon src={game.go} size={50} />
           </span>
           <span className="gm-go-tag">Go</span>
         </button>
-        <DockButton label="Dex" is_active={is_journal} icon={game_icon.dex} onClick={onDex} />
-        <DockButton label="About" is_active={is_plan} icon={game_icon.plan} onClick={onPlan} />
+        <DockButton label="Dex" is_active={is_journal} icon={game.dex} onClick={onDex} />
+        <DockButton label="About" is_active={is_plan} icon={game.plan} onClick={onPlan} />
       </div>
     </nav>
   );
@@ -282,7 +280,7 @@ export function GameToast({ msg, band = "bottom" }: { msg: string; band?: "top" 
     <div className="gm-toast" data-band={band} role="status">
       {hit ? (
         <span className="gm-coin" aria-hidden>
-          <GameIcon src={game_icon.points} size={34} />
+          <GameIcon src={game.points} size={34} />
         </span>
       ) : (
         <span className="gm-coin" aria-hidden style={{ color: "var(--mg-green)", fontWeight: 900, fontSize: 20 }}>
@@ -301,7 +299,7 @@ export function DexHeader({ seen_count, total, extra }: { seen_count: number; to
   return (
     <div className="gm-dex-head">
       <span className="gm-trophy">
-        <GameIcon src={game_icon.trophy} size={52} />
+        <GameIcon src={game.trophy} size={52} />
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="flex items-baseline justify-between gap-2">
@@ -368,14 +366,14 @@ export function DexCard({
       <span className="gm-card-no">#{String(index + 1).padStart(3, "0")}</span>
       {!is_seen && (
         <span className="gm-card-lock">
-          <GameIcon src={game_icon.lock} size={20} />
+          <GameIcon src={game.lock} size={20} />
         </span>
       )}
       <TaxonThumb
         species_code={species_code}
         size={size}
         is_dim={!is_seen}
-        style={{ margin: "0 auto", background: is_seen ? "#fff" : "#eceeeb", border: "none" }}
+        style={{ margin: "0 auto", background: is_seen ? "#EEF6E8" : "#F1F2F0", border: "none" }}
       />
       {is_seen && sp ? (
         <>

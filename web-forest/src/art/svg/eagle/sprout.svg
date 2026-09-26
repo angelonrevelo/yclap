@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+<g fill="#FFFFFF" stroke="#FFFFFF" stroke-width="9" stroke-linejoin="round"><circle cx="60" cy="62" r="29"/><path d="M47,40 C47,28 54,22 60,22 C66,22 73,28 73,40 Z"/><path d="M18,90 C22,112 98,112 102,90 C90,82 30,82 18,90 Z"/><path d="M34,72 C24,64 24,54 32,52 L44,66 Z M86,72 C96,64 96,54 88,52 L76,66 Z"/></g>
+<g stroke="#0E3B2A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+<ellipse cx="60" cy="90" rx="41" ry="9" fill="#6B3519"/>
+<g class="chick-body">
+<path d="M36,72 C26,66 26,56 32,53 C36,60 40,64 44,68 Z" fill="#C9D2DB"/>
+<path d="M84,72 C94,66 94,56 88,53 C84,60 80,64 76,68 Z" fill="#C9D2DB"/>
+<circle cx="60" cy="62" r="27" fill="#FFFFFF"/>
+<path d="M76,44 C86,54 86,72 76,82 C80,70 80,56 76,44 Z" fill="#C9D2DB" stroke="none"/>
+<ellipse cx="50" cy="58" rx="4.6" ry="5.6" fill="#0E3B2A" stroke="none"/><ellipse cx="70" cy="58" rx="4.6" ry="5.6" fill="#0E3B2A" stroke="none"/>
+<circle cx="51.6" cy="56" r="1.7" fill="#FFFFFF" stroke="none"/><circle cx="71.6" cy="56" r="1.7" fill="#FFFFFF" stroke="none"/>
+<circle cx="43" cy="67" r="4" fill="#F58A6E" stroke="none"/><circle cx="77" cy="67" r="4" fill="#F58A6E" stroke="none"/>
+<path d="M55,64 C58,62 62,62 65,64 C64,69 61,72 60,73 C59,72 56,69 55,64 Z" fill="#F5B82E" stroke-width="2.4"/>
+<path d="M47,40 L51,35 L55,40 L60,34 L65,40 L69,35 L73,40 C72,30 66,24 60,24 C54,24 48,30 47,40 Z" fill="#FFF6DC" stroke-width="2.6"/>
+<circle cx="66" cy="31" r="1.5" fill="#5B86D6" stroke="none"/>
+</g>
+<path d="M30,76 L37,69 L43,77 L50,68 L57,77 L64,68 L71,77 L78,68 L84,76 L90,72 C92,90 78,102 60,102 C42,102 28,90 30,76 Z" fill="#FFF6DC"/>
+<path d="M84,78 C86,90 78,98 68,100 C76,94 80,88 84,78 Z" fill="#F3E3B5" stroke="none"/>
+<circle cx="44" cy="90" r="2" fill="#5B86D6" stroke="none"/><circle cx="70" cy="93" r="1.8" fill="#5B86D6" stroke="none"/>
+<path d="M18,90 C22,112 98,112 102,90 C88,98 32,98 18,90 Z" fill="#A8582C"/>
+<path d="M28,100 L44,97 M52,104 L70,100 M78,98 L92,95" fill="none" stroke="#6B3519" stroke-width="2.4"/>
+</g>
+</svg>

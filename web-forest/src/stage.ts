@@ -18,10 +18,10 @@ export type Stage = "egg" | "sprout" | "sapling" | "tree";
 export const STAGE_ORDER: Stage[] = ["egg", "sprout", "sapling", "tree"];
 
 export const STAGE_LABEL: Record<Stage, string> = {
-  egg: "Seed",
-  sprout: "Sprout",
-  sapling: "Sapling",
-  tree: "Tree",
+  egg: "Egg",
+  sprout: "Hatchling",
+  sapling: "Eaglet",
+  tree: "Eagle",
 };
 
 /**

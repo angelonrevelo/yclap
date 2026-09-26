@@ -9,6 +9,7 @@ import {
   type CampusBuilding,
   type ScreenPoint,
 } from "./building";
+import { isBuildingOverWalker } from "./depth";
 import type { LatLon } from "./geo";
 import type { Projection } from "./tile-map";
 
@@ -121,6 +122,9 @@ interface Drawn {
   wall: { d: string; light: number }[];
   depth: number;
   label: { x: number; y: number; width: number } | null;
+  /** The footprint on the glass, and the roof's highest point — for the walker test. */
+  ring: ScreenPoint[];
+  top: number;
 }
 
 function shade(hex: string, light: number): string {
@@ -214,7 +218,8 @@ export default function Skyline({
       const ground = `${ring
         .map((p, k) => `${k === 0 ? "M" : "L"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
         .join("")}Z`;
-      out.push({ row, roof: prism.roof, ground, wall: prism.wall, depth: prism.depth, label });
+      const top = min_y - rise1 * drawn_m;
+      out.push({ row, roof: prism.roof, ground, wall: prism.wall, depth: prism.depth, label, ring, top });
     }
 
     /* Ration the names: the biggest few on screen keep theirs, the rest go
@@ -279,10 +284,11 @@ export default function Skyline({
             />
           ))}
         </g>
-        {drawn.map(({ row, roof, ground, wall }, i) => {
+        {drawn.map(({ row, roof, ground, wall, ring, top }, i) => {
           const colour = roofColour(row);
+          const is_over_walker = avoid !== null && isBuildingOverWalker(ring, top, avoid);
           return (
-            <g key={`${row.building_code ?? "b"}-${i}`}>
+            <g key={`${row.building_code ?? "b"}-${i}`} opacity={is_over_walker ? 0.45 : undefined}>
               {(style === "solid" || style === "block") &&
                 wall.map((w, j) => (
                   <path

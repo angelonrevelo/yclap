@@ -3,7 +3,7 @@ import campus_shape from "./asset/campus-shape.json" with { type: "json" };
 import Botanical from "./botanical";
 import { BUILDING_ATTRIBUTION, building as campus_building } from "./building";
 import Skyline, { type SkylineStyle } from "./skyline";
-import Character, { type Stage } from "./character";
+import { Walker, type Stage } from "./character";
 import { AT_TREE_RADIUS_M, RESTRICTED_POLYGON, species, type Encounter } from "./data";
 import { residentBySector } from "./nearby";
 import { pinKindOf, type PinKind } from "./pin";
@@ -954,7 +954,7 @@ export default function PlayMap({
                       here spun the tree by the camera angle: the visible bug
                       where the walker leans over and parts company with its own
                       shadow the moment you rotate. */}
-                  <Character
+                  <Walker
                     stage={stage}
                     vigor={vigor}
                     size={avatar_px}
@@ -963,7 +963,7 @@ export default function PlayMap({
                   />
                 </div>
                 {/* The pet eagle — companion by day, sleep pet when you stop. See `pet.ts`. */}
-                <PetEagle projection={projection} fix={fix} anchor={anchor} avatar_px={avatar_px} />
+                <PetEagle projection={projection} fix={fix} anchor={anchor} avatar_px={avatar_px} stage={stage} />
                 </>
               );
             })()}

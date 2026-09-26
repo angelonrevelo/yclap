@@ -114,7 +114,10 @@ import { BlindboxShelf } from "./blindbox-reveal";
 import { BadgeShelf, loadSpawnPool, RarityPill, reachableSpawn, useLiveWorld, useSpawnWorld, WildShelf, WorldStrip } from "./live";
 import { kindOf, speciesLabelOf } from "./kind";
 import { SpeciesPortrait } from "./portrait.tsx";
-import { icon, settings_icon as kit_settings_icon, sticker } from "./asset/kit";
+/* Alert marks still hand a sticker URL to alert.tsx, which renders an <img>. */
+import { sticker } from "./asset/kit";
+import { Art } from "./art/art";
+import { glyph, settings_glyph } from "./art";
 import type { Rarity, Spawn, SpawnPoolEntry } from "./spawn";
 import { WALK_TO_SHORT_M } from "./play-walk";
 import { receiptHighlight } from "./collection";
@@ -528,8 +531,10 @@ function TrainerSheet({
           <SheetClose onClose={onClose} />
         </div>
         <div className="flex items-center gap-3">
-          <div style={{ width: 72, height: 72, borderRadius: 999, overflow: "hidden", background: "#2f5d2b", border: "3px solid var(--mg-green)" }}>
-            <Character stage={stage} vigor={vigor} size={68} is_idle_animated />
+          <div style={{ width: 84, height: 84, flexShrink: 0, borderRadius: 999, overflow: "hidden", background: "#EEF6E8" }}>
+            <Suspense fallback={<Character stage={stage} vigor={vigor} size={80} is_idle_animated />}>
+              <CharacterModel stage={stage} size={84} />
+            </Suspense>
           </div>
           <div>
             <div style={{ fontWeight: 800, fontSize: 28, fontVariantNumeric: "tabular-nums" }}>
@@ -547,15 +552,9 @@ function TrainerSheet({
           </div>
         </div>
         <JoinRow onJoin={onJoin} />
-        <div
-          style={{
-            marginTop: 16,
-            background: "var(--mg-bg)",
-            color: "rgb(var(--mg-ink-rgb) / 0.92)",
-            borderRadius: 20,
-            padding: 12,
-          }}
-        >
+        {/* The cards sit straight on the sheet — a tinted tray behind them was a
+            third nested frame around every number. */}
+        <div style={{ marginTop: 16, color: "rgb(var(--mg-ink-rgb) / 0.92)" }}>
           <PointsStreakCard snap={snap} is_desktop={false} />
           <div style={{ marginTop: 10 }}>
             <PartnerCard
@@ -609,17 +608,33 @@ function JoinRow({ onJoin }: { onJoin: (code: string) => void }) {
         maxLength={6}
         style={{
           flex: 1,
-          borderRadius: 12,
-          border: "1.5px solid rgb(var(--mg-ink-rgb) / 0.2)",
-          background: "rgba(17,75,47,0.1)",
+          minWidth: 0,
+          height: 44,
+          borderRadius: 999,
+          border: "none",
+          background: "#F1F3F0",
           color: "rgb(var(--mg-ink-rgb) / 0.92)",
-          padding: "8px 10px",
+          padding: "0 16px",
           minHeight: 44,
-          fontWeight: 800,
-          letterSpacing: "0.12em",
+          fontSize: 15,
+          /* Spaced like a code only once there is a code; the hint reads as words. */
+          fontWeight: code ? 800 : 600,
+          letterSpacing: code ? "0.12em" : "normal",
         }}
       />
-      <button type="submit" style={{ fontWeight: 800, fontSize: 13, color: "var(--mg-green-text)", minWidth: 44, minHeight: 44, padding: "0 8px" }}>
+      <button
+        type="submit"
+        style={{
+          height: 44,
+          padding: "0 20px",
+          borderRadius: 999,
+          background: "var(--mg-green)",
+          color: "#fff",
+          fontWeight: 800,
+          fontSize: 14,
+          boxShadow: "var(--mg-shadow-sm)",
+        }}
+      >
         Join
       </button>
     </form>
@@ -750,7 +765,6 @@ function PointsStreakCard({ snap, is_desktop }: { snap: GamifySnapshot; is_deskt
           style={{
             flex: 1,
             borderRadius: RADIUS.tile,
-            border: "1.5px solid rgba(62,154,74,0.4)",
             background: "rgba(62,154,74,0.12)",
             padding: "10px 12px",
           }}
@@ -769,7 +783,6 @@ function PointsStreakCard({ snap, is_desktop }: { snap: GamifySnapshot; is_deskt
           style={{
             flex: 1,
             borderRadius: RADIUS.tile,
-            border: "1.5px solid rgba(247,198,49,0.4)",
             background: "rgba(247,198,49,0.12)",
             padding: "10px 12px",
           }}
@@ -1112,7 +1125,6 @@ function ConfusableWarning({ warn }: { warn: Confusable }) {
         padding: "10px 12px",
         borderRadius: 14,
         background: "rgba(247,198,49,0.12)",
-        border: "1.5px solid rgba(247,198,49,0.4)",
       }}
     >
       <div style={{ fontSize: 11, fontWeight: 800, color: "var(--mg-gold)", letterSpacing: "0.06em" }}>
@@ -2622,7 +2634,6 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
               flex: 1,
               minWidth: 0,
               borderRadius: RADIUS.tile,
-              border: "1.5px solid rgba(62,154,74,0.4)",
               background: "rgba(62,154,74,0.12)",
               padding: "9px 11px",
             }}
@@ -2640,7 +2651,6 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
               flex: 1,
               minWidth: 0,
               borderRadius: RADIUS.tile,
-              border: "1.5px solid rgba(0,159,217,0.4)",
               background: "rgba(0,159,217,0.12)",
               padding: "9px 11px",
             }}
@@ -2661,7 +2671,7 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
         <div style={{ marginTop: 12 }}>
           <div className="flex items-center justify-between" style={{ fontSize: 12.5 }}>
             <span style={{ fontWeight: 700, color: "rgb(var(--mg-ink-rgb) / 0.92)" }}>
-              {next ? `To ${STAGE_LABEL[next.stage]}` : "Fully grown"}
+              {next ? `To ${STAGE_LABEL[next.stage]}` : "Fully fledged"}
             </span>
             <span style={{ color: "rgb(var(--mg-ink-rgb) / 0.78)", fontVariantNumeric: "tabular-nums" }}>
               {next ? `${p.sector_seen_count}/${next_total}` : "—"}
@@ -3136,7 +3146,7 @@ function SectorCard({
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
           <HudOrb label="Log what you see here" onClick={() => onLog(resident[0]?.species_code ?? "narra")} size={HUD_ORB}>
-            <img src={icon.go_camera} alt="" width={HUD_ORB} height={HUD_ORB} style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
+            <Art svg={glyph.go_camera} size={HUD_ORB} style={{ display: "block", width: "100%", height: "100%" }} />
           </HudOrb>
           <HudOrb label={is_open ? "Hide sources" : "Where does this come from?"} active={is_open} onClick={() => setOpen((o) => !o)} size={HUD_ORB}>
             <span style={{ fontWeight: 800, fontSize: 22, color: "#1a3d28" }}>i</span>
@@ -3320,9 +3330,13 @@ function ModeSwitch({
       style={{
         width: 44,
         height: 44,
-        borderRadius: 10,
-        background: is_field ? "var(--mg-green-deep)" : "var(--mg-surface-glass)",
-        color: is_field ? "#fff" : "var(--mg-forest)",
+        borderRadius: 999,
+        /* Round and white like every Pokémon GO map control; the state lives in
+           the icon's colour and a thin ring, never in a heavy fill. */
+        background: "#fff",
+        color: is_field ? "var(--mg-green-deep)" : "var(--mg-forest)",
+        outline: is_field ? "2.5px solid var(--mg-green)" : "none",
+        outlineOffset: -2.5,
         boxShadow: "var(--mg-shadow-sm)",
         border: "none",
         display: "grid",
@@ -3357,8 +3371,7 @@ function GeoModeSwitch({
   label: string;
   onCycle: () => void;
 }) {
-  const tone =
-    mode === "gps" ? "var(--mg-green-deep)" : mode === "play" ? "#C98A12" : "var(--mg-surface-glass)";
+  const tone = mode === "gps" ? "var(--mg-green-deep)" : mode === "play" ? "#C98A12" : "var(--mg-forest)";
   return (
     <button
       type="button"
@@ -3368,9 +3381,9 @@ function GeoModeSwitch({
       style={{
         width: 44,
         height: 44,
-        borderRadius: 10,
-        background: tone,
-        color: mode === "gps" || mode === "play" ? "#fff" : "var(--mg-forest)",
+        borderRadius: 999,
+        background: "#fff",
+        color: tone,
         boxShadow: "var(--mg-shadow-sm)",
         border: "none",
         display: "grid",
@@ -3417,8 +3430,8 @@ function Compass({ bearing, onReset }: { bearing: number; onReset: () => void })
       style={{
         width: 44,
         height: 44,
-        borderRadius: 10,
-        background: "var(--mg-surface-glass)",
+        borderRadius: 999,
+        background: "#fff",
         border: "none",
         boxShadow: "var(--mg-shadow-sm)",
         display: "grid",
@@ -3702,10 +3715,10 @@ export default function App() {
      and the Dex strip all count off this one roster (`hallLabelOf`). */
   const hall = useHall({ fix: geo.fix, stage, level, name: live_name });
   const hall_label = hallLabelOf(hall);
-  /* Section art. Filled from `asset/kit.ts` once the generated set is keyed and
-     committed; every section renders headed-but-unillustrated until then, which
-     is why `SettingsIcon` is all-optional. */
-  const settings_icon: SettingsIcon = kit_settings_icon;
+  /* Section art — inline vector markup (`art/svg/glyph/settings-*`). A section
+     still renders headed-but-plain when a piece is missing, which is why
+     `SettingsIcon` stays all-optional. */
+  const settings_icon: SettingsIcon = settings_glyph;
 
   const savePreference = (next: Preference) => {
     setPreference(next);
@@ -4322,7 +4335,11 @@ export default function App() {
         }
         control={
           <>
-            {weather && <WeatherChip weather={weather} onOpen={() => pushAlert(weatherAlert(weather), true)} />}
+            {/* The chip's sun or moon follows the same day/night as the map (the
+                `?time=` pin included), so a daytime demo never shows a moon. */}
+            {weather && (
+              <WeatherChip weather={{ ...weather, is_day: !is_night }} onOpen={() => pushAlert(weatherAlert(weather), true)} />
+            )}
             <ModeSwitch mode={map_mode} onMode={setMode} />
             <GeoModeSwitch
               mode={geo_mode}

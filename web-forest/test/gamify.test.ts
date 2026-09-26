@@ -123,7 +123,7 @@ describe("buddy stages", () => {
     const now = new Date("2026-09-09T12:00:00.000Z");
     const events = [ev({ kind: "explore", subject_key: "sector:a", at: "2026-09-09T01:00:00.000Z" })];
     const b = buddyProgress(events, now);
-    assert.equal(b.label, "Sprout");
+    assert.equal(b.label, "Hatchling");
     assert.equal(b.next?.stage, "young_tree");
     assert.equal(b.next?.remaining, 2);
   });
