@@ -8,6 +8,7 @@ import { byDepth, isBuildingOverWalker, isCovering, isOverWalker } from "../src/
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const flora = readFileSync(join(root, "src/flora.tsx"), "utf8");
 const play_map = readFileSync(join(root, "src/play-map.tsx"), "utf8");
+const toon = readFileSync(join(root, "src/toon.tsx"), "utf8");
 
 /**
  * The 09-26 layering regression: trees were drawn on the glass and finds in
@@ -52,8 +53,10 @@ describe("depth on the glass", () => {
   });
 
   it("night does not put a CSS filter on each tree", () => {
+    /* The trees are the toon kit's now; the grade lives with their colours. */
     assert.doesNotMatch(flora, /filter:\s*is_night/);
-    assert.match(flora, /NIGHT_TONE/);
+    assert.match(flora, /<ToonPlant[^>]*is_night=\{is_night\}/);
+    assert.match(toon, /NIGHT_TONE/);
   });
 });
 

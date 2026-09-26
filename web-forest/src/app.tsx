@@ -158,7 +158,14 @@ const WALK_ZOOM = 18;
  * on the walker the way a GO play-view does — buildings and paths at standing
  * scale, avatar large in frame.
  */
-const PLAY_ZOOM = PLAY_MAX_ZOOM;
+const PLAY_ZOOM = 20;
+/*
+ * z20, not the z22 ceiling, since a 09-26 playtest. At z22 a phone shows about
+ * fifteen metres of ground, which is the walker and a lawn: finds were within
+ * reach but none was on screen, so the first view of the game had nothing in
+ * it to walk toward. z20 holds four or five finds, the trees and the paths
+ * between them, which is the genre's camera. Pinch still goes all the way in.
+ */
 
 const CARD_RADIUS = RADIUS.card;
 const TILE_RADIUS = RADIUS.tile;
@@ -3499,7 +3506,7 @@ export default function App() {
     const asked = Number(raw);
     const zoom =
       raw !== null && Number.isFinite(asked)
-        ? Math.max(PLAY_MIN_ZOOM, Math.min(PLAY_MAX_ZOOM, Math.round(asked)))
+        ? Math.max(PLAY_MIN_ZOOM, Math.min(PLAY_MAX_ZOOM, asked))
         : PLAY_ZOOM;
     return { ...CAMPUS_CENTER, zoom };
   });
@@ -4015,6 +4022,19 @@ export default function App() {
    * camera from across campus: a find you log without standing at it is a
    * record of nothing, and this app's one useful output is the location.
    */
+  const walk_goal = useRef<Spawn | null>(null);
+  /* Arrival: say so, and say what to do (09-26 playtest). The route ends
+     WALK_TO_SHORT_M short of the find, well inside reach, so one more tap
+     opens the camera. */
+  useEffect(() => {
+    const goal = walk_goal.current;
+    if (!goal || !geo.fix) return;
+    if (distanceMeter(geo.fix, goal) > WALK_TO_SHORT_M + 1.5) return;
+    walk_goal.current = null;
+    haptic("bump");
+    showToast(`${goal.common_name} is in reach. Tap it to log.`);
+  }, [geo.fix?.lat, geo.fix?.lon]);
+
   const walkToSpawn = (row: Spawn) => {
     const is_reach = reachableSpawn(spawn_world.spawn, geo.fix).some((r) => r.spawn_id === row.spawn_id);
     const reply = pinReply({
@@ -4040,9 +4060,11 @@ export default function App() {
          on walkable ground. No route from here → say so; never a toast that
          promises a walk and then stands still. */
       if (!geo.walkTo(row, WALK_TO_SHORT_M, row.common_name)) {
+        walk_goal.current = null;
         showToast(noRouteLine(row.common_name));
         return;
       }
+      walk_goal.current = row;
       setFollowing(true);
       showToast(reply.line);
       return;

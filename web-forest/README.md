@@ -576,8 +576,11 @@ This is the project's own server, not an Ateneo login, and the panel says so.
 - **Buildings default to `block`**: every building gets a low plinth of 3.2 m
   of wall. It reads as built without hiding the path behind it. `solid` still
   draws real heights.
-- The stick walk now starts on the footpath by Schmitt Hall and the Zen Garden
-  (`STICK_START`), not on the empty football field — each player on their own
+- The stick walk now starts on the footpath through the International Residence
+  Halls grounds (`STICK_START`), not on the empty football field. The spot was
+  chosen by measuring finds within 60 m over 48 windows; with the near-field
+  density raised from 0.34 to 0.62 it averages 4.6 finds and never fewer than
+  two, so a first screen is never empty. Each player starts on their own
   walkable spot 10–25 m around it, seeded by `player_id` (`spreadStartOf`), so a
   hall of phones does not pile onto one point. `?at=` still pins exactly.
   Switching to the stick from a GPS fix does the same around the fix

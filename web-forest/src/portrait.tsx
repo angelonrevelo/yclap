@@ -117,12 +117,16 @@ export function SpeciesPortrait({
 }
 
 function PortraitPhoto({ src }: { src: string }) {
-  const [is_loaded, setLoaded] = useState(false);
+  const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
+  /* A photo that never arrives leaves the drawing standing, not a broken
+     image icon over it (09-26 playtest). */
+  if (state === "failed") return null;
   return (
     <img
       src={src}
       alt=""
-      onLoad={() => setLoaded(true)}
+      onLoad={() => setState("ready")}
+      onError={() => setState("failed")}
       style={{
         position: "absolute",
         inset: 0,
@@ -130,7 +134,7 @@ function PortraitPhoto({ src }: { src: string }) {
         height: "100%",
         objectFit: "cover",
         display: "block",
-        opacity: is_loaded ? 1 : 0,
+        opacity: state === "ready" ? 1 : 0,
         transition: "opacity 180ms ease",
       }}
     />

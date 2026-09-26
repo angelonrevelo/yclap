@@ -1,15 +1,18 @@
-import { memo, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { byDepth, isCovering, isOverWalker } from "./depth";
 import type { LatLon } from "./geo";
 import type { Projection } from "./tile-map";
+import { ToonPlant, TOON_ASPECT, type ToonShape } from "./toon";
 
 /**
  * Trees and bushes that STAND UP out of the green ground.
  *
  * The sector fill says how green a piece of campus measured; on its own it is
  * a flat colour, and a flat colour at a raked camera reads as a lawn even when
- * the imagery says woodland. These are the brand scene's round bushes and
- * lollipop trees, painted on the glass (like the skyline) so they have height.
+ * the imagery says woodland. These are the toon kit's trees, bushes, palms
+ * and plumeria (`toon.tsx`): cel-shaded volumes with one outline each,
+ * painted on the glass (like the skyline) so they have height, and swaying a
+ * degree or two so the ground is alive.
  *
  * Decoration, and stated as such: the positions are the same deterministic
  * `tuft` scatter the play map always had, densest where vegetation was
@@ -37,96 +40,30 @@ const DRAW_RADIUS_M = 140;
 /** Clear ground left around each find and the walker, in metres. */
 const CLEAR_RADIUS_M = 6;
 /** No more than this many at once: a phone, not a forest renderer. */
-const MAX_DRAWN = 90;
+const MAX_DRAWN = 110;
 
-type Shape = "tree" | "bush" | "tall";
+type Shape = ToonShape;
 
 function shapeOf(t: Tuft, i: number): Shape {
   const n = ((i * 2654435761) >>> 0) % 100;
   if (t.is_shrub_only) return "bush";
-  if (t.dark) return n < 55 ? "tree" : n < 80 ? "tall" : "bush";
-  return n < 30 ? "tree" : "bush";
-}
-
-/** Metres tall, before the perspective scale. */
-function heightOf(shape: Shape, t: Tuft): number {
-  if (shape === "bush") return 1.4 + (t.r - 3.4) * 0.12;
-  if (shape === "tall") return 7 + (t.r - 3.4) * 0.6;
-  return 5 + (t.r - 3.4) * 0.5;
+  if (t.dark) return n < 42 ? "tree" : n < 64 ? "tall" : n < 74 ? "bloom" : n < 84 ? "palm" : "bush";
+  return n < 22 ? "tree" : n < 34 ? "palm" : n < 42 ? "bloom" : "bush";
 }
 
 /**
- * A colour under the night grade: darker and a little greyer.
+ * Metres tall, before the perspective scale — and then a cartoon's licence.
  *
- * Night used to be a CSS `filter` on every tree's wrapper — up to 90 filtered
- * layers, each its own offscreen pass, on a phone. The same grade done once on
- * the numbers costs nothing per frame, and it is how the ground is graded too
- * (`gradeFill` in `play-map.tsx`).
+ * The genre draws its props bigger than life so they read on a phone; at true
+ * scale a 1.4 m bush at z19 was a green crumb. `TOON_SCALE` is that licence,
+ * stated. Positions stay the deterministic scatter; only the drawing is bigger.
  */
-function dusk(hex: string): string {
-  const n = Number.parseInt(hex.slice(1), 16);
-  const rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => c * 0.62);
-  const grey = rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
-  return `#${rgb
-    .map((c) => Math.round(grey + (c - grey) * 0.85))
-    .map((c) => Math.max(0, Math.min(255, c)).toString(16).padStart(2, "0"))
-    .join("")}`;
+const TOON_SCALE = 1.35;
+function heightOf(shape: Shape, t: Tuft): number {
+  const base =
+    shape === "bush" ? 1.4 + (t.r - 3.4) * 0.12 : shape === "tall" ? 7 + (t.r - 3.4) * 0.6 : shape === "palm" ? 7.5 + (t.r - 3.4) * 0.5 : 5 + (t.r - 3.4) * 0.5;
+  return base * TOON_SCALE;
 }
-
-const DAY_TONE = {
-  back: { dark: "#2F7A3A", light: "#3E9A4A" },
-  front: { dark: "#4FA84A", light: "#6CC04F" },
-  lit: { dark: "#7CC84A", light: "#9BDB6A" },
-  trunk: "#8A5A34",
-};
-const NIGHT_TONE = {
-  back: { dark: dusk(DAY_TONE.back.dark), light: dusk(DAY_TONE.back.light) },
-  front: { dark: dusk(DAY_TONE.front.dark), light: dusk(DAY_TONE.front.light) },
-  lit: { dark: dusk(DAY_TONE.lit.dark), light: dusk(DAY_TONE.lit.light) },
-  trunk: dusk(DAY_TONE.trunk),
-};
-
-const Glyph = memo(function Glyph({ shape, dark, is_night }: { shape: Shape; dark: boolean; is_night: boolean }) {
-  const tone = is_night ? NIGHT_TONE : DAY_TONE;
-  const back = dark ? tone.back.dark : tone.back.light;
-  const front = dark ? tone.front.dark : tone.front.light;
-  const lit = dark ? tone.lit.dark : tone.lit.light;
-  const trunk = tone.trunk;
-  if (shape === "bush") {
-    return (
-      <svg viewBox="0 0 100 60" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block", overflow: "visible" }}>
-        <ellipse cx="50" cy="57" rx="44" ry="6" fill="rgba(20,60,30,0.22)" />
-        <path d="M8 56 Q2 38 18 32 Q20 14 40 16 Q50 2 64 14 Q84 10 86 30 Q100 36 92 56 Z" fill={back} />
-        <path d="M14 56 Q10 42 24 38 Q28 24 44 28 Q54 16 66 28 Q82 26 82 42 Q92 46 86 56 Z" fill={front} />
-        <path d="M30 34 Q38 26 46 32" fill="none" stroke={lit} strokeWidth="5" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  if (shape === "tall") {
-    return (
-      <svg viewBox="0 0 60 120" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block", overflow: "visible" }}>
-        <ellipse cx="30" cy="117" rx="20" ry="4" fill="rgba(20,60,30,0.24)" />
-        <rect x="26" y="84" width="8" height="34" rx="3" fill={trunk} />
-        <path d="M30 4 Q52 30 50 62 Q56 88 30 94 Q4 88 10 62 Q8 30 30 4 Z" fill={back} />
-        <path d="M30 18 Q46 38 44 62 Q48 82 30 86 Q16 82 18 62 Q16 38 30 18 Z" fill={front} />
-        <path d="M24 36 Q28 28 34 30" fill="none" stroke={lit} strokeWidth="4" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 100 110" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block", overflow: "visible" }}>
-      <ellipse cx="50" cy="107" rx="30" ry="5" fill="rgba(20,60,30,0.24)" />
-      <path d="M44 106 L46 66 Q40 58 32 56 L36 52 Q44 56 48 60 L50 48 L54 48 L54 62 Q60 54 68 54 L68 58 Q58 62 56 70 L58 106 Z" fill={trunk} />
-      <circle cx="30" cy="46" r="24" fill={back} />
-      <circle cx="70" cy="44" r="24" fill={back} />
-      <circle cx="50" cy="28" r="26" fill={back} />
-      <circle cx="36" cy="44" r="18" fill={front} />
-      <circle cx="64" cy="42" r="18" fill={front} />
-      <circle cx="50" cy="30" r="19" fill={front} />
-      <path d="M38 22 Q46 14 56 18" fill="none" stroke={lit} strokeWidth="5" strokeLinecap="round" />
-    </svg>
-  );
-});
 
 function meterBetween(a: LatLon, b: LatLon): number {
   const dy = (a.lat - b.lat) * 111_320;
@@ -175,8 +112,8 @@ export default function Flora({ tuft, find, projection, centre, keep_clear, walk
     const shape = shapeOf(t, i);
     const h_m = heightOf(shape, t);
     const px_per_m = at.scale / Math.max(meter_per_pixel, 0.001);
-    const h = Math.min(260, Math.max(10, h_m * px_per_m));
-    const w = h * (shape === "bush" ? 1.7 : shape === "tall" ? 0.5 : 0.9);
+    const h = Math.min(300, Math.max(16, h_m * px_per_m));
+    const w = h * TOON_ASPECT[shape];
     /* 0.36: the raked plane's far edge sits at about a third of the glass,
        under the haze. Past it there is no ground to stand a tree on, and one
        drawn there floats in the sky. */
@@ -236,7 +173,9 @@ export default function Flora({ tuft, find, projection, centre, keep_clear, walk
             opacity: is_over_walker || is_over_find ? 0.4 : Math.min(1, 0.55 + (d.y / height) * 0.6),
           }}
         >
-          <Glyph shape={d.shape} dark={d.dark} is_night={is_night} />
+          <div className="fl-sway" style={{ width: "100%", height: "100%", animationDelay: `${-(d.key % 13) * 0.43}s` }}>
+            <ToonPlant shape={d.shape} dark={d.dark} variant={d.key} is_night={is_night} />
+          </div>
         </div>
         );
       })}

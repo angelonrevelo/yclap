@@ -459,8 +459,14 @@ export const SPAWN_CELL_M = 35;
 /** How far out the dense field is generated, in metres. */
 export const NEAR_FIELD_M = 170;
 
-/** Chance a habitable cell holds a find this window. */
-const CELL_DENSITY = 0.34;
+/**
+ * Chance a habitable cell holds a find this window. An invented number, like
+ * the rarity bands. It was 0.34 until a 09-26 playtest: at the street camera
+ * the best footpath on campus then averaged 2.5 finds within 60 m and showed
+ * fewer than two in a quarter of all windows, so a first screen was often
+ * empty. At 0.62 the stick start averages 4.6 and never fewer than two.
+ */
+const CELL_DENSITY = 0.62;
 
 const CELL_LAT = SPAWN_CELL_M / 110_540;
 

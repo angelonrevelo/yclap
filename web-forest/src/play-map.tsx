@@ -22,6 +22,7 @@ import {
 import TileMap, { type Projection, type View } from "./tile-map";
 import Horizon from "./horizon";
 import Flora, { type GlassFind, type Tuft } from "./flora";
+import { ToonDefs, ToonFind } from "./toon";
 import { RARITY_ORDER, type Spawn } from "./spawn";
 import { kindOf } from "./kind";
 import { KindPath, KIND_TONE } from "./kind-mark";
@@ -588,37 +589,28 @@ const ResidentOrb = memo(function ResidentOrb({
   model: number;
   label: string;
 }) {
+  /* A glass bubble on a stalk, in the toon kit's grammar (see `toon.tsx`):
+     one outline, a cel band on the side away from the light, a sheen, a
+     whisper of shadow. */
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: model }}>
-      <div
-        style={{
-          width: model,
-          height: model,
-          borderRadius: 999,
-          background: is_logged ? "rgba(47,107,58,0.14)" : "rgba(255,255,255,0.92)",
-          border: `2.5px solid ${is_logged ? "#2F6B3A" : "rgba(47,107,58,0.55)"}`,
-          boxShadow: "var(--mg-shadow-sm)",
-          display: "grid",
-          placeItems: "center",
-          overflow: "hidden",
-        }}
-        aria-label={label}
-      >
-        <div style={{ width: "86%" }}>
+    <div className="pm-bubble-wrap" style={{ width: model }}>
+      <div className="pm-bubble pm-find-head" data-logged={is_logged} style={{ width: model, height: model }} aria-label={label}>
+        <div style={{ width: "84%" }}>
           <Botanical species_code={species_code} is_silhouette={is_logged} />
         </div>
+        <span className="pm-bubble-shine" aria-hidden />
       </div>
-      <div style={{ width: 3, height: 10, background: "rgba(47,107,58,0.55)", borderRadius: 2, marginTop: 1 }} />
-      <div style={{ width: 14, height: 4, borderRadius: 999, background: "rgba(28,74,34,0.28)" }} />
+      <div className="pm-bubble-stalk" />
+      <div className="pm-bubble-disc" />
     </div>
   );
 });
 
 /**
- * A sticker on a stalk, in the kit's grammar: white border, a disc in the
- * taxon's tone, the kind mark, and the rarity as a count of sparkles (a SHAPE,
- * so it survives greyscale — the same rule the rarity pill keeps). It bobs,
- * because a find that sits still reads as a pin.
+ * A world find as a toon orb on a stalk (`ToonFind`): the taxon's tone, the
+ * kind mark, and the rarity as a count of sparkles (a SHAPE, so it survives
+ * greyscale — the same rule the rarity pill keeps). It bobs, because a find
+ * that sits still reads as a pin.
  */
 const SpawnSticker = memo(function SpawnSticker({
   row,
@@ -631,55 +623,17 @@ const SpawnSticker = memo(function SpawnSticker({
   is_logged: boolean;
   in_range: boolean;
 }) {
-  const tone = KIND_TONE[kind];
   const tick = row.rarity ? RARITY_ORDER.indexOf(row.rarity) + 1 : 0;
   return (
-    <svg
-      className="pm-find"
-      width="58"
-      height="76"
-      viewBox="0 0 58 76"
-      style={{ overflow: "visible", animationDelay: `${-(row.spawn_id.length % 7) * 0.31}s` }}
-      aria-label={`${row.common_name} — ${kind}${row.rarity ? `, ${row.rarity}` : ""}`}
-    >
-      <ellipse cx="29" cy="71" rx="13" ry="4.6" fill="rgba(20,60,30,0.26)" />
-      {in_range && <ellipse cx="29" cy="71" rx="22" ry="7.5" fill="none" stroke="#fff" strokeWidth="2" opacity="0.9" />}
-      <path d="M29 68 L29 46" stroke="#fff" strokeWidth="5" strokeLinecap="round" />
-      <path d="M29 68 L29 46" stroke={tone} strokeWidth="2.2" strokeLinecap="round" />
-      <g className="pm-find-head">
-        <circle cx="29" cy="24" r="21" fill="#fff" />
-        <circle cx="29" cy="24" r="17.5" fill={is_logged ? tone : "#FFFFFF"} stroke={tone} strokeWidth="2.6" />
-        <circle cx="23" cy="17" r="5" fill="#fff" opacity={is_logged ? 0.35 : 0} />
-        <g
-          transform="translate(15.2 10.2) scale(1.15)"
-          fill="none"
-          stroke={is_logged ? "#FFFFFF" : tone}
-          strokeWidth="1.9"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <KindPath kind={kind} />
-        </g>
-        {tick >= 2 && (
-          <g transform="translate(29 -2)">
-            {Array.from({ length: tick - 1 }, (_, i) => {
-              const x = (i - (tick - 2) / 2) * 11;
-              return (
-                <path
-                  key={i}
-                  transform={`translate(${x} 0)`}
-                  d="M0 -6 Q1 -1 6 0 Q1 1 0 6 Q-1 1 -6 0 Q-1 -1 0 -6 Z"
-                  fill={tick === 4 ? "#F5C842" : "#F59A23"}
-                  stroke="#fff"
-                  strokeWidth="1.6"
-                  strokeLinejoin="round"
-                />
-              );
-            })}
-          </g>
-        )}
-      </g>
-    </svg>
+    <ToonFind
+      tone={KIND_TONE[kind]}
+      is_logged={is_logged}
+      sparkle={Math.max(0, tick - 1)}
+      is_in_range={in_range}
+      glyph={<KindPath kind={kind} />}
+      label={`${row.common_name} — ${kind}${row.rarity ? `, ${row.rarity}` : ""}`}
+      delay_s={-(row.spawn_id.length % 7) * 0.31}
+    />
   );
 });
 
@@ -794,13 +748,14 @@ export default function PlayMap({
         /* A find's spot on the glass, its size, and whether it stands in front
            of the walker. Null when it is past the plane's far edge or off the
            glass, so nothing floats in the sky. The size is the perspective
-           scale alone — what the plane's rake gave a find when it lived there —
-           so moving it up here does not shrink a tap target. */
+           scale — what the plane's rake gave a find when it lived there —
+           eased with zoom: at the wide end a full-size orb covered a sector. */
+        const find_zoom_k = Math.min(1.05, Math.max(0.6, 0.6 + (projection.zoom - 19) * 0.15));
         const toScreenFind = (point: LatLon) => {
           const at = projection.toScreen(projection.project(point));
           if (at.scale <= 0 || at.y < projection.height * 0.34 || at.y > projection.height + 40) return null;
           if (at.x < -60 || at.x > projection.width + 60) return null;
-          const k = Math.min(1.3, Math.max(0.5, at.scale));
+          const k = Math.min(1.3, Math.max(0.5, at.scale * find_zoom_k));
           return { x: at.x, y: at.y, k, is_front: walker_at !== null && at.y > walker_at.y };
         };
         /* Finds, on the GLASS rather than in the ground.
@@ -847,7 +802,7 @@ export default function PlayMap({
             ),
           });
         }
-        /* Temporary world finds: a sticker on a stalk, same kind mark. */
+        /* Temporary world finds: a toon orb on a stalk, same kind mark. */
         for (const row of spawn) {
           const p = toScreenFind(row);
           if (!p) continue;
@@ -857,8 +812,8 @@ export default function PlayMap({
             key: row.spawn_id,
             x: p.x,
             y: p.y,
-            w: 58 * p.k,
-            h: 76 * p.k,
+            w: 66 * p.k,
+            h: 96 * p.k,
             node: (
               <div
                 data-play-marker="1"
@@ -885,6 +840,9 @@ export default function PlayMap({
             {/* The campus, standing up. Under the sky, over the ground, and
                 below every marker — see `skyline.tsx` on why it cannot live
                 in the tilted plane with the rest of the map. */}
+            {/* The toon kit's gradients, once: the skyline's roofs, the trees
+                and the finds all point at these ids. */}
+            <ToonDefs />
             <Skyline projection={projection} centre={view} style={skyline_style} avoid={walker_at} is_night={is_night} />
             <RemoteWalkerLayer hall={hall} projection={projection} bearing_degree={bearing_degree} zoom={view.zoom} />
             <HallCount hall={hall} />
@@ -1103,8 +1061,8 @@ export default function PlayMap({
               const px = Math.max(10, AT_TREE_RADIUS_M / Math.max(projection.plane_meter_per_pixel, 0.01));
               return (
                 <g key={`sh-${e.encounter_id}`}>
-                  <circle cx={p.x} cy={p.y} r="11" fill="rgba(28,74,34,0.18)" />
-                  {/* The in-range ripple is NOT drawn here — see `Ripple`. A
+                  {/* No shadow dot: the bubble carries its own ground disc.
+                      The in-range ripple is NOT drawn here — see `Ripple`. A
                       still ring marks the spot so the reach reads even with
                       reduced motion. */}
                   {in_range && (
