@@ -668,7 +668,7 @@ posters; the list is in `script/magi-asset/build-vector.mjs`):
 | Generated | Sprout buddy (sprout, cheer, map, sleep, trail), the explorer, the four growth stages | `src/asset/magi/sticker/` (1024 px masters), `src/asset/magi/web/` (400 px WebP the app ships) | `script/magi-asset/sticker.spec.json` via the codex skill's `imagen.mjs` |
 | Drawn by code | Mark, wordmark (Fredoka outlines), lockups, app icon, scenes, wood sign, ornaments, the 12 vector game icons (brand/marketing; in-app only `buddy` and `pin`) | `public/brand/magi/*.svg`, `src/asset/magi/icon/*.svg` | `node script/magi-asset/build-vector.mjs` |
 | Recoloured | The 10 chess.com-style game icons the app uses (dex, go, level, lock, nearby, plan, points, quest, streak, trophy), remapped into the brand palette | `src/asset/icon/game/*.png` (masters: `script/icon/game-source/`) | `node script/icon/recolor-game.mjs` |
-| Rendered | PWA icons, PNG exports, posters, social, OG, banner, sticker and brand sheets | `public/brand/icon-*.png`, `../docs/brand/magisphere/` | `node script/magi-asset/render.mjs` (needs Chrome) |
+| Rendered | PWA icons, PNG exports, posters, social, OG, banner, sticker and brand sheets, and the app's WebP stickers (trimmed from the masters) | `public/brand/icon-*.png`, `../docs/brand/magisphere/`, `src/asset/magi/web/` | `node script/magi-asset/render.mjs` (prefers Chrome for Testing) |
 
 Stickers are generated on a `#FF00FF` key and **remapped to the 17-colour
 palette** with no dither, so they cannot drift off-brand; each one met its
