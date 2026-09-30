@@ -1,0 +1,20 @@
+{
+  "_comment": "One campus tree walk: the eight curated field-guide species that have artwork, visited in the order with the shortest total walk over the footpath-weighted routing grid (exhaustive over all 8! orders, 1,263 m on 2026-10-01). Each stop sits on the app's demo encounter point for that species (src/data.ts encounter_seed) — a place on this map to look for the species, NOT a surveyed tree, so is_position_surveyed is false on every stop. The 'where' names came with the old hand-drawn map and are not re-surveyed, so they are is_named_by_us. The look_for lines are ours: general field marks of the species, not a description of the tree at the stop. See README.md here to add a trail anywhere.",
+  "trail_code": "campus-tree-walk",
+  "title": "Campus tree walk",
+  "is_named_by_us": true,
+  "blurb": "Eight trees from the field guide, from the CTC quad round to Berchmans, mostly on footpaths.",
+  "campus_code": "admu-loyola",
+  "author": "Magisphere team",
+  "created_on": "2026-10-01",
+  "stop": [
+    { "stop_code": "raintree", "species_code": "raintree", "lat": 14.640025, "lon": 121.07864, "where": "CTC quad", "is_named_by_us": true, "is_position_surveyed": false, "look_for": "A wide umbrella crown; the leaflets fold shut before rain and at dusk." },
+    { "stop_code": "mahogany", "species_code": "mahogany", "lat": 14.639527, "lon": 121.079842, "where": "Katipunan gate yard", "is_named_by_us": true, "is_position_surveyed": false, "look_for": "Scaly brown-grey bark, glossy compound leaves, and woody seed capsules on the ground." },
+    { "stop_code": "balete", "species_code": "balete", "lat": 14.638375, "lon": 121.0796, "where": "Bellarmine field edge", "is_named_by_us": true, "is_position_surveyed": false, "look_for": "Roots that climb and wrap: a strangler fig began on another tree." },
+    { "stop_code": "katmon", "species_code": "katmon", "lat": 14.63725, "lon": 121.07792, "where": "Xavier walk", "is_named_by_us": true, "is_position_surveyed": false, "look_for": "Large, deeply veined, toothed leaves; a round green fruit wrapped in fleshy sepals." },
+    { "stop_code": "lagundi", "species_code": "lagundi", "lat": 14.63695, "lon": 121.07576, "where": "Bellarmine path", "is_named_by_us": true, "is_position_surveyed": false, "look_for": "A shrub, not a tree: five-fingered leaves, pale beneath, and small lilac flowers." },
+    { "stop_code": "molave", "species_code": "molave", "lat": 14.637801, "lon": 121.075952, "where": "Rizal Library lawn", "is_named_by_us": true, "is_position_surveyed": false, "look_for": "Flaking pale bark and leaves in threes or opposite pairs." },
+    { "stop_code": "narra", "species_code": "narra", "lat": 14.63905, "lon": 121.07712, "where": "Gonzaga walk", "is_named_by_us": true, "is_position_surveyed": false, "look_for": "Drooping branches, and in season, flat round winged pods." },
+    { "stop_code": "dao", "species_code": "dao", "lat": 14.64025, "lon": 121.07664, "where": "Berchmans lawn", "is_named_by_us": true, "is_position_surveyed": false, "look_for": "A tall buttressed trunk; big compound leaves crowded at the branch tips." }
+  ]
+}

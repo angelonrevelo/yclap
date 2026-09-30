@@ -608,6 +608,55 @@ Two fingers (or shift-drag) swing the camera 360° sideways and tilt it
 up and down; the compass returns north.
 `?bearing=62` seeds an angle for a projector demo or a reproducible screenshot.
 
+## Campus modules
+
+The field view's **Campus modules** button (under the compass) opens three
+layers that run on the same sectors, footpaths and walk-to router — the "we
+have the engines, apply it to other things" story from Gelo's 09-30 note
+(`3:58`–`5:11`). Spec: `../docs/spec/campus-module.md`.
+
+- **Registry** — `src/module.ts`. Each module has a source line, the office
+  that would sign it off, what that office must give, and `is_official: false`
+  (held by `test/module.test.ts`). `MODULE_CONFIG.module_on` switches modules
+  per campus; `?module=trail` narrows a demo and survives route changes.
+- **Biodiversity hotspots** — `src/hotspot.ts`, `campus-hotspot.json`. Per
+  sector: iNaturalist records with an open position of 50 m or better, and the
+  distinct species among them, beside the measured vegetation. 8,356 of the
+  13,985 records in the box counted (fetched 2026-09-30); 72 of 94 sectors have
+  at least one. A hotspot is the top fifth by species among sectors with 10 or
+  more records: 9 sectors, cut at 71 species, led by the SOM grove north-east
+  (301 species, 1,822 records). The method line is on screen: records follow
+  footfall, so this is not a survey.
+- **Emergency & DRR** — `src/emergency.ts`. **Not the official Ateneo
+  emergency plan**, and the panel says so in its heaviest type. Two sources
+  only, both committed with date and licence:
+  - `campus-emergency.json`: every OSM `emergency=*`, `amenity=clinic |
+    hospital | doctors | dentist | pharmacy | fire_station | police`,
+    `healthcare=*` and `highway=emergency_access_point` in `CAMPUS_BOX`
+    (fetched 2026-09-30): 17 features. 2 clinics (JM Lucas Infirmary, Barangka
+    Health Center), 1 police (Campus Safety and Mobility Office), 1 fire
+    station (barangay, Katipunan), 3 fire hydrants, 4 pharmacies, 2 dentists,
+    4 counselling centres. **Zero** assembly points, AEDs, first-aid kits or
+    extinguishers, so those groups show an empty state naming OSM and the date.
+    Nothing was added.
+  - `campus-flood.json`: UP NOAH's 100-year flood hazard for Metro Manila (the
+    ODbL shapefile from the Downloads folder on noah.up.edu.ph, dated
+    2022-11-28), clipped to the box: low 13.2 ha, medium 12.7 ha, high 5.7 ha
+    (summed ring areas). A model, not a record of floods.
+  - "Nearest" routes to the closest clinic or safety office **by walking**
+    over the same grid as walk-to (`nearestHelp`), and says where the route
+    starts: "you" only for a GPS fix, the demo walker otherwise, the campus
+    centre with no fix.
+- **Nature trails** — `src/trail.ts`, `src/asset/trail/*.json` (format and
+  rules in the README there). The campus tree walk: the eight curated species
+  with artwork, 1,263 m in the shortest order, every stop walkable and every
+  leg routed (`test/trail.test.ts`). Trail mode is a card per stop with
+  progress, the next leg's metres and minutes at `WALK_PACE_MS`, and the
+  reminder that stop positions are demo points, not surveyed trees.
+
+The DRRM office (with CFMO) is on the Settings partner list as an office we are
+asking for the official plan. NOT YET.
+
 ## Look and feel
 
 The app wears **Magisphere's own look**, taken off the team's poster set
@@ -693,6 +742,18 @@ npm run dev &                        # measure-vegetation needs a real origin
 node script/measure-vegetation.mjs   # Esri imagery → vegetation_ratio, kind, is_biome
 ```
 
+The module layers regenerate on their own:
+
+```
+node script/fetch-osm-emergency.mjs  # OSM emergency + health features → src/asset/campus-emergency.json
+node script/build-hotspot.mjs        # iNat observation positions → per-sector counts, campus-hotspot.json
+node script/extract-noah-flood.mjs <MetroManila_Flood_100year.shp>   # → campus-flood.json (download line in the script)
+```
+
+The NOAH web map's own tiles sit behind a Mapbox token locked to
+noah.up.edu.ph; the extract uses the published shapefile instead and never
+that token.
+
 `script/shot.mjs <url> <out.png> [w] [h]` screenshots a route at an **exact**
 viewport. Use it rather than `chrome --headless --window-size`, which clamps to
 a ~500 px minimum on Windows and silently invalidates any 390 px check.
@@ -701,7 +762,9 @@ a ~500 px minimum on Windows and silently invalidates any 390 px check.
 
 Sector boundaries, basemap geometry and the path network are
 © OpenStreetMap contributors, ODbL. Vegetation is measured from Esri World
-Imagery (© Esri, Maxar, Earthstar Geographics). Inventory figures are AIS,
+Imagery (© Esri, Maxar, Earthstar Geographics). Emergency points are
+© OpenStreetMap contributors, ODbL; the flood hazard layer is © UP NOAH, ODbL;
+hotspot counts come from observations © iNaturalist users. Inventory figures are AIS,
 SY 2025–2026. These credits are licence terms, not chrome — they render.
 Plant identification is iNaturalist's computer vision, not this app's. The
 smoke-suite photos carry per-photo CC-BY / CC0 attribution in
