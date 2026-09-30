@@ -616,9 +616,11 @@ built). In short:
   only, `field-guide.muted-walker`; Settings → Setup shows them again) or
   **Report name** (sends the `walker_id` hash and the name shown, never a
   player_id).
-- **Moderator console** at `/mod` — off unless `MOD_TOKEN` (16+ characters) is
-  set: `npx wrangler secret put MOD_TOKEN` on the Worker, `MOD_TOKEN=… npm run
-  sync` on the LAN box. Lists reports newest-first (open/resolved), walkers in
+- **Moderator console** at `/mod` — off unless `MOD_TOKEN` is set:
+  `npx wrangler secret put MOD_TOKEN` on the Worker, `MOD_TOKEN=… npm run
+  sync` on the LAN box. It is one token (16+ characters, recorded as
+  "moderator") or one per person, `ana:<token>,ben:<token>`, so the audit log
+  says who acted and a leaver is removed by deleting their entry. Lists reports newest-first (open/resolved), walkers in
   the hall, shared finds, hides and the audit log; hides a walker from the hall
   for 1–168 h (enforced by both hall servers), hides a shared find, resolves a
   report. Every action is appended to `mod_audit`, which SQLite triggers make

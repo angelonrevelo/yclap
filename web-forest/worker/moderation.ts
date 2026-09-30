@@ -33,7 +33,8 @@ import { walkerIdOf } from "../src/multiplayer.ts";
 import {
   bearerOf,
   isModOn,
-  isModToken,
+  MOD_ACTOR_DEFAULT,
+  modActorOf,
   MOD_FAIL_MAX,
   MOD_FAIL_WINDOW_MS,
   REPORT_BODY_MAX,
@@ -91,7 +92,8 @@ const SCHEMA = [
     at TEXT NOT NULL,
     action TEXT NOT NULL,
     target TEXT NOT NULL,
-    detail TEXT NOT NULL DEFAULT ''
+    detail TEXT NOT NULL DEFAULT '',
+    actor TEXT NOT NULL DEFAULT ''
   )`,
 ];
 
@@ -109,6 +111,8 @@ export interface AuditRow {
   action: string;
   target: string;
   detail: string;
+  /** Which moderator acted (`modTokenList`); "" on a row written before 10-01. */
+  actor: string;
 }
 
 /** The hall, as the console needs it: who is in it now, and a way to remove one. */
@@ -136,6 +140,8 @@ export interface ModFind {
 
 export interface ModState {
   retention_day: number;
+  /** The moderator this console is signed in as. */
+  you: string;
   report: Report[];
   hidden_walker: { walker_id: string; walker_name: string | null; until_at: number }[];
   hidden_find: { sighting_id: string; created_at: string }[];
@@ -195,6 +201,13 @@ export class ModerationService {
     this.now = option.now ?? Date.now;
     this.report_limit = new RateWindow(option.report_ip_per_hour ?? REPORT_IP_PER_HOUR, REPORT_WINDOW_MS);
     for (const statement of SCHEMA) this.sql(statement);
+    /* A store made before 10-01 has no actor column. Adding one is a schema
+       change, not an edit to any row, so the append-only triggers allow it. */
+    try {
+      this.sql("ALTER TABLE mod_audit ADD COLUMN actor TEXT NOT NULL DEFAULT ''");
+    } catch {
+      /* already there */
+    }
     for (const statement of AUDIT_GUARD) {
       try {
         this.sql(statement);
@@ -288,8 +301,15 @@ export class ModerationService {
   /* ── the audit log ───────────────────────────────────────────────────── */
 
   /** The ONLY write to mod_audit. There is no update and no delete. */
-  audit(action: string, target: string, detail = ""): void {
-    this.sql("INSERT INTO mod_audit (at, action, target, detail) VALUES (?, ?, ?, ?)", this.stamp(), action, target, detail);
+  audit(action: string, target: string, detail = "", actor = MOD_ACTOR_DEFAULT): void {
+    this.sql(
+      "INSERT INTO mod_audit (at, action, target, detail, actor) VALUES (?, ?, ?, ?, ?)",
+      this.stamp(),
+      action,
+      target,
+      detail,
+      actor,
+    );
   }
 
   auditLog(limit = 200): AuditRow[] {
@@ -299,12 +319,13 @@ export class ModerationService {
       action: String(row.action),
       target: String(row.target),
       detail: String(row.detail ?? ""),
+      actor: String(row.actor ?? ""),
     }));
   }
 
   /* ── actions ─────────────────────────────────────────────────────────── */
 
-  act(input: ModActionInput, hall: ModHall, world: ModWorld): { ok: boolean; error?: string } {
+  act(input: ModActionInput, hall: ModHall, world: ModWorld, actor = MOD_ACTOR_DEFAULT): { ok: boolean; error?: string } {
     const now = this.now();
     const { action, target } = input;
     if (action === "hide_walker") {
@@ -321,28 +342,28 @@ export class ModerationService {
       this.hidden_walker.set(target, until);
       hall.evict(target, until);
       world.refresh();
-      this.audit(action, target, `${input.hour} h${walker_name ? ` · ${walker_name}` : ""}`);
+      this.audit(action, target, `${input.hour} h${walker_name ? ` · ${walker_name}` : ""}`, actor);
       return { ok: true };
     }
     if (action === "unhide_walker") {
       this.sql("DELETE FROM hall_hide WHERE walker_id = ?", target);
       this.hidden_walker.delete(target);
       world.refresh();
-      this.audit(action, target);
+      this.audit(action, target, "", actor);
       return { ok: true };
     }
     if (action === "hide_find") {
       this.sql("INSERT INTO find_hide (sighting_id, created_at) VALUES (?, ?) ON CONFLICT (sighting_id) DO NOTHING", target, this.stamp());
       this.hidden_find.add(target);
       world.refresh();
-      this.audit(action, target);
+      this.audit(action, target, "", actor);
       return { ok: true };
     }
     if (action === "unhide_find") {
       this.sql("DELETE FROM find_hide WHERE sighting_id = ?", target);
       this.hidden_find.delete(target);
       world.refresh();
-      this.audit(action, target);
+      this.audit(action, target, "", actor);
       return { ok: true };
     }
     const is_resolve = action === "resolve_report";
@@ -353,7 +374,7 @@ export class ModerationService {
       target,
     );
     if (!changed.length) return { ok: false, error: "no such report" };
-    this.audit(action, target);
+    this.audit(action, target, "", actor);
     return { ok: true };
   }
 
@@ -366,11 +387,12 @@ export class ModerationService {
     return row ? String(row.walker_name) : null;
   }
 
-  state(hall: ModHall, world: ModWorld): ModState {
+  state(hall: ModHall, world: ModWorld, you = MOD_ACTOR_DEFAULT): ModState {
     this.sweep();
     const now = this.now();
     return {
       retention_day: REPORT_RETENTION_DAY,
+      you,
       report: this.listReport(),
       hidden_walker: this.sql("SELECT walker_id, walker_name, until_at FROM hall_hide WHERE until_at > ? ORDER BY until_at DESC", now).map(
         (row) => ({
@@ -417,13 +439,14 @@ export class ModerationService {
     if (this.fail_limit.retryAfter(ip, now) > 0) {
       return json({ error: "too many wrong tokens — wait fifteen minutes" }, 429, { "Retry-After": "900" });
     }
-    if (!(await isModToken(bearerOf(request.headers.get("Authorization")), this.token))) {
+    const actor = await modActorOf(bearerOf(request.headers.get("Authorization")), this.token);
+    if (actor === null) {
       this.fail_limit.note(ip, now);
       return json({ error: "wrong or missing moderator token" }, 401);
     }
 
     if (request.method === "GET" && url.pathname === `${MOD_API_PREFIX}state`) {
-      return json(this.state(hall, world));
+      return json(this.state(hall, world, actor));
     }
     if (request.method === "POST" && url.pathname === `${MOD_API_PREFIX}action`) {
       if (mimeEssence(request.headers.get("Content-Type")) !== "application/json") return json({ error: "send JSON" }, 400);
@@ -435,9 +458,9 @@ export class ModerationService {
       }
       const input = sanitizeModAction(raw);
       if (!input) return json({ error: "action, target (and hour for hide_walker) required" }, 400);
-      const result = this.act(input, hall, world);
+      const result = this.act(input, hall, world, actor);
       if (!result.ok) return json({ error: result.error }, 404);
-      return json({ ok: true, state: this.state(hall, world) });
+      return json({ ok: true, state: this.state(hall, world, actor) });
     }
     return json({ error: "not found" }, 404);
   }

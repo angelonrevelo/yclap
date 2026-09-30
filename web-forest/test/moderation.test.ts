@@ -5,6 +5,8 @@ import { DatabaseSync } from "node:sqlite";
 import {
   EDGE_REPORT_IP_PER_HOUR,
   isModToken,
+  modActorOf,
+  modTokenList,
   MOD_FAIL_MAX,
   REPORT_IP_PER_HOUR,
   REPORT_OPEN_MAX,
@@ -541,3 +543,41 @@ function lanText(raw: RawSocket): string[] {
       return Buffer.from(buf.subarray(len === 126 ? 4 : len === 127 ? 10 : 2)).toString("utf8");
     });
 }
+
+describe("one token per moderator (10-01)", () => {
+  const ANA = "ana-token-long-enough-01";
+  const BEN = "ben-token-long-enough-02";
+  const LIST = `ana:${ANA}, ben:${BEN}, shorty:tiny`;
+
+  it("reads a bare token as one moderator, and a list as one per person, dropping short tokens", () => {
+    assert.deepEqual(modTokenList(TOKEN), [{ actor: "moderator", token: TOKEN }]);
+    assert.deepEqual(modTokenList(LIST).map((m) => m.actor), ["ana", "ben"]);
+    assert.deepEqual(modTokenList(""), []);
+  });
+
+  it("says which moderator a token belongs to, and nobody for a wrong one", async () => {
+    assert.equal(await modActorOf(BEN, LIST), "ben");
+    assert.equal(await modActorOf(ANA, LIST), "ana");
+    assert.equal(await modActorOf("tiny", LIST), null, "a token too short to count opens nothing");
+    assert.equal(await modActorOf(`${ANA}x`, LIST), null);
+  });
+
+  it("writes who acted into the audit log, and the console says who is signed in", async () => {
+    const { mod } = modService({ token: LIST });
+    const walker_id = walkerIdOf("p-rude");
+    await mod.handle(modRequest("/mod/api/action", BEN, { action: "hide_walker", target: walker_id, hour: 1 }), noHall, noWorld);
+    await mod.handle(modRequest("/mod/api/action", ANA, { action: "unhide_walker", target: walker_id }), noHall, noWorld);
+    assert.deepEqual(mod.auditLog().map((a) => [a.actor, a.action]), [["ana", "unhide_walker"], ["ben", "hide_walker"]]);
+    const res = await mod.handle(modRequest("/mod/api/state", ANA), noHall, noWorld);
+    assert.equal(((await res!.json()) as { you: string }).you, "ana");
+  });
+
+  it("opens a store written before 10-01 and adds the actor column without touching a row", () => {
+    const sql = sqlOf();
+    sql("CREATE TABLE mod_audit (audit_id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '')");
+    sql("INSERT INTO mod_audit (at, action, target) VALUES ('2026-09-30', 'hide_find', 's-1')");
+    const mod = new ModerationService(sql, { token: TOKEN });
+    assert.deepEqual(mod.auditLog().map((a) => [a.action, a.actor]), [["hide_find", ""]]);
+    assert.throws(() => sql("UPDATE mod_audit SET actor = 'someone'"), /append-only/);
+  });
+});

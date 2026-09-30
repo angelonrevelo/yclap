@@ -128,7 +128,7 @@ The owner's ask is that every edge case is met, from every side. Rows are groupe
 |------|--------|
 | No way to see or act on a problem report | done: 040db72 (reports, `/mod`) |
 | No way to remove a walker or a find | done: 040db72 (hide walker 1–168 h, hide find, audit log) |
-| Moderator token leaks | done: no token (or < 16 chars) means the console is off; rotate by changing the secret. **Open:** one shared token, so the audit log cannot say which moderator acted |
+| Moderator token leaks | done: no token (or < 16 chars) means the console is off; rotate by changing the secret. Done 10-01: one token per moderator (`name:token`), and the audit log says who acted |
 | Who is allowed to be a moderator | **open**: needs a named person and the university's say |
 | Data retention for reports | done: 30 days (`docs/spec/moderation.md`) |
 | The Worker and the tests are not typechecked (`tsconfig` includes `src/` only) | done: `npm run typecheck` (and so `npm run build`) checks the app, the Worker (`tsconfig.worker.json`, which found BLOB rows the type did not allow) and the tests (`tsconfig.test.json`; 20 loose spots fixed, including a test `Sighting` missing a required field) |

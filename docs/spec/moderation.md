@@ -124,14 +124,15 @@ admin at the pilot's end.
    person, if it is ever warranted, is the institution's process under its
    own policy (OSA / the Discipline Office), not something this app can or
    should do.
-4. **Institution admin** decides on anything beyond a hide, and rotates
-   `MOD_TOKEN` whenever a moderator leaves the rota.
+4. **Institution admin** decides on anything beyond a hide, and removes a
+   moderator's `name:token` entry from `MOD_TOKEN` when they leave the rota.
 
 ## Not built yet
 
-- Individual moderator accounts. One shared `MOD_TOKEN`, so the audit log
-  records WHAT was done, not WHO did it. Next: per-moderator tokens or
-  sign-in with an account flagged moderator, and an `actor` column.
+- ~~Individual moderators.~~ **Done 10-01:** `MOD_TOKEN` takes
+  `name:token` pairs; every audit row carries the `actor`, and the console
+  says who is signed in. Rows written before carry an empty actor. Still not
+  built: moderator sign-in through the account system.
 - An institution-admin role in the app (read-only audit view, token rotation
   from a page).
 - Reporting a shared find from the phone (the console can hide any recent find,

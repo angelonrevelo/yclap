@@ -221,8 +221,32 @@ export const MOD_FAIL_WINDOW_MS = 15 * 60 * 1000;
 export const HIDE_HOUR_MAX = 24 * 7;
 
 /** Is the console on at all? No token, or a short one, means off. */
+/** The name an actor gets when MOD_TOKEN is one bare token rather than a list. */
+export const MOD_ACTOR_DEFAULT = "moderator";
+
+/**
+ * MOD_TOKEN, read as a list of moderators. One bare token (the 09-30 form)
+ * is one moderator called "moderator". `ana:<token>,ben:<token>` is one per
+ * person, so the audit log can say WHO hid a walker, and a moderator who
+ * leaves is removed by deleting their entry without re-keying everybody else.
+ * An entry whose token is under MOD_TOKEN_MIN is dropped, not weakened.
+ */
+export function modTokenList(configured: string | null | undefined): { actor: string; token: string }[] {
+  if (typeof configured !== "string") return [];
+  const out: { actor: string; token: string }[] = [];
+  for (const raw of configured.split(",")) {
+    const entry = raw.trim();
+    if (!entry) continue;
+    const cut = entry.indexOf(":");
+    const actor = cut > 0 ? entry.slice(0, cut).trim().replace(/[^A-Za-z0-9 ._-]/g, "").slice(0, 32) : MOD_ACTOR_DEFAULT;
+    const token = (cut > 0 ? entry.slice(cut + 1) : entry).trim();
+    if (actor && token.length >= MOD_TOKEN_MIN) out.push({ actor, token });
+  }
+  return out;
+}
+
 export function isModOn(configured: string | null | undefined): configured is string {
-  return typeof configured === "string" && configured.trim().length >= MOD_TOKEN_MIN;
+  return modTokenList(configured).length > 0;
 }
 
 /** `Authorization: Bearer <token>` → the token, or null. */
@@ -237,10 +261,25 @@ export function bearerOf(header: string | null): string | null {
  * leading characters a guess got right leaks through timing.
  */
 export async function isModToken(given: string | null, configured: string | null | undefined): Promise<boolean> {
-  if (!isModOn(configured) || !given) return false;
-  const [a, b] = await Promise.all([sha256Hex(given), sha256Hex(configured.trim())]);
+  return (await modActorOf(given, configured)) !== null;
+}
+
+/**
+ * Which moderator a token belongs to, or null. Every entry is compared, with
+ * no early exit, so how many moderators there are and which one matched do not
+ * show in the timing either.
+ */
+export async function modActorOf(given: string | null, configured: string | null | undefined): Promise<string | null> {
+  const list = modTokenList(configured);
+  if (!list.length || !given) return null;
   const enc = new TextEncoder();
-  return timingSafeEqual(enc.encode(a), enc.encode(b));
+  const a = enc.encode(await sha256Hex(given));
+  let actor: string | null = null;
+  for (const one of list) {
+    const b = enc.encode(await sha256Hex(one.token));
+    if (timingSafeEqual(a, b) && actor === null) actor = one.actor;
+  }
+  return actor;
 }
 
 export const MOD_ACTION = [

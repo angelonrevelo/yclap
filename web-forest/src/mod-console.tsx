@@ -21,6 +21,7 @@ const TOKEN_KEY = "field-guide.mod-token";
 
 interface ModState {
   retention_day: number;
+  you: string;
   report: Report[];
   hidden_walker: { walker_id: string; walker_name: string | null; until_at: number }[];
   hidden_find: { sighting_id: string; created_at: string }[];
@@ -34,7 +35,7 @@ interface ModState {
     created_at: string;
     is_hidden: boolean;
   }[];
-  audit: { audit_id: number; at: string; action: string; target: string; detail: string }[];
+  audit: { audit_id: number; at: string; action: string; target: string; detail: string; actor: string }[];
 }
 
 type Load =
@@ -186,6 +187,7 @@ export default function ModConsole() {
       <h1 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>Magisphere · moderator console</h1>
       {load.status === "ready" && (
         <>
+          <span style={S.dim}>signed in as {load.state.you}</span>
           <button type="button" style={S.btn} onClick={() => void refresh(token)}>
             Refresh
           </button>
@@ -436,7 +438,7 @@ export default function ModConsole() {
         )}
       </Section>
 
-      <Section title="Audit log" note="Append-only: when, what, to whom. The newest 200.">
+      <Section title="Audit log" note="Append-only: when, who, what, to whom. The newest 200.">
         {state.audit.length === 0 ? (
           <p style={S.dim}>No actions yet.</p>
         ) : (
@@ -445,6 +447,7 @@ export default function ModConsole() {
               {state.audit.map((a) => (
                 <tr key={a.audit_id}>
                   <td style={{ ...S.td, width: 170 }}>{when(a.at)}</td>
+                  <td style={{ ...S.td, width: 110 }}>{a.actor || <span style={S.dim}>—</span>}</td>
                   <td style={{ ...S.td, fontWeight: 700 }}>{a.action}</td>
                   <td style={S.td}>
                     <code>{a.target}</code> {a.detail && <span style={S.dim}>· {a.detail}</span>}
