@@ -127,5 +127,37 @@
         }
       ]
     }
-  ]
+  ],
+  "merged_perf": {
+    "note": "reveal-1015 after merging reveal/perf (camera step flushed inside its own frame, flushSync) on top of the camera-frame pairing",
+    "at": "2026-09-30T19:14:56.481Z",
+    "scenario": [
+      {
+        "name": "still",
+        "frame_count": 108,
+        "missing_count": 118,
+        "speed_px_s_mean": 247.9,
+        "speed_px_s_sd": 105.6,
+        "speed_cv": 0.426,
+        "fit_rms_px": 1.49,
+        "reversal_count": 0,
+        "stall_count": 0,
+        "x_spread_px": 406.3,
+        "y_spread_px": 0
+      },
+      {
+        "name": "both",
+        "frame_count": 224,
+        "missing_count": 0,
+        "speed_px_s_mean": 15.5,
+        "speed_px_s_sd": 29.1,
+        "speed_cv": 1.883,
+        "fit_rms_px": 2.51,
+        "reversal_count": 1,
+        "stall_count": 0,
+        "x_spread_px": 14.3,
+        "y_spread_px": 0
+      }
+    ]
+  }
 }

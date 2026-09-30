@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import fly_svg from "./asset/magi/pet/eagle-fly.svg?raw";
 import perch_svg from "./asset/magi/pet/eagle-perch.svg?raw";
@@ -68,7 +68,17 @@ const STYLE = `
   }
 `;
 
-function PetArt({ pose, size }: { pose: PetPose; size: number }) {
+/**
+ * Memoised on pose and size, and that is a performance fix, not tidiness.
+ *
+ * `dangerouslySetInnerHTML` takes a fresh `{ __html }` object every render,
+ * and React re-assigns `innerHTML` whenever that object changes — so the
+ * eagle, which re-renders with the camera, re-PARSED its whole SVG file every
+ * frame: 348 HTML parses in one 10 s walk at 4× CPU throttle (09-30 bench,
+ * `bench/frame-2026-10-01-before.json`), each one a fresh subtree to style,
+ * lay out and paint, and each one restarting the wing-flap animation.
+ */
+const PetArt = memo(function PetArt({ pose, size }: { pose: PetPose; size: number }) {
   return (
     <div
       className={`pet-art pet-${pose}`}
@@ -78,7 +88,7 @@ function PetArt({ pose, size }: { pose: PetPose; size: number }) {
       dangerouslySetInnerHTML={{ __html: ART[pose] }}
     />
   );
-}
+});
 
 /** A fix that has not moved for this long means the walker has stopped. */
 const STILL_AFTER_MS = 2500;

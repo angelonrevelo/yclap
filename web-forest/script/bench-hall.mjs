@@ -21,7 +21,7 @@
  * added to `remote-walker.tsx` to be measured; it changes nothing else.
  */
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -46,6 +46,8 @@ if (!CHROME) {
 }
 
 const port = 9300 + Math.floor(Math.random() * 400);
+/* ~90 MB per run. Left behind, two hundred runs filled the disk on 10-01. */
+const profile = mkdtempSync(join(tmpdir(), "hall-"));
 const chrome = spawn(
   CHROME,
   [
@@ -57,7 +59,7 @@ const chrome = spawn(
     "--disable-renderer-backgrounding",
     "--disable-backgrounding-occluded-windows",
     `--remote-debugging-port=${port}`,
-    `--user-data-dir=${mkdtempSync(join(tmpdir(), "hall-"))}`,
+    `--user-data-dir=${profile}`,
     "about:blank",
   ],
   { stdio: "ignore" },
@@ -221,5 +223,12 @@ try {
 } finally {
   ws.close();
   chrome.kill();
+  /* Chrome holds the profile for a moment after the kill. */
+  await sleep(1_500);
+  try {
+    rmSync(profile, { recursive: true, force: true });
+  } catch {
+    /* still locked; the OS temp sweep will get it */
+  }
 }
 process.exit(0);

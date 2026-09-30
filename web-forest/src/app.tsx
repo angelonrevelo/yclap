@@ -107,6 +107,8 @@ import {
 import { CAMPUS_CENTER, distanceMeter, formatLatLon, formatMeter, formatWalkMinute, meterPerPixel, WALK_PACE_MS, type GeoState } from "./geo";
 import { LAYER_ORDER, nextLayer, prefetchCampus, SOURCE, type Layer, type View } from "./tile-map";
 import { geoModeLabel, nextGeoMode, useGeo, type GeoMode } from "./use-geo";
+import { useQuality } from "./use-quality";
+import { qualityLabel } from "./quality";
 import { noRouteLine } from "./route";
 import { biomePresenceAt, rankEncounter, sectorResident, trayRow, type BiomePresence } from "./nearby";
 import { cosmeticForStage } from "./cosmetic";
@@ -4257,6 +4259,23 @@ export default function App() {
           : "Waiting for a position…");
 
 
+  /* The graphics tier (`quality.ts`). Measured only while the play view is
+     actually on screen and uncovered, and a measured drop to lite says so in a
+     toast — the badge on the map carries it from then on. */
+  /* The badge opens Settings on the panel where the tier is changed; any
+     other way in opens it where it always did. */
+  const [is_settings_setup_first, setSettingsSetupFirst] = useState(false);
+  useEffect(() => {
+    if (route !== "/settings") setSettingsSetupFirst(false);
+  }, [route]);
+  const quality = useQuality({
+    choice: preference.quality,
+    is_active: (route === "/" || route === "/map") && map_mode === "play" && is_booted && !alert_queue[0],
+    motion_key: `${geo.fix?.lat ?? ""},${geo.fix?.lon ?? ""},${bearing}`,
+    onDrop: ({ fps_p50 }) =>
+      showToast(`Lite graphics on — this device drew ${fps_p50} fps while walking. Settings can change it.`),
+  });
+
   /* ── the play view ────────────────────────────────────────────────────────
    *
    * Deliberately thin. Everything the field view carries — four basemap
@@ -4325,6 +4344,11 @@ export default function App() {
            without touching the device's saved preference. */
         skyline_style={skyline_url_style ?? preference.skyline_style}
         is_night={is_night}
+        quality={quality}
+        onQuality={() => {
+          setSettingsSetupFirst(true);
+          go("/settings");
+        }}
       />
 
       {/* The stick. Only in play mode, because in the other two the position
@@ -4615,6 +4639,8 @@ export default function App() {
             icon={settings_icon}
             onJoin={(code) => void joinWalker(code)}
             plan={<PlanContent />}
+            quality_label={qualityLabel(quality)}
+            is_setup_first={is_settings_setup_first}
           />
         )}
 

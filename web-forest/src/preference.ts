@@ -1,3 +1,5 @@
+import { parseQualityChoice, type QualityChoice } from "./quality.ts";
+
 /**
  * Device preferences.
  *
@@ -28,6 +30,8 @@ export interface Preference {
    * not yet decided who should see whom (reveal plan, Q-safety).
    */
   is_hidden_from_hall: boolean;
+  /** Graphics tier: auto (measured on this device), or pinned full / lite. See `quality.ts`. */
+  quality: QualityChoice;
 }
 
 export const PREFERENCE_DEFAULT: Preference = {
@@ -36,6 +40,7 @@ export const PREFERENCE_DEFAULT: Preference = {
   is_restricted_shown: true,
   walker_name: "",
   is_hidden_from_hall: false,
+  quality: "auto",
 };
 
 const KEY = "field-guide.preference";
@@ -68,6 +73,7 @@ export function readPreference(storage: Storage | null = safeStorage()): Prefere
           : PREFERENCE_DEFAULT.is_restricted_shown,
       walker_name: typeof parsed.walker_name === "string" ? parsed.walker_name.slice(0, 40) : "",
       is_hidden_from_hall: parsed.is_hidden_from_hall === true,
+      quality: parseQualityChoice(parsed.quality),
     };
   } catch {
     return { ...PREFERENCE_DEFAULT };

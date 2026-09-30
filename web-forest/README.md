@@ -39,6 +39,7 @@ npm run lint
 npm run smoke:detect  # plant-detection smoke suite (replay unless a token is set)
 npm run audit:model     # every .glb: parses, in range, has a mesh, grounded, <=1.5 MB
 npm run audit:location  # every find, encounter and walk target on green, unbuilt, open ground
+npm run bench:frame  # release build, headless Chrome at 4x/6x CPU throttle, 10 s stick walk -> bench/frame-<date>.json
 npm run handset    # build, then serve over HTTPS on the LAN for a real phone
 npm run deploy     # build, then wrangler deploy (needs `wrangler login` first)
 ```
@@ -621,7 +622,9 @@ built). In short:
   line and footpaths ≈2 m, so they are ribbons at z22 instead of hairlines.
 - **Standing flora** (`src/flora.tsx`). Cartoon trees and bushes on the same
   deterministic, vegetation-weighted scatter as before. Lawns and pitches get
-  bushes only. Nothing is painted within 6 m of a find or the walker, and a tree
+  bushes only. At most 90 within 140 m at full graphics, 28 within 90 m at
+  lite, keeping the nearest. Each tree is a fixed box moved by a 2D transform
+  (no per-frame layout). Nothing is painted within 6 m of a find or the walker, and a tree
   in front of the walker goes see-through. Finds are drawn on the glass with
   the trees (`toScreenFind`) and painted in one depth order with them
   (`src/depth.ts`: further up the screen paints first), so a tree covers only

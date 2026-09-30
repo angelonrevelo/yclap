@@ -32,6 +32,32 @@ import type { Projection } from "./tile-map";
 /** How far out buildings are drawn, in metres from the camera centre. */
 const DRAW_RADIUS_M = 420;
 
+/**
+ * A building whose footprint lies wholly above this line on the glass is not
+ * drawn. The horizon (`horizon.tsx`, painted OVER the skyline) is opaque from
+ * the top of the glass down through its haze band, which is solid from about
+ * 0.29 to 0.34 of the height — and a roof only ever rises ABOVE its footprint.
+ * So such a building is fully covered, yet it was still extruded, stringified
+ * and written into the DOM on every camera frame: under the rake the far
+ * distance piles dozens of buildings into that band. Measured cost before the
+ * cut: the skyline was the single largest render on the play view (09-30 trace,
+ * `bench/frame-2026-10-01-before.json`).
+ */
+const HAZE_Y = 0.29;
+
+/**
+ * Slack on the seen-ground radius: `centre` is where the camera is going, the
+ * glass shows where it is this frame (a few metres behind on a glide), and a
+ * building is culled by its bounding box, not its nearest wall.
+ */
+const REACH_SLACK_M = 40;
+
+function meterBetween(a: LatLon, b: LatLon): number {
+  const dy = (a.lat - b.lat) * 111_320;
+  const dx = (a.lon - b.lon) * 111_320 * Math.cos((a.lat * Math.PI) / 180);
+  return Math.hypot(dx, dy);
+}
+
 /** Don't label a building whose roof is smaller than this on screen. */
 const LABEL_MIN_PX = 90;
 
@@ -111,6 +137,8 @@ interface Props {
   avoid?: { x: number; y: number } | null;
   /** Same dusk grade as the ground, or the roofs glow cream in the dark. */
   is_night?: boolean;
+  /** The blurred contact shadow under every building. Off in the lite tier. */
+  is_shadow?: boolean;
 }
 
 interface Drawn {
@@ -141,8 +169,9 @@ export default function Skyline({
   style = "block",
   avoid = null,
   is_night = false,
+  is_shadow = true,
 }: Props) {
-  const { project, toScreen, meter_per_pixel, tilt_degree, width, height } = projection;
+  const { project, toScreen, fromScreen, meter_per_pixel, tilt_degree, width, height } = projection;
 
   const drawn = useMemo<Drawn[]>(() => {
     const rise1 = riseAtScale1(tilt_degree, meter_per_pixel);
@@ -150,7 +179,19 @@ export default function Skyline({
        footprint already drew it. Bail rather than paint a second copy. */
     if (rise1 < 0.05) return [];
 
-    const near = buildingNear(centre, DRAW_RADIUS_M);
+    /* Only as far as the ground can still be SEEN. Under the rake a ground
+       point's height on the glass depends only on how far ahead of the
+       camera it is, so nothing past the ground under the haze line (HAZE_Y)
+       can show, whichever way the camera faces. That distance — ~60 m at the
+       street camera, far more pulled back — replaces a flat 420 m, so the
+       ring of every building in a 420 m circle is no longer projected every
+       frame just to be thrown away (it was the largest part of this memo). */
+    const reach_m = Math.max(
+      meterBetween(centre, fromScreen(0, height * HAZE_Y)),
+      meterBetween(centre, fromScreen(width, height * HAZE_Y)),
+    );
+    const radius_m = Number.isFinite(reach_m) ? Math.min(DRAW_RADIUS_M, reach_m + REACH_SLACK_M) : DRAW_RADIUS_M;
+    const near = buildingNear(centre, radius_m);
     const list = near.length > 0 ? near : all_building;
     const out: Drawn[] = [];
 
@@ -176,6 +217,8 @@ export default function Skyline({
       const pad = 40 + rise1 * row.height_m;
       if (max_x < -pad || min_x > width + pad) continue;
       if (max_y < -pad || min_y > height + pad) continue;
+      /* Behind the horizon's opaque haze — see HAZE_Y. */
+      if (max_y < height * HAZE_Y) continue;
 
       /* Too close to be a building any more — see MAX_SCREEN_COVER. */
       if (
@@ -229,7 +272,7 @@ export default function Skyline({
        nearest the camera, so it goes last and covers what is behind it. */
     out.sort((a, b) => a.depth - b.depth);
     return out;
-  }, [project, toScreen, meter_per_pixel, tilt_degree, width, height, centre, is_labelled, style]);
+  }, [project, toScreen, fromScreen, meter_per_pixel, tilt_degree, width, height, centre, is_labelled, style]);
 
   if (drawn.length === 0) return null;
 
@@ -256,29 +299,34 @@ export default function Skyline({
             on a path the size of a city block asks the compositor for a buffer
             the size of a city block; `filterUnits="userSpaceOnUse"` with a
             screen-sized region keeps the cost flat however big the path is. */}
-        <filter
-          id="sky-contact"
-          filterUnits="userSpaceOnUse"
-          x={-80}
-          y={-80}
-          width={width + 160}
-          height={height + 160}
-        >
-          <feGaussianBlur stdDeviation="3" />
-        </filter>
-        <g
-          transform={style === "shadow" ? "translate(2.5 3)" : undefined}
-          opacity={style === "shadow" ? 0.85 : 1}
-        >
-          {drawn.map(({ row, ground }, i) => (
-            <path
-              key={`sh-${row.building_code ?? "b"}-${i}`}
-              d={ground}
-              fill="rgba(46,58,38,0.26)"
+        {/* And ONE blur for the whole group, not one per building. The
+            filter used to sit on every shadow path — a screen-sized offscreen
+            blur pass per building, every camera frame, because the skyline is
+            redrawn with the camera. Blurring the group costs one pass. The
+            lite tier drops the shadow altogether (`BUDGET` in `quality.ts`). */}
+        {is_shadow && (
+          <>
+            <filter
+              id="sky-contact"
+              filterUnits="userSpaceOnUse"
+              x={-80}
+              y={-80}
+              width={width + 160}
+              height={height + 160}
+            >
+              <feGaussianBlur stdDeviation="3" />
+            </filter>
+            <g
+              transform={style === "shadow" ? "translate(2.5 3)" : undefined}
+              opacity={style === "shadow" ? 0.85 : 1}
               filter="url(#sky-contact)"
-            />
-          ))}
-        </g>
+            >
+              {drawn.map(({ row, ground }, i) => (
+                <path key={`sh-${row.building_code ?? "b"}-${i}`} d={ground} fill="rgba(46,58,38,0.26)" />
+              ))}
+            </g>
+          </>
+        )}
         {drawn.map(({ row, roof, ground, wall }, i) => {
           const colour = roofColour(row);
           return (

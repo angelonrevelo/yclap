@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { LAYER_ORDER, nextLayer, SOURCE, type Layer } from "./basemap";
 import {
   CAMPUS_BOX,
@@ -517,8 +518,19 @@ export default function TileMap({
         g.lat = { value: target.lat, velocity: 0 };
         g.lon = { value: target.lon, velocity: 0 };
       }
+      /* Committed INSIDE this frame. A plain `setGlide` from a rAF callback is
+         rendered by React's scheduler in a later task — after the browser may
+         already have painted this frame — so on a busy phone a step computed
+         for a 16 ms frame could land on screen a frame late, or two steps in
+         one frame. The lead's 10-01 hall bench measured exactly that: camera
+         steps of 3.2 / 7.2 / 10.4 / 11.9 px on 15 / 30 / 46 ms frames while
+         walking at a steady pace, uncorrelated with the interval — Gelo's
+         "stuttering" (09-30 `0:29`). Flushed here, the step this frame
+         computed from its own `dt` is the step this frame shows. */
       /* `at` rides with the position it belongs to — see `Projection.frame_ms`. */
-      setGlide({ lat: g.lat.value, lon: g.lon.value, at: is_rest ? undefined : performance.timeOrigin + now });
+      flushSync(() =>
+        setGlide({ lat: g.lat.value, lon: g.lon.value, at: is_rest ? undefined : performance.timeOrigin + now }),
+      );
       if (is_rest) {
         glide_frame.current = null;
         return;

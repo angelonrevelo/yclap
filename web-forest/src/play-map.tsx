@@ -29,6 +29,7 @@ import RemoteWalkerLayer, { HallCount, type Hall } from "./remote-walker";
 import PetEagle from "./pet-eagle";
 import { avatarPx, clampPitch, pitchForZoom, roadCasingPx, roadWidthPx, walkStopMs } from "./camera-feel";
 import FrameProbe from "./frame-probe";
+import { BUDGET, qualityLabel, type QualityPick } from "./quality";
 
 /**
  * The play view — the map as the owner asked for it on 09-03: "simple pokemon
@@ -197,6 +198,10 @@ interface Props {
   hall: Hall;
   /** Night sky, darker ground. From the weather reading's `is_day`, or the clock. */
   is_night?: boolean;
+  /** The graphics tier and why — see `quality.ts`. Named on the map, always. */
+  quality?: QualityPick;
+  /** The tier badge was tapped: open wherever the tier is changed. */
+  onQuality?: () => void;
 }
 
 type Project = Projection["project"];
@@ -266,6 +271,9 @@ function ringPath(ring: [number, number][], project: Project, close: boolean): s
 /** The right-hand map controls, as a screen-space box labels stay out of. */
 const CONTROL_KEEP_OUT_X = 76;
 const CONTROL_KEEP_OUT_Y = 300;
+/** The graphics badge: how far up from the bottom it sits, and how wide it runs. */
+const BADGE_BOTTOM = 200;
+const BADGE_KEEP_OUT_X = 176;
 
 /**
  * Which sectors get to speak.
@@ -275,25 +283,34 @@ const CONTROL_KEEP_OUT_Y = 300;
  * label is worse than no label. Capped at seven because that is roughly what a
  * 390 px screen holds without becoming the thing we were asked to fix.
  */
+/**
+ * The label candidates in the order they get to speak: biggest first, minus
+ * the ground underfoot. The ground underfoot is already named on the HUD card;
+ * a second pill of the same name beside the walker was the one label on screen
+ * that said nothing new. Only changes when `here` does, so the play map
+ * memoises it rather than re-sorting every sector on every camera frame.
+ */
+function orderLabel(row: Sector[], here_code: string | null): Sector[] {
+  return row.filter((s) => s.sector_code !== here_code).sort((a, b) => b.area_m2 - a.area_m2);
+}
+
 function pickLabel(
-  row: Sector[],
-  here: Sector | null,
+  ordered: Sector[],
   projection: Projection,
   avoid: { x: number; y: number } | null,
 ): LabelPlace[] {
   const placed: LabelPlace[] = [];
   const spoken = new Set<string>();
-  /* The ground underfoot is already named on the HUD card; a second pill of
-     the same name beside the walker was the one label on screen that said
-     nothing new. */
-  const ordered = [...row].filter((s) => s.sector_code !== here?.sector_code).sort((a, b) => {
-    if (here) {
-      if (a.sector_code === here.sector_code) return -1;
-      if (b.sector_code === here.sector_code) return 1;
-    }
-    return b.area_m2 - a.area_m2;
-  });
-  const { project, toScreen, width, height } = projection;
+  const { project, toScreen, fromScreen, centre, width, height } = projection;
+  /* A pill must land below 0.3 of the glass (see the haze check below), and
+     under the rake that caps how far away its ground can be. Anything past
+     that is skipped BEFORE the projection, instead of projecting all ~90
+     sectors every camera frame to reject them one by one. */
+  const reach_m =
+    Math.max(
+      distanceMeter(centre, fromScreen(0, height * 0.3)),
+      distanceMeter(centre, fromScreen(width, height * 0.3)),
+    ) + 30;
   /* Every check below is in SCREEN space. Checking in plane space is what let
      labels clip off the right edge: the perspective divide pushes points away
      from the centre, so a pill that fits the plane can still hang off the
@@ -308,6 +325,7 @@ function pickLabel(
        information — the sector card names the piece you actually tapped. */
     const base = s.name.replace(/\s*\([^)]*\)$/, "");
     if (spoken.has(base)) continue;
+    if (Number.isFinite(reach_m) && distanceMeter(centre, { lat: s.label_point[0], lon: s.label_point[1] }) > reach_m) continue;
 
     const p = toScreen(project({ lat: s.label_point[0], lon: s.label_point[1] }));
     const half_w = halfWidth(s);
@@ -321,6 +339,8 @@ function pickLabel(
     /* Not under the right-hand control column (weather, layers, locate,
        compass and the walker count — ~300 px tall on every screen size). */
     if (p.x + half_w > width - CONTROL_KEEP_OUT_X && p.y < CONTROL_KEEP_OUT_Y) continue;
+    /* Not over the graphics badge (`QualityBadge`, bottom-right). */
+    if (p.x + half_w > width - BADGE_KEEP_OUT_X && Math.abs(p.y - (height - BADGE_BOTTOM - 10)) < 30) continue;
     /* Not on top of the walker. `avoid` is their FEET, and the figure stands
        ~110 px up from there, so the keep-out box runs up the whole body. */
     if (avoid && Math.abs(p.x - avoid.x) < half_w + 40 && p.y > avoid.y - 150 && p.y < avoid.y + 24) continue;
@@ -705,13 +725,17 @@ export default function PlayMap({
   skyline_style,
   hall,
   is_night = false,
+  quality = { tier: "full", reason: "default" },
+  onQuality,
 }: Props) {
+  const budget = BUDGET[quality.tier];
   const here = useMemo(() => (fix ? sectorAt(fix) : null), [fix]);
-  /* Every find, and the walker: painted scenery keeps off all of them. */
-  const keep_clear = useMemo<LatLon[]>(
-    () => [...marker, ...spawn, ...(fix ? [fix] : [])],
-    [spawn, fix?.lat, fix?.lon],
-  );
+  /* Every find: painted scenery keeps off all of them (and off the walker,
+     passed to `Flora` on its own). Without the walker in it this list only
+     changes when the world rotates, which is what lets `Flora` memoise the
+     check instead of redoing it for every tree on every frame. */
+  const keep_clear = useMemo<LatLon[]>(() => [...marker, ...spawn], [spawn]);
+  const label_order = useMemo(() => orderLabel(biome_sector, here?.sector_code ?? null), [here?.sector_code]);
 
   /* Pitch = the zoom's resting pitch plus whatever two fingers added. Kept as
      an OFFSET so zooming still eases the tilt after somebody has adjusted it,
@@ -765,6 +789,10 @@ export default function PlayMap({
   }, [moved_at, fix_source]);
 
   return (
+    /* `pm-lite` switches off, in CSS, the animations that run on the main
+       thread every frame — the find bob and the eagle's wings are transforms
+       on SVG children, which the compositor cannot take over (`game.css`). */
+    <div className={quality.tier === "lite" ? "pm-lite" : undefined} style={{ position: "absolute", inset: 0 }}>
     <TileMap
       view={view}
       onView={onView}
@@ -879,13 +907,20 @@ export default function PlayMap({
             ),
           });
         }
-        const label = pickLabel(biome_sector, here, projection, walker_at);
+        const label = pickLabel(label_order, projection, walker_at);
         return (
           <>
             {/* The campus, standing up. Under the sky, over the ground, and
                 below every marker — see `skyline.tsx` on why it cannot live
                 in the tilted plane with the rest of the map. */}
-            <Skyline projection={projection} centre={view} style={skyline_style} avoid={walker_at} is_night={is_night} />
+            <Skyline
+              projection={projection}
+              centre={view}
+              style={skyline_style}
+              avoid={walker_at}
+              is_night={is_night}
+              is_shadow={budget.is_building_shadow}
+            />
             <RemoteWalkerLayer hall={hall} projection={projection} bearing_degree={bearing_degree} zoom={view.zoom} />
             <HallCount hall={hall} />
             <Flora
@@ -894,6 +929,9 @@ export default function PlayMap({
               projection={projection}
               centre={view}
               keep_clear={keep_clear}
+              walker={fix ?? null}
+              tree_max={budget.tree_max}
+              tree_radius_m={budget.tree_radius_m}
               walker_screen_y={walker_at ? walker_at.y : null}
               walker_x={walker_at ? walker_at.x : null}
               is_night={is_night}
@@ -968,7 +1006,10 @@ export default function PlayMap({
               );
             })()}
             {/* Birds. Pure atmosphere, screen space, no data behind them —
-                they exist because a still map reads as a diagram. */}
+                they exist because a still map reads as a diagram. Not in the
+                lite tier: ambient motion is the first thing a slow phone
+                cannot afford (`BUDGET.lite.is_ambient_motion`). */}
+            {budget.is_ambient_motion && (
             <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
               <style>{`
                 @keyframes yc-fly-a { from { transform: translate(-12vw, 0) } to { transform: translate(112vw, -22px) } }
@@ -996,6 +1037,7 @@ export default function PlayMap({
                 </div>
               ))}
             </div>
+            )}
 
             {label.map(({ row, screen_x, screen_y, scale }) => {
               const is_here = here?.sector_code === row.sector_code;
@@ -1027,6 +1069,7 @@ export default function PlayMap({
                 </div>
               );
             })}
+            <QualityBadge pick={quality} onOpen={onQuality} />
             <FrameProbe />
           </>
         );
@@ -1189,5 +1232,45 @@ export default function PlayMap({
         );
       }}
     </TileMap>
+    </div>
+  );
+}
+
+/**
+ * Which graphics tier is on, said on the map itself.
+ *
+ * The rule in this repo is that nothing changes what a player sees silently,
+ * and a tier that quietly drops the trees and the birds is exactly that kind
+ * of change — "the map looks emptier on my phone" is a bug report unless the
+ * map says why. Small, dim, out of the thumb's way above the credit "i", and a
+ * tap opens where the tier is changed.
+ */
+function QualityBadge({ pick, onOpen }: { pick: QualityPick; onOpen?: () => void }) {
+  const label = qualityLabel(pick);
+  return (
+    <button
+      type="button"
+      data-quality-tier={pick.tier}
+      data-play-marker="1"
+      onClick={onOpen}
+      aria-label={`${label}. Change it in Settings.`}
+      title={`${label} — change it in Settings`}
+      style={{
+        position: "absolute",
+        right: 8,
+        bottom: BADGE_BOTTOM,
+        zIndex: 21,
+        padding: "3px 8px",
+        border: "1px solid rgba(31,32,34,0.14)",
+        borderRadius: 999,
+        background: "rgba(249,249,249,0.82)",
+        color: "rgba(31,32,34,0.72)",
+        font: "700 10px/1.2 var(--type-family, system-ui)",
+        whiteSpace: "nowrap",
+        cursor: onOpen ? "pointer" : "default",
+      }}
+    >
+      {label}
+    </button>
   );
 }

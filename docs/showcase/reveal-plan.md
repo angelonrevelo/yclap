@@ -104,15 +104,15 @@ The owner's ask is that every edge case is met, from every side. Rows are groupe
 | Joining by code teleports a walker across campus | done — snap over `SNAP_M` |
 | GPS wobble standing still makes you shuffle on others' screens | done — GPS keeps the 3 m threshold |
 | Off campus: the GPS fix is refused | done (09-26) — switches to the stick and says why |
-| Cheap laptop or phone lags | lane `reveal/perf` |
+| Cheap laptop or phone lags | done in part: graphics tier + frame fixes (6× CPU 16.6 → 33 fps). **Open:** zoomed-out view at ~4 fps on a mid-range phone profile; real-device check |
 | Avatar limbs come apart | lane `reveal/rig` |
 | A player's display name is offensive | done: 040db72, server-side filter on hall, sync and accounts |
-| Someone follows or harasses another walker on the map | lane `reveal/mod` (hide, report). **Open:** is showing live positions of named students acceptable at all? See Q-safety |
+| Someone follows or harasses another walker on the map | done: hide / report a walker (040db72), and Settings → "Hide me from the live map" (cfce666). **Open:** who should see whom by default — Q-safety |
 | A student under 18 | **open**. The app asks no age. Positions are shared by display name only, but the university's policy on minors in location features is unknown |
 | Anyone in the hall could become anyone (raw `player_id` in `/world`) | done: ae2f43d |
 | Sharing your code to be a partner handed over your walker | done: ae2f43d, `/partner` answers a `walker_id` |
 | A script guesses walker codes | done: 20 wrong codes per address per 10 min |
-| Walking side by side, the ground judders on a busy phone | lane `reveal/perf` (camera commits land unevenly; `bench:hall` "both") |
+| Walking side by side, the ground judders on a busy phone | done: camera step flushed in its own frame; `bench:hall` "both" 2.51 px RMS |
 | A fresh visit to Settings raises the map's "No position here" card | done: map-only alerts wait for the map; weather warnings still show anywhere |
 | Colour-blind player | done (earlier): rarity is readable without colour |
 | Reduced-motion preference | done (earlier): animations off |
