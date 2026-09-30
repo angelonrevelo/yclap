@@ -22,6 +22,7 @@ const TOKEN_KEY = "field-guide.mod-token";
 interface ModState {
   retention_day: number;
   you: string;
+  activity: { week_key: string; walker_count: number; returning_count: number; find_count: number }[];
   report: Report[];
   hidden_walker: { walker_id: string; walker_name: string | null; until_at: number }[];
   hidden_find: { sighting_id: string; created_at: string }[];
@@ -284,6 +285,34 @@ export default function ModConsole() {
         />
         hours
       </label>
+
+      <Section
+        title="Walkers by week"
+        note="Walkers who shared at least one find that week, and how many had shared one before. Counted from the finds already shared — nothing else is collected, and nobody is named. Anyone who walked without logging is not counted, so this is a floor."
+      >
+        {state.activity.length === 0 ? (
+          <p style={S.dim}>No shared finds yet.</p>
+        ) : (
+          <table style={S.table}>
+            <tbody>
+              <tr>
+                <td style={{ ...S.td, fontWeight: 700 }}>Week</td>
+                <td style={{ ...S.td, fontWeight: 700 }}>Walkers</td>
+                <td style={{ ...S.td, fontWeight: 700 }}>Returning</td>
+                <td style={{ ...S.td, fontWeight: 700 }}>Finds</td>
+              </tr>
+              {state.activity.map((w) => (
+                <tr key={w.week_key}>
+                  <td style={S.td}>{w.week_key}</td>
+                  <td style={S.td}>{w.walker_count}</td>
+                  <td style={S.td}>{w.returning_count}</td>
+                  <td style={S.td}>{w.find_count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Section>
 
       <Section title={`Reports · ${open_count} open`}>
         <div style={{ marginBottom: 8 }}>

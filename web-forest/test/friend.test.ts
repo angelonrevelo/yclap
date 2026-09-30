@@ -11,6 +11,7 @@ import {
   sanitizePlayer,
   sanitizeSighting,
   walkerIdOf,
+  weeklyActivity,
   worldFrom,
   type WorldFind,
 } from "../src/campus-world.ts";
@@ -328,5 +329,25 @@ describe("the 10-01 privacy pass", () => {
     assert.equal(find.lat, null);
     assert.equal(find.lon, null);
     assert.deepEqual(freshFindOf(new Set(), [row], player), []);
+  });
+});
+
+describe("walkers by week, for the institution", () => {
+  it("counts walkers and returning walkers from shared finds, and hands back no id", () => {
+    const store = new MemoryCampusStore();
+    const add = (player_id: string, id: string, at: string) => {
+      const row = sanitizeSighting({ sighting_id: id, species_code: "narra", common_name: "Narra", lat: 14.639, lon: 121.078, entry_kind: "badge", created_at: at }, player_id);
+      if (row) store.insertSighting(row);
+    };
+    add("p-a", "1", "2026-09-22T02:00:00Z");
+    add("p-b", "2", "2026-09-23T02:00:00Z");
+    add("p-a", "3", "2026-09-23T03:00:00Z");
+    add("p-a", "4", "2026-09-29T02:00:00Z");
+    const week = weeklyActivity(store);
+    assert.deepEqual(week, [
+      { week_key: "2026-W40", walker_count: 1, returning_count: 1, find_count: 1 },
+      { week_key: "2026-W39", walker_count: 2, returning_count: 0, find_count: 3 },
+    ]);
+    assert.ok(!JSON.stringify(week).includes("p-a"));
   });
 });

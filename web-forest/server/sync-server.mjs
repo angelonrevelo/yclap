@@ -45,7 +45,7 @@ const DB_PATH = resolve(process.cwd(), arg("db", "server/yclap-sync.json"));
 mkdirSync(dirname(DB_PATH), { recursive: true });
 const ACCOUNT_DB_PATH = resolve(process.cwd(), arg("account-db", "server/yclap-account.db"));
 
-const { CODE_MISS_MAX, CODE_MISS_WINDOW_MS, lookupByCode, MemoryCampusStore, mergeSync, sanitizePlayer, sanitizeSighting, worldFrom } = await import(
+const { CODE_MISS_MAX, CODE_MISS_WINDOW_MS, lookupByCode, MemoryCampusStore, mergeSync, sanitizePlayer, sanitizeSighting, weeklyActivity, worldFrom } = await import(
   pathToFileURL(resolve(process.cwd(), "src/campus-world.ts")).href
 );
 const multiplayer = await import(pathToFileURL(resolve(process.cwd(), "src/multiplayer.ts")).href);
@@ -146,7 +146,7 @@ const worldOf = () => worldFrom(store, Date.now(), moderation.worldHide());
 /** POST /report and /mod/api/* → the shared handler, body byte-capped as it streams. */
 async function serveModeration(req, res) {
   const web = webRequestOf(req, REPORT_BODY_MAX);
-  const world = { recentFind: () => worldFrom(store).find, refresh: broadcast };
+  const world = { recentFind: () => worldFrom(store).find, refresh: broadcast, activity: () => weeklyActivity(store) };
   const response = await moderation.handle(web, hall, world, pageOrigin);
   const head = Object.fromEntries(response.headers);
   res.writeHead(response.status, head);

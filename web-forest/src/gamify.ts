@@ -9,6 +9,7 @@
  */
 
 import { walkerIdOf } from "./campus-world.ts";
+import { weekKey } from "./week.ts";
 import { readPlayer } from "./sync.ts";
 import type { SpawnPoolEntry } from "./spawn.ts";
 
@@ -136,17 +137,8 @@ export function totalPoints(events: PointEvent[]): number {
 }
 
 /** ISO week key YYYY-Www in UTC (stable across devices for tests). */
-export function weekKey(iso: string | Date): string {
-  const d = typeof iso === "string" ? new Date(iso) : iso;
-  if (Number.isNaN(d.getTime())) return "invalid";
-  // ISO week: Thursday-based year, week starting Monday.
-  const utc = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  const day = utc.getUTCDay() || 7;
-  utc.setUTCDate(utc.getUTCDate() + 4 - day);
-  const year_start = new Date(Date.UTC(utc.getUTCFullYear(), 0, 1));
-  const week = Math.ceil(((utc.getTime() - year_start.getTime()) / 86400000 + 1) / 7);
-  return `${utc.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
-}
+/* Moved to week.ts so the Worker can count weeks without importing the game. */
+export { weekKey };
 
 export function weeksParticipated(events: PointEvent[]): string[] {
   const set = new Set<string>();

@@ -7,6 +7,7 @@
 
 import { species } from "./data.ts";
 import { safeNameOf } from "./name-filter.ts";
+import { weekKey } from "./week.ts";
 
 /**
  * Where a species is too sensitive to publish. A threatened species' find
@@ -358,4 +359,46 @@ export function lookupByCode(
   }
   if (path === "/partner") return { status: 200, body: { walker_id: walkerIdOf(row.player_id), name: row.name } };
   return { status: 200, body: { player_id: row.player_id, name: row.name, join_code: row.join_code } };
+}
+
+/* ── what the institution can see ───────────────────────────────────────── */
+
+export interface WeekActivity {
+  week_key: string;
+  /** Distinct walkers who shared a find that week. */
+  walker_count: number;
+  /** Of those, how many had also shared one in an earlier week. */
+  returning_count: number;
+  find_count: number;
+}
+
+/**
+ * Weekly walkers and returning walkers, newest week first (reveal plan § KPI).
+ *
+ * Counted from the shared finds the store already holds — nothing new is
+ * collected to produce it, and no id leaves this function: the answer is four
+ * numbers a week. It measures walkers who SHARED a find, not everybody who
+ * opened the app; that is the honest lower bound, and the card says so.
+ */
+export function weeklyActivity(store: MemoryCampusStore, week_limit = 6): WeekActivity[] {
+  const by_week = new Map<string, { walker: Set<string>; find_count: number }>();
+  for (const s of store.sighting) {
+    const key = weekKey(s.created_at);
+    if (key === "invalid") continue;
+    const one = by_week.get(key) ?? { walker: new Set<string>(), find_count: 0 };
+    one.walker.add(s.player_id);
+    one.find_count += 1;
+    by_week.set(key, one);
+  }
+  const ordered = [...by_week.keys()].sort();
+  const seen = new Set<string>();
+  const out: WeekActivity[] = [];
+  for (const key of ordered) {
+    const one = by_week.get(key)!;
+    let returning_count = 0;
+    for (const id of one.walker) if (seen.has(id)) returning_count += 1;
+    for (const id of one.walker) seen.add(id);
+    out.push({ week_key: key, walker_count: one.walker.size, returning_count, find_count: one.find_count });
+  }
+  return out.reverse().slice(0, week_limit);
 }

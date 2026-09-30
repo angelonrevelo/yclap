@@ -28,7 +28,7 @@
  * updates or deletes a row, and SQLite triggers abort any UPDATE or DELETE on
  * `mod_audit` that some future code might try.
  */
-import type { WorldFind, WorldHide } from "../src/campus-world.ts";
+import type { WeekActivity, WorldFind, WorldHide } from "../src/campus-world.ts";
 import { walkerIdOf } from "../src/multiplayer.ts";
 import {
   bearerOf,
@@ -125,6 +125,8 @@ export interface ModHall {
 export interface ModWorld {
   recentFind(): WorldFind[];
   refresh(): void;
+  /** Weekly walkers and returning walkers — four numbers a week, no ids (`weeklyActivity`). */
+  activity?(): WeekActivity[];
 }
 
 /** A find as the console shows it: `walker_id`, never the store's player_id. */
@@ -142,6 +144,7 @@ export interface ModState {
   retention_day: number;
   /** The moderator this console is signed in as. */
   you: string;
+  activity: WeekActivity[];
   report: Report[];
   hidden_walker: { walker_id: string; walker_name: string | null; until_at: number }[];
   hidden_find: { sighting_id: string; created_at: string }[];
@@ -393,6 +396,7 @@ export class ModerationService {
     return {
       retention_day: REPORT_RETENTION_DAY,
       you,
+      activity: world.activity?.() ?? [],
       report: this.listReport(),
       hidden_walker: this.sql("SELECT walker_id, walker_name, until_at FROM hall_hide WHERE until_at > ? ORDER BY until_at DESC", now).map(
         (row) => ({

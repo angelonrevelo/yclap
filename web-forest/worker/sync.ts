@@ -10,6 +10,7 @@ import {
   mergeSync,
   sanitizePlayer,
   sanitizeSighting,
+  weeklyActivity,
   worldFrom,
   type SightingRow,
 } from "../src/campus-world.ts";
@@ -152,6 +153,7 @@ export class CampusWorld {
       const world: ModWorld = {
         recentFind: () => worldFrom(store).find,
         refresh: () => this.broadcast(store),
+        activity: () => weeklyActivity(store),
       };
       return (await this.moderation.handle(request, this.hall, world, this.page_origin))!;
     }

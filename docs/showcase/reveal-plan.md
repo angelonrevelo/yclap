@@ -55,8 +55,8 @@ Every KPI must be measurable **without breaking the privacy promise** ("photos a
 
 | KPI | Definition | Source | Status |
 |-----|------------|--------|--------|
-| Weekly walkers | Distinct `walker_id` heard in the hall in a week | Hall presence (hashed id only) | Measurable once a weekly counter is added to the DO |
-| Returning walkers | Walkers heard in two or more distinct weeks | Same | Same |
+| Weekly walkers | Distinct walkers who shared a find in a week (a floor: walking without logging is not counted) | The shared finds already stored — nothing new collected | Live on `/mod` ("Walkers by week") since 10-01 |
+| Returning walkers | Of those, walkers who had shared one in an earlier week | Same | Same |
 | Shared finds per week | Sightings synced to the shared world | `campus-world` store | Measurable today |
 | Species coverage | Distinct species shared this term ÷ species known from campus (1,098 iNat) | `campus-world` + `species-model.json` | Measurable today |
 | Stability | Share of sessions whose frame p5 ≥ 30 fps | `frame-stat` inside a bug report or an opt-in ping | Needs an opt-in; none exists yet |
