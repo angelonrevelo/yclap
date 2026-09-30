@@ -272,7 +272,7 @@ Decision from the note (`5:42`): **fix the bugs, fix the assets, then add.** A m
 | P2 | The Durable Object refuses edits to the audit log, not just the code | `worker/moderation.ts` creates SQLite triggers; unconfirmed on Cloudflare | Deployed `/mod` | Tier 3 after a preview deploy: attempt an `UPDATE mod_audit` through a test-only route; PASS iff it throws | Blocked on the first deploy |
 
 **Triage (needs a decision, not code):**
-- **Who sees whom by default** (Q-safety). The hall shows everybody to everybody. The verified precedent (Snap Map) shares with nobody by default and then with chosen friends. For a university deployment the recommendation is partners-only or off by default; it is the owner's call, and the switch to hide already exists.
+- **Who sees whom by default** (Q-safety). Still the owner's / DPO's call, but now a setting, not a code change: `HALL_DEFAULT=opt_in` keeps every phone off the live map until its student opts in (end-to-end: 0 frames drawn), `shared` is today's behaviour. Partners-only is not built — it needs a mutual-consent graph. The verified precedent (Snap Map) shares with nobody by default.
 - **Minors.** No age is asked. Needs the university's policy on location features for under-18s before any default changes.
 - **Which threatened species list counts.** The P0 above uses the 25 curated species' pills. The other 1,073 iNat species carry no status in this repo; importing iNat's taxon geoprivacy would cover them and needs the sweep re-run with that field.
 

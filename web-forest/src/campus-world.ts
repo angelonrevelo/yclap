@@ -99,6 +99,31 @@ export interface World {
   walker: WorldWalker[];
   totals: { player_count: number; sighting_count: number };
   note: string;
+  /**
+   * The campus's live-map policy (`HALL_DEFAULT`): "shared" — a phone shows on
+   * the live map unless its student hides; "opt_in" — it sends no position
+   * until its student turns sharing on. The CPIA's visibility decision, as one
+   * setting (docs/spec/cpia-draft.md §3). Absent from a server before 10-01,
+   * which read as "shared".
+   */
+  hall_default?: HallDefault;
+}
+
+export type HallDefault = "shared" | "opt_in";
+
+export function hallDefaultOf(raw: string | undefined): HallDefault {
+  return raw?.trim() === "opt_in" ? "opt_in" : "shared";
+}
+
+/**
+ * Whether this phone sends its position. The student's own choice wins; with
+ * none, the campus policy decides; and a phone that has not yet heard the
+ * policy stays hidden — a position cannot be taken back once sent.
+ */
+export function isHiddenFromHall(choice: boolean | null, world: Pick<World, "hall_default"> | null): boolean {
+  if (choice !== null) return choice;
+  if (!world) return true;
+  return (world.hall_default ?? "shared") === "opt_in";
 }
 
 export interface CampusDump {
@@ -270,7 +295,7 @@ export interface WorldHide {
   player?: (player_id: string) => boolean;
 }
 
-export function worldFrom(store: MemoryCampusStore, now = Date.now(), hide: WorldHide = {}): World {
+export function worldFrom(store: MemoryCampusStore, now = Date.now(), hide: WorldHide = {}, hall_default: HallDefault = "shared"): World {
   const find_since = new Date(now - FIND_WINDOW_MS).toISOString();
   const present_since = new Date(now - PRESENT_WINDOW_MS).toISOString();
   /* A hidden walker's finds still count, under a name that is nobody's. */
@@ -309,6 +334,7 @@ export function worldFrom(store: MemoryCampusStore, now = Date.now(), hide: Worl
     walker,
     totals: { player_count: player_id.size, sighting_count: store.sighting.length },
     note: WORLD_NOTE,
+    hall_default,
   };
 }
 

@@ -42,7 +42,7 @@ Read from the code on `reveal-1015`, 2026-10-01.
    - (b) walking partners only;
    - (c) nobody until the student opts in.
 
-   The team recommends **(b) or (c)** for any cohort with students under 18. Snap Map shares location with nobody by default ([Tom's Guide](https://www.tomsguide.com/us/snapchat-snap-maps-tracking,news-25390.html)).
+   The team recommends **(b) or (c)** for any cohort with students under 18. **(c) is one setting since 10-01:** `HALL_DEFAULT=opt_in` on the server. A phone then sends no position until its student turns "Hide me from the live map" off; a phone that has not yet heard the policy stays hidden (tested end to end: two fresh phones drew each other on 0 frames). (a) is `HALL_DEFAULT=shared`, the default. **(b) is not built:** partners are one-sided lists on each phone, and a server-enforced "partners only" needs mutual consent. Snap Map shares location with nobody by default ([Tom's Guide](https://www.tomsguide.com/us/snapchat-snap-maps-tracking,news-25390.html)).
 2. **Consent.** RA 10173 §3(b) needs consent to be *evidenced* ([text](https://privacy.gov.ph/data-privacy-act/)). Is a recorded tick on the boot card enough for adults, and what does the university require for under-18s (a parent or guardian)?
 3. **Retention (F-1).** Shared finds and inactive player rows are now deleted after **150 days** (one term + 30 days), per RA 10173 §11(e); `RETENTION_DAY` changes it. Still to decide: accounts, proposed at **12 months** of inactivity.
 4. **F-2.** Done by default on 10-01: account backups no longer carry notes (the phone that wrote a note keeps it). Decide whether backups should also round positions.

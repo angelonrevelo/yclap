@@ -12,7 +12,7 @@ import {
   type Friend,
   type GroupStreak,
 } from "./friend";
-import { normalizeJoinCode, walkerIdOf } from "./campus-world";
+import { isHiddenFromHall, normalizeJoinCode, walkerIdOf, type HallDefault } from "./campus-world";
 import { haptic } from "./haptic";
 import StreakFlame from "./streak-flame";
 import SettingsScreen, { type SettingsIcon } from "./settings";
@@ -3717,6 +3717,10 @@ export default function App() {
     preference_name: preference.walker_name,
     player_name: me.name,
   });
+  /* The campus's live-map policy, remembered from the last world it sent —
+     until one arrives this phone counts as hidden (`isHiddenFromHall`). */
+  const [hall_default, setHallDefault] = useState<HallDefault | null>(null);
+  const is_hidden_from_hall = isHiddenFromHall(preference.is_hidden_from_hall, hall_default ? { hall_default } : null);
   const live = useLiveWorld({
     sighting,
     summary: {
@@ -3724,13 +3728,16 @@ export default function App() {
       level,
       total_points: gamify.total_points,
       streak_weeks: gamify.streak_weeks,
-      is_hidden: preference.is_hidden_from_hall,
+      is_hidden: is_hidden_from_hall,
     },
     name: live_name,
   });
+  useEffect(() => {
+    if (live.world) setHallDefault(live.world.hall_default ?? "shared");
+  }, [live.world?.hall_default, Boolean(live.world)]);
   /* The hall, opened once for the whole app: the map pill, the trainer sheet
      and the Dex strip all count off this one roster (`hallLabelOf`). */
-  const hall = useHall({ fix: geo.fix, stage, level, name: live_name, is_hidden: preference.is_hidden_from_hall });
+  const hall = useHall({ fix: geo.fix, stage, level, name: live_name, is_hidden: is_hidden_from_hall });
   const hall_label = hallLabelOf(hall);
   /* Section art. Filled from `asset/kit.ts` once the generated set is keyed and
      committed; every section renders headed-but-unillustrated until then, which
@@ -4656,6 +4663,8 @@ export default function App() {
             is_desktop={is_desktop}
             preference={preference}
             onPreference={savePreference}
+            is_hidden_from_hall={is_hidden_from_hall}
+            hall_default={hall_default}
             walker_name={me.name}
             account_name={account.status === "signed_in" ? account.account?.display_name ?? null : null}
             join_code={me.join_code}

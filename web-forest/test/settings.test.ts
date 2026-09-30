@@ -101,13 +101,15 @@ describe("preference", () => {
     assert.equal(back.skyline_style, "solid");
   });
 
-  it("keeps a student visible on the live map unless they explicitly hide, and remembers when they do", () => {
-    assert.equal(PREFERENCE_DEFAULT.is_hidden_from_hall, false);
+  it("leaves the live-map choice to the campus until the student makes one, and remembers it", () => {
+    assert.equal(PREFERENCE_DEFAULT.is_hidden_from_hall, null, "no choice yet: HALL_DEFAULT decides");
     const storage = memoryStorage();
     storage.setItem("field-guide.preference", JSON.stringify({ is_hidden_from_hall: "yes" }));
-    assert.equal(readPreference(storage).is_hidden_from_hall, false, "only a real true hides");
+    assert.equal(readPreference(storage).is_hidden_from_hall, null, "only a real boolean is a choice");
     writePreference({ ...PREFERENCE_DEFAULT, is_hidden_from_hall: true }, storage);
     assert.equal(readPreference(storage).is_hidden_from_hall, true);
+    writePreference({ ...PREFERENCE_DEFAULT, is_hidden_from_hall: false }, storage);
+    assert.equal(readPreference(storage).is_hidden_from_hall, false);
   });
 
   it("refuses a skyline style that is not one of the four", () => {

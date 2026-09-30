@@ -10,6 +10,7 @@ import {
   mergeSync,
   sanitizePlayer,
   sanitizeSighting,
+  hallDefaultOf,
   pruneCampus,
   retentionDayOf,
   weeklyActivity,
@@ -45,6 +46,8 @@ export interface Env extends AccountEnv {
   RETENTION_DAY?: string;
   /** "1" refuses every route that stores something new (`isWriteRoute`) — the breach switch. */
   WRITE_OFF?: string;
+  /** "opt_in": phones send no live position until their student turns sharing on (`hallDefaultOf`). */
+  HALL_DEFAULT?: string;
   /**
    * The moderator console's password (`wrangler secret put MOD_TOKEN`, 16+
    * characters). Unset or short: /mod/api/* answers 404 and the console is off.
@@ -105,7 +108,7 @@ export class CampusWorld {
 
   /** The world as every phone sees it: what a moderator hid is filtered out. */
   world(store: MemoryCampusStore) {
-    return worldFrom(store, Date.now(), this.moderation.worldHide());
+    return worldFrom(store, Date.now(), this.moderation.worldHide(), hallDefaultOf(this.env.HALL_DEFAULT));
   }
 
   /** Accounts live in this object's SQLite — see worker/account.ts. */

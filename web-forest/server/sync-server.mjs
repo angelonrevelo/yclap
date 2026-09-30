@@ -45,7 +45,7 @@ const DB_PATH = resolve(process.cwd(), arg("db", "server/yclap-sync.json"));
 mkdirSync(dirname(DB_PATH), { recursive: true });
 const ACCOUNT_DB_PATH = resolve(process.cwd(), arg("account-db", "server/yclap-account.db"));
 
-const { CODE_MISS_MAX, CODE_MISS_WINDOW_MS, lookupByCode, MemoryCampusStore, mergeSync, sanitizePlayer, sanitizeSighting, pruneCampus, retentionDayOf, weeklyActivity, worldFrom } = await import(
+const { CODE_MISS_MAX, CODE_MISS_WINDOW_MS, lookupByCode, MemoryCampusStore, mergeSync, sanitizePlayer, sanitizeSighting, hallDefaultOf, pruneCampus, retentionDayOf, weeklyActivity, worldFrom } = await import(
   pathToFileURL(resolve(process.cwd(), "src/campus-world.ts")).href
 );
 const multiplayer = await import(pathToFileURL(resolve(process.cwd(), "src/multiplayer.ts")).href);
@@ -141,7 +141,7 @@ const moderation = new ModerationService((query, ...bind) => account_db.prepare(
 const hall = createHall(multiplayer, pageOrigin, moderation);
 
 /** The world as every phone sees it: what a moderator hid is filtered out. */
-const worldOf = () => worldFrom(store, Date.now(), moderation.worldHide());
+const worldOf = () => worldFrom(store, Date.now(), moderation.worldHide(), hallDefaultOf(process.env.HALL_DEFAULT));
 
 /** POST /report and /mod/api/* → the shared handler, body byte-capped as it streams. */
 async function serveModeration(req, res) {

@@ -3,7 +3,9 @@ import { describe, it } from "node:test";
 import {
   CODE_MISS_MAX,
   CODE_MISS_WINDOW_MS,
+  hallDefaultOf,
   HIDDEN_WALKER_NAME,
+  isHiddenFromHall,
   isLocationWithheld,
   joinCodeOf,
   lookupByCode,
@@ -377,5 +379,24 @@ describe("the shared world forgets (CPIA F-1)", () => {
     assert.equal(retentionDayOf("90"), 90);
     assert.equal(retentionDayOf("nonsense"), RETENTION_DAY_DEFAULT);
     assert.equal(retentionDayOf(undefined), 150);
+  });
+});
+
+describe("the campus live-map policy (HALL_DEFAULT)", () => {
+  it("the student's own choice always wins", () => {
+    assert.equal(isHiddenFromHall(true, { hall_default: "shared" }), true);
+    assert.equal(isHiddenFromHall(false, { hall_default: "opt_in" }), false);
+  });
+  it("with no choice, the campus decides — and a phone that has not heard stays hidden", () => {
+    assert.equal(isHiddenFromHall(null, { hall_default: "opt_in" }), true);
+    assert.equal(isHiddenFromHall(null, { hall_default: "shared" }), false);
+    assert.equal(isHiddenFromHall(null, null), true, "a position cannot be taken back once sent");
+    assert.equal(isHiddenFromHall(null, {}), false, "a server before 10-01 says nothing: shared, as it was");
+  });
+  it("reads HALL_DEFAULT, and the world carries it", () => {
+    assert.equal(hallDefaultOf("opt_in"), "opt_in");
+    assert.equal(hallDefaultOf(undefined), "shared");
+    assert.equal(hallDefaultOf("anything"), "shared");
+    assert.equal(worldFrom(new MemoryCampusStore(), Date.now(), {}, "opt_in").hall_default, "opt_in");
   });
 });

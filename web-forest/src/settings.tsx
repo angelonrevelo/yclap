@@ -258,7 +258,13 @@ export default function SettingsScreen({
   plan,
   quality_label,
   is_setup_first = false,
+  is_hidden_from_hall = false,
+  hall_default = null,
 }: {
+  /** Whether this phone is hidden right now: the student's choice, else the campus policy. */
+  is_hidden_from_hall?: boolean;
+  /** The campus's live-map policy, once a world has said it. */
+  hall_default?: "shared" | "opt_in" | null;
   is_desktop: boolean;
   preference: Preference;
   onPreference: (next: Preference) => void;
@@ -650,10 +656,8 @@ export default function SettingsScreen({
                   <Td is_head>
                     <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                       <Switch
-                        is_on={preference.is_hidden_from_hall}
-                        onToggle={() =>
-                          onPreference({ ...preference, is_hidden_from_hall: !preference.is_hidden_from_hall })
-                        }
+                        is_on={is_hidden_from_hall}
+                        onToggle={() => onPreference({ ...preference, is_hidden_from_hall: !is_hidden_from_hall })}
                         label="Hide me from the live map"
                       />
                       Hide me from the live map
@@ -663,6 +667,11 @@ export default function SettingsScreen({
                     Other phones stop drawing you and your name, at once, and you still see everyone else. A find
                     you log is still shared — the species and where — but under "A walker", never your name, and
                     nobody nearby is told you logged it.
+                    {hall_default === "opt_in" && preference.is_hidden_from_hall === null && (
+                      <div style={{ marginTop: 5, fontWeight: 700 }}>
+                        This campus keeps everyone hidden until they choose to be seen. Turn this off to appear.
+                      </div>
+                    )}
                   </Td>
                 </tr>
                 <tr>

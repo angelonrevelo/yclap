@@ -166,6 +166,6 @@ The owner's ask is that every edge case is met, from every side. Rows are groupe
 
 - **Q-date:** exact reveal date and venue.
 - **Q-deploy:** OK to deploy `reveal-1015` to the live URL on Oct 10? It replaces the 09-22 bundle anyone has been judging from.
-- **Q-safety:** should live positions of named students be visible to everyone in the hall, or only to walking partners? The 09-25 build shows everybody. For a reveal to an institution this is the question most likely to be asked.
+- **Q-safety:** should live positions of named students be visible to everyone in the hall, or only after they opt in? Since 10-01 it is one setting: `HALL_DEFAULT=opt_in` (nobody shown until they choose) or `shared`. For a reveal to an institution this is the question most likely to be asked.
 - **Q-moderator:** who moderates, and who at the university signs off on the emergency layer?
 - **Q-wip:** fold the 09-26 PC work (`wip/pc-demo-0926`: toon look, spawn density 0.62, play zoom 20, HTML splash) into the reveal, or leave the look to Aleij?

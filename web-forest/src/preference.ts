@@ -26,10 +26,10 @@ export interface Preference {
    * Walk without being drawn on anybody else's map. The hall shows a display
    * name at a live position to every phone in it; a student who does not want
    * that — for any reason, and they owe nobody one — sends no position at all
-   * and still sees everyone else. Off by default only because the owner has
-   * not yet decided who should see whom (reveal plan, Q-safety).
+   * and still sees everyone else. null = no choice made, so the campus policy
+   * decides (`isHiddenFromHall`, `HALL_DEFAULT`).
    */
-  is_hidden_from_hall: boolean;
+  is_hidden_from_hall: boolean | null;
   /** Graphics tier: auto (measured on this device), or pinned full / lite. See `quality.ts`. */
   quality: QualityChoice;
 }
@@ -39,7 +39,7 @@ export const PREFERENCE_DEFAULT: Preference = {
   skyline_style: "block",
   is_restricted_shown: true,
   walker_name: "",
-  is_hidden_from_hall: false,
+  is_hidden_from_hall: null,
   quality: "auto",
 };
 
@@ -72,7 +72,7 @@ export function readPreference(storage: Storage | null = safeStorage()): Prefere
           ? parsed.is_restricted_shown
           : PREFERENCE_DEFAULT.is_restricted_shown,
       walker_name: typeof parsed.walker_name === "string" ? parsed.walker_name.slice(0, 40) : "",
-      is_hidden_from_hall: parsed.is_hidden_from_hall === true,
+      is_hidden_from_hall: typeof parsed.is_hidden_from_hall === "boolean" ? parsed.is_hidden_from_hall : null,
       quality: parseQualityChoice(parsed.quality),
     };
   } catch {
