@@ -207,6 +207,9 @@ self.addEventListener("fetch", (event) => {
   /* Accounts go straight to the network: never cache a session or a save, and
      never let the OAuth redirects be stored as the app shell. */
   if (url.pathname.startsWith("/auth/") || url.pathname.startsWith("/account/")) return;
+  /* Nor the moderator console's data: reports and the audit log must never sit
+     in a cache on the moderator's laptop, and a stale list is worse than none. */
+  if (url.pathname.startsWith("/mod/api/")) return;
 
   if (request.mode === "navigate") {
     event.respondWith(handleNavigate(request));

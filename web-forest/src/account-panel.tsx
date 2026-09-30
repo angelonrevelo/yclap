@@ -17,6 +17,7 @@ import {
   syncSave,
   UPDATE_AVAILABLE,
   useAccount,
+  takeNameNotice,
 } from "./account.ts";
 import { PASSWORD_MIN } from "./account-core.ts";
 
@@ -201,6 +202,8 @@ function SignedIn() {
   const [new_password, setNew] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [is_busy, setBusy] = useState(false);
+  /* The name filter's answer to the display name asked for at signup, once. */
+  const [name_notice] = useState(takeNameNotice);
   const me = account.account!;
 
   async function submitPassword(e: FormEvent) {
@@ -221,6 +224,11 @@ function SignedIn() {
       <div style={CARD}>
         <div style={HEAD}>Signed in</div>
         <div style={{ fontSize: 16, fontWeight: 900, color: "var(--mg-forest)" }}>{me.display_name}</div>
+        {name_notice && (
+          <p role="status" style={{ ...NOTE, color: "#8A5A00", fontWeight: 700 }}>
+            {name_notice}
+          </p>
+        )}
         <div style={NOTE}>
           @{me.username}
           {me.is_google ? " · Google linked" : ""}

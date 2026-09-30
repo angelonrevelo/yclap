@@ -13,7 +13,10 @@ import {
 import { AccountService, isAccountPath, type AccountEnv, type SqlValue } from "./account.ts";
 import { handleIdentify, IDENTIFY_PATH } from "./inat.ts";
 import { freshFindOf } from "../src/multiplayer.ts";
+import { EDGE_REPORT_IP_PER_HOUR } from "../src/moderation.ts";
+import { safeNameOf, nameNoticeOf } from "../src/name-filter.ts";
 import { LIVE_PATH, LiveHall } from "./live-socket.ts";
+import { isModPath, ModerationService, type ModWorld } from "./moderation.ts";
 import { accountCorsOf, isAccountCorsPath, pageOriginListOf, withCors } from "../src/rate-limit.ts";
 
 export interface Env extends AccountEnv {
@@ -26,6 +29,11 @@ export interface Env extends AccountEnv {
    * another host than this Worker (a preview deploy pointing `?sync=` here).
    */
   HALL_PAGE_ORIGIN?: string;
+  /**
+   * The moderator console's password (`wrangler secret put MOD_TOKEN`, 16+
+   * characters). Unset or short: /mod/api/* answers 404 and the console is off.
+   */
+  MOD_TOKEN?: string;
 }
 
 const SYNC_PATH = new Set(["/world", "/sync", "/live", "/health", "/join", "/mine"]);
@@ -45,7 +53,7 @@ export default {
       const id = env.CAMPUS.idFromName("loyola");
       return withCors(await env.CAMPUS.get(id).fetch(request), cors);
     }
-    if (SYNC_PATH.has(url.pathname) || LIVE_PATH.has(url.pathname) || isAccountPath(url.pathname)) {
+    if (SYNC_PATH.has(url.pathname) || LIVE_PATH.has(url.pathname) || isAccountPath(url.pathname) || isModPath(url.pathname)) {
       const id = env.CAMPUS.idFromName("loyola");
       return env.CAMPUS.get(id).fetch(request);
     }
@@ -59,11 +67,24 @@ export class CampusWorld {
   listener: Set<(chunk: string) => void> = new Set();
   account_service: AccountService | null = null;
   hall: LiveHall;
+  /** Reports, hides and the audit log, in this object's SQLite beside the accounts. */
+  moderation: ModerationService;
+  page_origin: string[];
 
   constructor(ctx: DurableObjectState, env: Env) {
     this.ctx = ctx;
     this.env = env;
-    this.hall = new LiveHall(ctx, (headers) => this.cors(headers), pageOriginListOf(env.HALL_PAGE_ORIGIN));
+    this.page_origin = pageOriginListOf(env.HALL_PAGE_ORIGIN);
+    this.moderation = new ModerationService(
+      (query: string, ...bind: SqlValue[]) => this.ctx.storage.sql.exec(query, ...bind).toArray(),
+      { token: env.MOD_TOKEN, report_ip_per_hour: EDGE_REPORT_IP_PER_HOUR },
+    );
+    this.hall = new LiveHall(ctx, (headers) => this.cors(headers), this.page_origin, this.moderation);
+  }
+
+  /** The world as every phone sees it: what a moderator hid is filtered out. */
+  world(store: MemoryCampusStore) {
+    return worldFrom(store, Date.now(), this.moderation.worldHide());
   }
 
   /** Accounts live in this object's SQLite — see worker/account.ts. */
@@ -112,13 +133,23 @@ export class CampusWorld {
   }
 
   broadcast(store: MemoryCampusStore): void {
-    const chunk = `data: ${JSON.stringify(worldFrom(store))}\n\n`;
+    const chunk = `data: ${JSON.stringify(this.world(store))}\n\n`;
     for (const send of this.listener) send(chunk);
   }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     if (isAccountPath(url.pathname)) return this.account().handle(request);
+    /* Before the catch-all OPTIONS below: /report answers only its own page,
+       and the console answers no other origin at all. */
+    if (isModPath(url.pathname)) {
+      const store = await this.store();
+      const world: ModWorld = {
+        recentFind: () => worldFrom(store).find,
+        refresh: () => this.broadcast(store),
+      };
+      return (await this.moderation.handle(request, this.hall, world, this.page_origin))!;
+    }
     /* /live/pose answers its own page only: no CORS, not even on the preflight. */
     if (request.method === "OPTIONS" && url.pathname !== "/live/pose") {
       return new Response(null, { status: 204, headers: this.cors() });
@@ -128,7 +159,7 @@ export class CampusWorld {
     if (live) return live;
 
     if (request.method === "GET" && (url.pathname === "/health" || url.pathname === "/world")) {
-      return this.json(worldFrom(await this.store()));
+      return this.json(this.world(await this.store()));
     }
 
     if (request.method === "GET" && url.pathname === "/join") {
@@ -157,7 +188,7 @@ export class CampusWorld {
             }
           };
           this.listener.add(send);
-          send(`data: ${JSON.stringify(worldFrom(store))}\n\n`);
+          send(`data: ${JSON.stringify(this.world(store))}\n\n`);
         },
         cancel: () => {
           this.listener.delete(send);
@@ -194,7 +225,10 @@ export class CampusWorld {
       await this.persist(store);
       this.broadcast(store);
       this.hall.announce(fresh);
-      return this.json({ ok: true, merged, world: worldFrom(store) });
+      /* sanitizePlayer already swapped a refused name; say so to this phone. */
+      const { refusal } = safeNameOf((body.player as { name?: unknown } | undefined)?.name, player.player_id);
+      const notice = refusal ? nameNoticeOf(refusal, player.name) : undefined;
+      return this.json({ ok: true, merged, world: this.world(store), ...(notice ? { notice } : {}) });
     }
 
     return this.json({ error: "not found" }, 404);

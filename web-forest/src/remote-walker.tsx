@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { WorldFind } from "./campus-world";
 import Character, { type Stage } from "./character";
 import { avatarPx, REMOTE_WALKER_SHARE } from "./camera-feel";
@@ -22,9 +22,13 @@ import {
   walkerOutCount,
   walkerOutLabel,
   type HallMode,
+  type HallNotice,
   type SentPose,
   type Track,
 } from "./multiplayer";
+import { muteWalker } from "./mute";
+import { noteReportContext } from "./report";
+import { fileReport, RESULT_LINE, useMuted } from "./report-sheet";
 import { screenAngleOf, signedAngle } from "./play-walk";
 import { readPlayer, syncUrl } from "./sync";
 import type { Projection } from "./tile-map";
@@ -40,6 +44,9 @@ export interface Hall {
   mode: HallMode;
   /** True once this phone's own pose has gone out, so it counts itself. */
   is_sharing: boolean;
+  /** What the hall told THIS phone about itself (a refused name, a moderator's hide), or null. */
+  notice: HallNotice | null;
+  dismissNotice: () => void;
 }
 
 /**
@@ -65,10 +72,21 @@ export function useHall(input: { fix: Fix | null | undefined; stage: Stage; leve
   const [callout, setCallout] = useState<{ find: WorldFind; until: number }[]>([]);
   const [mode, setMode] = useState<HallMode>("off");
   const [is_sharing, setSharing] = useState(false);
+  const [notice, setNotice] = useState<HallNotice | null>(null);
   const latest = useRef(input);
   useEffect(() => {
     latest.current = input;
   });
+  /* What a report attaches: the hall's mode and which source drives the walker. */
+  useEffect(() => {
+    noteReportContext({ hall_mode: mode });
+  }, [mode]);
+  useEffect(() => {
+    noteReportContext({
+      geo_source: input.fix?.source ?? "none",
+      fix: input.fix ? { lat: input.fix.lat, lon: input.fix.lon } : null,
+    });
+  }, [input.fix]);
 
   useEffect(() => {
     const base_url = syncUrl();
@@ -82,6 +100,15 @@ export function useHall(input: { fix: Fix | null | undefined; stage: Stage; leve
       base_url,
       (message) => {
         const now = Date.now();
+        if (message.type === "notice") {
+          /* The same notice again (a poll repeats it) keeps the one on screen. */
+          setNotice((prev) => (prev?.text === message.notice.text ? prev : message.notice));
+          return;
+        }
+        if (message.type === "roster" && message.notice) {
+          const { notice: said } = message;
+          setNotice((prev) => (prev?.text === said.text ? prev : said));
+        }
         if (message.type !== "pose" && message.type !== "gone") {
           const fresh = message.find.filter((f) => !seen_find.has(f.sighting_id));
           for (const f of fresh) seen_find.add(f.sighting_id);
@@ -131,7 +158,7 @@ export function useHall(input: { fix: Fix | null | undefined; stage: Stage; leve
     };
   }, []);
 
-  return { track, callout, mode, is_sharing };
+  return { track, callout, mode, is_sharing, notice, dismissNotice: () => setNotice(null) };
 }
 
 /**
@@ -172,13 +199,25 @@ export default function RemoteWalkerLayer({
 }) {
   const delay_ms = interpDelayOf(hall.mode);
   const now = useGlideClock(hall.track, delay_ms);
+  const muted = useMuted();
+  /* The walker whose name tag was tapped: Hide / Report name / Cancel. */
+  const [picked, setPicked] = useState<{ walker_id: string; name: string } | null>(null);
+  const [said, setSaid] = useState<string | null>(null);
   const { width, height } = projection;
   /* Same source as your own walker, a size down — present, but plainly not you. */
   const size = Math.round(avatarPx(zoom, Math.min(width, height)) * REMOTE_WALKER_SHARE);
+  /* A walker you hid is gone from your map and your feed — and nowhere else. */
+  const callout = hall.callout.filter(({ find }) => !muted.has(find.player_id));
+
+  useEffect(() => {
+    if (!said) return;
+    const timer = setTimeout(() => setSaid(null), 4_000);
+    return () => clearTimeout(timer);
+  }, [said]);
 
   return (
     <>
-      {[...hall.track.values()].map((one) => {
+      {[...hall.track.values()].filter((one) => !muted.has(one.pose.walker_id)).map((one) => {
         const at = projection.toScreen(projection.project(positionOf(one, now, delay_ms)));
         if (at.x < -80 || at.y < -120 || at.x > width + 80 || at.y > height + 120) return null;
         /* Same clamp as your own walker, so two phones side by side agree. */
@@ -199,8 +238,21 @@ export default function RemoteWalkerLayer({
               alignItems: "center",
             }}
           >
-            <div
+            {/* The name tag is the one tappable part of a remote walker: it
+                opens Hide / Report name. `data-play-marker` keeps the tap
+                from also walking you there (tile-map.tsx). */}
+            <button
+              type="button"
+              data-play-marker="1"
+              aria-label={`${one.pose.name} — hide or report this name`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setPicked({ walker_id: one.pose.walker_id, name: one.pose.name });
+              }}
               style={{
+                pointerEvents: "auto",
+                cursor: "pointer",
+                font: "inherit",
                 whiteSpace: "nowrap",
                 fontSize: 11,
                 fontWeight: 800,
@@ -215,7 +267,7 @@ export default function RemoteWalkerLayer({
             >
               {one.pose.name} · Lv {one.pose.level}
               <span style={{ fontWeight: 600, color: "rgba(27,46,22,0.6)" }}> · {SOURCE_LABEL[one.pose.source]}</span>
-            </div>
+            </button>
             <Character
               stage={(one.pose.stage as Stage) ?? "egg"}
               size={size}
@@ -231,7 +283,67 @@ export default function RemoteWalkerLayer({
           card, stacked, never pinned to the find: a find is usually a few
           metres from the walker, so a callout drawn at it sat across your own
           walker and the pet painted over it. zIndex 9 keeps it over the pet. */}
-      {hall.callout.length > 0 && (
+      {picked && (
+        <WalkerMenu
+          name={picked.name}
+          onHide={() => {
+            muteWalker(picked.walker_id);
+            setSaid(`${picked.name} is hidden on this phone. Settings → Setup shows them again.`);
+            setPicked(null);
+          }}
+          onReport={() => {
+            const target = picked;
+            setPicked(null);
+            void fileReport({
+              category: "name",
+              severity: "major",
+              text: "",
+              is_location_shared: false,
+              walker_id: target.walker_id,
+              walker_name: target.name,
+            }).then((result) => setSaid(result === "refused" ? RESULT_LINE.refused : `Name reported. ${RESULT_LINE[result]}`));
+          }}
+          onClose={() => setPicked(null)}
+        />
+      )}
+
+      {(said || hall.notice) && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: "absolute",
+            left: 12,
+            right: 12,
+            bottom: "calc(env(safe-area-inset-bottom, 0px) + 150px)",
+            zIndex: 12,
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 8,
+            fontSize: 12.5,
+            fontWeight: 700,
+            lineHeight: 1.4,
+            color: "#1B2E16",
+            background: hall.notice && !said ? "rgba(255,240,214,0.98)" : "rgba(255,255,255,0.97)",
+            border: `1.5px solid ${hall.notice && !said ? "#E0A526" : "#7FB3E0"}`,
+            borderRadius: 14,
+            padding: "8px 10px",
+            boxShadow: "0 4px 14px rgba(24,38,20,0.25)",
+          }}
+        >
+          <span style={{ flex: 1 }}>{said ?? hall.notice?.text}</span>
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={() => (said ? setSaid(null) : hall.dismissNotice())}
+            style={{ border: "none", background: "transparent", fontSize: 16, lineHeight: 1, cursor: "pointer" }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {callout.length > 0 && (
         <div
           aria-live="polite"
           style={{
@@ -247,7 +359,7 @@ export default function RemoteWalkerLayer({
             gap: 6,
           }}
         >
-          {hall.callout.slice(0, 3).map(({ find }) => (
+          {callout.slice(0, 3).map(({ find }) => (
             <div
               key={`find-${find.sighting_id}`}
               style={{
@@ -271,6 +383,74 @@ export default function RemoteWalkerLayer({
         </div>
       )}
     </>
+  );
+}
+
+/** Tapped a name tag: hide them here, or send their name to a moderator. */
+function WalkerMenu({
+  name,
+  onHide,
+  onReport,
+  onClose,
+}: {
+  name: string;
+  onHide: () => void;
+  onReport: () => void;
+  onClose: () => void;
+}) {
+  const row: CSSProperties = {
+    display: "block",
+    width: "100%",
+    textAlign: "left",
+    padding: "11px 12px",
+    border: "none",
+    borderTop: "1px solid rgba(27,46,22,0.1)",
+    background: "transparent",
+    font: "inherit",
+    fontSize: 14,
+    fontWeight: 800,
+    color: "#1B2E16",
+    cursor: "pointer",
+  };
+  return (
+    <div data-play-marker="1" style={{ position: "absolute", inset: 0, zIndex: 30, pointerEvents: "auto" }} onClick={onClose}>
+      <div
+        role="dialog"
+        aria-label={`${name}`}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: "40%",
+          transform: "translate(-50%, -50%)",
+          width: "min(300px, calc(100% - 40px))",
+          background: "#fff",
+          borderRadius: 16,
+          overflow: "hidden",
+          boxShadow: "0 10px 30px rgba(24,38,20,0.35)",
+        }}
+      >
+        <div style={{ padding: "12px 12px 10px", fontSize: 13, fontWeight: 900, color: "#1B2E16", wordBreak: "break-word" }}>
+          {name}
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: "rgba(27,46,22,0.6)", marginTop: 2 }}>
+            Only their display name is shared with you — nothing else.
+          </div>
+        </div>
+        <button type="button" style={row} onClick={onHide}>
+          Hide this walker
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: "rgba(27,46,22,0.6)" }}>Only on this phone. They are not told.</div>
+        </button>
+        <button type="button" style={row} onClick={onReport}>
+          Report name
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: "rgba(27,46,22,0.6)" }}>
+            Sends a moderator the name you see. Not who you are.
+          </div>
+        </button>
+        <button type="button" style={{ ...row, fontWeight: 600, color: "rgba(27,46,22,0.7)" }} onClick={onClose}>
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }
 

@@ -20,18 +20,29 @@
  * sharing one public IP (see src/multiplayer.ts); poses are dropped past
  * POSE_PER_SECOND per socket / polled walker and POSE_IP_PER_SECOND per IP. A
  * socket's IP and id ride in its tags, so they survive hibernation too.
+ *
+ * Moderation (`guard`, worker/moderation.ts): a walker a moderator hid is
+ * dropped from the roster and their poses are refused — the phone is told once,
+ * by a `notice` only it receives — and their finds are not called out. A name
+ * the filter refused is printed as the generated walker name, and that phone,
+ * alone, is told why.
  */
 import type { WorldFind } from "../src/campus-world.ts";
 import {
   EDGE_IP_SOCKET_MAX,
   EDGE_POLL_IP_WALKER_MAX,
   HALL_WALKER_MAX,
+  hiddenNoticeOf,
+  isFindShown,
+  nameNoticeOfPose,
   POSE_IP_PER_SECOND,
   POSE_PER_SECOND,
   rosterOf,
-  sanitizePose,
+  sanitizePoseVerdict,
   STALE_MS,
+  type HallGuard,
   type HallMessage,
+  type HallNotice,
   type Pose,
 } from "../src/multiplayer.ts";
 import { RateWindow, clientIp, isHallOrigin, isOwnPage, pageCorsOf } from "../src/rate-limit.ts";
@@ -49,11 +60,37 @@ export class LiveHall {
   ip_limit: RateWindow = new RateWindow(POSE_IP_PER_SECOND, 1000);
   /** HALL_PAGE_ORIGIN, parsed: extra page origins the hall answers. */
   page_origin: readonly string[];
+  guard: HallGuard | null;
+  /**
+   * Socket ids already told they are hidden, so a phone that keeps posing is
+   * not sent the same notice every second. In memory: after an eviction a
+   * hidden phone is told once more, which is harmless.
+   */
+  hidden_told: Set<string> = new Set();
 
-  constructor(ctx: DurableObjectState, cors: (headers?: HeadersInit) => Headers, page_origin: readonly string[] = []) {
+  constructor(
+    ctx: DurableObjectState,
+    cors: (headers?: HeadersInit) => Headers,
+    page_origin: readonly string[] = [],
+    guard: HallGuard | null = null,
+  ) {
     this.ctx = ctx;
     this.cors = cors;
     this.page_origin = page_origin;
+    this.guard = guard;
+  }
+
+  /** Hidden by a moderator right now? */
+  isHidden(walker_id: string, now: number): boolean {
+    return (this.guard?.hiddenUntil(walker_id, now) ?? null) !== null;
+  }
+
+  sendTo(ws: WebSocket, message: HallMessage): void {
+    try {
+      ws.send(JSON.stringify(message));
+    } catch {
+      /* closing */
+    }
   }
 
   socketPose(): Pose[] {
@@ -88,10 +125,36 @@ export class LiveHall {
     this.prunePolled(now);
     return {
       type: "roster",
-      walker: rosterOf([...this.socketPose(), ...this.polled.values()], now).slice(0, HALL_WALKER_MAX),
-      find: this.recent_find.map((f) => f.find),
+      walker: rosterOf([...this.socketPose(), ...this.polled.values()], now)
+        .filter((p) => !this.isHidden(p.walker_id, now))
+        .slice(0, HALL_WALKER_MAX),
+      find: this.recent_find.map((f) => f.find).filter((f) => isFindShown(f, this.guard, now)),
       server_time: now,
     };
+  }
+
+  /** Who the console may see in the hall now: walker_id, name, level. */
+  walkerNow(): { walker_id: string; name: string; level: number }[] {
+    return (this.snapshot() as Extract<HallMessage, { type: "roster" }>).walker;
+  }
+
+  /**
+   * A moderator just hid `walker_id`: out of the polled seats, every socket
+   * posing as them cleared and told why, and every other phone told they are
+   * gone. Their next pose is refused by `guard` until `until`.
+   */
+  evict(walker_id: string, until: number): void {
+    this.polled.delete(walker_id);
+    this.polled_ip.delete(walker_id);
+    this.recent_find = this.recent_find.filter((f) => f.find.player_id !== walker_id);
+    for (const ws of this.ctx.getWebSockets()) {
+      const pose = ws.deserializeAttachment() as Pose | null;
+      if (pose?.walker_id !== walker_id) continue;
+      ws.serializeAttachment(null);
+      this.hidden_told.add(this.ctx.getTags(ws)[0] ?? "");
+      this.sendTo(ws, { type: "notice", notice: hiddenNoticeOf(until) });
+    }
+    this.broadcast({ type: "gone", walker_id });
   }
 
   broadcast(message: HallMessage, except?: WebSocket): void {
@@ -181,11 +244,18 @@ export class LiveHall {
         return this.plainJson({ error: "bad json" }, 400, cors);
       }
       const now = Date.now();
-      const pose = sanitizePose(raw, now);
-      if (!pose) return this.plainJson({ error: "pose needs player_id and a lat/lon inside the campus frame" }, 400, cors);
+      const verdict = sanitizePoseVerdict(raw, now);
+      if (!verdict) return this.plainJson({ error: "pose needs player_id and a lat/lon inside the campus frame" }, 400, cors);
+      const { pose } = verdict;
       const ip = clientIp(request);
       if (!this.allowPose(`poll:${pose.walker_id}`, ip, now)) {
         return this.plainJson({ error: "too many poses" }, 429, cors);
+      }
+      const until = this.guard?.hiddenUntil(pose.walker_id, now) ?? null;
+      if (until !== null) {
+        this.polled.delete(pose.walker_id);
+        this.polled_ip.delete(pose.walker_id);
+        return this.plainJson({ error: "hidden from the hall by a moderator", notice: hiddenNoticeOf(until) }, 403, cors);
       }
       this.prunePolled(now);
       if (!this.polled.has(pose.walker_id)) {
@@ -198,7 +268,8 @@ export class LiveHall {
       if (ip) this.polled_ip.set(pose.walker_id, ip);
       else this.polled_ip.delete(pose.walker_id);
       this.broadcast({ type: "pose", walker: pose });
-      return this.plainJson(this.snapshot(), 200, cors);
+      const notice: HallNotice | null = nameNoticeOfPose(pose, verdict.refusal);
+      return this.plainJson(notice ? { ...this.snapshot(), notice } : this.snapshot(), 200, cors);
     }
 
     return this.json({ error: "not found" }, 404);
@@ -216,10 +287,28 @@ export class LiveHall {
       const now = Date.now();
       const [socket_id = "", ip = ""] = this.ctx.getTags(ws);
       if (!this.allowPose(`socket:${socket_id}`, ip || null, now)) return;
-      const pose = sanitizePose(body, now);
-      if (!pose) return;
+      const verdict = sanitizePoseVerdict(body, now);
+      if (!verdict) return;
+      const { pose, refusal } = verdict;
+      const prev = ws.deserializeAttachment() as Pose | null;
+      const until = this.guard?.hiddenUntil(pose.walker_id, now) ?? null;
+      if (until !== null) {
+        if (prev) {
+          ws.serializeAttachment(null);
+          this.broadcast({ type: "gone", walker_id: prev.walker_id }, ws);
+        }
+        if (!this.hidden_told.has(socket_id)) {
+          this.hidden_told.add(socket_id);
+          this.sendTo(ws, { type: "notice", notice: hiddenNoticeOf(until) });
+        }
+        return;
+      }
+      this.hidden_told.delete(socket_id);
       ws.serializeAttachment(pose);
       this.broadcast({ type: "pose", walker: pose }, ws);
+      /* Told once per name: when it first takes effect, not every second. */
+      const notice = nameNoticeOfPose(pose, refusal);
+      if (notice && prev?.name !== pose.name) this.sendTo(ws, { type: "notice", notice });
     } else if (body.type === "bye") {
       this.close(ws);
     }
@@ -228,6 +317,7 @@ export class LiveHall {
   close(ws: WebSocket): void {
     const [socket_id = ""] = this.ctx.getTags(ws);
     this.pose_limit.clear(`socket:${socket_id}`);
+    this.hidden_told.delete(socket_id);
     const pose = ws.deserializeAttachment() as Pose | null;
     ws.serializeAttachment(null);
     try {
@@ -239,9 +329,10 @@ export class LiveHall {
   }
 
   /** Called by /sync with only the finds that were new to the store. */
-  announce(find: WorldFind[]): void {
-    if (!find.length) return;
+  announce(all: WorldFind[]): void {
     const now = Date.now();
+    const find = all.filter((f) => isFindShown(f, this.guard, now));
+    if (!find.length) return;
     for (const one of find) this.recent_find.push({ at: now, find: one });
     this.recent_find = this.recent_find.slice(-40);
     this.broadcast({ type: "find", find });

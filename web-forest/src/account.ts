@@ -119,8 +119,21 @@ export async function refreshAccount(): Promise<void> {
   }
 }
 
-async function signedIn(status: number, data: { account?: PublicAccount } & ErrorBody): Promise<string | null> {
+/**
+ * Why the server did not keep the display name asked for at signup (the name
+ * filter, worker/account.ts), or null. Read once by the signed-in card.
+ */
+let name_notice: string | null = null;
+
+export function takeNameNotice(): string | null {
+  const notice = name_notice;
+  name_notice = null;
+  return notice;
+}
+
+async function signedIn(status: number, data: { account?: PublicAccount; notice?: string } & ErrorBody): Promise<string | null> {
   if ((status === 200 || status === 201) && data.account) {
+    name_notice = typeof data.notice === "string" ? data.notice : null;
     set({ status: "signed_in", account: data.account, error: null });
     await syncSave();
     return null;
@@ -131,7 +144,7 @@ async function signedIn(status: number, data: { account?: PublicAccount } & Erro
 /** Returns an error sentence, or null on success. */
 export async function signUp(username: string, password: string, display_name: string): Promise<string | null> {
   try {
-    const { status, data } = await call<{ account?: PublicAccount } & ErrorBody>("/auth/signup", "POST", {
+    const { status, data } = await call<{ account?: PublicAccount; notice?: string } & ErrorBody>("/auth/signup", "POST", {
       username,
       password,
       display_name,

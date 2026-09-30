@@ -36,6 +36,11 @@
  * attempt counted before the password hash is computed. The strict limit is
  * keyed on the pair so five wrong guesses from a stranger cannot lock the
  * owner out.
+ *
+ * A display name is what the hall prints over the walker, so it goes through
+ * the name filter (src/name-filter.ts) here, on the way IN: a refused one is
+ * stored as the generated walker name for the account_code, and the signup
+ * answer carries a `notice` saying why.
  */
 import {
   LOGIN_IP_MAX,
@@ -72,6 +77,7 @@ import {
   type PublicAccount,
 } from "../src/account-core.ts";
 import { RateWindow, clientIp, mimeEssence } from "../src/rate-limit.ts";
+import { nameNoticeOf, safeNameOf } from "../src/name-filter.ts";
 
 /** Expired sessions are swept at most this often. */
 const SESSION_SWEEP_MS = 60 * 60 * 1000;
@@ -288,11 +294,12 @@ export class AccountService {
       const { password_hash, password_salt } = await hashPassword(body.password as string);
       /* A parallel signup may have taken the name while the hash ran. */
       if (this.accountBy("username", username)) return json({ error: "that username is taken" }, 409);
-      const display_name =
-        typeof body.display_name === "string" && body.display_name.trim()
-          ? body.display_name.trim().slice(0, 40)
-          : username;
       const account_code = newAccountCode();
+      /* The username is a login, not a display name, but it is what prints when
+         no display name was given — so it is filtered too. */
+      const wanted =
+        typeof body.display_name === "string" && body.display_name.trim() ? body.display_name : username;
+      const { name: display_name, refusal } = safeNameOf(wanted, account_code, username);
       const at = this.stamp();
       this.sql(
         `INSERT INTO account (account_code, username, password_hash, password_salt, google_sub, display_name, created_at, updated_at)
@@ -306,7 +313,8 @@ export class AccountService {
         at,
       );
       const set = await this.openSession(account_code, is_secure);
-      return json({ account: publicOf(this.accountBy("account_code", account_code)!) }, 201, [set]);
+      const notice = refusal ? nameNoticeOf(refusal, display_name) : undefined;
+      return json({ account: publicOf(this.accountBy("account_code", account_code)!), ...(notice ? { notice } : {}) }, 201, [set]);
     }
 
     if (route === "POST /auth/login") {
@@ -526,7 +534,7 @@ export class AccountService {
       account_code,
       username,
       identity.google_sub,
-      identity.name ?? username,
+      safeNameOf(identity.name ?? username, account_code, username).name,
       at,
       at,
     );
