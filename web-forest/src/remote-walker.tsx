@@ -142,20 +142,31 @@ export function interpDelayOf(mode: HallMode): number {
   return mode === "poll" ? INTERP_DELAY_POLL_MS : INTERP_DELAY_MS;
 }
 
-/** Re-render every frame while anyone has buffered walk left to draw, and not at all otherwise. */
-function useGlideClock(track: Map<string, Track>, delay_ms: number): number {
-  const [now, setNow] = useState(() => Date.now());
+/**
+ * Re-render every frame while anyone has buffered walk left to draw, and not at
+ * all otherwise. It only SCHEDULES renders; it deliberately returns no clock.
+ *
+ * It used to return its own `now`, and the layer drew each walker at
+ * `positionOf(now)` through `projection`. But the projection is re-rendered by
+ * the camera's frame loop and `now` by this one, in separate renders: while
+ * your own camera moved, frames alternated between a fresh clock with last
+ * frame's camera and last frame's clock with a fresh camera, and a walker
+ * beside you zig-zagged ±2 px on every frame (`script/bench-hall.mjs`, scenario
+ * "both": 57 reversals in 122 frames). The layer now draws at the camera's
+ * own frame time (`Projection.frame_ms`), so every position is paired with the
+ * camera it is drawn through.
+ */
+function useGlideClock(track: Map<string, Track>, delay_ms: number): void {
+  const [, setFrame] = useState(0);
   useEffect(() => {
     let frame = 0;
     const tick = () => {
-      const t = Date.now();
-      setNow(t);
-      if ([...track.values()].some((one) => isGliding(one, t, delay_ms))) frame = requestAnimationFrame(tick);
+      setFrame((n) => n + 1);
+      if ([...track.values()].some((one) => isGliding(one, Date.now(), delay_ms))) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
   }, [track, delay_ms]);
-  return now;
 }
 
 export default function RemoteWalkerLayer({
@@ -171,7 +182,10 @@ export default function RemoteWalkerLayer({
   zoom: number;
 }) {
   const delay_ms = interpDelayOf(hall.mode);
-  const now = useGlideClock(hall.track, delay_ms);
+  useGlideClock(hall.track, delay_ms);
+  /* The camera's own moment while it moves, so a walker and the ground it is
+     drawn over agree to the frame; the wall clock when the camera is at rest. */
+  const now = projection.frame_ms ?? Date.now();
   const { width, height } = projection;
   /* Same source as your own walker, a size down — present, but plainly not you. */
   const size = Math.round(avatarPx(zoom, Math.min(width, height)) * REMOTE_WALKER_SHARE);
@@ -186,6 +200,8 @@ export default function RemoteWalkerLayer({
         return (
           <div
             key={one.pose.walker_id}
+            /* `script/bench-hall.mjs` reads where each remote walker is drawn, frame by frame. */
+            data-remote-walker={one.pose.walker_id}
             style={{
               position: "absolute",
               left: at.x,

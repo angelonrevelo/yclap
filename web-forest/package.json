@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "node --test --experimental-strip-types test/*.test.ts",
     "smoke:detect": "node script/smoke-detect.mjs",
+    "bench:hall": "node script/bench-hall.mjs",
     "handset": "npm run build && node script/serve-https.mjs",
     "sync": "node --experimental-strip-types server/sync-server.mjs --port 8788",
     "deploy": "npm run build && wrangler deploy",

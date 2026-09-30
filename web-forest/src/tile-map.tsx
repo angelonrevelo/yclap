@@ -130,6 +130,17 @@ export interface Projection {
    * the glass while the ground slides smoothly under it.
    */
   centre: LatLon;
+  /**
+   * The wall-clock ms (epoch) this frame's camera was computed for, while the
+   * glide is moving; undefined at rest.
+   *
+   * Anything else that moves on a clock of its own — the remote walkers —
+   * must be drawn at THIS moment, not at whatever `Date.now()` says when React
+   * gets round to rendering. On a busy phone that render lands 0–30 ms after
+   * the camera's frame, a different amount every frame, and a walker beside
+   * you zig-zagged by that much against the ground (`script/bench-hall.mjs`).
+   */
+  frame_ms?: number;
   /** Inverse of `toScreen` then `project`: a click on the glass → lat/lon. */
   fromScreen: (x: number, y: number) => LatLon;
 }
@@ -323,7 +334,7 @@ export default function TileMap({
    * field camera is untouched: it is dragged by hand, and a hand wants no lag.
    */
   const is_glide = tilt_degree > 0;
-  const [glide, setGlide] = useState<LatLon>(() => ({ lat: view.lat, lon: view.lon }));
+  const [glide, setGlide] = useState<LatLon & { at?: number }>(() => ({ lat: view.lat, lon: view.lon }));
   const glide_state = useRef<{ lat: Glide; lon: Glide }>({
     lat: { value: view.lat, velocity: 0 },
     lon: { value: view.lon, velocity: 0 },
@@ -337,7 +348,7 @@ export default function TileMap({
     at: -Infinity,
     span_ms: 0,
   });
-  const centre: LatLon = is_glide ? glide : view;
+  const centre: LatLon = is_glide ? { lat: glide.lat, lon: glide.lon } : view;
 
   const center_world = toWorld(centre, zoom);
   /* See `ANCHOR_GRID`. The flat camera anchors on itself, i.e. no shift. */
@@ -506,7 +517,8 @@ export default function TileMap({
         g.lat = { value: target.lat, velocity: 0 };
         g.lon = { value: target.lon, velocity: 0 };
       }
-      setGlide({ lat: g.lat.value, lon: g.lon.value });
+      /* `at` rides with the position it belongs to — see `Projection.frame_ms`. */
+      setGlide({ lat: g.lat.value, lon: g.lon.value, at: is_rest ? undefined : performance.timeOrigin + now });
       if (is_rest) {
         glide_frame.current = null;
         return;
@@ -828,6 +840,7 @@ export default function TileMap({
     toScreen,
     fromScreen,
     centre,
+    frame_ms: is_glide ? glide.at : undefined,
   };
 
   /**

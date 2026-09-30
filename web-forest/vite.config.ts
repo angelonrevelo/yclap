@@ -12,8 +12,12 @@ import tailwindcss from "@tailwindcss/vite";
  * half-built app to a conference wifi.
  */
 const HOST = process.env.MAGISPHERE_HOST ?? "127.0.0.1";
-/** `npm run sync` — server/sync-server.mjs. */
-const SYNC_TARGET = "http://127.0.0.1:8788";
+/**
+ * `npm run sync` — server/sync-server.mjs. `MAGISPHERE_SYNC_PORT` moves it, so
+ * two worktrees can each run a dev server and a hall side by side without one
+ * proxying into the other's.
+ */
+const SYNC_TARGET = `http://127.0.0.1:${process.env.MAGISPHERE_SYNC_PORT ?? "8788"}`;
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],

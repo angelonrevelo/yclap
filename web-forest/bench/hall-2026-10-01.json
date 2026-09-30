@@ -1,0 +1,131 @@
+{
+  "note": "script/bench-hall.mjs, two headless Chrome contexts on one LAN hall, 390x844, no CPU throttle, Windows laptop, 2026-10-01. before = 05a8f8b (demo-0926-int) + the data-remote-walker hook only; after = reveal-1015 with the interpolation and camera-frame pairing. fit_rms_px = how far the drawn walker strays from a straight walk.",
+  "before": [
+    {
+      "at": "2026-09-30T17:52:02.532Z",
+      "scenario": [
+        {
+          "name": "still",
+          "frame_count": 140,
+          "missing_count": 87,
+          "speed_px_s_mean": 240.5,
+          "speed_px_s_sd": 223.2,
+          "speed_cv": 0.928,
+          "fit_rms_px": 58.64,
+          "reversal_count": 0,
+          "stall_count": 0,
+          "x_spread_px": 510.2,
+          "y_spread_px": 0
+        },
+        {
+          "name": "both",
+          "frame_count": 45,
+          "missing_count": 72,
+          "speed_px_s_mean": 307.1,
+          "speed_px_s_sd": 296.4,
+          "speed_cv": 0.965,
+          "fit_rms_px": 42.38,
+          "reversal_count": 5,
+          "stall_count": 0,
+          "x_spread_px": 145.8,
+          "y_spread_px": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-09-30T17:53:10.230Z",
+      "scenario": [
+        {
+          "name": "still",
+          "frame_count": 119,
+          "missing_count": 108,
+          "speed_px_s_mean": 285.9,
+          "speed_px_s_sd": 201.3,
+          "speed_cv": 0.704,
+          "fit_rms_px": 35.79,
+          "reversal_count": 0,
+          "stall_count": 1,
+          "x_spread_px": 518.8,
+          "y_spread_px": 0
+        },
+        {
+          "name": "both",
+          "frame_count": 66,
+          "missing_count": 53,
+          "speed_px_s_mean": 339.8,
+          "speed_px_s_sd": 391.5,
+          "speed_cv": 1.152,
+          "fit_rms_px": 46.84,
+          "reversal_count": 1,
+          "stall_count": 0,
+          "x_spread_px": 214.8,
+          "y_spread_px": 0
+        }
+      ]
+    }
+  ],
+  "after": [
+    {
+      "at": "2026-09-30T17:51:29.031Z",
+      "scenario": [
+        {
+          "name": "still",
+          "frame_count": 104,
+          "missing_count": 120,
+          "speed_px_s_mean": 251.5,
+          "speed_px_s_sd": 124.9,
+          "speed_cv": 0.497,
+          "fit_rms_px": 1.71,
+          "reversal_count": 0,
+          "stall_count": 0,
+          "x_spread_px": 395.7,
+          "y_spread_px": 0
+        },
+        {
+          "name": "both",
+          "frame_count": 134,
+          "missing_count": 0,
+          "speed_px_s_mean": 31.2,
+          "speed_px_s_sd": 86.1,
+          "speed_cv": 2.761,
+          "fit_rms_px": 4.02,
+          "reversal_count": 8,
+          "stall_count": 0,
+          "x_spread_px": 19.8,
+          "y_spread_px": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-09-30T17:52:36.829Z",
+      "scenario": [
+        {
+          "name": "still",
+          "frame_count": 102,
+          "missing_count": 123,
+          "speed_px_s_mean": 251.3,
+          "speed_px_s_sd": 90.3,
+          "speed_cv": 0.359,
+          "fit_rms_px": 2.35,
+          "reversal_count": 0,
+          "stall_count": 0,
+          "x_spread_px": 399.7,
+          "y_spread_px": 0
+        },
+        {
+          "name": "both",
+          "frame_count": 107,
+          "missing_count": 0,
+          "speed_px_s_mean": 163.2,
+          "speed_px_s_sd": 680.2,
+          "speed_cv": 4.168,
+          "fit_rms_px": 23.51,
+          "reversal_count": 11,
+          "stall_count": 0,
+          "x_spread_px": 183.4,
+          "y_spread_px": 0
+        }
+      ]
+    }
+  ]
+}
