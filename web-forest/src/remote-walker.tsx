@@ -221,7 +221,7 @@ export default function RemoteWalkerLayer({
   /* Same source as your own walker, a size down — present, but plainly not you. */
   const size = Math.round(avatarPx(zoom, Math.min(width, height)) * REMOTE_WALKER_SHARE);
   /* A walker you hid is gone from your map and your feed — and nowhere else. */
-  const callout = hall.callout.filter(({ find }) => !muted.has(find.player_id));
+  const callout = hall.callout.filter(({ find }) => !muted.has(find.walker_id));
 
   useEffect(() => {
     if (!said) return;

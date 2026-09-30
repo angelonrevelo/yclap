@@ -1,5 +1,5 @@
 import { weekKey } from "./gamify.ts";
-import { normalizeJoinCode, type WorldFind, type WorldWalker } from "./campus-world.ts";
+import { normalizeJoinCode, walkerIdOf, type WorldFind } from "./campus-world.ts";
 
 /**
  * Walking partners, and the streak they keep together.
@@ -16,7 +16,7 @@ import { normalizeJoinCode, type WorldFind, type WorldWalker } from "./campus-wo
  *
  * The answer to "is this feasible" is yes, and this file is the reason: the
  * sync layer already carries every ingredient. `World.find[]` stamps each find
- * with a `player_id` and a `created_at`, so "did anyone in this group
+ * with a `walker_id` and a `created_at`, so "did anyone in this group
  * participate in week W" is a question the data already answers. Nothing new
  * has to be collected and no server-side group table has to exist.
  *
@@ -37,9 +37,14 @@ import { normalizeJoinCode, type WorldFind, type WorldWalker } from "./campus-wo
  * inputs are the same finds; two who have not, will not. The surface says so.
  */
 
-/** A walking partner, as this device knows them. */
+/**
+ * A walking partner, as this device knows them — by `walker_id`, the one-way
+ * hash every phone already sees, never by the partner's `player_id` (their
+ * bearer secret). Rosters saved before 10-01 hold a `player_id`; `readFriend`
+ * hashes it on the way in and the next write stores only the hash.
+ */
 export interface Friend {
-  player_id: string;
+  walker_id: string;
   name: string;
   /** The code that was typed to add them. Kept so the row can be re-shared. */
   join_code: string;
@@ -65,15 +70,24 @@ export function readFriend(storage: Storage | null = safeStorage()): Friend[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter(
-        (row): row is Friend =>
-          row &&
-          typeof row.player_id === "string" &&
-          typeof row.name === "string" &&
-          row.player_id.length > 0,
-      )
-      .slice(0, MAX_FRIEND);
+    const friend: Friend[] = [];
+    for (const row of parsed) {
+      if (!row || typeof row.name !== "string") continue;
+      const walker_id =
+        typeof row.walker_id === "string" && row.walker_id
+          ? row.walker_id
+          : typeof row.player_id === "string" && row.player_id
+            ? walkerIdOf(row.player_id)
+            : "";
+      if (!walker_id) continue;
+      friend.push({
+        walker_id,
+        name: row.name,
+        join_code: typeof row.join_code === "string" ? row.join_code : "",
+        added_at: typeof row.added_at === "string" ? row.added_at : "",
+      });
+    }
+    return friend.slice(0, MAX_FRIEND);
   } catch {
     return [];
   }
@@ -96,17 +110,17 @@ export function writeFriend(friend: Friend[], storage: Storage | null = safeStor
  */
 export function addFriend(
   friend: Friend[],
-  walker: { player_id: string; name: string; join_code?: string },
-  me_player_id: string,
+  walker: { walker_id: string; name: string; join_code?: string },
+  me_walker_id: string,
   now: Date = new Date(),
 ): Friend[] {
-  if (!walker.player_id || walker.player_id === me_player_id) return friend;
-  if (friend.some((f) => f.player_id === walker.player_id)) return friend;
+  if (!walker.walker_id || walker.walker_id === me_walker_id) return friend;
+  if (friend.some((f) => f.walker_id === walker.walker_id)) return friend;
   if (friend.length >= MAX_FRIEND) return friend;
   return [
     ...friend,
     {
-      player_id: walker.player_id.slice(0, 64),
+      walker_id: walker.walker_id.slice(0, 64),
       name: (walker.name || "Walker").slice(0, 40),
       join_code: normalizeJoinCode(walker.join_code ?? ""),
       added_at: now.toISOString(),
@@ -114,24 +128,13 @@ export function addFriend(
   ];
 }
 
-export function removeFriend(friend: Friend[], player_id: string): Friend[] {
-  return friend.filter((f) => f.player_id !== player_id);
+export function removeFriend(friend: Friend[], walker_id: string): Friend[] {
+  return friend.filter((f) => f.walker_id !== walker_id);
 }
 
-/** Find a walker in the synced world by the join code somebody typed. */
-export function walkerByJoinCode(
-  walker: WorldWalker[],
-  code: string,
-  joinCodeOf: (player_id: string) => string,
-): WorldWalker | null {
-  const wanted = normalizeJoinCode(code);
-  if (wanted.length !== 6) return null;
-  return walker.find((w) => joinCodeOf(w.player_id) === wanted) ?? null;
-}
-
-/** Everyone whose participation keeps the group's week alive. */
-export function groupMember(friend: Friend[], me_player_id: string): Set<string> {
-  return new Set([me_player_id, ...friend.map((f) => f.player_id)]);
+/** Everyone whose participation keeps the group's week alive, by `walker_id`. */
+export function groupMember(friend: Friend[], me_walker_id: string): Set<string> {
+  return new Set([me_walker_id, ...friend.map((f) => f.walker_id)]);
 }
 
 export interface GroupStreak {
@@ -165,7 +168,7 @@ export function groupStreak(
 ): GroupStreak {
   const week_member = new Map<string, Set<string>>();
   for (const row of find) {
-    if (!member.has(row.player_id)) continue;
+    if (!member.has(row.walker_id)) continue;
     const key = weekKey(row.created_at);
     if (key === "invalid") continue;
     const set = week_member.get(key) ?? new Set<string>();

@@ -362,7 +362,7 @@ describe("a walker hidden by a moderator", () => {
     assert.equal(typesOf(rude).filter((m) => m.type === "notice").length, 1, "told once, not every pose");
     const roster = hall.snapshot() as Extract<multiplayer.HallMessage, { type: "roster" }>;
     assert.equal(roster.walker.length, 0);
-    const find: WorldFind = { sighting_id: "s-r", player_id: walkerIdOf("p-rude"), player_name: "x", species_code: "narra", common_name: "Narra", lat: CAMPUS_CENTER.lat, lon: CAMPUS_CENTER.lon, entry_kind: "badge", created_at: new Date().toISOString() };
+    const find: WorldFind = { sighting_id: "s-r", walker_id: walkerIdOf("p-rude"), player_name: "x", species_code: "narra", common_name: "Narra", lat: CAMPUS_CENTER.lat, lon: CAMPUS_CENTER.lon, entry_kind: "badge", created_at: new Date().toISOString() };
     hall.announce([find]);
     assert.equal(typesOf(other).filter((m) => m.type === "find").length, 0);
     const poll = await hall.handle(

@@ -45,7 +45,7 @@ const DB_PATH = resolve(process.cwd(), arg("db", "server/yclap-sync.json"));
 mkdirSync(dirname(DB_PATH), { recursive: true });
 const ACCOUNT_DB_PATH = resolve(process.cwd(), arg("account-db", "server/yclap-account.db"));
 
-const { MemoryCampusStore, mergeSync, sanitizePlayer, sanitizeSighting, worldFrom } = await import(
+const { CODE_MISS_MAX, CODE_MISS_WINDOW_MS, lookupByCode, MemoryCampusStore, mergeSync, sanitizePlayer, sanitizeSighting, worldFrom } = await import(
   pathToFileURL(resolve(process.cwd(), "src/campus-world.ts")).href
 );
 const multiplayer = await import(pathToFileURL(resolve(process.cwd(), "src/multiplayer.ts")).href);
@@ -116,9 +116,11 @@ const { AccountService, isAccountPath } = await import(
   pathToFileURL(resolve(process.cwd(), "worker/account.ts")).href
 );
 const { SAVE_MAX_BYTE } = await import(pathToFileURL(resolve(process.cwd(), "src/account-core.ts")).href);
-const { accountCorsOf, isAccountCorsPath, pageCorsOf } = await import(
+const { accountCorsOf, isAccountCorsPath, pageCorsOf, RateWindow } = await import(
   pathToFileURL(resolve(process.cwd(), "src/rate-limit.ts")).href
 );
+/** Wrong walker codes per address across /join and /partner — see `CODE_MISS_MAX`. */
+const code_miss = new RateWindow(CODE_MISS_MAX, CODE_MISS_WINDOW_MS);
 /** Largest account body buffered: a full save plus a little JSON around it. */
 const ACCOUNT_BODY_MAX = SAVE_MAX_BYTE + 16 * 1024;
 const account_db = new DatabaseSync(ACCOUNT_DB_PATH);
@@ -305,15 +307,10 @@ const server = createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === "GET" && url.pathname === "/join") {
-    const row = store.playerByJoin(url.searchParams.get("code") ?? "");
-    if (!row) {
-      res.writeHead(404, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "unknown join_code" }));
-      return;
-    }
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ player_id: row.player_id, name: row.name, join_code: row.join_code }));
+  if (req.method === "GET" && (url.pathname === "/join" || url.pathname === "/partner")) {
+    const { status, body } = lookupByCode(store, url.pathname, url.searchParams.get("code") ?? "", remoteIp(req), code_miss);
+    res.writeHead(status, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(body));
     return;
   }
 

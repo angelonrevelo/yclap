@@ -144,8 +144,9 @@ admin at the pilot's end.
   reviewed), notifications to the moderator, report export.
 - Rate limits are per isolate / per process and in memory: a brake, not a
   quota.
-- **Pre-existing exposure, not introduced here:** `GET /world` (and the SSE
-  feed) still carries each walker's raw `player_id` in `find[]` and `walker[]`,
-  and `GET /join?code=` returns it — the partner / leaderboard features read
-  it. Moderation payloads never include it, but closing that belongs to a
-  change that re-keys partners by `walker_id`.
+- ~~Pre-existing exposure: `GET /world` carried each walker's raw
+  `player_id`.~~ **Closed on `reveal-1015` (10-01):** the world payload, the
+  partner roster and the leaderboard are keyed by `walker_id`; partners are
+  added through `GET /partner`, which answers `{walker_id, name}`. Only
+  `GET /join` — the deliberate "become this walker" — returns a `player_id`,
+  and both are braked at 20 wrong codes per address per ten minutes.

@@ -36,9 +36,19 @@ export interface SightingRow {
   created_at: string;
 }
 
+/**
+ * Everything below `World` is what EVERY phone receives, so it carries
+ * `walker_id` (the one-way hall hash, `walkerIdOf`) and never a `player_id`.
+ *
+ * A `player_id` is this app's bearer secret: `/sync` writes as whoever sends
+ * it, and the walker code that merges two phones is minted from it. Until
+ * 10-01 the world sent every walker's raw `player_id` to every phone, so
+ * anyone in the hall could derive anyone's walker code and become them.
+ * `world.test.ts` pins that no stored `player_id` appears in a world payload.
+ */
 export interface WorldFind {
   sighting_id: string;
-  player_id: string;
+  walker_id: string;
   player_name: string;
   species_code: string;
   common_name: string;
@@ -49,7 +59,7 @@ export interface WorldFind {
 }
 
 export interface WorldWalker {
-  player_id: string;
+  walker_id: string;
   name: string;
   stage: string;
   level: number;
@@ -72,6 +82,16 @@ export interface CampusDump {
 }
 
 const JOIN_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+/**
+ * The one-way key every other phone knows a walker by. Same input, same key, on
+ * every runtime. Lives here, not in `multiplayer.ts` (which re-exports it),
+ * because the world payload needs it and `multiplayer.ts` already imports this
+ * file.
+ */
+export function walkerIdOf(player_id: string): string {
+  return `w${hashOf(`hall:${player_id}`).toString(36)}${hashOf(`${player_id}:hall`).toString(36)}`;
+}
 
 export function hashOf(text: string): number {
   let h = 0x811c9dc5;
@@ -233,7 +253,7 @@ export function worldFrom(store: MemoryCampusStore, now = Date.now(), hide: Worl
     .slice(0, FIND_LIMIT)
     .map((s) => ({
       sighting_id: s.sighting_id,
-      player_id: s.player_id,
+      walker_id: walkerIdOf(s.player_id),
       player_name: name_of.get(s.player_id) ?? "Walker",
       species_code: s.species_code,
       common_name: s.common_name,
@@ -246,7 +266,7 @@ export function worldFrom(store: MemoryCampusStore, now = Date.now(), hide: Worl
     .filter((p) => p.updated_at > present_since && !hide.player?.(p.player_id))
     .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))
     .map((p) => ({
-      player_id: p.player_id,
+      walker_id: walkerIdOf(p.player_id),
       name: p.name,
       stage: p.stage,
       level: p.level,
@@ -262,4 +282,53 @@ export function worldFrom(store: MemoryCampusStore, now = Date.now(), hide: Worl
     totals: { player_count: player_id.size, sighting_count: store.sighting.length },
     note: WORLD_NOTE,
   };
+}
+
+/* ── looking a walker up by code ────────────────────────────────────────── */
+
+/**
+ * Wrong codes one address may try per `CODE_MISS_WINDOW_MS`, across `/join`
+ * and `/partner`. A walker code is six characters of a 32-letter alphabet
+ * (~10⁹), and `/join` answers a right one with the `player_id` — the key to
+ * that walker. Unmetered, a script could walk the space; at 20 misses per ten
+ * minutes it cannot. Only misses count, so typing your own code right is free.
+ */
+export const CODE_MISS_MAX = 20;
+export const CODE_MISS_WINDOW_MS = 10 * 60 * 1000;
+
+export interface CodeMissBrake {
+  retryAfter(key: string, now?: number): number;
+  note(key: string, now?: number): void;
+}
+
+/**
+ * `/join` and `/partner`, host-neutral. They are different questions and get
+ * different answers:
+ *
+ * - `/join` MERGES this phone into the walker who holds the code — the code is
+ *   a credential ("not a password — anybody with it becomes you"), and the
+ *   answer is the `player_id` it unlocks.
+ * - `/partner` only ADDS somebody to your walking group. Handing out your code
+ *   for that must not hand out yourself, so it answers with the `walker_id`
+ *   everybody already sees, and a name. Before 10-01 both went through the
+ *   world's raw `player_id`, which made every partner code a key.
+ */
+export function lookupByCode(
+  store: MemoryCampusStore,
+  path: "/join" | "/partner",
+  code: string,
+  ip: string | null,
+  brake: CodeMissBrake,
+  now = Date.now(),
+): { status: number; body: unknown } {
+  const key = `code:${ip ?? "unknown"}`;
+  const wait = brake.retryAfter(key, now);
+  if (wait > 0) return { status: 429, body: { error: "too many wrong codes; wait and try again", retry_after_ms: wait } };
+  const row = store.playerByJoin(code);
+  if (!row) {
+    brake.note(key, now);
+    return { status: 404, body: { error: "unknown join_code" } };
+  }
+  if (path === "/partner") return { status: 200, body: { walker_id: walkerIdOf(row.player_id), name: row.name } };
+  return { status: 200, body: { player_id: row.player_id, name: row.name, join_code: row.join_code } };
 }

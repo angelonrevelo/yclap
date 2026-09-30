@@ -89,7 +89,7 @@ describe("wire + pull", () => {
 describe("live board", () => {
   it("folds another walker in without inventing an official rank field", () => {
     const you: LeaderboardRow = {
-      player_id: "me",
+      walker_id: "me",
       name: "You",
       points: 40,
       streak_weeks: 1,
@@ -98,10 +98,10 @@ describe("live board", () => {
     };
     const row = withLiveWalker(
       [you],
-      [{ player_id: "them", name: "Katmon Walker 2", total_points: 80, streak_weeks: 2 }],
+      [{ walker_id: "them", name: "Katmon Walker 2", total_points: 80, streak_weeks: 2 }],
       "me",
     );
-    assert.equal(row[0]?.player_id, "them");
+    assert.equal(row[0]?.walker_id, "them");
     assert.equal(row[0]?.is_seed, false);
     assert.equal(row.some((r) => r.is_you), true);
   });

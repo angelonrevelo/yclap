@@ -384,11 +384,11 @@ export class ModerationService {
         created_at: String(row.created_at),
       })),
       walker: hall.walkerNow().map(({ walker_id, name, level }) => ({ walker_id, name, level })),
-      /* Re-keyed by walker_id: the world store holds the player_id, and it
-         stops here. */
+      /* The world payload is already keyed by walker_id (`worldFrom`); the
+         store's player_id never reaches it. */
       find: world.recentFind().map((f) => ({
         sighting_id: f.sighting_id,
-        walker_id: walkerIdOf(f.player_id),
+        walker_id: f.walker_id,
         player_name: f.player_name,
         species_code: f.species_code,
         common_name: f.common_name,

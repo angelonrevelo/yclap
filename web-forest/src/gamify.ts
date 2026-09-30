@@ -8,6 +8,7 @@
  * an official AIS rank.
  */
 
+import { walkerIdOf } from "./campus-world.ts";
 import { readPlayer } from "./sync.ts";
 import type { SpawnPoolEntry } from "./spawn.ts";
 
@@ -425,7 +426,7 @@ export function challengeProgress(
 /* ── Local / demo leaderboard ───────────────────────────────────────────── */
 
 export interface LeaderboardRow {
-  player_id: string;
+  walker_id: string;
   name: string;
   points: number;
   streak_weeks: number;
@@ -435,10 +436,10 @@ export interface LeaderboardRow {
 
 /** Seeded cohort for hall demos — obvious fake names, fixed scores. */
 export const DEMO_COHORT: Omit<LeaderboardRow, "is_you">[] = [
-  { player_id: "seed-narra", name: "Narra Block (demo)", points: 180, streak_weeks: 3, is_seed: true },
-  { player_id: "seed-molave", name: "Molave Walk (demo)", points: 120, streak_weeks: 2, is_seed: true },
-  { player_id: "seed-lagundi", name: "Lagundi Lane (demo)", points: 70, streak_weeks: 1, is_seed: true },
-  { player_id: "seed-katmon", name: "Katmon Corner (demo)", points: 40, streak_weeks: 1, is_seed: true },
+  { walker_id: "seed-narra", name: "Narra Block (demo)", points: 180, streak_weeks: 3, is_seed: true },
+  { walker_id: "seed-molave", name: "Molave Walk (demo)", points: 120, streak_weeks: 2, is_seed: true },
+  { walker_id: "seed-lagundi", name: "Lagundi Lane (demo)", points: 70, streak_weeks: 1, is_seed: true },
+  { walker_id: "seed-katmon", name: "Katmon Corner (demo)", points: 40, streak_weeks: 1, is_seed: true },
 ];
 
 export function localLeaderboard(
@@ -448,7 +449,7 @@ export function localLeaderboard(
 ): LeaderboardRow[] {
   const you = readPlayer(storage);
   const yours: LeaderboardRow = {
-    player_id: you.player_id,
+    walker_id: walkerIdOf(you.player_id),
     name: you.name,
     points: totalPoints(events),
     streak_weeks: weeklyStreak(events, now),
@@ -466,20 +467,20 @@ export function localLeaderboard(
 /** Fold live walkers into the local/demo board. Still not an official AIS rank. */
 export function withLiveWalker(
   row: LeaderboardRow[],
-  walker: { player_id: string; name: string; total_points: number; streak_weeks: number }[],
+  walker: { walker_id: string; name: string; total_points: number; streak_weeks: number }[],
   you_id: string,
 ): LeaderboardRow[] {
-  const by_id = new Map(row.map((r) => [r.player_id, { ...r }]));
+  const by_id = new Map(row.map((r) => [r.walker_id, { ...r }]));
   for (const w of walker) {
-    if (w.player_id === you_id) continue;
-    const existing = by_id.get(w.player_id);
+    if (w.walker_id === you_id) continue;
+    const existing = by_id.get(w.walker_id);
     if (existing) {
       existing.points = Math.max(existing.points, w.total_points);
       existing.streak_weeks = Math.max(existing.streak_weeks, w.streak_weeks);
       existing.name = w.name;
     } else {
-      by_id.set(w.player_id, {
-        player_id: w.player_id,
+      by_id.set(w.walker_id, {
+        walker_id: w.walker_id,
         name: w.name,
         points: w.total_points,
         streak_weeks: w.streak_weeks,

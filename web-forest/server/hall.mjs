@@ -338,7 +338,7 @@ export function createHall(lib, page_origin = pageOrigin, guard = null) {
     evict(walker_id, until) {
       polled.delete(walker_id);
       polled_ip.delete(walker_id);
-      recent_find = recent_find.filter((f) => f.find.player_id !== walker_id);
+      recent_find = recent_find.filter((f) => f.find.walker_id !== walker_id);
       for (const s of socket) {
         if (s.pose?.walker_id !== walker_id) continue;
         s.pose = null;

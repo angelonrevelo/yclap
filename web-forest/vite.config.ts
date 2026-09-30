@@ -38,6 +38,11 @@ const SYNC_TARGET =
   process.env.MAGISPHERE_SYNC_TARGET ?? `http://127.0.0.1:${process.env.MAGISPHERE_SYNC_PORT ?? "8788"}`;
 
 export default defineConfig({
+  /* Lane worktrees share one node_modules through a junction, and with it one
+     `.vite` dep cache: two dev servers then invalidate each other's optimised
+     deps and the page loads nothing ("504 Outdated Optimize Dep").
+     `MAGISPHERE_VITE_CACHE` gives a server its own. */
+  cacheDir: process.env.MAGISPHERE_VITE_CACHE ?? "node_modules/.vite",
   plugins: [react(), tailwindcss()],
   define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
   server: {
@@ -48,7 +53,7 @@ export default defineConfig({
        tell the phones apart: it trusts X-Forwarded-For only from loopback
        (this proxy) and reads the last entry, the one the proxy appended. */
     proxy: Object.fromEntries(
-      ["/world", "/sync", "/live", "/health", "/join", "/mine", "/auth/", "/account/", "/inat/identify", "/report", "/mod/api/"].map((path) => [
+      ["/world", "/sync", "/live", "/health", "/join", "/partner", "/mine", "/auth/", "/account/", "/inat/identify", "/report", "/mod/api/"].map((path) => [
         path,
         /* `ws` so the hall socket (/live/socket) upgrades through the proxy too. */
         { target: SYNC_TARGET, xfwd: true, ws: path === "/live" },

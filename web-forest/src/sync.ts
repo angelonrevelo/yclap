@@ -279,6 +279,32 @@ export async function fetchJoin(
   }
 }
 
+/**
+ * Who holds a walker code, for adding them as a walking partner — their
+ * `walker_id` and name, never their `player_id` (see `lookupByCode`). The
+ * three answers stay apart so the toast can say which one happened.
+ */
+export async function fetchPartner(
+  join_code: string,
+  fetch_impl: typeof fetch = globalThis.fetch,
+  base_url: string | null = syncUrl(),
+): Promise<{ walker_id: string; name: string } | "unknown" | "slow_down" | "offline"> {
+  if (base_url === null) return "offline";
+  const code = normalizeJoinCode(join_code);
+  if (code.length !== 6) return "unknown";
+  try {
+    const res = await fetch_impl(`${base_url}/partner?code=${encodeURIComponent(code)}`);
+    if (res.status === 404) return "unknown";
+    if (res.status === 429) return "slow_down";
+    if (!res.ok) return "offline";
+    const body = (await res.json()) as { walker_id?: unknown; name?: unknown };
+    if (typeof body.walker_id !== "string" || typeof body.name !== "string") return "offline";
+    return { walker_id: body.walker_id, name: body.name };
+  } catch {
+    return "offline";
+  }
+}
+
 export async function fetchMine(
   player_id: string,
   fetch_impl: typeof fetch = globalThis.fetch,

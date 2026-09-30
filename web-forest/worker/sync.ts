@@ -3,6 +3,9 @@
  * Durable Object holds the hall; SSE pushes every merge to every phone.
  */
 import {
+  CODE_MISS_MAX,
+  CODE_MISS_WINDOW_MS,
+  lookupByCode,
   MemoryCampusStore,
   mergeSync,
   sanitizePlayer,
@@ -17,7 +20,7 @@ import { EDGE_REPORT_IP_PER_HOUR } from "../src/moderation.ts";
 import { safeNameOf, nameNoticeOf } from "../src/name-filter.ts";
 import { LIVE_PATH, LiveHall } from "./live-socket.ts";
 import { isModPath, ModerationService, type ModWorld } from "./moderation.ts";
-import { accountCorsOf, isAccountCorsPath, pageOriginListOf, withCors } from "../src/rate-limit.ts";
+import { accountCorsOf, clientIp, isAccountCorsPath, pageOriginListOf, RateWindow, withCors } from "../src/rate-limit.ts";
 
 export interface Env extends AccountEnv {
   CAMPUS: DurableObjectNamespace;
@@ -36,7 +39,7 @@ export interface Env extends AccountEnv {
   MOD_TOKEN?: string;
 }
 
-const SYNC_PATH = new Set(["/world", "/sync", "/live", "/health", "/join", "/mine"]);
+const SYNC_PATH = new Set(["/world", "/sync", "/live", "/health", "/join", "/partner", "/mine"]);
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -70,6 +73,8 @@ export class CampusWorld {
   /** Reports, hides and the audit log, in this object's SQLite beside the accounts. */
   moderation: ModerationService;
   page_origin: string[];
+  /** Wrong walker codes per address — see `CODE_MISS_MAX`. In memory, like every brake here. */
+  code_miss = new RateWindow(CODE_MISS_MAX, CODE_MISS_WINDOW_MS);
 
   constructor(ctx: DurableObjectState, env: Env) {
     this.ctx = ctx;
@@ -162,10 +167,15 @@ export class CampusWorld {
       return this.json(this.world(await this.store()));
     }
 
-    if (request.method === "GET" && url.pathname === "/join") {
-      const row = (await this.store()).playerByJoin(url.searchParams.get("code") ?? "");
-      if (!row) return this.json({ error: "unknown join_code" }, 404);
-      return this.json({ player_id: row.player_id, name: row.name, join_code: row.join_code });
+    if (request.method === "GET" && (url.pathname === "/join" || url.pathname === "/partner")) {
+      const { status, body } = lookupByCode(
+        await this.store(),
+        url.pathname,
+        url.searchParams.get("code") ?? "",
+        clientIp(request),
+        this.code_miss,
+      );
+      return this.json(body, status);
     }
 
     if (request.method === "GET" && url.pathname === "/mine") {

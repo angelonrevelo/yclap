@@ -146,7 +146,7 @@ export class LiveHall {
   evict(walker_id: string, until: number): void {
     this.polled.delete(walker_id);
     this.polled_ip.delete(walker_id);
-    this.recent_find = this.recent_find.filter((f) => f.find.player_id !== walker_id);
+    this.recent_find = this.recent_find.filter((f) => f.find.walker_id !== walker_id);
     for (const ws of this.ctx.getWebSockets()) {
       const pose = ws.deserializeAttachment() as Pose | null;
       if (pose?.walker_id !== walker_id) continue;

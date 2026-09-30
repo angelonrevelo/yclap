@@ -353,6 +353,16 @@ The play layer, wired in `src/live.tsx`:
   and presence (points / streak as “who is out”, not an official AIS rank).
   A six-character walker code joins two phones as one player. With no server
   reachable the world strip renders nothing rather than an unmeasured zero.
+  **The world speaks `walker_id` only** (the one-way hall hash): every find and
+  walker row that reaches another phone is keyed by it, never by the
+  `player_id`, which is this app's bearer secret (`/sync` writes as whoever
+  sends it, and the walker code is minted from it). Until 10-01 `/world` sent
+  every raw `player_id` to every phone, so anyone in the hall could become
+  anyone. Walking partners are kept by `walker_id` (old rosters are re-keyed on
+  read) and added through `GET /partner?code=`, which answers `{walker_id,
+  name}`; only `GET /join?code=` — the deliberate "become this walker" — still
+  answers with a `player_id`. Both brake an address after 20 wrong codes in ten
+  minutes (`CODE_MISS_MAX`); a right code is never counted.
 - **`account-core.ts` + `account.ts` + `account-panel.tsx` + `worker/account.ts`**
   — optional accounts and the per-account save; see *Accounts* below.
 - **The hall — live multiplayer on the play map** (`multiplayer.ts`,

@@ -1,6 +1,18 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { joinCodeOf, type WorldFind, type WorldWalker } from "../src/campus-world.ts";
+import {
+  CODE_MISS_MAX,
+  CODE_MISS_WINDOW_MS,
+  joinCodeOf,
+  lookupByCode,
+  MemoryCampusStore,
+  sanitizePlayer,
+  sanitizeSighting,
+  walkerIdOf,
+  worldFrom,
+  type WorldFind,
+} from "../src/campus-world.ts";
+import { RateWindow } from "../src/rate-limit.ts";
 import {
   addFriend,
   groupMember,
@@ -8,7 +20,6 @@ import {
   MAX_FRIEND,
   readFriend,
   removeFriend,
-  walkerByJoinCode,
   writeFriend,
   type Friend,
 } from "../src/friend.ts";
@@ -30,10 +41,10 @@ function memoryStorage(): Storage {
   } as Storage;
 }
 
-function find(player_id: string, iso: string, name = "A walker"): WorldFind {
+function find(walker_id: string, iso: string, name = "A walker"): WorldFind {
   return {
-    sighting_id: `${player_id}-${iso}`,
-    player_id,
+    sighting_id: `${walker_id}-${iso}`,
+    walker_id,
     player_name: name,
     species_code: "narra",
     common_name: "Narra",
@@ -48,7 +59,7 @@ describe("the roster", () => {
   it("starts empty and survives a round trip", () => {
     const storage = memoryStorage();
     assert.deepEqual(readFriend(storage), []);
-    const one = addFriend([], { player_id: "p2", name: "Molave Walker 4" }, ME);
+    const one = addFriend([], { walker_id: "p2", name: "Molave Walker 4" }, ME);
     writeFriend(one, storage);
     assert.equal(readFriend(storage).length, 1);
     assert.equal(readFriend(storage)[0].name, "Molave Walker 4");
@@ -57,25 +68,25 @@ describe("the roster", () => {
   it("refuses to add you to your own group", () => {
     /* The group already contains you. Adding yourself would double-count the
        one member whose weeks the personal streak already tracks. */
-    assert.deepEqual(addFriend([], { player_id: ME, name: "Me" }, ME), []);
+    assert.deepEqual(addFriend([], { walker_id: ME, name: "Me" }, ME), []);
   });
 
   it("is idempotent — adding the same walker twice changes nothing", () => {
-    const one = addFriend([], { player_id: "p2", name: "B" }, ME);
-    assert.equal(addFriend(one, { player_id: "p2", name: "B again" }, ME).length, 1);
+    const one = addFriend([], { walker_id: "p2", name: "B" }, ME);
+    assert.equal(addFriend(one, { walker_id: "p2", name: "B again" }, ME).length, 1);
   });
 
   it("caps the roster rather than growing without bound", () => {
     let roster: Friend[] = [];
     for (let i = 0; i < MAX_FRIEND + 6; i += 1) {
-      roster = addFriend(roster, { player_id: `p${i}`, name: `W${i}` }, ME);
+      roster = addFriend(roster, { walker_id: `p${i}`, name: `W${i}` }, ME);
     }
     assert.equal(roster.length, MAX_FRIEND);
   });
 
   it("removes cleanly", () => {
-    const two = addFriend(addFriend([], { player_id: "a", name: "A" }, ME), { player_id: "b", name: "B" }, ME);
-    assert.deepEqual(removeFriend(two, "a").map((f) => f.player_id), ["b"]);
+    const two = addFriend(addFriend([], { walker_id: "a", name: "A" }, ME), { walker_id: "b", name: "B" }, ME);
+    assert.deepEqual(removeFriend(two, "a").map((f) => f.walker_id), ["b"]);
     /* Removing somebody who is not there is not an error. */
     assert.equal(removeFriend(two, "zz").length, 2);
   });
@@ -89,27 +100,67 @@ describe("the roster", () => {
   });
 });
 
-describe("walkerByJoinCode", () => {
-  const walker: WorldWalker[] = [
-    { player_id: "p2", name: "Molave Walker 4", stage: "sprout", level: 2, total_points: 80, streak_weeks: 1, updated_at: "" },
-    { player_id: "p3", name: "Dao Walker 9", stage: "egg", level: 1, total_points: 10, streak_weeks: 0, updated_at: "" },
-  ];
+describe("partner lookup by code — never hands out the partner", () => {
+  function storeWith(...player_id: string[]): MemoryCampusStore {
+    const store = new MemoryCampusStore();
+    for (const id of player_id) {
+      const row = sanitizePlayer({ player_id: id, name: `Walker ${id}` });
+      if (row) store.upsertPlayer(row);
+    }
+    return store;
+  }
+  const brake = () => new RateWindow(CODE_MISS_MAX, CODE_MISS_WINDOW_MS);
 
-  it("finds a walker by their own code", () => {
-    const hit = walkerByJoinCode(walker, joinCodeOf("p3"), joinCodeOf);
-    assert.equal(hit?.player_id, "p3");
+  it("/partner answers with the walker_id and a name, and no player_id", () => {
+    const got = lookupByCode(storeWith("p3"), "/partner", joinCodeOf("p3"), "1.2.3.4", brake());
+    assert.equal(got.status, 200);
+    assert.deepEqual(got.body, { walker_id: walkerIdOf("p3"), name: "Walker p3" });
+    assert.ok(!("player_id" in (got.body as object)), "the raw id is nowhere in the answer");
+  });
+
+  it("/join still answers with the player_id — that code IS the credential", () => {
+    const got = lookupByCode(storeWith("p3"), "/join", joinCodeOf("p3"), "1.2.3.4", brake());
+    assert.equal((got.body as { player_id: string }).player_id, "p3");
   });
 
   it("ignores case and spacing, the way a typed code arrives", () => {
-    const code = joinCodeOf("p2");
-    const hit = walkerByJoinCode(walker, ` ${code.toLowerCase()} `, joinCodeOf);
-    assert.equal(hit?.player_id, "p2");
+    const got = lookupByCode(storeWith("p2"), "/partner", ` ${joinCodeOf("p2").toLowerCase()} `, "1.2.3.4", brake());
+    assert.equal(got.status, 200);
   });
 
-  it("returns null for a code nobody holds, rather than a nearest match", () => {
-    assert.equal(walkerByJoinCode(walker, "ZZZZZZ", joinCodeOf), null);
-    assert.equal(walkerByJoinCode(walker, "SHORT", joinCodeOf), null);
-    assert.equal(walkerByJoinCode(walker, "", joinCodeOf), null);
+  it("brakes an address after CODE_MISS_MAX wrong codes, and never counts a right one", () => {
+    const store = storeWith("p2");
+    const b = brake();
+    for (let i = 0; i < 50; i++) assert.equal(lookupByCode(store, "/partner", joinCodeOf("p2"), "9.9.9.9", b).status, 200);
+    for (let i = 0; i < CODE_MISS_MAX; i++) assert.equal(lookupByCode(store, "/join", "ZZZZZZ", "9.9.9.9", b).status, 404);
+    assert.equal(lookupByCode(store, "/join", joinCodeOf("p2"), "9.9.9.9", b).status, 429, "even a right code waits once braked");
+    assert.equal(lookupByCode(store, "/join", "ZZZZZZ", "8.8.8.8", b).status, 404, "another address is not braked");
+  });
+});
+
+describe("the world payload carries no player_id", () => {
+  it("names walkers and finds by walker_id only", () => {
+    const store = new MemoryCampusStore();
+    const secret = "secret-player-0001";
+    const row = sanitizePlayer({ player_id: secret, name: "Narra Walker 1" });
+    if (row) store.upsertPlayer(row);
+    const sighting = sanitizeSighting({ sighting_id: "s1", species_code: "narra", common_name: "Narra", lat: 14.639, lon: 121.078, entry_kind: "badge", created_at: new Date().toISOString() }, secret);
+    if (sighting) store.insertSighting(sighting);
+    const text = JSON.stringify(worldFrom(store));
+    assert.ok(!text.includes(secret), "the bearer secret never leaves the server");
+    assert.ok(!text.includes("player_id"), "and neither does the field");
+    assert.ok(text.includes(walkerIdOf(secret)));
+  });
+});
+
+describe("a roster saved before 10-01", () => {
+  it("is re-keyed by walker_id on read, and the next write stores no player_id", () => {
+    const storage = memoryStorage();
+    storage.setItem("field-guide.friend", JSON.stringify([{ player_id: "p2", name: "Molave", join_code: "ABC234", added_at: "t" }]));
+    const friend = readFriend(storage);
+    assert.equal(friend[0].walker_id, walkerIdOf("p2"));
+    writeFriend(friend, storage);
+    assert.ok(!(storage.getItem("field-guide.friend") ?? "").includes("player_id"));
   });
 });
 
@@ -120,8 +171,8 @@ describe("the group streak", () => {
   const two_back = "2026-09-08T09:00:00Z";
   const member = groupMember(
     [
-      { player_id: "p2", name: "Molave", join_code: "", added_at: "" },
-      { player_id: "p3", name: "Dao", join_code: "", added_at: "" },
+      { walker_id: "p2", name: "Molave", join_code: "", added_at: "" },
+      { walker_id: "p3", name: "Dao", join_code: "", added_at: "" },
     ],
     ME,
   );

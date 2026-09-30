@@ -8,12 +8,11 @@ import {
   groupStreak,
   readFriend,
   removeFriend,
-  walkerByJoinCode,
   writeFriend,
   type Friend,
   type GroupStreak,
 } from "./friend";
-import { joinCodeOf } from "./campus-world";
+import { normalizeJoinCode, walkerIdOf } from "./campus-world";
 import { haptic } from "./haptic";
 import StreakFlame from "./streak-flame";
 import SettingsScreen, { type SettingsIcon } from "./settings";
@@ -120,7 +119,7 @@ import type { Rarity, Spawn, SpawnPoolEntry } from "./spawn";
 import { WALK_TO_SHORT_M } from "./play-walk";
 import { receiptHighlight } from "./collection";
 import { demoJournal, isSeededJournal } from "./demo-seed";
-import { fetchJoin, fetchMine, readPlayer, writePlayer, type World } from "./sync";
+import { fetchJoin, fetchMine, fetchPartner, readPlayer, writePlayer, type World } from "./sync";
 
 import {
   demoIdentify,
@@ -404,7 +403,7 @@ function PartnerCard({
         <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
           {friend.map((row) => (
             <div
-              key={row.player_id}
+              key={row.walker_id}
               className="flex items-center gap-2"
               style={{
                 padding: "8px 10px",
@@ -424,7 +423,7 @@ function PartnerCard({
               <button
                 type="button"
                 aria-label={`Remove ${row.name}`}
-                onClick={() => on_remove(row.player_id)}
+                onClick={() => on_remove(row.walker_id)}
                 style={{
                   border: "none",
                   background: "transparent",
@@ -806,7 +805,7 @@ function LocalLeaderboardCard({ snap, is_desktop }: { snap: GamifySnapshot; is_d
       <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
         {snap.leaderboard.slice(0, 6).map((row, i) => (
           <div
-            key={row.player_id}
+            key={row.walker_id}
             className="flex items-center gap-2"
             style={{
               padding: "8px 10px",
@@ -3727,31 +3726,42 @@ export default function App() {
   /* Walking partners. Local roster; the streak is computed over the synced
      world, because only the world knows what somebody else walked. */
   const [friend, setFriend] = useState<Friend[]>(() => readFriend());
+  /* The world speaks `walker_id` only (see `campus-world.ts`), so this phone
+     compares itself by its own hash, never by the player_id it keeps secret. */
+  const me_walker_id = useMemo(() => walkerIdOf(me.player_id), [me.player_id]);
   const group_streak = useMemo(
-    () => groupStreak(live.world?.find ?? [], groupMember(friend, me.player_id)),
-    [live.world?.find, friend, me.player_id],
+    () => groupStreak(live.world?.find ?? [], groupMember(friend, me_walker_id)),
+    [live.world?.find, friend, me_walker_id],
   );
-  const addPartner = (code: string) => {
-    const hit = walkerByJoinCode(live.world?.walker ?? [], code, joinCodeOf);
-    if (!hit) {
-      showToast(
-        live.is_live
-          ? "No walker on this campus holds that code."
-          : "Turn the live campus on to add a partner.",
-      );
+  const addPartner = async (code: string) => {
+    if (normalizeJoinCode(code) === normalizeJoinCode(me.join_code)) {
+      showToast("That is your own code.");
       return;
     }
-    const next = addFriend(friend, { player_id: hit.player_id, name: hit.name, join_code: code }, me.player_id);
+    const hit = await fetchPartner(code);
+    if (hit === "unknown") {
+      showToast("No walker on this campus holds that code.");
+      return;
+    }
+    if (hit === "slow_down") {
+      showToast("Too many wrong codes. Wait a few minutes, then try again.");
+      return;
+    }
+    if (hit === "offline") {
+      showToast("Turn the live campus on to add a partner.");
+      return;
+    }
+    const next = addFriend(friend, { walker_id: hit.walker_id, name: hit.name, join_code: code }, me_walker_id);
     if (next === friend) {
-      showToast(hit.player_id === me.player_id ? "That is your own code." : `${hit.name} is already a partner.`);
+      showToast(hit.walker_id === me_walker_id ? "That is your own code." : `${hit.name} is already a partner.`);
       return;
     }
     setFriend(next);
     writeFriend(next);
     showToast(`${hit.name} is walking with you.`);
   };
-  const dropPartner = (player_id: string) => {
-    const next = removeFriend(friend, player_id);
+  const dropPartner = (walker_id: string) => {
+    const next = removeFriend(friend, walker_id);
     setFriend(next);
     writeFriend(next);
   };
@@ -3759,9 +3769,9 @@ export default function App() {
   const live_snap = useMemo(
     () => ({
       ...gamify,
-      leaderboard: withLiveWalker(gamify.leaderboard, live.world?.walker ?? [], me.player_id),
+      leaderboard: withLiveWalker(gamify.leaderboard, live.world?.walker ?? [], me_walker_id),
     }),
-    [gamify, live.world, me.player_id],
+    [gamify, live.world, me_walker_id],
   );
   const here_sector = useMemo(() => (geo.fix ? sectorAt(geo.fix) : null), [geo.fix]);
 

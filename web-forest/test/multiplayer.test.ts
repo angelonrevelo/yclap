@@ -93,7 +93,7 @@ test("freshFindOf announces only unlocated-excluded, never-seen finds, under the
   ];
   const fresh = freshFindOf(new Set(["s1"]), row, { player_id: "p-1", name: "Molave Walker" });
   assert.deepEqual(fresh.map((f) => f.sighting_id), ["s2"]);
-  assert.equal(fresh[0].player_id, walkerIdOf("p-1"));
+  assert.equal(fresh[0].walker_id, walkerIdOf("p-1"));
   assert.equal(fresh[0].player_name, "Molave Walker");
 });
 
@@ -313,10 +313,10 @@ test("applyHall: roster is authoritative, skips me, and ignores a repeated pose"
 });
 
 test("isNearbyFind: somebody else's find within radius only", () => {
-  const find = { player_id: "other", ...offsetFromCenter(80) };
+  const find = { walker_id: "other", ...offsetFromCenter(80) };
   assert.equal(isNearbyFind(find, { walker_id: "me", at: CAMPUS_CENTER }), true);
-  assert.equal(isNearbyFind({ ...find, player_id: "me" }, { walker_id: "me", at: CAMPUS_CENTER }), false);
-  assert.equal(isNearbyFind({ player_id: "other", ...offsetFromCenter(400) }, { walker_id: "me", at: CAMPUS_CENTER }), false);
+  assert.equal(isNearbyFind({ ...find, walker_id: "me" }, { walker_id: "me", at: CAMPUS_CENTER }), false);
+  assert.equal(isNearbyFind({ walker_id: "other", ...offsetFromCenter(400) }, { walker_id: "me", at: CAMPUS_CENTER }), false);
   assert.equal(isNearbyFind(find, { walker_id: "me", at: null }), false);
 });
 

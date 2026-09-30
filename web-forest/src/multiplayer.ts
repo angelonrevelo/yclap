@@ -22,7 +22,7 @@
  * import this file, so the rules cannot drift between them.
  */
 
-import { hashOf, type WorldFind } from "./campus-world.ts";
+import { walkerIdOf, type WorldFind } from "./campus-world.ts";
 import { distanceMeter, isInsideCampus, type FixSource, type LatLon } from "./geo.ts";
 import { nameNoticeOf, safeNameOf, type NameRefusal } from "./name-filter.ts";
 
@@ -167,13 +167,11 @@ export interface HallGuard {
 /** A find the hall may still call out: not hidden, and not by a hidden walker. */
 export function isFindShown(find: WorldFind, guard: HallGuard | null | undefined, now: number): boolean {
   if (!guard) return true;
-  return !guard.isFindHidden(find.sighting_id) && guard.hiddenUntil(find.player_id, now) === null;
+  return !guard.isFindHidden(find.sighting_id) && guard.hiddenUntil(find.walker_id, now) === null;
 }
 
-/** One-way hall key. Same input, same key, on every runtime. */
-export function walkerIdOf(player_id: string): string {
-  return `w${hashOf(`hall:${player_id}`).toString(36)}${hashOf(`${player_id}:hall`).toString(36)}`;
-}
+/** One-way hall key — defined beside the world payload that also needs it. */
+export { walkerIdOf };
 
 /**
  * Untrusted JSON in, a `Pose` out — or null if it is not one — and whether the
@@ -256,7 +254,7 @@ export function freshFindOf(
     .map((s) => ({
       sighting_id: s.sighting_id,
       /* Same rule as poses: the hall never learns a player_id. */
-      player_id: walkerIdOf(player.player_id),
+      walker_id: walkerIdOf(player.player_id),
       player_name: player.name,
       species_code: s.species_code,
       common_name: s.common_name,
@@ -455,11 +453,11 @@ export function pruneTrack(track: Map<string, Track>, now: number, stale_ms = ST
 
 /** Is a find worth calling out: somebody else's, recent, and near you. */
 export function isNearbyFind(
-  find: { player_id: string; lat: number | null; lon: number | null },
+  find: { walker_id: string; lat: number | null; lon: number | null },
   me: { walker_id: string; at: LatLon | null },
   radius_m = NEARBY_FIND_M,
 ): boolean {
-  if (find.player_id === me.walker_id || find.lat === null || find.lon === null || !me.at) return false;
+  if (find.walker_id === me.walker_id || find.lat === null || find.lon === null || !me.at) return false;
   return distanceMeter(me.at, { lat: find.lat, lon: find.lon }) <= radius_m;
 }
 
