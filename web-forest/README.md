@@ -47,34 +47,50 @@ npm run deploy     # build, then wrangler deploy (needs `wrangler login` first)
 Port 4177 is claimed with `strictPort`, so a collision fails loudly rather than
 silently moving.
 
-## iNaturalist identify
+## Identify
 
 The camera sheet sends the photo to **`POST /inat/identify`** on our own
-origin (`worker/inat.ts`). That proxy forwards it to iNaturalist's
-`/v1/computervision/score_image` with the campus lat/lng (iNat's geo prior) and
-the **`INAT_API_TOKEN` secret, which lives only on the server** — it is not in
-the bundle. The client (`identifyPlant` in `src/inat.ts`) tries the proxy
-first, on the sync base (see *Accounts*). Under `npm run dev` only, if no proxy answers, it falls back to a direct
-call with `VITE_INAT_API_TOKEN` from `.env`; a production build compiles that
-read away (checked: the token is not in `dist/` even with it in `.env`). With
-neither, the sheet replays a recorded Narra reply labelled **RECORDED
-RESPONSE**, never presented as an identification of your photo — and says why:
-a proxy that answered `needs_token` is "no iNaturalist token"; a 404 or an
-unreachable server is named as that (`no_proxy`), not blamed on a token.
+origin (`worker/inat.ts`). Since 10-01 that proxy picks **one service it is
+allowed to use**, in this order:
+
+1. **Pl@ntNet** when `PLANTNET_API_KEY` is set. Its free plan is 500
+   identifications a day (<https://my.plantnet.org/pricing>); a non-profit plan
+   exists on request. The answer is mapped into the shape the phone already
+   reads (`plantnetResult`), and the sheet credits it: "suggested by
+   Pl@ntNet", "Plant suggestions powered by Pl@ntNet" — Pl@ntNet's plans
+   require that credit. A Pl@ntNet 404 means "no species found" and shows as
+   an empty answer.
+2. **iNaturalist** `score_image` **only when `INAT_CV_PERMITTED=1`** as well
+   as `INAT_API_TOKEN`. iNaturalist staff say the visual API "is not publicly
+   available" and access is fee-based by arrangement
+   (<https://forum.inaturalist.org/t/hidden-computer-vision-api/41775>). A
+   personal token in a campus proxy is not that arrangement, so a token
+   alone is ignored (the LAN server says so at start-up).
+3. **Neither**: `503 needs_token`, and the sheet offers Seek, which identifies
+   on the phone.
+
+The keys live only on the server — never in the bundle. Under `npm run dev`
+only, a direct call with `VITE_INAT_API_TOKEN` from `.env` remains for a
+developer's own testing; a production build compiles that read away. With no
+service at all the sheet replays a recorded Narra reply labelled **RECORDED
+RESPONSE**, never presented as an identification of your photo, and says why.
 
 When the answer's first **exact** campus match is one species, the sheet picks
-it in "What did you see?" and says so ("suggested by iNaturalist", plus
-"recorded reply" when it is the replay) — the sheet opens on the daily target,
-and a Narra photo used to save as that target. A pick made by hand after the
-photo always wins; a genus/family roll-up never picks (`suggestedPick` in
-`src/inat-match.ts`).
+it in "What did you see?" and names the service that suggested it. A pick
+made by hand after the photo always wins; a genus/family roll-up never picks
+(`suggestedPick` in `src/inat-match.ts`).
 
-**Making it live — do this right before the demo:**
+**Making it live with Pl@ntNet:** create a key at <https://my.plantnet.org/>,
+then `npx wrangler secret put PLANTNET_API_KEY` (deployed) or
+`PLANTNET_API_KEY=… npm run sync` (local).
+
+**Only with iNaturalist's written permission — the old path:**
+
 
 1. Signed in to iNaturalist, open <https://www.inaturalist.org/users/api_token>
    and copy the token.
-2. Deployed Worker: `npx wrangler secret put INAT_API_TOKEN` and paste it (no
-   redeploy needed). Local: `INAT_API_TOKEN=… npm run sync` (Vite proxies
+2. Deployed Worker: `npx wrangler secret put INAT_API_TOKEN` and
+   `npx wrangler secret put INAT_CV_PERMITTED` (value `1`), no redeploy needed. Local: `INAT_API_TOKEN=… INAT_CV_PERMITTED=1 npm run sync` (Vite proxies
    `/inat/identify` to it), or put `INAT_API_TOKEN=…` in `.dev.vars` for
    `wrangler dev`.
 3. Check it: `INAT_API_TOKEN=… npm run smoke:detect`, or

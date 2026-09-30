@@ -53,7 +53,7 @@ const { createHall } = await import("./hall.mjs");
 
 /* POST /inat/identify — the same proxy function the Worker runs. The token
    comes from this process's env (INAT_API_TOKEN), never from the bundle. */
-const { handleIdentify, IDENTIFY_PATH, MAX_FORM_BYTE } = await import(
+const { handleIdentify, IDENTIFY_PATH, identifyKeyOf, MAX_FORM_BYTE } = await import(
   pathToFileURL(resolve(process.cwd(), "worker/inat.ts")).href
 );
 
@@ -64,7 +64,7 @@ const { handleIdentify, IDENTIFY_PATH, MAX_FORM_BYTE } = await import(
    502 instead of the 503 needs_token caption (round 5). */
 async function serveIdentify(req, res) {
   const web = webRequestOf(req, MAX_FORM_BYTE);
-  const response = await handleIdentify(web, process.env.INAT_API_TOKEN, undefined, undefined, pageOrigin);
+  const response = await handleIdentify(web, identifyKeyOf(process.env), undefined, undefined, pageOrigin);
   const body = Buffer.from(await response.arrayBuffer());
   const head = { ...Object.fromEntries(response.headers), ...corsOfReq(req) };
   const is_drained = response.status !== 413 && (await drainBody(web));
@@ -384,7 +384,11 @@ server.listen(PORT, () => {
   for (const a of addr) console.log(`  lan     ${a}`);
   console.log(`  world   GET /world · GET /live · POST /sync · GET /join · GET /mine`);
   console.log(`  account ${ACCOUNT_DB_PATH} · /auth/* · /account/save · google ${account.isGoogle ? "on" : "off"}`);
-  console.log(`  inat    POST /inat/identify · token ${process.env.INAT_API_TOKEN ? "set" : "MISSING (503 needs_token)"}`);
+  {
+  const key = identifyKeyOf(process.env);
+  const via = key.plantnet ? "Pl@ntNet" : key.inat && key.is_inat_permitted ? "iNaturalist (permitted)" : null;
+  console.log(`  identify POST /inat/identify · ${via ?? "no service (503 needs_token → the phone offers Seek)"}${key.inat && !key.is_inat_permitted ? " · INAT_API_TOKEN ignored without INAT_CV_PERMITTED=1" : ""}`);
+}
   console.log(`  hall    WS /live/socket · POST /live/pose · GET /live/walker`);
   console.log(`  report  POST /report · console /mod/api/* ${moderation.isOn ? "on (MOD_TOKEN set)" : "OFF (no MOD_TOKEN)"}`);
   if (pageOrigin.length) console.log(`  pages   HALL_PAGE_ORIGIN ${pageOrigin.join(", ")}`);

@@ -34,6 +34,45 @@ import { DEMO_PIN } from "../src/data.ts";
 import { BodyTooLarge, RateWindow, capStream, clientIp, isOwnPage } from "../src/rate-limit.ts";
 
 export const IDENTIFY_PATH = "/inat/identify";
+export const PLANTNET_URL = "https://my-api.plantnet.org/v2/identify/all";
+/** Pl@ntNet's free and non-profit plans require this credit wherever a suggestion is shown. */
+export const PLANTNET_CREDIT = "powered by Pl@ntNet";
+
+/**
+ * Which identify service this server may call, and with what.
+ *
+ * Since 10-01 the order is Pl@ntNet, then iNaturalist ONLY with written
+ * permission. iNaturalist staff say the visual API "is not publicly
+ * available" and access is fee-based by arrangement
+ * (forum.inaturalist.org/t/hidden-computer-vision-api/41775); a personal
+ * token in a campus proxy is not that arrangement. Pl@ntNet publishes a free
+ * plan of 500 identifications a day (my.plantnet.org/pricing). With neither,
+ * the phone gets `needs_token` and its sheet offers Seek.
+ */
+export interface IdentifyKey {
+  plantnet?: string;
+  inat?: string;
+  /** INAT_CV_PERMITTED=1: iNaturalist has agreed in writing to this use. */
+  is_inat_permitted?: boolean;
+}
+
+export function identifyKeyOf(env: { PLANTNET_API_KEY?: string; INAT_API_TOKEN?: string; INAT_CV_PERMITTED?: string }): IdentifyKey {
+  return {
+    plantnet: env.PLANTNET_API_KEY?.trim() || undefined,
+    inat: env.INAT_API_TOKEN?.trim() || undefined,
+    is_inat_permitted: env.INAT_CV_PERMITTED === "1",
+  };
+}
+
+type Provider = { kind: "plantnet"; key: string } | { kind: "inat"; token: string };
+
+/** A bare string is the pre-10-01 contract (an iNat token, used as given) — the tests and the smoke script. */
+function providerOf(key: IdentifyKey | string | undefined): Provider | null {
+  if (typeof key === "string") return key.trim() ? { kind: "inat", token: key.trim() } : null;
+  if (key?.plantnet) return { kind: "plantnet", key: key.plantnet };
+  if (key?.inat && key.is_inat_permitted) return { kind: "inat", token: key.inat };
+  return null;
+}
 export const SCORE_IMAGE_URL = "https://api.inaturalist.org/v1/computervision/score_image";
 export const TOKEN_URL = "https://www.inaturalist.org/users/api_token";
 
@@ -66,7 +105,7 @@ function coordinate(raw: FormDataEntryValue | null, fallback: number, limit: num
 
 export async function handleIdentify(
   request: Request,
-  token: string | undefined,
+  key: IdentifyKey | string | undefined,
   fetch_impl: typeof fetch = globalThis.fetch,
   limit: RateWindow = identify_limit,
   /** Extra page origins (HALL_PAGE_ORIGIN) that count as this app's own page. */
@@ -87,11 +126,12 @@ export async function handleIdentify(
     return json(429, { error: "too_many", retry_after }, { "Retry-After": retry_after });
   }
 
-  const secret = token?.trim();
-  if (!secret) {
+  const provider = providerOf(key);
+  if (!provider) {
     return json(503, {
       error: "needs_token",
-      detail: "This server has no INAT_API_TOKEN. Set it with `wrangler secret put INAT_API_TOKEN`.",
+      detail:
+        "This server has no identify service it may use. Set PLANTNET_API_KEY (`wrangler secret put PLANTNET_API_KEY`), or INAT_API_TOKEN with INAT_CV_PERMITTED=1 once iNaturalist has agreed in writing.",
       token_url: TOKEN_URL,
     });
   }
@@ -113,6 +153,9 @@ export async function handleIdentify(
   if (!image || typeof image === "string") return json(400, { error: "no_image" });
   if (image.size > MAX_IMAGE_BYTE) return json(413, { error: "image_too_large", max_byte: MAX_IMAGE_BYTE });
   if (!image.type.toLowerCase().startsWith("image/")) return json(415, { error: "not_an_image", type: image.type });
+
+  if (provider.kind === "plantnet") return identifyPlantnet(image, provider.key, fetch_impl);
+  const secret = provider.token;
 
   const upstream_form = new FormData();
   upstream_form.append("image", image, (image as File).name || "plant.jpg");
@@ -160,4 +203,63 @@ export async function handleIdentify(
     status: 200,
     headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "X-Inat-Via": "proxy" },
   });
+}
+
+/**
+ * Pl@ntNet, answered in the iNat `score_image` shape the phone already reads
+ * (`mapScoreImage`: `results[].combined_score` + `taxon.name`), plus
+ * `provider` and `provider_credit` so the sheet shows the credit Pl@ntNet's
+ * plans require. Scores are 0–1 on both sides. A 404 is Pl@ntNet saying
+ * "no species found", which is an empty answer, not a failure.
+ */
+async function identifyPlantnet(image: File | Blob, key: string, fetch_impl: typeof fetch): Promise<Response> {
+  const form = new FormData();
+  form.append("images", image, (image as File).name || "plant.jpg");
+  form.append("organs", "auto");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch_impl(`${PLANTNET_URL}?api-key=${encodeURIComponent(key)}`, {
+      method: "POST",
+      headers: { Accept: "application/json", "User-Agent": VIA },
+      body: form,
+      signal: controller.signal,
+    });
+  } catch {
+    return json(502, { error: "upstream_unreachable" });
+  } finally {
+    clearTimeout(timer);
+  }
+  const credit = { provider: "plantnet", provider_credit: PLANTNET_CREDIT };
+  if (res.status === 404) return json(200, { results: [], ...credit });
+  if (res.status === 429) {
+    const retry_after = res.headers.get("Retry-After");
+    return json(429, { error: "rate_limited", retry_after, detail: "Pl@ntNet's daily quota is spent." });
+  }
+  if (res.status === 401 || res.status === 403) return json(502, { error: "upstream", detail: "Pl@ntNet refused the API key." });
+  if (!res.ok) return json(502, { error: "upstream", status: res.status });
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    return json(502, { error: "upstream", detail: "Pl@ntNet answered with non-JSON" });
+  }
+  return json(200, { results: plantnetResult(body), ...credit });
+}
+
+/** Pl@ntNet `results[]` → iNat-shaped rows. Reads only what Pl@ntNet sent; invents no taxon. */
+export function plantnetResult(body: unknown): { combined_score: number; taxon: { name: string; preferred_common_name?: string; rank: string } }[] {
+  const row = (body as { results?: unknown })?.results;
+  if (!Array.isArray(row)) return [];
+  const out: { combined_score: number; taxon: { name: string; preferred_common_name?: string; rank: string } }[] = [];
+  for (const item of row) {
+    const score = Number((item as { score?: unknown })?.score);
+    const species = (item as { species?: { scientificNameWithoutAuthor?: unknown; commonNames?: unknown } })?.species;
+    const name = typeof species?.scientificNameWithoutAuthor === "string" ? species.scientificNameWithoutAuthor.trim() : "";
+    if (!name || !Number.isFinite(score)) continue;
+    const common = Array.isArray(species?.commonNames) && typeof species.commonNames[0] === "string" ? species.commonNames[0] : undefined;
+    out.push({ combined_score: score, taxon: { name, ...(common ? { preferred_common_name: common } : {}), rank: "species" } });
+  }
+  return out;
 }

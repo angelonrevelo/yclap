@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { identifyPlant, IDENTIFY_PATH } from "../src/inat.ts";
-import { handleIdentify, SCORE_IMAGE_URL } from "../worker/inat.ts";
+import { handleIdentify, identifyKeyOf, PLANTNET_CREDIT, PLANTNET_URL, plantnetResult, SCORE_IMAGE_URL } from "../worker/inat.ts";
 
 const dir = dirname(fileURLToPath(import.meta.url));
 const photo = readFileSync(join(dir, "detect-smoke/photo/teak.jpg"));
@@ -135,5 +135,63 @@ describe("identifyPlant (src/inat.ts)", () => {
       },
     });
     assert.equal(state.status, "token_expired");
+  });
+});
+
+describe("the identify provider (10-01)", () => {
+  const plantnet_reply = {
+    bestMatch: "Tectona grandis L.f.",
+    results: [
+      { score: 0.82, species: { scientificNameWithoutAuthor: "Tectona grandis", commonNames: ["Teak"] } },
+      { score: 0.05, species: { scientificNameWithoutAuthor: "Gmelina arborea", commonNames: [] } },
+    ],
+    remainingIdentificationRequests: 499,
+  };
+
+  it("asks Pl@ntNet when a key is set, and answers in the shape the phone reads, with the credit", async () => {
+    let asked = "";
+    const res = await handleIdentify(identifyRequest(), { plantnet: "pn-key" }, async (url) => {
+      asked = String(url);
+      return jsonResponse(200, plantnet_reply);
+    });
+    assert.ok(asked.startsWith(PLANTNET_URL) && asked.includes("api-key=pn-key"));
+    const body = (await res.json()) as { provider: string; provider_credit: string; results: unknown[] };
+    assert.equal(body.provider, "plantnet");
+    assert.equal(body.provider_credit, PLANTNET_CREDIT);
+    assert.deepEqual(body.results[0], { combined_score: 0.82, taxon: { name: "Tectona grandis", preferred_common_name: "Teak", rank: "species" } });
+  });
+
+  it("reads Pl@ntNet's 404 as no species found, not a failure", async () => {
+    const res = await handleIdentify(identifyRequest(), { plantnet: "pn-key" }, async () => jsonResponse(404, { message: "Species not found" }));
+    assert.equal(res.status, 200);
+    assert.deepEqual(((await res.json()) as { results: unknown[] }).results, []);
+  });
+
+  it("never calls iNaturalist on a token alone — only with written permission", async () => {
+    let called = 0;
+    const upstream = async () => {
+      called += 1;
+      return jsonResponse(200, teak_body);
+    };
+    const refused = await handleIdentify(identifyRequest(), identifyKeyOf({ INAT_API_TOKEN: "jwt" }), upstream);
+    assert.equal(refused.status, 503);
+    assert.equal(called, 0, "no request reached iNaturalist");
+    const allowed = await handleIdentify(identifyRequest(), identifyKeyOf({ INAT_API_TOKEN: "jwt", INAT_CV_PERMITTED: "1" }), upstream);
+    assert.equal(allowed.status, 200);
+    assert.equal(called, 1);
+  });
+
+  it("prefers Pl@ntNet over a permitted iNaturalist token", () => {
+    const key = identifyKeyOf({ PLANTNET_API_KEY: "pn", INAT_API_TOKEN: "jwt", INAT_CV_PERMITTED: "1" });
+    assert.equal(key.plantnet, "pn");
+  });
+
+  it("the phone names the service that answered", async () => {
+    const state = await identifyPlant({
+      image: photo,
+      fetch: async () => jsonResponse(200, { results: plantnetResult(plantnet_reply), provider: "plantnet" }),
+    } as Parameters<typeof identifyPlant>[0]);
+    assert.equal(state.status, "ready");
+    assert.equal(state.status === "ready" && state.provider, "plantnet");
   });
 });

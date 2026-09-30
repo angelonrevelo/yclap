@@ -127,6 +127,7 @@ import {
   demoIdentify,
   identifyPlant,
   loadInatNearby,
+  PROVIDER_LABEL,
   type InatIdentifyState,
   type InatNearbyState,
 } from "./inat";
@@ -1438,27 +1439,31 @@ function noProxyOf(http_status: number | null): string {
   return http_status === null ? "could not be reached" : `did not answer (HTTP ${http_status})`;
 }
 
-function identifyCaption(state: InatIdentifyState): string {  if (state.status === "loading") return "iNaturalist is identifying this photo — not this app.";
-  if (state.status === "offline") return "iNaturalist computer vision is unreachable. Pick from the campus list, or try again.";
-  if (state.status === "empty") return "iNaturalist returned no taxon suggestion. Identification is still iNaturalist’s, not this app’s.";
+function identifyCaption(state: InatIdentifyState): string {  if (state.status === "loading") return "Asking the identify service about this photo — a suggestion, not this app’s own identification.";
+  if (state.status === "offline") return "The identify service is unreachable. Pick from the campus list, or try again.";
+  if (state.status === "empty") return "No species suggestion came back. Pick from the campus list, or open Seek.";
   if (state.status === "needs_token") {
-    return "iNaturalist computer vision needs a signed-in token on this build. Identification is iNaturalist’s, not this app’s — pick from the list or open Seek.";
+    return "No identify service is set up on this server. Pick from the list, or open Seek — it identifies on your phone.";
   }
   if (state.status === "no_proxy") return `The identify server ${noProxyOf(state.http_status)}. Pick from the campus list.`;
   if (state.status === "token_expired") {
     return "iNaturalist refused this server’s token — it expired (they last 24 hours). Pick from the campus list for now.";
   }
-  if (state.status === "rate_limited") return "iNaturalist is rate-limiting us. Wait a minute and retake, or pick from the campus list.";
+  if (state.status === "rate_limited") return "The identify service’s quota is spent for now. Pick from the campus list, or open Seek.";
   if (state.status === "demo") {
     const why =
       state.reason === "token_expired"
         ? "the server’s iNaturalist token has expired"
         : state.reason === "no_proxy"
           ? `the identify server ${noProxyOf(state.http_status ?? null)}`
-          : "this server has no iNaturalist token";
+          : "this server has no identify service set up";
     return `RECORDED RESPONSE — ${why}, so it is replaying a saved reply for a Narra photo. It has not looked at your photo.`;
   }
-  if (state.status === "ready") return "iNaturalist is identifying — not this app. Tap a suggestion to fill the campus list, or pick yourself.";
+  if (state.status === "ready") {
+    return `${PROVIDER_LABEL[state.provider]} is suggesting — not this app. Tap a suggestion to fill the campus list, or pick yourself.${
+      state.provider === "plantnet" ? " Plant suggestions powered by Pl@ntNet." : ""
+    }`;
+  }
   return "Photo is optional. A memory for your journal. Nothing is uploaded to iNaturalist as an observation.";
 }
 
@@ -1716,13 +1721,14 @@ function CameraSheet({
               fontWeight: 700,
             }}
           >
-            {suggested_name} picked below — suggested by iNaturalist
+            {suggested_name} picked below — suggested by{" "}
+            {identify.status === "ready" ? PROVIDER_LABEL[identify.provider] : "iNaturalist"}
             {identify.status === "demo" ? " (recorded reply, not a read of your photo)" : ""}. Tap another species to change it.
           </div>
         )}
         {identify.status === "demo" && (
           <div style={{ fontSize: 11, color: "rgb(var(--mg-ink-rgb) / 0.5)", marginTop: 6 }}>
-            Live identification runs once the server holds a fresh <code>INAT_API_TOKEN</code> (web-forest README, “iNaturalist identify”).
+            Live identification runs once the server holds a <code>PLANTNET_API_KEY</code> (web-forest README, “Identify”).
           </div>
         )}
 

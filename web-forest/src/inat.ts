@@ -36,6 +36,16 @@ export interface InatSuggestion {
 export type IdentifyVia = "proxy" | "direct";
 
 /**
+ * Whose suggestion it is. Since 10-01 the proxy prefers Pl@ntNet and calls
+ * iNaturalist only with written permission (`worker/inat.ts`), so the sheet
+ * must name the service that actually answered — and Pl@ntNet's plans
+ * require its credit wherever a suggestion is shown.
+ */
+export type IdentifyProvider = "inat" | "plantnet";
+
+export const PROVIDER_LABEL: Record<IdentifyProvider, string> = { inat: "iNaturalist", plantnet: "Pl@ntNet" };
+
+/**
  * Why the recorded demo is on screen instead of a live answer. `no_proxy`: no
  * identify server answered at all (a 404, a dev proxy's 502, unreachable) —
  * not the same as a server that answered but holds no token.
@@ -45,7 +55,7 @@ export type DemoReason = "needs_token" | "token_expired" | "no_proxy";
 export type InatIdentifyState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "ready"; suggestion: InatSuggestion[]; via: IdentifyVia }
+  | { status: "ready"; suggestion: InatSuggestion[]; via: IdentifyVia; provider: IdentifyProvider }
   | { status: "empty" }
   | { status: "offline" }
   | { status: "needs_token" }
@@ -343,7 +353,7 @@ export async function scorePlantImage(input: {
     if (!res.ok) return { status: "offline" };
     const body: unknown = await res.json();
     const suggestion = mapScoreImage(body);
-    return suggestion.length ? { status: "ready", suggestion, via: "direct" } : { status: "empty" };
+    return suggestion.length ? { status: "ready", suggestion, via: "direct", provider: "inat" } : { status: "empty" };
   } catch {
     return { status: "offline" };
   }
@@ -365,7 +375,8 @@ async function readProxy(res: Response): Promise<InatIdentifyState | null> {
   const rec = asRecord(body);
   if (res.ok && rec && Array.isArray(rec.results)) {
     const suggestion = mapScoreImage(body);
-    return suggestion.length ? { status: "ready", suggestion, via: "proxy" } : { status: "empty" };
+    const provider: IdentifyProvider = rec.provider === "plantnet" ? "plantnet" : "inat";
+    return suggestion.length ? { status: "ready", suggestion, via: "proxy", provider } : { status: "empty" };
   }
   const error = typeof rec?.error === "string" ? rec.error : "";
   if (error === "token_expired") return { status: "token_expired" };

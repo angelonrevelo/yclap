@@ -15,7 +15,7 @@ import {
   type SightingRow,
 } from "../src/campus-world.ts";
 import { AccountService, isAccountPath, type AccountEnv, type SqlValue } from "./account.ts";
-import { handleIdentify, IDENTIFY_PATH } from "./inat.ts";
+import { handleIdentify, IDENTIFY_PATH, identifyKeyOf } from "./inat.ts";
 import { freshFindOf } from "../src/multiplayer.ts";
 import { EDGE_REPORT_IP_PER_HOUR } from "../src/moderation.ts";
 import { safeNameOf, nameNoticeOf } from "../src/name-filter.ts";
@@ -26,8 +26,12 @@ import { accountCorsOf, clientIp, isAccountCorsPath, pageOriginListOf, RateWindo
 export interface Env extends AccountEnv {
   CAMPUS: DurableObjectNamespace;
   ASSETS: Fetcher;
-  /** iNat API token. `wrangler secret put INAT_API_TOKEN` — never a VITE_ var. */
+  /** iNat API token. `wrangler secret put INAT_API_TOKEN` — never a VITE_ var. Used only with INAT_CV_PERMITTED=1. */
   INAT_API_TOKEN?: string;
+  /** "1" once iNaturalist has agreed in writing to this use of its visual API. */
+  INAT_CV_PERMITTED?: string;
+  /** Pl@ntNet API key — the identify service used by default. `wrangler secret put PLANTNET_API_KEY`. */
+  PLANTNET_API_KEY?: string;
   /**
    * Extra page origins the hall answers, comma-separated — a page served from
    * another host than this Worker (a preview deploy pointing `?sync=` here).
@@ -52,7 +56,7 @@ export default {
       const cors = accountCorsOf(request.headers.get("Origin"), url.host, allow);
       if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
       if (url.pathname === IDENTIFY_PATH) {
-        return withCors(await handleIdentify(request, env.INAT_API_TOKEN, undefined, undefined, allow), cors);
+        return withCors(await handleIdentify(request, identifyKeyOf(env), undefined, undefined, allow), cors);
       }
       const id = env.CAMPUS.idFromName("loyola");
       return withCors(await env.CAMPUS.get(id).fetch(request), cors);
