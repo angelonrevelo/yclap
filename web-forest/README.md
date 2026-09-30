@@ -370,9 +370,17 @@ The play layer, wired in `src/live.tsx`:
   walkers are drawn at your own walker's size (`avatarPx`). Transport is a WebSocket on the Durable Object (hibernation API,
   `GET /live/socket`); when an upgrade fails the client polls `POST /live/pose`
   / `GET /live/walker` every 2 s and keeps retrying the socket. Poses go out at
-  most once a second, only on a ≥3 m move or a look change, plus a 10 s
-  heartbeat; remote walkers glide from where they are drawn to each new pose
-  (no teleport jitter; a >150 m jump snaps) and are dropped after 60 s unheard.
+  most once a second (checked every 250 ms) whenever the walker moved — any
+  real step on the stick or demo walk, ≥3 m on GPS, whose fix wanders that much
+  standing still — or changed look, plus a 10 s heartbeat. Each pose carries
+  the sender's clock (`sent`). **Remote walkers are drawn by buffered snapshot
+  interpolation**: 1.7 s in the past over a socket (3.6 s when polling), on
+  the sender's clock shifted onto ours, linearly between poses. That is the
+  09-30 jitter fix: the old ease-out glide timed by network arrival surged
+  and braked once a second, which the follow camera made plain whenever you
+  moved or turned. A lost pose holds the walker (never a guess ahead that
+  snaps back); a pause then a step is drawn as a step; a >150 m jump or a
+  sender clock jump snaps; walkers are dropped after 60 s unheard.
   Works in stick/demo mode — that is the point, the showcase hall is off
   campus. `npm run sync` serves the same socket with a hand-rolled RFC 6455
   server (no `ws` dependency). **What is shared, and nothing else:** a display

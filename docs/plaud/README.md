@@ -1,6 +1,6 @@
 # Plaud brief index
 
-Fifteen recordings from Youth CLAP sessions (Aug 15 LEARN · Aug 22 BUILD · Aug 26 Ateneo CCC weekly · Aug 29 Masterclass · Sep 2 biome pivot · Sep 9 gamified map / pitch / showcase · Sep 25 Gelo's demo-readiness note), fetched via the cached plaud fetcher (`~/.piper/plaud/<pub_uuid>/note.md`). Each brief cites the transcript (`m:ss`) as evidence; claims appearing only in Plaud's AI note are labelled `[AI note]`. Asks are cross-referenced against this repo: **exists · partial · absent · unmappable**.
+Sixteen recordings from Youth CLAP sessions (Aug 15 LEARN · Aug 22 BUILD · Aug 26 Ateneo CCC weekly · Aug 29 Masterclass · Sep 2 biome pivot · Sep 9 gamified map / pitch / showcase · Sep 25 Gelo's demo-readiness note · Sep 30 Gelo's post-showcase note), fetched via the cached plaud fetcher (`~/.piper/plaud/<pub_uuid>/note.md`). Each brief cites the transcript (`m:ss`) as evidence; claims appearing only in Plaud's AI note are labelled `[AI note]`. Asks are cross-referenced against this repo: **exists · partial · absent · unmappable**.
 
 | Brief | Session | Duration | Speakers |
 |-------|---------|----------|----------|
@@ -19,6 +19,7 @@ Fifteen recordings from Youth CLAP sessions (Aug 15 LEARN · Aug 22 BUILD · Aug
 | [2026-09-02-pulong-website-biome-showcase.md](2026-09-02-pulong-website-biome-showcase.md) | Ateneo CCC weekly — **biome pivot**, gamification, showcase tasks | 1:16:50 | 9 labels, diarization suspect |
 | [2026-09-09-gamified-map-pitch-showcase.md](2026-09-09-gamified-map-pitch-showcase.md) | Ateneo CCC + AVP — **gamified map**, pitch, showcase prep (omit rounds) | 2:18:22 | 6 labels, diarization suspect |
 | [2026-09-25-demo-readiness-backend.md](2026-09-25-demo-readiness-backend.md) | Solo note, eve of the showcase — **accounts, database, pet eagle, GO look, detection smoke test** | 4:55 | solo (Gelo) |
+| [2026-09-30-stabilization-edutech-positioning.md](2026-09-30-stabilization-edutech-positioning.md) | Solo note after the showcase — **multiplayer jitter, disconnected limbs, low-end lag, not a childish game, DRR / trails / emergency / biodiversity modules, funding** | 6:21 | solo (Gelo) |
 
 Known recording-quality caveats (apply everywhere): diarization frequently merges or splits people; names garble (Borje/Borja, Porio/"Estenssoro", SPS five ways); several `[AI note]`-only "assignment" lists were never spoken and must not be treated as asks.
 
