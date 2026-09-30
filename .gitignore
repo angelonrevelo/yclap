@@ -36,3 +36,4 @@ web-forest/script/asset-with-plate/
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+dist-*/

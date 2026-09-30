@@ -65,8 +65,11 @@ export function useQuality({
     moved_at.current = performance.now();
   }, [motion_key]);
 
+  /* The latest `onDrop`, without restarting the sample when it changes. */
   const drop_ref = useRef(onDrop);
-  drop_ref.current = onDrop;
+  useEffect(() => {
+    drop_ref.current = onDrop;
+  });
 
   const is_probe = is_active && !is_judged && isQualityProbeNeeded(pick);
   useEffect(() => {

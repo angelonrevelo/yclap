@@ -36,7 +36,8 @@
  *
  * Usage:
  *   node script/bench-frame.mjs [--throttle 4,6] [--quality lite,full]
- *     [--label before] [--no-build] [--run 1] [--trace [--dump dir]] [--soft] [--debug] [--out path]
+ *     [--label before] [--no-build] [--run 1] [--trace [--dump dir]] [--soft] [--debug] [--raw]
+ *     [--query "zoom=19"] [--dist dist-before --build-of <sha>] [--out path]
  *
  * Output: `bench/frame-<yyyy-mm-dd>[-<label>].json`.
  */
@@ -516,6 +517,10 @@ async function runOnce({ throttle, quality, is_traced }) {
   /* `none` sends no `?quality=`: the app's own choice, or a build from before
      tiers existed (the "before" numbers). */
   if (quality && quality !== "none") query.set("quality", quality);
+  /* `--query "zoom=19&bearing=40"`: any other view parameter, e.g. to bench
+     the pulled-back camera, where far more of the campus is on the glass. */
+  const extra = arg("query", null);
+  if (typeof extra === "string") for (const [k, v] of new URLSearchParams(extra)) query.set(k, v);
   const url = `http://127.0.0.1:${PORT}/?${query}`;
   await send("Page.navigate", { url }, session);
   await sleep(4000);
@@ -549,6 +554,11 @@ async function runOnce({ throttle, quality, is_traced }) {
   await evaluate(session, "window.__bench.start()");
   const check = await walk(session);
   const raw = await evaluate(session, "window.__bench.stop()");
+  /* Auto may have measured and switched during the walk; the badge says. */
+  const tier_after = await evaluate(
+    session,
+    `(document.querySelector("[data-quality-tier]")?.textContent) ?? null`,
+  );
 
   let top = null;
   if (is_traced) {
@@ -593,6 +603,7 @@ async function runOnce({ throttle, quality, is_traced }) {
       throttle,
       quality: quality === "none" ? null : quality,
       tier_shown,
+      tier_after,
       /* A valid run walked AND swung; see CAMERA. */
       is_valid: check.travel_px > 200 && check.bearing_swing_degree > 30,
       ...check,
@@ -634,7 +645,7 @@ try {
         rows.push({ run: r + 1, ...result });
         writeFileSync(join(tmpdir(), `bench-frame-${throttle}x-${quality}-${r + 1}.png`), Buffer.from(shot, "base64"));
         console.log(
-          `${throttle}x ${quality.padEnd(4)} (shown: ${result.tier_shown ?? "-"}${result.is_valid ? "" : " INVALID"} walk ${result.travel_px}px swing ${result.bearing_swing_degree}°)  fps p50 ${result.fps_p50}  p5 ${result.fps_p5}  mean ${result.fps_mean}  long ${result.long_task_count} (${result.long_task_ms_total} ms)  jitter p50/p95 ${result.camera_jitter_p50}/${result.camera_jitter_p95}  nodes ${result.dom_node_count}  heap ${result.js_heap_used_mb} MB`,
+          `${throttle}x ${quality.padEnd(4)} (shown: ${result.tier_shown ?? "-"}${result.tier_after && !result.tier_after.startsWith(result.tier_shown === "lite" ? "Lite" : "Full") ? ` → ${result.tier_after}` : ""}${result.is_valid ? "" : " INVALID"} walk ${result.travel_px}px swing ${result.bearing_swing_degree}°)  fps p50 ${result.fps_p50}  p5 ${result.fps_p5}  mean ${result.fps_mean}  long ${result.long_task_count} (${result.long_task_ms_total} ms)  jitter p50/p95 ${result.camera_jitter_p50}/${result.camera_jitter_p95}  nodes ${result.dom_node_count}  heap ${result.js_heap_used_mb} MB`,
         );
       }
     }

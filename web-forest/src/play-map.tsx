@@ -271,6 +271,9 @@ function ringPath(ring: [number, number][], project: Project, close: boolean): s
 /** The right-hand map controls, as a screen-space box labels stay out of. */
 const CONTROL_KEEP_OUT_X = 76;
 const CONTROL_KEEP_OUT_Y = 300;
+/** The graphics badge: how far up from the bottom it sits, and how wide it runs. */
+const BADGE_BOTTOM = 200;
+const BADGE_KEEP_OUT_X = 176;
 
 /**
  * Which sectors get to speak.
@@ -298,7 +301,16 @@ function pickLabel(
 ): LabelPlace[] {
   const placed: LabelPlace[] = [];
   const spoken = new Set<string>();
-  const { project, toScreen, width, height } = projection;
+  const { project, toScreen, fromScreen, centre, width, height } = projection;
+  /* A pill must land below 0.3 of the glass (see the haze check below), and
+     under the rake that caps how far away its ground can be. Anything past
+     that is skipped BEFORE the projection, instead of projecting all ~90
+     sectors every camera frame to reject them one by one. */
+  const reach_m =
+    Math.max(
+      distanceMeter(centre, fromScreen(0, height * 0.3)),
+      distanceMeter(centre, fromScreen(width, height * 0.3)),
+    ) + 30;
   /* Every check below is in SCREEN space. Checking in plane space is what let
      labels clip off the right edge: the perspective divide pushes points away
      from the centre, so a pill that fits the plane can still hang off the
@@ -313,6 +325,7 @@ function pickLabel(
        information — the sector card names the piece you actually tapped. */
     const base = s.name.replace(/\s*\([^)]*\)$/, "");
     if (spoken.has(base)) continue;
+    if (Number.isFinite(reach_m) && distanceMeter(centre, { lat: s.label_point[0], lon: s.label_point[1] }) > reach_m) continue;
 
     const p = toScreen(project({ lat: s.label_point[0], lon: s.label_point[1] }));
     const half_w = halfWidth(s);
@@ -326,6 +339,8 @@ function pickLabel(
     /* Not under the right-hand control column (weather, layers, locate,
        compass and the walker count — ~300 px tall on every screen size). */
     if (p.x + half_w > width - CONTROL_KEEP_OUT_X && p.y < CONTROL_KEEP_OUT_Y) continue;
+    /* Not over the graphics badge (`QualityBadge`, bottom-right). */
+    if (p.x + half_w > width - BADGE_KEEP_OUT_X && Math.abs(p.y - (height - BADGE_BOTTOM - 10)) < 30) continue;
     /* Not on top of the walker. `avoid` is their FEET, and the figure stands
        ~110 px up from there, so the keep-out box runs up the whole body. */
     if (avoid && Math.abs(p.x - avoid.x) < half_w + 40 && p.y > avoid.y - 150 && p.y < avoid.y + 24) continue;
@@ -1243,7 +1258,7 @@ function QualityBadge({ pick, onOpen }: { pick: QualityPick; onOpen?: () => void
       style={{
         position: "absolute",
         right: 8,
-        bottom: 200,
+        bottom: BADGE_BOTTOM,
         zIndex: 21,
         padding: "3px 8px",
         border: "1px solid rgba(31,32,34,0.14)",
