@@ -195,6 +195,13 @@ const OFF_CAMPUS_ALERT: AlertSpec = {
   caption: "Anything you log on a stick walk is tagged as one, never as a visit.",
   action: "Start the demo walk",
 };
+/**
+ * Alerts about the walk itself. They only make sense over the map, and a
+ * student who opens Settings to file a report (10-01 playtest) was met by "No
+ * position here" first. They wait in the queue until the map is on screen; the
+ * weather warning is about the student's safety and still shows anywhere.
+ */
+const MAP_ONLY_ALERT = new Set(["no-fix", "off-campus", "speed"]);
 const SPEED_ALERT: AlertSpec = {
   alert_id: "speed",
   tone: "dark",
@@ -4548,6 +4555,7 @@ export default function App() {
   }, [level_up, reveal, card, is_camera_open, receipt, is_trainer_open, is_nearby_open, picked_sector, is_sheet_open]);
 
   const is_on_map = route === "/" || route === "/map";
+  const shown_alert = alert_queue.find((a) => is_on_map || !MAP_ONLY_ALERT.has(a.alert_id)) ?? null;
   const is_play = is_on_map && map_mode === "play";
 
   const pressGo = () => {
@@ -4750,17 +4758,17 @@ export default function App() {
           <LevelUpCard level={level_up} stage={stage} onDismiss={() => setLevelUp(null)} />
         )}
         {toast && <GameToast msg={toast} band={route === "/" || route === "/map" ? "top" : "bottom"} />}
-        {is_booted && alert_queue[0] && (
+        {is_booted && shown_alert && (
           <AlertCard
-            key={alert_queue[0].alert_id}
-            spec={alert_queue[0]}
+            key={shown_alert.alert_id}
+            spec={shown_alert}
             onDismiss={() => {
-              markAlertSeen(alert_queue[0].alert_id);
-              setAlertQueue((q) => q.slice(1));
+              markAlertSeen(shown_alert.alert_id);
+              setAlertQueue((q) => q.filter((a) => a.alert_id !== shown_alert.alert_id));
             }}
           />
         )}
-        {is_booted && !alert_queue[0] && !is_camera_open && daily && !daily.is_done && today_seen !== daily.day_key && route === "/" && (
+        {is_booted && !shown_alert && !is_camera_open && daily && !daily.is_done && today_seen !== daily.day_key && route === "/" && (
           <TodayHuntCard
             daily={daily}
             reward={POINT_VALUE.challenge}

@@ -113,7 +113,7 @@ The owner's ask is that every edge case is met, from every side. Rows are groupe
 | Sharing your code to be a partner handed over your walker | done: ae2f43d, `/partner` answers a `walker_id` |
 | A script guesses walker codes | done: 20 wrong codes per address per 10 min |
 | Walking side by side, the ground judders on a busy phone | lane `reveal/perf` (camera commits land unevenly; `bench:hall` "both") |
-| A fresh visit to Settings raises the map's "No position here" card | **open**: the geo alert should wait for the map |
+| A fresh visit to Settings raises the map's "No position here" card | done: map-only alerts wait for the map; weather warnings still show anywhere |
 | Colour-blind player | done (earlier): rarity is readable without colour |
 | Reduced-motion preference | done (earlier): animations off |
 | Screen reader | **open**. The map is SVG/CSS with few labels; not audited |
