@@ -13,22 +13,69 @@
 
 const VIA = "yclap-field-guide/0.1 (Youth CLAP Ateneo CCC; local PWA)";
 const TAXA_URL = "https://api.inaturalist.org/v1/taxa";
-const CACHE_KEY = "fg_portrait_v1";
+/* v2 stores the licence with each url; a v1 entry had none, so it is not trusted. */
+const CACHE_KEY = "fg_portrait_v2";
 const FETCH_TIMEOUT_MS = 8000;
 
-/** iNat medium default photos, keyed by lowercase scientific_name. */
-export const PORTRAIT_SEED: Record<string, string> = {
-  "pterocarpus indicus": "https://inaturalist-open-data.s3.amazonaws.com/photos/65718753/medium.jpeg",
-  "vitex parviflora": "https://inaturalist-open-data.s3.amazonaws.com/photos/577809093/medium.jpg",
-  "dillenia philippinensis": "https://inaturalist-open-data.s3.amazonaws.com/photos/459792942/medium.jpg",
-  "dracontomelon dao": "https://inaturalist-open-data.s3.amazonaws.com/photos/101351496/medium.jpg",
-  "swietenia macrophylla": "https://inaturalist-open-data.s3.amazonaws.com/photos/38634940/medium.jpeg",
-  "samanea saman": "https://inaturalist-open-data.s3.amazonaws.com/photos/58693810/medium.jpeg",
-  "tectona grandis": "https://static.inaturalist.org/photos/88386046/medium.jpg",
-  "ficus sp.": "https://inaturalist-open-data.s3.amazonaws.com/photos/68686046/medium.jpeg",
-  "ficus benjamina": "https://inaturalist-open-data.s3.amazonaws.com/photos/68686046/medium.jpeg",
-  "vitex negundo": "https://inaturalist-open-data.s3.amazonaws.com/photos/80459619/medium.jpeg",
+/**
+ * A photo, and whose it is. iNaturalist photos keep their photographer's
+ * licence — CC0, CC BY variants, or all rights reserved (`licence_code` null) —
+ * and the app must honour it (docs/brainstorm/magisphere-institution, risk 4).
+ */
+export interface Portrait {
+  url: string;
+  /** iNaturalist `license_code`, e.g. "cc0", "cc-by", "cc-by-nc"; null = all rights reserved. */
+  licence_code: string | null;
+  /** iNaturalist's own attribution line, shown on the photo and in Settings → Photo credits. */
+  attribution: string;
+}
+
+/**
+ * Licences a photo may carry to be shown here at all.
+ *
+ * All rights reserved is never shown: nobody gave permission. No-derivatives
+ * (…-nd) is left out too, because every portrait is a circle crop. The
+ * non-commercial licences are fine while the deployment is free — the Ateneo
+ * pilot is — and drop out the moment `IS_COMMERCIAL_DEPLOYMENT` is true.
+ */
+const LICENCE_OPEN = new Set(["cc0", "cc-by", "cc-by-sa"]);
+const LICENCE_NON_COMMERCIAL = new Set(["cc-by-nc", "cc-by-nc-sa"]);
+export const IS_COMMERCIAL_DEPLOYMENT = false;
+
+export function isPhotoLicenceAllowed(licence_code: string | null | undefined, is_commercial = IS_COMMERCIAL_DEPLOYMENT): boolean {
+  const code = (licence_code ?? "").toLowerCase();
+  if (LICENCE_OPEN.has(code)) return true;
+  return !is_commercial && LICENCE_NON_COMMERCIAL.has(code);
+}
+
+/**
+ * iNat default photos for the curated species, with the licence and
+ * attribution iNaturalist reported on 2026-10-01 (`/v1/taxa`, default_photo).
+ * Two seeds were dropped that day: Teak's was all rights reserved and Dao's
+ * was CC BY-NC-ND; both draw their botanical sketch instead.
+ */
+export const PORTRAIT_SEED: Record<string, Portrait> = {
+  "pterocarpus indicus": { url: "https://inaturalist-open-data.s3.amazonaws.com/photos/65718753/medium.jpeg", licence_code: "cc0", attribution: "no rights reserved, uploaded by 葉子" },
+  "vitex parviflora": { url: "https://inaturalist-open-data.s3.amazonaws.com/photos/577809093/medium.jpg", licence_code: "cc-by", attribution: "(c) Kevin Faccenda, some rights reserved (CC BY), uploaded by Kevin Faccenda" },
+  "dillenia philippinensis": { url: "https://inaturalist-open-data.s3.amazonaws.com/photos/459792942/medium.jpg", licence_code: "cc-by-nc", attribution: "(c) lenisutcliffe, some rights reserved (CC BY-NC)" },
+  "swietenia macrophylla": { url: "https://inaturalist-open-data.s3.amazonaws.com/photos/38634940/medium.jpeg", licence_code: "cc0", attribution: "no rights reserved, uploaded by 葉子" },
+  "samanea saman": { url: "https://inaturalist-open-data.s3.amazonaws.com/photos/58693810/medium.jpeg", licence_code: "cc0", attribution: "no rights reserved, uploaded by 葉子" },
+  "ficus sp.": { url: "https://inaturalist-open-data.s3.amazonaws.com/photos/68686046/medium.jpeg", licence_code: "cc0", attribution: "no rights reserved, uploaded by 葉子" },
+  "ficus benjamina": { url: "https://inaturalist-open-data.s3.amazonaws.com/photos/68686046/medium.jpeg", licence_code: "cc0", attribution: "no rights reserved, uploaded by 葉子" },
+  "vitex negundo": { url: "https://inaturalist-open-data.s3.amazonaws.com/photos/80459619/medium.jpeg", licence_code: "cc0", attribution: "no rights reserved, uploaded by 葉子" },
 };
+
+/** Every credit this phone has shown, by URL — Settings → Photo credits lists them. */
+const credit = new Map<string, Portrait>(Object.values(PORTRAIT_SEED).map((p) => [p.url, p]));
+
+export function portraitCreditOf(url: string | null | undefined): Portrait | null {
+  if (!url) return null;
+  return credit.get(url) ?? null;
+}
+
+export function photoCreditList(): Portrait[] {
+  return [...credit.values()];
+}
 
 const memory = new Map<string, string | null>();
 const inflight = new Map<string, Promise<string | null>>();
@@ -38,14 +85,14 @@ export function portraitKey(scientific_name: string): string {
 }
 
 export function seededPortrait(scientific_name: string): string | null {
-  return PORTRAIT_SEED[portraitKey(scientific_name)] ?? null;
+  return PORTRAIT_SEED[portraitKey(scientific_name)]?.url ?? null;
 }
 
 /** The photo URL known right now without a round trip — seeded or cached — else null. */
 export function knownPortrait(scientific_name: string): string | null {
   const name = scientific_name.trim();
   if (!name) return null;
-  return PORTRAIT_SEED[portraitKey(name)] ?? readCache(portraitKey(name));
+  return PORTRAIT_SEED[portraitKey(name)]?.url ?? readCache(portraitKey(name));
 }
 
 export function taxaPortraitUrl(scientific_name: string): string {
@@ -72,20 +119,32 @@ function photoUrlOf(photo: unknown): string | null {
   return null;
 }
 
-/** JSON → first exact-name photo, else the first photoed result. */
-export function mapTaxonPhoto(body: unknown, scientific_name: string): string | null {
+/**
+ * JSON → first exact-name photo, else the first photoed result — skipping any
+ * photo whose licence may not be shown here (`isPhotoLicenceAllowed`). A photo
+ * with no licence field at all counts as all rights reserved.
+ */
+export function mapTaxonPhoto(body: unknown, scientific_name: string, is_commercial = IS_COMMERCIAL_DEPLOYMENT): Portrait | null {
   const root = asRecord(body);
   const row = Array.isArray(root?.results) ? root.results : [];
   const want = portraitKey(scientific_name);
-  let fallback: string | null = null;
+  let fallback: Portrait | null = null;
   for (const item of row) {
     const rec = asRecord(item);
     if (!rec) continue;
     const name = typeof rec.name === "string" ? portraitKey(rec.name) : "";
-    const url = photoUrlOf(rec.default_photo);
-    if (!url) continue;
-    if (name === want) return url;
-    if (!fallback) fallback = url;
+    const photo = asRecord(rec.default_photo);
+    const url = photoUrlOf(photo);
+    if (!url || !photo) continue;
+    const licence_code = typeof photo.license_code === "string" ? photo.license_code : null;
+    if (!isPhotoLicenceAllowed(licence_code, is_commercial)) continue;
+    const portrait: Portrait = {
+      url,
+      licence_code,
+      attribution: typeof photo.attribution === "string" ? photo.attribution : "",
+    };
+    if (name === want) return portrait;
+    if (!fallback) fallback = portrait;
   }
   return fallback;
 }
@@ -97,8 +156,10 @@ function readCache(key: string): string | null {
     const raw = globalThis.localStorage?.getItem(CACHE_KEY);
     if (!raw) return null;
     const blob = JSON.parse(raw) as Record<string, unknown>;
-    const url = blob[key];
-    if (typeof url === "string" && url.startsWith("https://")) {
+    const hit = asRecord(blob[key]);
+    const url = hit?.url;
+    if (typeof url === "string" && url.startsWith("https://") && isPhotoLicenceAllowed(hit?.licence_code as string | null)) {
+      credit.set(url, { url, licence_code: (hit?.licence_code as string | null) ?? null, attribution: String(hit?.attribution ?? "") });
       memory.set(key, url);
       return url;
     }
@@ -108,14 +169,16 @@ function readCache(key: string): string | null {
   return null;
 }
 
-function writeCache(key: string, url: string): void {
+function writeCache(key: string, portrait: Portrait): void {
+  const { url } = portrait;
+  credit.set(url, portrait);
   memory.set(key, url);
   try {
     const storage = globalThis.localStorage;
     if (!storage) return;
     const raw = storage.getItem(CACHE_KEY);
     const blob = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
-    blob[key] = url;
+    blob[key] = portrait;
     storage.setItem(CACHE_KEY, JSON.stringify(blob));
   } catch {
     /* quota / private / Node */
@@ -129,7 +192,7 @@ export async function loadTaxonPortrait(
   const name = scientific_name.trim();
   if (!name) return null;
   const key = portraitKey(name);
-  const seeded = PORTRAIT_SEED[key];
+  const seeded = PORTRAIT_SEED[key]?.url;
   if (seeded) {
     memory.set(key, seeded);
     return seeded;
@@ -156,10 +219,10 @@ export async function loadTaxonPortrait(
         memory.set(key, null);
         return null;
       }
-      const url = mapTaxonPhoto(await res.json(), name);
-      if (url) writeCache(key, url);
+      const portrait = mapTaxonPhoto(await res.json(), name);
+      if (portrait) writeCache(key, portrait);
       else memory.set(key, null);
-      return url;
+      return portrait?.url ?? null;
     } catch {
       memory.set(key, null);
       return null;

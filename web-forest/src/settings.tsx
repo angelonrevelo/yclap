@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { photoCreditList } from "./taxon-photo";
 import { RADIUS } from "./ui";
 import { sticker } from "./asset/kit";
 import {
@@ -489,6 +490,29 @@ export default function SettingsScreen({
                             !
                           </span>
                           {line}
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
+              {/* Photo credits: the photographers' own attribution, as
+                  iNaturalist reports it, for every photo this phone has
+                  shown. A circle thumbnail has no room for a credit line; CC
+                  licences accept a credits page that lists them. */}
+              <div style={{ marginTop: 12 }}>
+                <Table label="Photo credits">
+                  <thead>
+                    <tr>
+                      <Th>Photo credits (iNaturalist)</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {photoCreditList().map((p) => (
+                      <tr key={p.url}>
+                        <Td>
+                          {p.attribution || "credit not recorded"}{" "}
+                          <span style={{ color: TONE.faint }}>· {p.licence_code ?? "all rights reserved"}</span>
                         </Td>
                       </tr>
                     ))}

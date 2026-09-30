@@ -3,7 +3,7 @@ import Botanical from "./botanical";
 import { species } from "./data";
 import { kindOf, type Kind } from "./kind";
 import { KindThumb } from "./kind-mark";
-import { knownPortrait, loadTaxonPortrait, seededPortrait } from "./taxon-photo";
+import { knownPortrait, loadTaxonPortrait, portraitCreditOf, seededPortrait } from "./taxon-photo";
 
 export function usePortrait(scientific_name: string | null | undefined): string | null {
   const name = scientific_name?.trim() ?? "";
@@ -118,10 +118,14 @@ export function SpeciesPortrait({
 
 function PortraitPhoto({ src }: { src: string }) {
   const [is_loaded, setLoaded] = useState(false);
+  /* The photographer's credit rides on the photo itself (and in Settings →
+     Photo credits); a journal photo of your own carries none. */
+  const credit = portraitCreditOf(src);
   return (
     <img
       src={src}
       alt=""
+      title={credit ? `Photo ${credit.attribution}` : undefined}
       onLoad={() => setLoaded(true)}
       style={{
         position: "absolute",
