@@ -12,6 +12,7 @@ import {
   type WorldFind,
   type WorldWalker,
 } from "./campus-world.ts";
+import { generatedNameOf } from "./name-filter.ts";
 
 export type { World, WorldFind, WorldWalker };
 
@@ -23,29 +24,16 @@ export interface PlayerIdentity {
 
 const IDENTITY_KEY = "field-guide.player";
 
-const NAME_WORD = [
-  "Narra", "Molave", "Katmon", "Dao", "Balete", "Lagundi", "Banaba", "Dita",
-  "Kupang", "Amugis", "Palosapis", "Malaruhat", "Salunguguet", "Tibig", "Almaciga",
-];
-
-function hashOf(text: string): number {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < text.length; i += 1) {
-    h ^= text.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return h >>> 0;
-}
-
 function mintIdentity(): PlayerIdentity {
   const uuid =
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
       : `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-  const h = hashOf(uuid);
   return {
     player_id: uuid,
-    name: `${NAME_WORD[h % NAME_WORD.length]} Walker ${(h >>> 8) % 97}`,
+    /* The same function the server falls back to when a chosen name is
+       refused, so a refused phone goes back to the name it was minted with. */
+    name: generatedNameOf(uuid),
     join_code: joinCodeOf(uuid),
   };
 }

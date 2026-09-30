@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { execSync } from "node:child_process";
 
 /**
  * Port claim: 4177 (forest Magisphere). Never 5173 / 8080 / 3000–3999.
@@ -13,14 +14,32 @@ import tailwindcss from "@tailwindcss/vite";
  */
 const HOST = process.env.MAGISPHERE_HOST ?? "127.0.0.1";
 /**
- * `npm run sync` — server/sync-server.mjs. `MAGISPHERE_SYNC_PORT` moves it, so
- * two worktrees can each run a dev server and a hall side by side without one
+ * The build id a bug report carries (`src/report.ts buildIdOf`): the short
+ * commit and the build date, so a report says which build it is about. No git
+ * (a tarball build) still builds, as `nogit`.
+ */
+const BUILD_ID = (() => {
+  let sha = "nogit";
+  try {
+    sha = execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim() || sha;
+  } catch {
+    /* not a checkout */
+  }
+  return `${sha}.${new Date().toISOString().slice(0, 10)}`;
+})();
+
+/**
+ * `npm run sync` — server/sync-server.mjs. `MAGISPHERE_SYNC_TARGET` points the
+ * proxy elsewhere, or `MAGISPHERE_SYNC_PORT` just moves the port, so two
+ * worktrees can each run a dev server and a hall side by side without one
  * proxying into the other's.
  */
-const SYNC_TARGET = `http://127.0.0.1:${process.env.MAGISPHERE_SYNC_PORT ?? "8788"}`;
+const SYNC_TARGET =
+  process.env.MAGISPHERE_SYNC_TARGET ?? `http://127.0.0.1:${process.env.MAGISPHERE_SYNC_PORT ?? "8788"}`;
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
   server: {
     host: HOST,
     port: 4177,
@@ -29,7 +48,7 @@ export default defineConfig({
        tell the phones apart: it trusts X-Forwarded-For only from loopback
        (this proxy) and reads the last entry, the one the proxy appended. */
     proxy: Object.fromEntries(
-      ["/world", "/sync", "/live", "/health", "/join", "/mine", "/auth/", "/account/", "/inat/identify"].map((path) => [
+      ["/world", "/sync", "/live", "/health", "/join", "/mine", "/auth/", "/account/", "/inat/identify", "/report", "/mod/api/"].map((path) => [
         path,
         /* `ws` so the hall socket (/live/socket) upgrades through the proxy too. */
         { target: SYNC_TARGET, xfwd: true, ws: path === "/live" },

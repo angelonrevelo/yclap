@@ -24,6 +24,7 @@
 
 import { hashOf, type WorldFind } from "./campus-world.ts";
 import { distanceMeter, isInsideCampus, type FixSource, type LatLon } from "./geo.ts";
+import { nameNoticeOf, safeNameOf, type NameRefusal } from "./name-filter.ts";
 
 /** A walker not heard from in this long is gone, on the server and on glass. */
 export const STALE_MS = 60_000;
@@ -131,19 +132,57 @@ export interface PoseInput {
   sent?: number;
 }
 
+/**
+ * Something the hall tells ONE phone about itself: its display name was not
+ * printed (and what the room sees instead), or a moderator has hidden it from
+ * the hall until `until`. Never broadcast — nobody else learns either.
+ */
+export interface HallNotice {
+  kind: "name_refused" | "hidden";
+  text: string;
+  /** The name the room sees instead, for `name_refused`. */
+  name?: string;
+  /** ms epoch the hide lifts, for `hidden`. */
+  until?: number;
+}
+
 export type HallMessage =
-  | { type: "roster"; walker: Pose[]; find: WorldFind[]; server_time: number }
+  | { type: "roster"; walker: Pose[]; find: WorldFind[]; server_time: number; notice?: HallNotice }
   | { type: "pose"; walker: Pose }
   | { type: "gone"; walker_id: string }
-  | { type: "find"; find: WorldFind[] };
+  | { type: "find"; find: WorldFind[] }
+  | { type: "notice"; notice: HallNotice };
+
+/**
+ * What a moderator has taken out of the hall (`worker/moderation.ts`), asked
+ * on every pose and every roster. Both halls (the Durable Object and the LAN
+ * box) take one, so a hide holds on whichever server the phones are on.
+ */
+export interface HallGuard {
+  /** When the hide on this walker lifts (ms epoch), or null. */
+  hiddenUntil(walker_id: string, now: number): number | null;
+  isFindHidden(sighting_id: string): boolean;
+}
+
+/** A find the hall may still call out: not hidden, and not by a hidden walker. */
+export function isFindShown(find: WorldFind, guard: HallGuard | null | undefined, now: number): boolean {
+  if (!guard) return true;
+  return !guard.isFindHidden(find.sighting_id) && guard.hiddenUntil(find.player_id, now) === null;
+}
 
 /** One-way hall key. Same input, same key, on every runtime. */
 export function walkerIdOf(player_id: string): string {
   return `w${hashOf(`hall:${player_id}`).toString(36)}${hashOf(`${player_id}:hall`).toString(36)}`;
 }
 
-/** Untrusted JSON in, a `Pose` out — or null if it is not one. */
-export function sanitizePose(raw: unknown, now: number): Pose | null {
+/**
+ * Untrusted JSON in, a `Pose` out — or null if it is not one — and whether the
+ * name it came with was refused. The name filter (`name-filter.ts`) runs HERE,
+ * on the server, so a phone cannot print what it likes over its own head by
+ * skipping a client check: a refused name becomes the generated walker name
+ * for the same player_id, i.e. the name that phone was minted with.
+ */
+export function sanitizePoseVerdict(raw: unknown, now: number): { pose: Pose; refusal: NameRefusal | null } | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
   if (typeof r.player_id !== "string" || !r.player_id.trim()) return null;
@@ -154,16 +193,44 @@ export function sanitizePose(raw: unknown, now: number): Pose | null {
   const level = Number(r.level);
   const source = SOURCE.has(r.source as FixSource) ? (r.source as FixSource) : "play";
   const sent = Number(r.sent);
+  const player_id = r.player_id.trim().slice(0, 64);
+  const { name, refusal } = safeNameOf(r.name ?? "Walker", player_id);
   return {
-    ...(Number.isFinite(sent) && sent > 0 ? { sent: Math.trunc(sent) } : {}),
-    walker_id: walkerIdOf(r.player_id.trim().slice(0, 64)),
-    name: String(r.name ?? "Walker").trim().slice(0, 40) || "Walker",
-    level: Number.isFinite(level) ? Math.max(1, Math.min(999, Math.trunc(level))) : 1,
-    stage: STAGE.has(String(r.stage)) ? String(r.stage) : "egg",
-    lat,
-    lon,
-    source,
-    at: now,
+    pose: {
+      ...(Number.isFinite(sent) && sent > 0 ? { sent: Math.trunc(sent) } : {}),
+      walker_id: walkerIdOf(player_id),
+      name,
+      level: Number.isFinite(level) ? Math.max(1, Math.min(999, Math.trunc(level))) : 1,
+      stage: STAGE.has(String(r.stage)) ? String(r.stage) : "egg",
+      lat,
+      lon,
+      source,
+      at: now,
+    },
+    refusal,
+  };
+}
+
+/** Untrusted JSON in, a `Pose` out — or null if it is not one. Names filtered. */
+export function sanitizePose(raw: unknown, now: number): Pose | null {
+  return sanitizePoseVerdict(raw, now)?.pose ?? null;
+}
+
+/** The notice for a refused name, or null when the name stood. */
+export function nameNoticeOfPose(pose: Pose, refusal: NameRefusal | null): HallNotice | null {
+  return refusal ? { kind: "name_refused", text: nameNoticeOf(refusal, pose.name), name: pose.name } : null;
+}
+
+/** The notice for a walker a moderator has hidden from the hall. */
+export function hiddenNoticeOf(until: number): HallNotice {
+  /* Manila is UTC+8 all year (no DST), and a Worker has no local zone to ask. */
+  const at = new Date(until);
+  const hh = String((at.getUTCHours() + 8) % 24).padStart(2, "0");
+  const mm = String(at.getUTCMinutes()).padStart(2, "0");
+  return {
+    kind: "hidden",
+    text: `A moderator has hidden you from the live hall until ${hh}:${mm} (Manila). You can still play; other walkers just won't see you.`,
+    until,
   };
 }
 
@@ -450,7 +517,7 @@ export const SOURCE_LABEL: Record<FixSource, string> = {
  * A roster is authoritative: anybody missing from it is gone.
  */
 export function applyHall(track: Map<string, Track>, message: HallMessage, me: string, now: number): Map<string, Track> {
-  if (message.type === "find") return track;
+  if (message.type === "find" || message.type === "notice") return track;
   const next = new Map(track);
   if (message.type === "gone") {
     next.delete(message.walker_id);
@@ -548,9 +615,19 @@ export function openHall(
             body: JSON.stringify(pose),
           })
         : await fetch_impl(`${base_url}/live/walker`);
-      if (!res.ok) throw new Error(String(res.status));
-      const body = (await res.json()) as unknown;
+      if (!res.ok) {
+        /* A refused pose that says why (a moderator hid this walker) is a
+           notice for this phone, not a broken hall: the roster still polls. */
+        const refusal = (await res.json().catch(() => null)) as { notice?: HallNotice } | null;
+        if (refusal?.notice && !is_closed) {
+          deliver({ type: "notice", notice: refusal.notice });
+          return;
+        }
+        throw new Error(String(res.status));
+      }
+      const body = (await res.json()) as { notice?: HallNotice } | null;
       if (is_closed || is_socket_open) return;
+      if (body?.notice) deliver({ type: "notice", notice: body.notice });
       if (!is_poll_ok) {
         is_poll_ok = true;
         onMode("poll");

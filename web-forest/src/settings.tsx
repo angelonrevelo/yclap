@@ -10,6 +10,8 @@ import {
 } from "./settings-content";
 import type { Preference } from "./preference";
 import AccountPanel from "./account-panel.tsx";
+import { unmuteAll } from "./mute";
+import { ReportForm, useMuted } from "./report-sheet";
 
 /**
  * Settings — what this is, how far along it is, and who it is talking to.
@@ -277,6 +279,7 @@ export default function SettingsScreen({
   );
   const [name_draft, setNameDraft] = useState(preference.walker_name || walker_name);
   const [join_draft, setJoinDraft] = useState("");
+  const muted = useMuted();
   const stage_index = STAGE_LADDER.findIndex((s) => s.key === STAGE_NOW);
 
   return (
@@ -584,6 +587,7 @@ export default function SettingsScreen({
 
           {/* ── SETUP ───────────────────────────────────────────────────── */}
           {panel === "setup" && (
+            <>
             <Table label="Preferences, saved on this device">
               <thead>
                 <tr>
@@ -666,8 +670,57 @@ export default function SettingsScreen({
                     cover a path that is actually in front of it. Shadow never does.
                   </Td>
                 </tr>
+                <tr>
+                  <Td is_head>
+                    Hidden walkers
+                    <div style={{ marginTop: 7 }}>
+                      <button
+                        type="button"
+                        disabled={muted.size === 0}
+                        onClick={() => unmuteAll()}
+                        style={{
+                          padding: "5px 10px",
+                          borderRadius: 7,
+                          border: `1.5px solid ${TONE.edge}`,
+                          background: "transparent",
+                          color: muted.size ? "var(--mg-green-text)" : TONE.faint,
+                          fontWeight: 800,
+                          fontSize: 10.5,
+                          cursor: muted.size ? "pointer" : "default",
+                        }}
+                      >
+                        Show {muted.size || "none"} again
+                      </button>
+                    </div>
+                  </Td>
+                  <Td>
+                    Walkers you hid from their name tag on the map. Hiding is on this phone only — they are not told,
+                    and they still count as out.
+                  </Td>
+                </tr>
               </tbody>
             </Table>
+
+            {/* Gelo, 09-30 (`3:39`): performance, bugs and the reporting
+                system, accounted for. The form states what it attaches. */}
+            <section
+              aria-label="Report a problem"
+              style={{
+                marginTop: 12,
+                background: TONE.card,
+                borderRadius: RADIUS.tile,
+                border: `1px solid ${TONE.edge}`,
+                padding: 12,
+              }}
+            >
+              <div style={{ fontSize: 14, fontWeight: 900, marginBottom: 4 }}>Report a problem</div>
+              <p style={{ margin: "0 0 10px", fontSize: 12, color: TONE.dim, lineHeight: 1.45 }}>
+                Lag, walkers jumping, a model that looks wrong, the wrong tree in the wrong place — tell the team. A
+                moderator reads every report. To report somebody&apos;s name, tap their name tag on the map.
+              </p>
+              <ReportForm />
+            </section>
+            </>
           )}
 
           {/* ── PATH ────────────────────────────────────────────────────── */}

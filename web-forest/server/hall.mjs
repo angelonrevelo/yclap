@@ -20,6 +20,12 @@
  * one person needs, while behind Cloudflare a whole booth shares one public IP.
  * A loopback caller with no forwarded address (a local script) has no IP and
  * no per-IP cap.
+ *
+ * Moderation, as on the Worker: `guard` (worker/moderation.ts, on node:sqlite
+ * here) says which walkers a moderator hid and which finds; a hidden walker is
+ * off the roster, their poses refused, and their phone alone told why. A name
+ * the filter refused (src/name-filter.ts, inside sanitizePoseVerdict) prints
+ * as the generated walker name, and that phone alone is told.
  */
 import { createHash } from "node:crypto";
 import { RateWindow, isHallOrigin } from "../src/rate-limit.ts";
@@ -94,6 +100,8 @@ class LiteSocket {
     /** Times of this socket's recent poses, for the per-socket rate. */
     this.pose_at = [];
     this.pose = null;
+    /** Already told a moderator hid it — so not told again every second. */
+    this.is_hidden_told = false;
     socket.on("data", (chunk) => {
       this.buf = Buffer.concat([this.buf, chunk]);
       if (this.buf.length > MAX_FRAME * 2) return this.close();
@@ -149,7 +157,7 @@ class LiteSocket {
  * `lib` is src/multiplayer.ts, loaded by the caller (it owns the TS import).
  * `page_origin` is the HALL_PAGE_ORIGIN allow-list (request.mjs pageOrigin).
  */
-export function createHall(lib, page_origin = pageOrigin) {
+export function createHall(lib, page_origin = pageOrigin, guard = null) {
   const socket = new Set();
   const polled = new Map();
   let recent_find = [];
@@ -180,6 +188,9 @@ export function createHall(lib, page_origin = pageOrigin) {
     return true;
   };
 
+  const hiddenUntil = (walker_id, now) => (guard ? guard.hiddenUntil(walker_id, now) : null);
+  const isFindShown = (find, now) => (lib.isFindShown ? lib.isFindShown(find, guard, now) : true);
+
   const snapshot = () => {
     const now = Date.now();
     recent_find = recent_find.filter((f) => now - f.at < lib.STALE_MS);
@@ -191,8 +202,11 @@ export function createHall(lib, page_origin = pageOrigin) {
     const live_pose = [...socket].map((s) => s.pose).filter(Boolean);
     return {
       type: "roster",
-      walker: lib.rosterOf([...live_pose, ...polled.values()], now).slice(0, walker_max),
-      find: recent_find.map((f) => f.find),
+      walker: lib
+        .rosterOf([...live_pose, ...polled.values()], now)
+        .filter((p) => hiddenUntil(p.walker_id, now) === null)
+        .slice(0, walker_max),
+      find: recent_find.map((f) => f.find).filter((f) => isFindShown(f, now)),
       server_time: now,
     };
   };
@@ -213,10 +227,28 @@ export function createHall(lib, page_origin = pageOrigin) {
     if (body?.type === "pose") {
       const now = Date.now();
       if (!isPoseAllowed(s, now)) return;
-      const pose = lib.sanitizePose(body, now);
-      if (!pose) return;
+      const verdict = lib.sanitizePoseVerdict(body, now);
+      if (!verdict) return;
+      const { pose, refusal } = verdict;
+      const prev = s.pose;
+      const until = hiddenUntil(pose.walker_id, now);
+      if (until !== null) {
+        if (prev) {
+          s.pose = null;
+          broadcast({ type: "gone", walker_id: prev.walker_id }, s);
+        }
+        if (!s.is_hidden_told) {
+          s.is_hidden_told = true;
+          s.send(JSON.stringify({ type: "notice", notice: lib.hiddenNoticeOf(until) }));
+        }
+        return;
+      }
+      s.is_hidden_told = false;
       s.pose = pose;
       broadcast({ type: "pose", walker: pose }, s);
+      /* Told once per name: when it first takes effect, not every second. */
+      const notice = lib.nameNoticeOfPose(pose, refusal);
+      if (notice && prev?.name !== pose.name) s.send(JSON.stringify({ type: "notice", notice }));
     } else if (body?.type === "bye") {
       s.close();
     }
@@ -272,11 +304,18 @@ export function createHall(lib, page_origin = pageOrigin) {
      */
     pose(raw, ip = null) {
       const now = Date.now();
-      const pose = lib.sanitizePose(raw, now);
-      if (!pose) return { status: 400, body: { error: "pose needs player_id and a lat/lon inside the campus frame" } };
+      const verdict = lib.sanitizePoseVerdict(raw, now);
+      if (!verdict) return { status: 400, body: { error: "pose needs player_id and a lat/lon inside the campus frame" } };
+      const { pose } = verdict;
       if (ip && ip_limit.retryAfter(ip, now) > 0) return { status: 429, body: { error: "too many poses" } };
       if (poll_limit.take(pose.walker_id, now) > 0) return { status: 429, body: { error: "too many poses" } };
       if (ip) ip_limit.note(ip, now);
+      const until = hiddenUntil(pose.walker_id, now);
+      if (until !== null) {
+        polled.delete(pose.walker_id);
+        polled_ip.delete(pose.walker_id);
+        return { status: 403, body: { error: "hidden from the hall by a moderator", notice: lib.hiddenNoticeOf(until) } };
+      }
       if (!polled.has(pose.walker_id)) {
         snapshot(); /* drops stale polled walkers first */
         if (ip && polledBy(ip) >= poll_ip_walker_max) {
@@ -288,11 +327,30 @@ export function createHall(lib, page_origin = pageOrigin) {
       if (ip) polled_ip.set(pose.walker_id, ip);
       else polled_ip.delete(pose.walker_id);
       broadcast({ type: "pose", walker: pose });
-      return { status: 200, body: snapshot() };
+      const notice = lib.nameNoticeOfPose(pose, verdict.refusal);
+      return { status: 200, body: notice ? { ...snapshot(), notice } : snapshot() };
     },
-    announce(find) {
-      if (!find.length) return;
+    /** Who the console may see in the hall now: walker_id, name, level. */
+    walkerNow() {
+      return snapshot().walker;
+    },
+    /** A moderator just hid `walker_id` — same as LiveHall.evict. */
+    evict(walker_id, until) {
+      polled.delete(walker_id);
+      polled_ip.delete(walker_id);
+      recent_find = recent_find.filter((f) => f.find.player_id !== walker_id);
+      for (const s of socket) {
+        if (s.pose?.walker_id !== walker_id) continue;
+        s.pose = null;
+        s.is_hidden_told = true;
+        s.send(JSON.stringify({ type: "notice", notice: lib.hiddenNoticeOf(until) }));
+      }
+      broadcast({ type: "gone", walker_id });
+    },
+    announce(all) {
       const now = Date.now();
+      const find = all.filter((f) => isFindShown(f, now));
+      if (!find.length) return;
       for (const one of find) recent_find.push({ at: now, find: one });
       recent_find = recent_find.slice(-40);
       broadcast({ type: "find", find });

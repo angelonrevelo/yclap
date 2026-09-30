@@ -32,7 +32,7 @@ chose ourselves is flagged `is_named_by_us`.
 ```
 npm install
 npm run dev        # http://127.0.0.1:4177
-npm run sync       # live campus world + accounts + hall socket on :8788 (Vite proxies /sync /live /world /auth/ /account/, ws too)
+npm run sync       # live campus world + accounts + hall socket + reports on :8788 (Vite proxies /sync /live /world /auth/ /account/ /report /mod/api/, ws too); MOD_TOKEN=… turns on /mod
 npm run build      # tsc --noEmit && vite build
 npm test           # node --test
 npm run lint
@@ -540,6 +540,42 @@ If the project outgrows one Durable Object, the SQL moves to Neon unchanged.
   ```
 
 This is the project's own server, not an Ateneo login, and the panel says so.
+
+## Reports, player safety and the moderator console
+
+Spec: `../docs/spec/moderation.md` (roles, retention, escalation, what is not
+built). In short:
+
+- **Report a problem** — Settings → Setup, and "Report a problem" on the buddy
+  sheet the play HUD opens. Category (lag/stutter · multiplayer · 3D model ·
+  wrong species or place · other) → severity (can't play · gets in the way ·
+  small) → up to 1,000 characters. Attached, and listed on the form before
+  sending: build id (`git sha.date`, baked in by vite.config.ts), browser,
+  viewport, a 1 s frame-rate sample, hall mode, and the position SOURCE — the
+  position itself only if ticked (rounded ~11 m, on campus only). Offline, it
+  waits in localStorage (`field-guide.report-queue`, ≤ 20, 7 days) and is
+  retried on `online`, on launch and every minute. `POST /report` on both
+  servers: own page only, ≤ 8 KB, 10 / IP / hour on the LAN box and 60 on the
+  Worker (booth NAT), 503 past 2,000 open. No IP and no player_id is stored.
+- **Name filter** (`src/name-filter.ts`) — server-side on hall poses, `/sync`
+  players and account display names; English + Filipino, normalised for leet,
+  spacing, stretching, accents and look-alikes, matched per word so Putatan
+  and Batangas pass. A refused name prints as the phone's generated walker name
+  and only that phone gets a `notice` saying why.
+- **On the map** — tap a walker's name tag: **Hide this walker** (this phone
+  only, `field-guide.muted-walker`; Settings → Setup shows them again) or
+  **Report name** (sends the `walker_id` hash and the name shown, never a
+  player_id).
+- **Moderator console** at `/mod` — off unless `MOD_TOKEN` (16+ characters) is
+  set: `npx wrangler secret put MOD_TOKEN` on the Worker, `MOD_TOKEN=… npm run
+  sync` on the LAN box. Lists reports newest-first (open/resolved), walkers in
+  the hall, shared finds, hides and the audit log; hides a walker from the hall
+  for 1–168 h (enforced by both hall servers), hides a shared find, resolves a
+  report. Every action is appended to `mod_audit`, which SQLite triggers make
+  append-only. Wrong tokens: 10 per IP per 15 min. Reports are deleted after 30
+  days.
+- The dev proxy follows `MAGISPHERE_SYNC_TARGET` (default `http://127.0.0.1:8788`)
+  when the sync server runs on another port.
 
 ## First open, warnings, and the landscape
 

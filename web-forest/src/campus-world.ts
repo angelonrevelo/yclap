@@ -5,6 +5,8 @@
  * cannot drift. Photos and notes never enter this module.
  */
 
+import { safeNameOf } from "./name-filter.ts";
+
 export const WORLD_NOTE =
   "Personal journals stay on each device. This server only holds shared finds — no rank, no official AIS board.";
 
@@ -111,7 +113,9 @@ export function sanitizePlayer(input: {
   const streak_weeks = Number(input.streak_weeks);
   return {
     player_id,
-    name: String(input.name ?? "Walker").trim().slice(0, 40) || "Walker",
+    /* Filtered here, on the server: this is the name after "… logged Molave"
+       and on the leaderboard. A refused one is the phone's generated name. */
+    name: safeNameOf(input.name ?? "Walker", player_id).name,
     join_code:
       typeof input.join_code === "string" && normalizeJoinCode(input.join_code).length === 6
         ? normalizeJoinCode(input.join_code)
@@ -209,12 +213,22 @@ export function mergeSync(
   return { merged };
 }
 
-export function worldFrom(store: MemoryCampusStore, now = Date.now()): World {
+/**
+ * What a moderator has taken out of the shared world (`worker/moderation.ts`):
+ * a hidden find, and the finds and roster row of a walker hidden from the hall.
+ * Filtered on the way OUT, never deleted — an unhide puts it back.
+ */
+export interface WorldHide {
+  sighting?: (row: SightingRow) => boolean;
+  player?: (player_id: string) => boolean;
+}
+
+export function worldFrom(store: MemoryCampusStore, now = Date.now(), hide: WorldHide = {}): World {
   const find_since = new Date(now - FIND_WINDOW_MS).toISOString();
   const present_since = new Date(now - PRESENT_WINDOW_MS).toISOString();
   const name_of = new Map(store.player.map((p) => [p.player_id, p.name]));
   const find = store.sighting
-    .filter((s) => s.lat !== null && s.created_at > find_since)
+    .filter((s) => s.lat !== null && s.created_at > find_since && !hide.sighting?.(s))
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
     .slice(0, FIND_LIMIT)
     .map((s) => ({
@@ -229,7 +243,7 @@ export function worldFrom(store: MemoryCampusStore, now = Date.now()): World {
       created_at: s.created_at,
     }));
   const walker = store.player
-    .filter((p) => p.updated_at > present_since)
+    .filter((p) => p.updated_at > present_since && !hide.player?.(p.player_id))
     .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))
     .map((p) => ({
       player_id: p.player_id,

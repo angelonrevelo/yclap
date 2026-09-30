@@ -3,6 +3,10 @@
  *
  * node server/sync-server.mjs [--port 8788] [--db server/yclap-sync.db] [--account-db server/yclap-account.db]
  *
+ * Reports and the moderator console (POST /report, /mod/api/*) run the SAME
+ * ModerationService as the Worker (worker/moderation.ts), in the account
+ * database; MOD_TOKEN in the environment (16+ characters) turns the console on.
+ *
  * Accounts (/auth/*, /account/save) run the SAME AccountService as the Worker
  * (worker/account.ts), on node:sqlite instead of the Durable Object's SQLite.
  * Google sign-in is on only when GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are
@@ -46,7 +50,6 @@ const { MemoryCampusStore, mergeSync, sanitizePlayer, sanitizeSighting, worldFro
 );
 const multiplayer = await import(pathToFileURL(resolve(process.cwd(), "src/multiplayer.ts")).href);
 const { createHall } = await import("./hall.mjs");
-const hall = createHall(multiplayer);
 
 /* POST /inat/identify — the same proxy function the Worker runs. The token
    comes from this process's env (INAT_API_TOKEN), never from the bundle. */
@@ -124,6 +127,30 @@ const account = new AccountService((query, ...bind) => account_db.prepare(query)
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
 });
 
+/* Reports, hides and the audit log — the SAME ModerationService as the
+   Worker, in the account database. MOD_TOKEN (16+ characters) turns the
+   console on; the hall asks it about every pose, so it exists first. */
+const { ModerationService } = await import(pathToFileURL(resolve(process.cwd(), "worker/moderation.ts")).href);
+const { REPORT_BODY_MAX } = await import(pathToFileURL(resolve(process.cwd(), "src/moderation.ts")).href);
+const { safeNameOf, nameNoticeOf } = await import(pathToFileURL(resolve(process.cwd(), "src/name-filter.ts")).href);
+const moderation = new ModerationService((query, ...bind) => account_db.prepare(query).all(...bind), {
+  token: process.env.MOD_TOKEN,
+});
+const hall = createHall(multiplayer, pageOrigin, moderation);
+
+/** The world as every phone sees it: what a moderator hid is filtered out. */
+const worldOf = () => worldFrom(store, Date.now(), moderation.worldHide());
+
+/** POST /report and /mod/api/* → the shared handler, body byte-capped as it streams. */
+async function serveModeration(req, res) {
+  const web = webRequestOf(req, REPORT_BODY_MAX);
+  const world = { recentFind: () => worldFrom(store).find, refresh: broadcast };
+  const response = await moderation.handle(web, hall, world, pageOrigin);
+  const head = Object.fromEntries(response.headers);
+  res.writeHead(response.status, head);
+  res.end(Buffer.from(await response.arrayBuffer()));
+}
+
 /** node req → WHATWG Request → AccountService → node res, cookies intact. */
 async function serveAccount(req, res, url) {
   const headers = new Headers();
@@ -163,7 +190,7 @@ function persist() {
 }
 
 function broadcast() {
-  const chunk = `data: ${JSON.stringify(worldFrom(store))}\n\n`;
+  const chunk = `data: ${JSON.stringify(worldOf())}\n\n`;
   for (const res of listener) {
     try {
       res.write(chunk);
@@ -207,6 +234,15 @@ const server = createServer(async (req, res) => {
     } catch (e) {
       res.writeHead(500, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: String(e?.message ?? e) }));
+    }
+    return;
+  }
+  if (url.pathname === "/report" || url.pathname.startsWith("/mod/api/")) {
+    try {
+      await serveModeration(req, res);
+    } catch {
+      if (!res.headersSent) res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "moderation failed" }));
     }
     return;
   }
@@ -259,7 +295,7 @@ const server = createServer(async (req, res) => {
 
   if (req.method === "GET" && (url.pathname === "/health" || url.pathname === "/world")) {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(worldFrom(store)));
+    res.end(JSON.stringify(worldOf()));
     return;
   }
 
@@ -295,7 +331,7 @@ const server = createServer(async (req, res) => {
       Connection: "keep-alive",
     });
     listener.add(res);
-    res.write(`data: ${JSON.stringify(worldFrom(store))}\n\n`);
+    res.write(`data: ${JSON.stringify(worldOf())}\n\n`);
     req.on("close", () => listener.delete(res));
     return;
   }
@@ -324,13 +360,16 @@ const server = createServer(async (req, res) => {
     persist();
     broadcast();
     hall.announce(fresh);
+    /* sanitizePlayer already swapped a refused name; say so to this phone. */
+    const { refusal } = safeNameOf(body.player?.name, player.player_id);
+    const notice = refusal ? nameNoticeOf(refusal, player.name) : undefined;
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ ok: true, merged, world: worldFrom(store) }));
+    res.end(JSON.stringify({ ok: true, merged, world: worldOf(), ...(notice ? { notice } : {}) }));
     return;
   }
 
   res.writeHead(404, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ error: "not found", route: ["GET /world", "GET /live", "GET /live/socket", "POST /live/pose", "GET /live/walker", "GET /join", "GET /mine", "POST /sync", "/auth/*", "/account/save", "POST /inat/identify"] }));
+  res.end(JSON.stringify({ error: "not found", route: ["GET /world", "GET /live", "GET /live/socket", "POST /live/pose", "GET /live/walker", "GET /join", "GET /mine", "POST /sync", "/auth/*", "/account/save", "POST /inat/identify", "POST /report", "/mod/api/*"] }));
 });
 
 server.on("upgrade", (req, socket) => {
@@ -350,5 +389,6 @@ server.listen(PORT, () => {
   console.log(`  account ${ACCOUNT_DB_PATH} · /auth/* · /account/save · google ${account.isGoogle ? "on" : "off"}`);
   console.log(`  inat    POST /inat/identify · token ${process.env.INAT_API_TOKEN ? "set" : "MISSING (503 needs_token)"}`);
   console.log(`  hall    WS /live/socket · POST /live/pose · GET /live/walker`);
+  console.log(`  report  POST /report · console /mod/api/* ${moderation.isOn ? "on (MOD_TOKEN set)" : "OFF (no MOD_TOKEN)"}`);
   if (pageOrigin.length) console.log(`  pages   HALL_PAGE_ORIGIN ${pageOrigin.join(", ")}`);
 });

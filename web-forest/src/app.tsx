@@ -21,6 +21,7 @@ import { useAccount, useAccountSync } from "./account";
 import { levelOf, levelStart } from "./level";
 import { liveNameOf } from "./multiplayer";
 import { hallLabelOf, useHall } from "./remote-walker";
+import { ReportSheet } from "./report-sheet";
 import {
   readPreference,
   setHapticEnabled,
@@ -488,6 +489,7 @@ function TrainerSheet({
   onJoin: (code: string) => void;
   onClose: () => void;
 }) {
+  const [is_report_open, setReportOpen] = useState(false);
   return (
     /* At 49, under the dock (50): the sheet rises from behind the tab bar, so
        every dock button stays tappable while it is open. It sat at 60 over the
@@ -584,7 +586,16 @@ function TrainerSheet({
           <button type="button" onClick={onPlan} style={{ fontWeight: 700, fontSize: 13, color: "var(--mg-blue)", minWidth: 44, minHeight: 44, padding: "0 8px" }}>
             Plan
           </button>
+          {/* The play HUD's way to "Report a problem" (Settings → Setup has the same form). */}
+          <button
+            type="button"
+            onClick={() => setReportOpen(true)}
+            style={{ fontWeight: 700, fontSize: 13, color: "rgb(var(--mg-ink-rgb) / 0.62)", minWidth: 44, minHeight: 44, padding: "0 8px", marginLeft: "auto" }}
+          >
+            Report a problem
+          </button>
         </div>
+        {is_report_open && <ReportSheet onClose={() => setReportOpen(false)} />}
       </div>
     </div>
   );
