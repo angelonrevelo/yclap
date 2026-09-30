@@ -3717,7 +3717,7 @@ export default function App() {
   });
   /* The hall, opened once for the whole app: the map pill, the trainer sheet
      and the Dex strip all count off this one roster (`hallLabelOf`). */
-  const hall = useHall({ fix: geo.fix, stage, level, name: live_name });
+  const hall = useHall({ fix: geo.fix, stage, level, name: live_name, is_hidden: preference.is_hidden_from_hall });
   const hall_label = hallLabelOf(hall);
   /* Section art. Filled from `asset/kit.ts` once the generated set is keyed and
      committed; every section renders headed-but-unillustrated until then, which

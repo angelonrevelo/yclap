@@ -67,7 +67,15 @@ export function hallLabelOf(hall: Hall): string | null {
  * Dex all count off this one connection. `name` and `level` are read fresh on
  * every send, so signing in re-announces you under the account's name.
  */
-export function useHall(input: { fix: Fix | null | undefined; stage: Stage; level: number; name: string }): Hall {
+export function useHall(input: {
+  fix: Fix | null | undefined;
+  stage: Stage;
+  level: number;
+  name: string;
+  /** Listen only: see the hall, send no position (`Preference.is_hidden_from_hall`). */
+  is_hidden?: boolean;
+}): Hall {
+  const is_hidden = input.is_hidden === true;
   const [track, setTrack] = useState<Map<string, Track>>(() => new Map());
   const [callout, setCallout] = useState<{ find: WorldFind; until: number }[]>([]);
   const [mode, setMode] = useState<HallMode>("off");
@@ -128,7 +136,12 @@ export function useHall(input: { fix: Fix | null | undefined; stage: Stage; leve
       setMode,
     );
 
+    /* Hidden: the link stays open to LISTEN, and nothing is ever sent. Turning
+       it on re-runs this effect, whose cleanup closes the old socket with a
+       "bye", so the other phones drop you at once rather than after STALE_MS. */
+    setSharing(false);
     const send = () => {
+      if (is_hidden) return;
       const { fix, stage, level, name } = latest.current;
       if (!fix || !isInsideCampus(fix)) return;
       const next = { lat: fix.lat, lon: fix.lon, level, stage, name };
@@ -156,7 +169,7 @@ export function useHall(input: { fix: Fix | null | undefined; stage: Stage; leve
       clearInterval(prune_timer);
       link.close();
     };
-  }, []);
+  }, [is_hidden]);
 
   return { track, callout, mode, is_sharing, notice, dismissNotice: () => setNotice(null) };
 }

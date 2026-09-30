@@ -616,6 +616,25 @@ export default function SettingsScreen({
                   <Td is_head>
                     <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                       <Switch
+                        is_on={preference.is_hidden_from_hall}
+                        onToggle={() =>
+                          onPreference({ ...preference, is_hidden_from_hall: !preference.is_hidden_from_hall })
+                        }
+                        label="Hide me from the live map"
+                      />
+                      Hide me from the live map
+                    </div>
+                  </Td>
+                  <Td>
+                    Other phones stop drawing you and your name as you walk, at once, and you still see everyone
+                    else. A find you log is still shared the way it always is — the species, where, and your name
+                    — because that is what the campus inventory is for.
+                  </Td>
+                </tr>
+                <tr>
+                  <Td is_head>
+                    <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                      <Switch
                         is_on={preference.is_restricted_shown}
                         onToggle={() =>
                           onPreference({

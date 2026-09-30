@@ -101,6 +101,15 @@ describe("preference", () => {
     assert.equal(back.skyline_style, "solid");
   });
 
+  it("keeps a student visible on the live map unless they explicitly hide, and remembers when they do", () => {
+    assert.equal(PREFERENCE_DEFAULT.is_hidden_from_hall, false);
+    const storage = memoryStorage();
+    storage.setItem("field-guide.preference", JSON.stringify({ is_hidden_from_hall: "yes" }));
+    assert.equal(readPreference(storage).is_hidden_from_hall, false, "only a real true hides");
+    writePreference({ ...PREFERENCE_DEFAULT, is_hidden_from_hall: true }, storage);
+    assert.equal(readPreference(storage).is_hidden_from_hall, true);
+  });
+
   it("refuses a skyline style that is not one of the four", () => {
     const storage = memoryStorage();
     storage.setItem("field-guide.preference", JSON.stringify({ skyline_style: "wireframe" }));

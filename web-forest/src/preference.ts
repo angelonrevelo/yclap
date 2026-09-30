@@ -20,6 +20,14 @@ export interface Preference {
   is_restricted_shown: boolean;
   /** Name shown to other walkers on the live campus. */
   walker_name: string;
+  /**
+   * Walk without being drawn on anybody else's map. The hall shows a display
+   * name at a live position to every phone in it; a student who does not want
+   * that — for any reason, and they owe nobody one — sends no position at all
+   * and still sees everyone else. Off by default only because the owner has
+   * not yet decided who should see whom (reveal plan, Q-safety).
+   */
+  is_hidden_from_hall: boolean;
 }
 
 export const PREFERENCE_DEFAULT: Preference = {
@@ -27,6 +35,7 @@ export const PREFERENCE_DEFAULT: Preference = {
   skyline_style: "block",
   is_restricted_shown: true,
   walker_name: "",
+  is_hidden_from_hall: false,
 };
 
 const KEY = "field-guide.preference";
@@ -58,6 +67,7 @@ export function readPreference(storage: Storage | null = safeStorage()): Prefere
           ? parsed.is_restricted_shown
           : PREFERENCE_DEFAULT.is_restricted_shown,
       walker_name: typeof parsed.walker_name === "string" ? parsed.walker_name.slice(0, 40) : "",
+      is_hidden_from_hall: parsed.is_hidden_from_hall === true,
     };
   } catch {
     return { ...PREFERENCE_DEFAULT };
