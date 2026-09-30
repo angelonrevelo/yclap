@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { LAYER_ORDER, nextLayer, SOURCE, type Layer } from "./basemap";
 import {
@@ -81,6 +81,23 @@ const ANCHOR_GRID = 2048;
 const GLIDE_SNAP_DEGREE = 0.0012;
 /** Close enough, in degrees (~1 mm), with speed to match, to stop the frame loop. */
 const GLIDE_REST_DEGREE = 1e-8;
+
+/**
+ * True while the glide is committing a camera frame (inside its rAF, under
+ * `flushSync`).
+ *
+ * Something that paints imperatively on commit — the skyline's canvas — can
+ * paint at once when this is true: it is inside the frame, before the
+ * browser paints it. Any OTHER commit (the app re-rendering on a GPS fix or a
+ * camera swing, from a scheduler task between frames) should hand its paint
+ * to the next animation frame instead. Painting a GPU canvas twice between
+ * two frames trips Chrome's canvas rate limiter, which then blocks the main
+ * thread until the GPU catches up: 160–200 ms stalls in the z19 trace (10-01).
+ */
+let camera_frame_depth = 0;
+export function isCameraFrame(): boolean {
+  return camera_frame_depth > 0;
+}
 
 export interface View extends LatLon {
   zoom: number;
@@ -528,9 +545,14 @@ export default function TileMap({
          "stuttering" (09-30 `0:29`). Flushed here, the step this frame
          computed from its own `dt` is the step this frame shows. */
       /* `at` rides with the position it belongs to — see `Projection.frame_ms`. */
-      flushSync(() =>
-        setGlide({ lat: g.lat.value, lon: g.lon.value, at: is_rest ? undefined : performance.timeOrigin + now }),
-      );
+      camera_frame_depth += 1;
+      try {
+        flushSync(() =>
+          setGlide({ lat: g.lat.value, lon: g.lon.value, at: is_rest ? undefined : performance.timeOrigin + now }),
+        );
+      } finally {
+        camera_frame_depth -= 1;
+      }
       if (is_rest) {
         glide_frame.current = null;
         return;
@@ -781,6 +803,14 @@ export default function TileMap({
   const depth = Math.max(600, size.height * 1.6);
   const rad = (tilt_degree * Math.PI) / 180;
   const bear = (bearing_degree * Math.PI) / 180;
+  /* Once per render, not once per point: `toScreen` runs for every tree,
+     building corner and find on the glass every camera frame (it was the
+     single hottest function in the z19 profile, 10-01), and four of its six
+     trig calls only ever depend on the camera. */
+  const cos_bear = Math.cos(bear);
+  const sin_bear = Math.sin(bear);
+  const cos_rad = Math.cos(rad);
+  const sin_rad = Math.sin(rad);
 
   const toScreen = useCallback(
     (point: { x: number; y: number }) => {
@@ -801,13 +831,13 @@ export default function TileMap({
       const dy0 = (point.y - shift.y - origin_y) * zoom_scale;
       /* Same order as the CSS: rotate the ground about the player first, then
          rake the camera over it, then divide by depth. */
-      const dx = dx0 * Math.cos(bear) - dy0 * Math.sin(bear);
-      const dy = dx0 * Math.sin(bear) + dy0 * Math.cos(bear);
-      const z = dy * Math.sin(rad);
+      const dx = dx0 * cos_bear - dy0 * sin_bear;
+      const dy = dx0 * sin_bear + dy0 * cos_bear;
+      const z = dy * sin_rad;
       const scale = depth / (depth - z);
-      return { x: origin_x + dx * scale, y: origin_y + dy * Math.cos(rad) * scale + shift_y, scale };
+      return { x: origin_x + dx * scale, y: origin_y + dy * cos_rad * scale + shift_y, scale };
     },
-    [tilt_degree, bearing_degree, origin_x, origin_y, depth, rad, bear, shift_y, zoom_scale, shift.x, shift.y],
+    [tilt_degree, bearing_degree, origin_x, origin_y, depth, cos_bear, sin_bear, cos_rad, sin_rad, shift_y, zoom_scale, shift.x, shift.y],
   );
 
   const fromScreen = useCallback(
@@ -1017,7 +1047,8 @@ export default function TileMap({
  * Two full lines of grey type across the bottom of a walking map was the thing
  * being solved. The licence was never the thing to solve.
  */
-function Credit({ text, offset, is_dim }: { text: string; offset: number; is_dim: boolean }) {
+/* Memoised: the map re-renders every camera frame, the credit never moves. */
+const Credit = memo(function Credit({ text, offset, is_dim }: { text: string; offset: number; is_dim: boolean }) {
   const [is_open, setOpen] = useState(false);
 
   if (!is_open) {
@@ -1123,7 +1154,7 @@ function Credit({ text, offset, is_dim }: { text: string; offset: number; is_dim
       </div>
     </div>
   );
-}
+});
 
 /**
  * Warm every tile over the campus so the walk survives a dead hall.

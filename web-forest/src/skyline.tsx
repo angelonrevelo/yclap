@@ -1,16 +1,18 @@
-import { useMemo } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import {
   building as all_building,
   buildingNear,
-  extrude,
+  extrudePoint,
   riseAtScale1,
   ringCentre,
   roofColour,
   type CampusBuilding,
+  type PrismPoint,
   type ScreenPoint,
 } from "./building";
 import type { LatLon } from "./geo";
-import type { Projection } from "./tile-map";
+import { planePoint, planeRing } from "./plane-cache";
+import { isCameraFrame, type Projection } from "./tile-map";
 
 /**
  * The campus skyline, drawn in screen space above the raked ground.
@@ -51,6 +53,33 @@ const HAZE_Y = 0.29;
  * building is culled by its bounding box, not its nearest wall.
  */
 const REACH_SLACK_M = 40;
+
+/** The candidate list's grid, and the step the draw radius is rounded up to. */
+const NEAR_STEP_M = 25;
+
+/**
+ * A building's key: its place in the building file, which never changes.
+ *
+ * It was `${building_code}-${i}` with `i` the building's place in THIS
+ * frame's painter's order — and that order changes as the camera turns, so
+ * React handed one building's `<g>` to another every few frames, rewrote its
+ * colours and remounted the ones that slid past the end (~780 SVG node
+ * inserts and ~730 fill rewrites in a 10 s walk at z19).
+ */
+const building_key = new Map(all_building.map((row, i) => [row, `b${i}`]));
+
+/** A footprint's centre, as a stable object so its plane point is cached. */
+const centre_of = new Map(all_building.map((row) => [row, ringCentre(row.point)]));
+
+/** How far a footprint's furthest corner is from its centre, metres. */
+const radius_of = new Map(
+  all_building.map((row) => {
+    const c = centre_of.get(row)!;
+    let out = 0;
+    for (const [lat, lon] of row.point) out = Math.max(out, meterBetween(c, { lat, lon }));
+    return [row, out];
+  }),
+);
 
 function meterBetween(a: LatLon, b: LatLon): number {
   const dy = (a.lat - b.lat) * 111_320;
@@ -143,10 +172,11 @@ interface Props {
 
 interface Drawn {
   row: CampusBuilding;
-  roof: string;
   /** The footprint on screen — drawn blurred, as the building's own shadow. */
-  ground: string;
-  wall: { d: string; light: number }[];
+  ring: ScreenPoint[];
+  /** The roof, index-aligned with `ring`, and the walls between the two. */
+  top: PrismPoint["top"];
+  face: PrismPoint["face"];
   depth: number;
   label: { x: number; y: number; width: number } | null;
 }
@@ -162,6 +192,118 @@ function shade(hex: string, light: number): string {
   return `rgb(${mix(r, 122)},${mix(g, 108)},${mix(b, 88)})`;
 }
 
+/**
+ * How far off the canvas a contact shadow's SHAPE is drawn, so only its
+ * blurred shadow — pulled back by `shadowOffsetX` — lands on the glass. The
+ * canvas has no group blur like the SVG's `feGaussianBlur`, and `ctx.filter`
+ * is not in every Safari the booth iPhones run; a shadow is.
+ */
+const SHADOW_FAR = 10_000;
+
+/** A closed polygon into the current path. */
+function ringTo(ctx: CanvasRenderingContext2D, ring: readonly { x: number; y: number }[]): void {
+  ctx.moveTo(ring[0].x, ring[0].y);
+  for (let k = 1; k < ring.length; k += 1) ctx.lineTo(ring[k].x, ring[k].y);
+  ctx.closePath();
+}
+
+/** Wall light steps: a step no eye separates on a wall a few pixels tall. */
+const LIGHT_STEP = 16;
+
+/**
+ * `shade` for a canvas, remembered per roof colour and light step, so a
+ * camera frame reuses the colour strings instead of formatting one per wall.
+ */
+const shade_memo = new Map<string, string[]>();
+function shadeOf(colour: string, step: number): string {
+  let row = shade_memo.get(colour);
+  if (!row) {
+    row = Array.from({ length: LIGHT_STEP + 1 }, (_, k) => shade(colour, k / LIGHT_STEP));
+    shade_memo.set(colour, row);
+  }
+  return row[step];
+}
+
+/** A wall quad into the current path. */
+function wallTo(ctx: CanvasRenderingContext2D, ring: readonly ScreenPoint[], top: PrismPoint["top"], w: PrismPoint["face"][number]): void {
+  ctx.moveTo(ring[w.a].x, ring[w.a].y);
+  ctx.lineTo(ring[w.b].x, ring[w.b].y);
+  ctx.lineTo(top[w.b].x, top[w.b].y);
+  ctx.lineTo(top[w.a].x, top[w.a].y);
+  ctx.closePath();
+}
+
+/** One frame of the skyline: contact shadows, then each prism far to near. */
+function paintSkyline(
+  ctx: CanvasRenderingContext2D,
+  drawn: readonly Drawn[],
+  style: SkylineStyle,
+  is_shadow: boolean,
+  dpr: number,
+): void {
+  ctx.lineJoin = "round";
+  if (is_shadow && drawn.length > 0) {
+    ctx.save();
+    /* Same as the SVG had: a 3 px Gaussian (shadowBlur is twice the
+       deviation, and like the offset it is in canvas pixels, not CSS ones). */
+    if (style === "shadow") ctx.globalAlpha = 0.85;
+    ctx.translate(-SHADOW_FAR + (style === "shadow" ? 2.5 : 0), style === "shadow" ? 3 : 0);
+    ctx.shadowOffsetX = SHADOW_FAR * dpr;
+    ctx.shadowBlur = 6 * dpr;
+    ctx.shadowColor = "rgba(46,58,38,0.26)";
+    ctx.fillStyle = "#000";
+    /* One path of every footprint, like the one blurred SVG group it was. */
+    ctx.beginPath();
+    for (const d of drawn) ringTo(ctx, d.ring);
+    ctx.fill();
+    ctx.restore();
+  }
+  /* Canvas calls are the cost here, not pixels, so a building's walls go in
+     as few calls as its shades allow: one fill per light step in use, one
+     stroke for every edge. The walls of one prism face the camera and do not
+     overlap each other, so the order among them never showed. */
+  const step_of: number[] = [];
+  for (const { row, ring, top, face } of drawn) {
+    const colour = roofColour(row);
+    if (face.length > 0 && style !== "shadow") {
+      step_of.length = 0;
+      for (const w of face) step_of.push(Math.round(w.light * LIGHT_STEP));
+      ctx.globalAlpha = style === "hollow" ? 0.34 : 1;
+      for (let i = 0; i < face.length; i += 1) {
+        const step = step_of[i];
+        if (step < 0) continue;
+        ctx.beginPath();
+        for (let k = i; k < face.length; k += 1) {
+          if (step_of[k] !== step) continue;
+          wallTo(ctx, ring, top, face[k]);
+          step_of[k] = -1;
+        }
+        ctx.fillStyle = shadeOf(colour, step);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      /* `solid` walls had no edge; `block` and `hollow` did, at full
+         strength over the hollow's see-through face. */
+      if (style !== "solid") {
+        ctx.beginPath();
+        for (const w of face) wallTo(ctx, ring, top, w);
+        ctx.strokeStyle = style === "hollow" ? "rgba(96,84,64,0.5)" : "rgba(96,84,64,0.35)";
+        ctx.lineWidth = style === "hollow" ? 0.9 : 0.8;
+        ctx.stroke();
+      }
+    }
+    ctx.beginPath();
+    ringTo(ctx, style === "shadow" ? ring : top);
+    ctx.globalAlpha = style === "hollow" ? 0.92 : 1;
+    ctx.fillStyle = colour;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "rgba(96,84,64,0.42)";
+    ctx.lineWidth = 0.9;
+    ctx.stroke();
+  }
+}
+
 export default function Skyline({
   projection,
   centre,
@@ -173,32 +315,65 @@ export default function Skyline({
 }: Props) {
   const { project, toScreen, fromScreen, meter_per_pixel, tilt_degree, width, height } = projection;
 
+  /* Four figures: the exact value drifts with the walker's latitude on every
+     fix, which would re-run the memo below (and repaint the canvas outside a
+     camera frame) for no visible change. */
+  const mpp = Number(meter_per_pixel.toPrecision(4));
+
+  /* Only as far as the ground can still be SEEN. Under the rake a ground
+     point's height on the glass depends only on how far ahead of the camera
+     it is, so nothing past the ground under the haze line (HAZE_Y) can show,
+     whichever way the camera faces. That distance — ~60 m at the street
+     camera, far more pulled back — replaces a flat 420 m, so the ring of
+     every building in a 420 m circle is no longer projected every frame just
+     to be thrown away. */
+  const reach_m = Math.max(
+    meterBetween(projection.centre, fromScreen(0, height * HAZE_Y)),
+    meterBetween(projection.centre, fromScreen(width, height * HAZE_Y)),
+  );
+  const radius_m = Number.isFinite(reach_m)
+    ? Math.min(DRAW_RADIUS_M, Math.ceil((reach_m + REACH_SLACK_M) / NEAR_STEP_M) * NEAR_STEP_M)
+    : DRAW_RADIUS_M;
+  /* The candidate buildings, re-cut on a grid rather than on every fix: the
+     walker's position arrives 20 times a second and the list only changes
+     when they have crossed a cell (`centre` is the view, not this frame's
+     camera; the slack covers the few metres between them). */
+  const cell_lat = NEAR_STEP_M / 111_320;
+  const cell_lon = cell_lat / Math.cos((centre.lat * Math.PI) / 180);
+  const cell_y = Math.round(centre.lat / cell_lat);
+  const cell_x = Math.round(centre.lon / cell_lon);
+  const near = useMemo(() => {
+    const list = buildingNear({ lat: cell_y * cell_lat, lon: cell_x * cell_lon }, radius_m + NEAR_STEP_M);
+    return list.length > 0 ? list : all_building;
+  }, [cell_x, cell_y, cell_lat, cell_lon, radius_m]);
+
   const drawn = useMemo<Drawn[]>(() => {
-    const rise1 = riseAtScale1(tilt_degree, meter_per_pixel);
+    const rise1 = riseAtScale1(tilt_degree, mpp);
     /* Flat camera: a prism with no rise is a footprint, and the in-plane
        footprint already drew it. Bail rather than paint a second copy. */
     if (rise1 < 0.05) return [];
 
-    /* Only as far as the ground can still be SEEN. Under the rake a ground
-       point's height on the glass depends only on how far ahead of the
-       camera it is, so nothing past the ground under the haze line (HAZE_Y)
-       can show, whichever way the camera faces. That distance — ~60 m at the
-       street camera, far more pulled back — replaces a flat 420 m, so the
-       ring of every building in a 420 m circle is no longer projected every
-       frame just to be thrown away (it was the largest part of this memo). */
-    const reach_m = Math.max(
-      meterBetween(centre, fromScreen(0, height * HAZE_Y)),
-      meterBetween(centre, fromScreen(width, height * HAZE_Y)),
-    );
-    const radius_m = Number.isFinite(reach_m) ? Math.min(DRAW_RADIUS_M, reach_m + REACH_SLACK_M) : DRAW_RADIUS_M;
-    const near = buildingNear(centre, radius_m);
-    const list = near.length > 0 ? near : all_building;
+    const list = near;
     const out: Drawn[] = [];
 
     for (const row of list) {
-      const ring: ScreenPoint[] = row.point.map(([lat, lon]) =>
-        toScreen(project({ lat, lon })),
-      );
+      /* One point first, before every corner: the footprint's centre and a
+         circle round it that holds the whole building, prism included, at
+         twice the centre's perspective scale (nearer corners grow, never
+         that much over a footprint). Clear of the glass, or wholly up in
+         the haze, and the corners are never projected. Most of the
+         candidates within the reach are beside or behind the camera, and at
+         the pulled-back camera that is dozens of buildings a frame. A centre
+         behind the eye (scale ≤ 0) proves nothing and takes the full test. */
+      const c0 = toScreen(planePoint(project, centre_of.get(row) ?? ringCentre(row.point)));
+      if (c0.scale > 0) {
+        const reach_px = ((radius_of.get(row) ?? 0) / mpp) * c0.scale * 2 + 40 + rise1 * row.height_m * c0.scale * 2;
+        if (c0.x + reach_px < 0 || c0.x - reach_px > width) continue;
+        if (c0.y - reach_px > height || c0.y + reach_px < height * HAZE_Y) continue;
+      }
+      /* Plane points are cached per camera anchor (`plane-cache.ts`); the
+         Mercator projection of every corner used to run every frame. */
+      const ring: ScreenPoint[] = planeRing(project, row.point).map(toScreen);
 
       /* Screen-space cull. A building entirely off the glass still costs a
          path string and a parse, and at z22 most of them are. The pad is
@@ -229,13 +404,13 @@ export default function Skyline({
       }
 
       const drawn_m = style === "block" ? Math.min(row.height_m, BLOCK_M) : row.height_m;
-      const prism = extrude(ring, drawn_m, (scale) => rise1 * scale);
+      const prism = extrudePoint(ring, drawn_m, (scale) => rise1 * scale);
       if (!prism) continue;
 
       const span = Math.max(max_x - min_x, max_y - min_y);
       let label: Drawn["label"] = null;
       if (is_labelled && row.name && span >= LABEL_MIN_PX) {
-        const c = toScreen(project(ringCentre(row.point)));
+        const c = toScreen(planePoint(project, centre_of.get(row) ?? ringCentre(row.point)));
         const y = c.y - (style === "shadow" ? 0 : rise1 * drawn_m * c.scale) - 6;
         /* A name half off the edge reads as a rendering fault, not as a name.
            It is dropped rather than nudged inward, because a nudged label no
@@ -254,10 +429,7 @@ export default function Skyline({
         if (fits) label = { x: c.x, y, width: span };
       }
 
-      const ground = `${ring
-        .map((p, k) => `${k === 0 ? "M" : "L"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
-        .join("")}Z`;
-      out.push({ row, roof: prism.roof, ground, wall: prism.wall, depth: prism.depth, label });
+      out.push({ row, ring, top: prism.top, face: prism.face, depth: prism.depth, label });
     }
 
     /* Ration the names: the biggest few on screen keep theirs, the rest go
@@ -272,111 +444,88 @@ export default function Skyline({
        nearest the camera, so it goes last and covers what is behind it. */
     out.sort((a, b) => a.depth - b.depth);
     return out;
-  }, [project, toScreen, fromScreen, meter_per_pixel, tilt_degree, width, height, centre, is_labelled, style]);
+  }, [near, project, toScreen, mpp, tilt_degree, width, height, is_labelled, style]);
 
-  if (drawn.length === 0) return null;
+  /* Painted into ONE canvas after the commit, in the same frame (a layout
+     effect runs inside the glide's `flushSync`, before the browser paints).
+     It was an `<svg>` of a `<g>` and three to six `<path>`s per building, and
+     every camera frame rewrote every `d`: at the pulled-back camera that was
+     ~100 path attributes a frame, each one a presentation-attribute style
+     recalc, a path parse and a React prop diff, plus the fibers to reconcile
+     them (the skyline was the largest render in the z19 profile, 10-01). A
+     canvas is one element whatever the building count; the drawing itself is
+     the same shapes in the same painter's order. */
+  const canvas_ref = useRef<HTMLCanvasElement | null>(null);
+  const dpr = typeof window === "undefined" ? 1 : Math.min(2, window.devicePixelRatio || 1);
+  /* A commit outside a camera frame paints on the next animation frame, once,
+     with whatever is latest by then — see `isCameraFrame` for why. That is
+     still the frame the rest of the commit first shows up in: rAF runs before
+     the browser paints. A camera frame paints at once and drops any pending
+     one, since it is newer. */
+  const pending = useRef<number | null>(null);
+  const paint_ref = useRef<() => void>(() => {});
+  useLayoutEffect(() => {
+    paint_ref.current = () => {
+      const canvas = canvas_ref.current;
+      if (!canvas) return;
+      const px_w = Math.max(1, Math.round(width * dpr));
+      const px_h = Math.max(1, Math.round(height * dpr));
+      if (canvas.width !== px_w) canvas.width = px_w;
+      if (canvas.height !== px_h) canvas.height = px_h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, px_w, px_h);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      paintSkyline(ctx, drawn, style, is_shadow, dpr);
+    };
+    if (isCameraFrame()) {
+      if (pending.current !== null) cancelAnimationFrame(pending.current);
+      pending.current = null;
+      paint_ref.current();
+    } else if (pending.current === null) {
+      pending.current = requestAnimationFrame(() => {
+        pending.current = null;
+        paint_ref.current();
+      });
+    }
+  }, [drawn, style, is_shadow, width, height, dpr]);
+  useEffect(
+    () => () => {
+      if (pending.current !== null) cancelAnimationFrame(pending.current);
+    },
+    [],
+  );
 
   return (
     <>
-      <svg
+      <canvas
+        ref={canvas_ref}
         style={{
           position: "absolute",
           left: 0,
           top: 0,
-          overflow: "visible",
+          width,
+          height,
           pointerEvents: "none",
           zIndex: 1,
           filter: is_night ? "brightness(0.5) saturate(0.7) hue-rotate(200deg)" : undefined,
         }}
-        width={width}
-        height={height}
         aria-hidden="true"
-      >
-        {/* A soft drop under every prism. Without it a building sits ON the
-            green rather than IN it, which is the single thing that made the
-            small ones read as boxes dropped on a lawn. */}
-        {/* Bounded in USER SPACE, not in percent. A percentage filter region
-            on a path the size of a city block asks the compositor for a buffer
-            the size of a city block; `filterUnits="userSpaceOnUse"` with a
-            screen-sized region keeps the cost flat however big the path is. */}
-        {/* And ONE blur for the whole group, not one per building. The
-            filter used to sit on every shadow path — a screen-sized offscreen
-            blur pass per building, every camera frame, because the skyline is
-            redrawn with the camera. Blurring the group costs one pass. The
-            lite tier drops the shadow altogether (`BUDGET` in `quality.ts`). */}
-        {is_shadow && (
-          <>
-            <filter
-              id="sky-contact"
-              filterUnits="userSpaceOnUse"
-              x={-80}
-              y={-80}
-              width={width + 160}
-              height={height + 160}
-            >
-              <feGaussianBlur stdDeviation="3" />
-            </filter>
-            <g
-              transform={style === "shadow" ? "translate(2.5 3)" : undefined}
-              opacity={style === "shadow" ? 0.85 : 1}
-              filter="url(#sky-contact)"
-            >
-              {drawn.map(({ row, ground }, i) => (
-                <path key={`sh-${row.building_code ?? "b"}-${i}`} d={ground} fill="rgba(46,58,38,0.26)" />
-              ))}
-            </g>
-          </>
-        )}
-        {drawn.map(({ row, roof, ground, wall }, i) => {
-          const colour = roofColour(row);
-          return (
-            <g key={`${row.building_code ?? "b"}-${i}`}>
-              {(style === "solid" || style === "block") &&
-                wall.map((w, j) => (
-                  <path
-                    key={j}
-                    d={w.d}
-                    fill={shade(colour, w.light)}
-                    stroke={style === "block" ? "rgba(96,84,64,0.35)" : undefined}
-                    strokeWidth={style === "block" ? 0.8 : undefined}
-                    strokeLinejoin="round"
-                  />
-                ))}
-              {style === "hollow" &&
-                wall.map((w, j) => (
-                  <path
-                    key={j}
-                    d={w.d}
-                    fill={shade(colour, w.light)}
-                    fillOpacity={0.34}
-                    stroke="rgba(96,84,64,0.5)"
-                    strokeWidth={0.9}
-                    strokeLinejoin="round"
-                  />
-                ))}
-              <path
-                d={style === "shadow" ? ground : roof}
-                fill={colour}
-                fillOpacity={style === "hollow" ? 0.92 : 1}
-                stroke="rgba(96,84,64,0.42)"
-                strokeWidth={0.9}
-                strokeLinejoin="round"
-              />
-            </g>
-          );
-        })}
-      </svg>
+      />
 
-      {drawn.map(({ row, label }, i) =>
+      {drawn.map(({ row, label }) =>
         label === null ||
         (avoid && Math.abs(label.x - avoid.x) < 110 && label.y > avoid.y - 160 && label.y < avoid.y + 30) ? null : (
           <div
-            key={`bl-${row.building_code ?? "b"}-${i}`}
+            key={`l${building_key.get(row)}`}
             style={{
               position: "absolute",
-              left: label.x,
-              top: label.y,
-              transform: "translate(-50%, -100%)",
+              left: 0,
+              top: 0,
+              /* Placed by transform, not left/top: a moved `left` is a layout
+                 every camera frame, a moved transform is not. */
+              transform: `translate(${label.x.toFixed(1)}px, ${label.y.toFixed(1)}px) translate(-50%, -100%)`,
               pointerEvents: "none",
               /* Over the horizon haze (3): a name is information, not scenery. */
               zIndex: 4,

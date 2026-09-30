@@ -37,7 +37,7 @@
  * Usage:
  *   node script/bench-frame.mjs [--throttle 4,6] [--quality lite,full]
  *     [--label before] [--no-build] [--run 1] [--trace [--dump dir]] [--soft] [--debug] [--raw]
- *     [--query "zoom=19"] [--dist dist-before --build-of <sha>] [--out path]
+ *     [--query "zoom=19"] [--dist dist-before --build-of <sha>] [--out path] [--port 4182]
  *
  * Output: `bench/frame-<yyyy-mm-dd>[-<label>].json`.
  */
@@ -48,7 +48,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const PORT = 4182;
+/* `--port`: a build lane sharing the host with others runs its own preview
+   port, or two benches would refuse each other (see the check below). */
+const PORT = Number(process.argv.includes("--port") ? process.argv[process.argv.indexOf("--port") + 1] : 4182);
 const WIDTH = 390;
 const HEIGHT = 844;
 const WALK_MS = 10_000;

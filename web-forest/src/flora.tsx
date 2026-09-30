@@ -1,6 +1,7 @@
 import { memo, useMemo, type ReactNode } from "react";
 import { byDepth, isCovering } from "./depth";
 import type { LatLon } from "./geo";
+import { planePoint } from "./plane-cache";
 import type { Projection } from "./tile-map";
 
 /**
@@ -222,7 +223,9 @@ export default function Flora({
     const t = tuft[i];
     if (Math.abs(t.lat - centre.lat) > lat_span || Math.abs(t.lon - centre.lon) > lon_span) continue;
     if (walker && meterBetween(walker, t) < CLEAR_RADIUS_M) continue;
-    const at = toScreen(project(t));
+    /* The plane point is cached per camera anchor (`plane-cache.ts`); only
+       `toScreen` runs per frame. */
+    const at = toScreen(planePoint(project, t));
     if (at.scale <= 0) continue;
     const shape = shapeOf(t, i);
     const h_m = heightOf(shape, t);
@@ -259,7 +262,7 @@ export default function Flora({
         if (s.kind === "find") {
           const f = s.find;
           return (
-            <div key={`find-${f.key}`} style={{ position: "absolute", left: 0, top: 0, zIndex: zOf(f.y), pointerEvents: "auto" }}>
+            <div key={`find-${f.key}`} className="pm-stand" style={{ zIndex: zOf(f.y) }}>
               {f.node}
             </div>
           );
@@ -278,10 +281,10 @@ export default function Flora({
         <div
           key={d.key}
           aria-hidden
+          /* Position and origin are the `.pm-tree` class (`game.css`): only
+             what moves is inline, so a frame diffs three keys, not nine. */
+          className="pm-tree"
           style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
             /* A FIXED box moved and sized by a 2D transform, not left/top/
                width/height. Those four changed on every tree every camera
                frame, and each change is a layout; a transform is not. 2D on
@@ -289,7 +292,6 @@ export default function Flora({
                compositor layer to re-raster as it scales. */
             width: GLYPH_BASE_H * aspectOf(d.shape),
             height: GLYPH_BASE_H,
-            transformOrigin: "0 0",
             transform: `translate(${(d.x - d.w / 2).toFixed(1)}px, ${(d.y - d.h).toFixed(1)}px) scale(${k.toFixed(4)})`,
             zIndex: zOf(d.y),
             /* A distant tree is also a hazier one. */

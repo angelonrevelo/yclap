@@ -206,9 +206,11 @@ export default function PetEagle({
       <div
         style={{
           position: "absolute",
-          left: at.x,
-          top: at.y,
-          transform: `scale(${scale.toFixed(3)})`,
+          left: 0,
+          top: 0,
+          /* Placed by transform, not left/top: it moves every camera frame,
+             and a moved `left` is a layout each time (`glassAt` in play-map). */
+          transform: `translate(${at.x.toFixed(1)}px, ${at.y.toFixed(1)}px) scale(${scale.toFixed(3)})`,
           transformOrigin: "0 0",
           zIndex: 7,
           pointerEvents: "none",
