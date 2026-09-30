@@ -257,6 +257,25 @@ Decision from the note (`5:42`): **fix the bugs, fix the assets, then add.** A m
 
 ---
 
+### 2026-10-01 — roadmap pass: edge cases from every side
+
+`/roadmap` over `reveal-1015` after all six lanes merged. Discovered 13 (repo signals 9 · web 3 · surfaced while validating 1) → **7 genuine · 4 rejected · 3 triage**. Outside precedents checked: iNaturalist obscures the locations of taxa between Near Threatened and Critically Endangered that are vulnerable to collecting ([iNat forum](https://forum.inaturalist.org/t/does-inaturalist-automatically-obscure-threatened-snakes/43240), [ArgentiNat geoprivacy](https://www.argentinat.org/pages/geoprivacy)); Snap Map shares location with nobody by default and only with chosen friends ([Tom's Guide](https://www.tomsguide.com/us/snapchat-snap-maps-tracking,news-25390.html)). Rejected ideas are in `docs/roadmap-rejected.md`.
+
+| P | Behavior | Grounding | Surface | Benchmark (tier) | Status |
+|---|----------|-----------|---------|------------------|--------|
+| P0 | A student hidden from the live map is not named by "X logged Y near you" either | `worker/sync.ts` and `server/sync-server.mjs` announce every fresh find with `player_name` via `freshFindOf`, whatever the phone's `is_hidden_from_hall`; `remote-walker.tsx` calls it out to phones within 150 m | Settings → "Hide me from the live map"; another phone's callout band and `/world` | Tier 3 + unit: with the switch on, log a find on phone A; PASS iff phone B shows no callout naming A and `/world` lists the find under "A walker" | Surfaced in validation; next |
+| P0 | A threatened species' shared find does not publish where it is | `campus-world.ts` `worldFrom` sends every find's exact `lat`/`lon`; `pin.ts` already knows which species are threatened (curated pills) | `/world`, `/live`, hall callouts | Tier 1, escalated: a data-protection invariant on a pure function — `worldFrom` never emits `lat`/`lon` for a species whose pill says Threatened | Genuine; next |
+| P1 | The zoomed-out play view is playable on a mid-range phone | `docs/spec/device-profile.md`: ~4 fps at 4× CPU at the far zoom, before and after the perf lane | Play view at z19 | Tier 1 (existing bench, no new harness): `npm run bench:frame -- --query zoom=19` at 4×; PASS iff p5 ≥ 30 fps in lite | Open |
+| P1 | Each moderator signs in with their own token, and the audit log says who acted | `worker/moderation.ts`: one `MOD_TOKEN`; `mod_audit` rows have no actor | `/mod`, audit log | Tier 3: set `MOD_TOKEN=ana:…,ben:…`, hide a walker as ben; PASS iff the audit row names ben and ana's token still opens the console | Open |
+| P1 | The institution can see weekly walkers and returning walkers without identifying anybody | `reveal-plan.md` § KPI: "measurable once a weekly counter is added to the DO" | `/mod` KPI card | Tier 3: two walker_ids in week 1, one returns in week 2; PASS iff `/mod` shows 2 then 1 returning, and no walker_id appears in the card | Open |
+| P2 | A screen-reader user can file a report, read the Journal and use Settings | Measured 2026-10-01: 0 of 55 interactive controls unnamed and 0 images without alt on `/`, `/journal`, `/settings`, `/map` — the map canvas itself is visual only | Settings, Journal, report form | Tier 2 (a human with VoiceOver / TalkBack on a phone): PASS iff a report is filed without sight | Open, needs a device |
+| P2 | The Durable Object refuses edits to the audit log, not just the code | `worker/moderation.ts` creates SQLite triggers; unconfirmed on Cloudflare | Deployed `/mod` | Tier 3 after a preview deploy: attempt an `UPDATE mod_audit` through a test-only route; PASS iff it throws | Blocked on the first deploy |
+
+**Triage (needs a decision, not code):**
+- **Who sees whom by default** (Q-safety). The hall shows everybody to everybody. The verified precedent (Snap Map) shares with nobody by default and then with chosen friends. For a university deployment the recommendation is partners-only or off by default; it is the owner's call, and the switch to hide already exists.
+- **Minors.** No age is asked. Needs the university's policy on location features for under-18s before any default changes.
+- **Which threatened species list counts.** The P0 above uses the 25 curated species' pills. The other 1,073 iNat species carry no status in this repo; importing iNat's taxon geoprivacy would cover them and needs the sweep re-run with that field.
+
 ---
 
 ## How to read this file

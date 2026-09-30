@@ -37,3 +37,12 @@ Ideas surfaced by the Aug 15 / Aug 22 Plaud recordings that this repo will not p
 The 09-09 Working Doc + Angelo's override **supersede the public-leaderboard row above for a LOCAL / demo board only** (seeded cohort + this device, labelled “demo / not AIS”). See [`plaud/2026-09-09-gamified-map-pitch-showcase.md`](plaud/2026-09-09-gamified-map-pitch-showcase.md) A8 / `1:30:04`. **Official AIS ranks remain rejected.** The old row stays as the record of the 08-26 / 08-29 position.
 
 Walk-step / calorie points also stay rejected unless the device actually measures them. Speaker 1 asked for Pokémon GO steps at `21:31`; that is the same class of fabrication as the Whistler row above — triage, not a must-ship number we invent.
+
+## 2026-10-01 — reveal roadmap pass (edge cases from every side)
+
+| Idea | Why not |
+|------|---------|
+| Report a shared find from the phone | Already covered: the report form has "Wrong species or place", and `/mod` can hide any recent find directly. A second path adds surface without closing a case |
+| Persist the Worker's rate-limit counters across isolate restarts | They are brakes, not ledgers (`rate-limit.ts`). Persisting them costs a storage write on every request to stop an attacker who can already only make 20 wrong guesses per window per isolate |
+| Force-refresh phones that installed the 09-22 build | Not needed: the live service worker (`magisphere-v6`) serves navigations network-first and calls `skipWaiting` + `clients.claim`, so the next online load gets the new build (checked 2026-10-01) |
+| Copy Pokémon GO's handling of other players' positions | Could not verify what it does (one search, no primary source), so it is not a precedent here. Snap Map's off-by-default, friends-only sharing is the verified one |
