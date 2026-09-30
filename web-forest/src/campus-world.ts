@@ -402,3 +402,34 @@ export function weeklyActivity(store: MemoryCampusStore, week_limit = 6): WeekAc
   }
   return out.reverse().slice(0, week_limit);
 }
+
+/* ── how long the shared world remembers ────────────────────────────────── */
+
+/**
+ * Days a shared find, or an inactive walker with no finds left, is kept.
+ * RA 10173 §11(e) keeps personal data only as long as its purpose needs; the
+ * purpose here is a term's walk program, so the default is one term plus 30
+ * days (docs/spec/cpia-draft.md, F-1). `RETENTION_DAY` changes it — the DPO
+ * decides. Journals on the phones are not touched; accounts are the student's
+ * to delete.
+ */
+export const RETENTION_DAY_DEFAULT = 150;
+
+export function retentionDayOf(raw: string | undefined): number {
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : RETENTION_DAY_DEFAULT;
+}
+
+export function pruneCampus(
+  store: MemoryCampusStore,
+  now = Date.now(),
+  retention_day = RETENTION_DAY_DEFAULT,
+): { sighting_count: number; player_count: number } {
+  const since = new Date(now - retention_day * 86_400_000).toISOString();
+  const before_sighting = store.sighting.length;
+  store.sighting = store.sighting.filter((s) => s.created_at >= since);
+  const has_find = new Set(store.sighting.map((s) => s.player_id));
+  const before_player = store.player.length;
+  store.player = store.player.filter((p) => p.updated_at >= since || has_find.has(p.player_id));
+  return { sighting_count: before_sighting - store.sighting.length, player_count: before_player - store.player.length };
+}

@@ -112,8 +112,8 @@ The owner's ask is that every edge case is met, from every side. Rows are groupe
 | Identify calls iNaturalist's visual API, which is fee-based by permission | done in code: Pl@ntNet first, iNaturalist only with `INAT_CV_PERMITTED=1`, else Seek. **Open:** a Pl@ntNet key |
 | Species-card photos carry no licence or photographer | done: licence + attribution on every photo; an all-rights-reserved Teak photo and a no-derivatives Dao photo removed |
 | Nobody knows who notifies whom after a data breach | done: `docs/spec/breach-runbook.md` (roles to fill) |
-| Shared finds, player rows and accounts are kept forever | **open**: CPIA F-1 proposes one term + 30 days; needs the DPO |
-| An account backup holds journal notes and exact positions, though the app says notes never leave the phone | **open**: CPIA F-2 recommends stripping notes |
+| Shared finds, player rows and accounts are kept forever | done for finds and player rows: 150 days (`RETENTION_DAY`). **Open:** accounts |
+| An account backup holds journal notes, though the app says notes never leave the phone | done: backups carry no notes |
 | No way to switch live positions off quickly | done: `HALL_OFF=1` |
 | Anyone in the hall could become anyone (raw `player_id` in `/world`) | done: ae2f43d |
 | A hidden student is still named by "X logged Y near you" | done: hidden walkers' finds read "A walker" and are never called out |

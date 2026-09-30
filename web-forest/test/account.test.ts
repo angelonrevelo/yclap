@@ -25,6 +25,7 @@ import {
   toBase64Url,
   usernameSeed,
   verifyPassword,
+  withoutPrivate,
   type AccountSave,
   type SaveTransport,
 } from "../src/account-core.ts";
@@ -616,4 +617,21 @@ test("storedStamp reads the stamp alone, matching storedSave", async () => {
   const code = svc.accountBy("username", "stamp")!.account_code;
   assert.equal(svc.storedStamp(code), svc.storedSave(code).updated_at);
   assert.ok(svc.storedStamp(code));
+});
+
+const noted = { ...sighting("narra-1", 1, "data:image/jpeg;base64,AAA"), note: "under the big tree by my dorm" };
+
+test("CPIA F-2: an account upload carries neither the photo nor the note", () => {
+  const up = withoutPrivate({ sighting: [noted], point_event: [] });
+  assert.equal(up.sighting[0].photo_data, null);
+  assert.equal(up.sighting[0].note, null);
+});
+
+test("CPIA F-2: the server drops the note too, whatever a client sends", () => {
+  assert.equal(sanitizeSave({ sighting: [noted], point_event: [] })?.sighting[0].note, null);
+});
+
+test("CPIA F-2: the phone that wrote the note keeps it through a merge", () => {
+  const merged = mergeSave({ sighting: [noted], point_event: [] }, { sighting: [{ ...noted, note: null, photo_data: null }], point_event: [] });
+  assert.equal(merged.save.sighting[0].note, "under the big tree by my dorm");
 });

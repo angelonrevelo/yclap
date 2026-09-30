@@ -10,6 +10,8 @@ import {
   mergeSync,
   sanitizePlayer,
   sanitizeSighting,
+  pruneCampus,
+  retentionDayOf,
   weeklyActivity,
   worldFrom,
   type SightingRow,
@@ -39,6 +41,8 @@ export interface Env extends AccountEnv {
   HALL_PAGE_ORIGIN?: string;
   /** "1" switches live positions off campus-wide (`isHallOff`). */
   HALL_OFF?: string;
+  /** Days the shared world keeps a find (`pruneCampus`); default 150. */
+  RETENTION_DAY?: string;
   /**
    * The moderator console's password (`wrangler secret put MOD_TOKEN`, 16+
    * characters). Unset or short: /mod/api/* answers 404 and the console is off.
@@ -241,6 +245,8 @@ export class CampusWorld {
       }
       const fresh = freshFindOf(new Set(store.sighting.map((s) => s.sighting_id)), row, player);
       const { merged } = mergeSync(store, player, row);
+      /* Retention runs on every write (CPIA F-1): nothing older than the window survives a sync. */
+      pruneCampus(store, Date.now(), retentionDayOf(this.env.RETENTION_DAY));
       await this.persist(store);
       this.broadcast(store);
       this.hall.announce(fresh);

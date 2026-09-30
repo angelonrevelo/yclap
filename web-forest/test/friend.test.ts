@@ -8,6 +8,9 @@ import {
   joinCodeOf,
   lookupByCode,
   MemoryCampusStore,
+  pruneCampus,
+  retentionDayOf,
+  RETENTION_DAY_DEFAULT,
   sanitizePlayer,
   sanitizeSighting,
   walkerIdOf,
@@ -349,5 +352,30 @@ describe("walkers by week, for the institution", () => {
       { week_key: "2026-W39", walker_count: 2, returning_count: 0, find_count: 3 },
     ]);
     assert.ok(!JSON.stringify(week).includes("p-a"));
+  });
+});
+
+describe("the shared world forgets (CPIA F-1)", () => {
+  it("drops finds past the retention window, and a walker with nothing left who has been away as long", () => {
+    const store = new MemoryCampusStore();
+    const now = Date.parse("2026-12-01T00:00:00Z");
+    store.player.push(
+      { player_id: "old", name: "Old", join_code: "AAAAAA", stage: "egg", level: 1, total_points: 0, streak_weeks: 0, updated_at: "2026-01-01T00:00:00Z" },
+      { player_id: "new", name: "New", join_code: "BBBBBB", stage: "egg", level: 1, total_points: 0, streak_weeks: 0, updated_at: "2026-11-30T00:00:00Z" },
+    );
+    const add = (player_id: string, id: string, at: string) => {
+      const row = sanitizeSighting({ sighting_id: id, species_code: "narra", common_name: "Narra", lat: 14.639, lon: 121.078, entry_kind: "badge", created_at: at }, player_id);
+      if (row) store.insertSighting(row);
+    };
+    add("old", "o1", "2026-01-02T00:00:00Z");
+    add("new", "n1", "2026-11-29T00:00:00Z");
+    assert.deepEqual(pruneCampus(store, now, 150), { sighting_count: 1, player_count: 1 });
+    assert.deepEqual(store.sighting.map((s) => s.sighting_id), ["n1"]);
+    assert.deepEqual(store.player.map((p) => p.player_id), ["new"]);
+  });
+  it("reads RETENTION_DAY, and falls back to one term plus 30 days", () => {
+    assert.equal(retentionDayOf("90"), 90);
+    assert.equal(retentionDayOf("nonsense"), RETENTION_DAY_DEFAULT);
+    assert.equal(retentionDayOf(undefined), 150);
   });
 });

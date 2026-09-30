@@ -272,8 +272,8 @@ export function usernameSeed(identity: GoogleIdentity): string {
 
 /**
  * What an account keeps: the journal's rows and the point ledger (the weekly
- * streak is computed from the ledger, so it travels with it). Photos never do
- * — `photo_data` is nulled before upload and again on the server.
+ * streak is computed from the ledger, so it travels with it). Photos and notes
+ * never do — both are nulled before upload and again on the server.
  */
 export interface AccountSave {
   sighting: Sighting[];
@@ -299,11 +299,18 @@ export function emptySave(): AccountSave {
   return { sighting: [], point_event: [] };
 }
 
-export function withoutPhoto(save: AccountSave): AccountSave {
-  return { ...save, sighting: save.sighting.map((s) => ({ ...s, photo_data: null })) };
+/**
+ * What never leaves the phone, account or not: the photo and the note. The
+ * app says "photos and notes never leave this phone"; until 10-01 a signed-in
+ * backup still carried the note (docs/spec/cpia-draft.md, F-2). A note stays
+ * on the phone that wrote it — `mergeSave` keeps the local row — and a second
+ * phone restores the find without it.
+ */
+export function withoutPrivate(save: AccountSave): AccountSave {
+  return { ...save, sighting: save.sighting.map((s) => ({ ...s, photo_data: null, note: null })) };
 }
 
-/** Shape-check an untrusted save. Keeps rows that carry their id; drops photos. */
+/** Shape-check an untrusted save. Keeps rows that carry their id; drops photos and notes. */
 export function sanitizeSave(raw: unknown): AccountSave | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
@@ -317,7 +324,7 @@ export function sanitizeSave(raw: unknown): AccountSave | null {
         typeof (s as Sighting).species_code === "string",
     )
     .slice(0, SAVE_MAX_SIGHTING)
-    .map((s) => ({ ...s, photo_data: null }));
+    .map((s) => ({ ...s, photo_data: null, note: null }));
   const point_event = r.point_event
     .filter(
       (e): e is PointEvent =>
@@ -366,7 +373,7 @@ export function mergeSave(local: AccountSave, remote: AccountSave): SaveMerge {
     high = Math.max(high, entry_index);
     used_index.add(entry_index);
     seen_id.add(s.sighting_id);
-    sighting.push({ ...s, photo_data: null, entry_index });
+    sighting.push({ ...s, photo_data: null, note: null, entry_index });
     added_sighting_count += 1;
   }
 
@@ -453,7 +460,7 @@ export async function reconcileSave(
       added_sighting_count += merged.added_sighting_count;
       added_point_count += merged.added_point_count;
     }
-    const put = await transport.put({ save: withoutPhoto(merged.save), base_updated_at: remote.updated_at });
+    const put = await transport.put({ save: withoutPrivate(merged.save), base_updated_at: remote.updated_at });
     const answer = storedOf(put.data);
     if (put.status === 200 && answer.updated_at) {
       return { added_sighting_count, added_point_count, sighting_count: merged.save.sighting.length, updated_at: answer.updated_at };

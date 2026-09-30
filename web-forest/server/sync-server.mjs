@@ -45,7 +45,7 @@ const DB_PATH = resolve(process.cwd(), arg("db", "server/yclap-sync.json"));
 mkdirSync(dirname(DB_PATH), { recursive: true });
 const ACCOUNT_DB_PATH = resolve(process.cwd(), arg("account-db", "server/yclap-account.db"));
 
-const { CODE_MISS_MAX, CODE_MISS_WINDOW_MS, lookupByCode, MemoryCampusStore, mergeSync, sanitizePlayer, sanitizeSighting, weeklyActivity, worldFrom } = await import(
+const { CODE_MISS_MAX, CODE_MISS_WINDOW_MS, lookupByCode, MemoryCampusStore, mergeSync, sanitizePlayer, sanitizeSighting, pruneCampus, retentionDayOf, weeklyActivity, worldFrom } = await import(
   pathToFileURL(resolve(process.cwd(), "src/campus-world.ts")).href
 );
 const multiplayer = await import(pathToFileURL(resolve(process.cwd(), "src/multiplayer.ts")).href);
@@ -359,6 +359,7 @@ const server = createServer(async (req, res) => {
     }
     const fresh = multiplayer.freshFindOf(new Set(store.sighting.map((s) => s.sighting_id)), row, player);
     const { merged } = mergeSync(store, player, row);
+    pruneCampus(store, Date.now(), retentionDayOf(process.env.RETENTION_DAY));
     persist();
     broadcast();
     hall.announce(fresh);
