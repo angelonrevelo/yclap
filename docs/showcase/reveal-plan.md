@@ -129,7 +129,7 @@ The owner's ask is that every edge case is met, from every side. Rows are groupe
 | Moderator token leaks | done: no token (or < 16 chars) means the console is off; rotate by changing the secret. **Open:** one shared token, so the audit log cannot say which moderator acted |
 | Who is allowed to be a moderator | **open**: needs a named person and the university's say |
 | Data retention for reports | done: 30 days (`docs/spec/moderation.md`) |
-| The Worker and the tests are not typechecked (`tsconfig` includes `src/` only) | **open**: add `@cloudflare/workers-types` + `@types/node` and a second tsconfig once the lanes merge |
+| The Worker and the tests are not typechecked (`tsconfig` includes `src/` only) | done for the Worker: `tsconfig.worker.json` is in `npm run build` / `npm run typecheck` and found one real type gap (Durable Object SQLite rows can be BLOBs). **Open:** the tests: a test tsconfig (Node + Workers types, `allowJs`) reports 35 errors, mostly loose fakes; fix after the rig and module lanes merge |
 | Lane worktrees share one `.vite` cache and break each other's dev servers | done: `MAGISPHERE_VITE_CACHE` |
 | Institution wants its own campus | lane `reveal/module`: module registry and trail template |
 | Official emergency data | **blocked** on the DRRM office / CFMO. Until then, OSM-sourced and labelled not official |

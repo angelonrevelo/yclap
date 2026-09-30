@@ -49,7 +49,7 @@ import {
   type ReportDiagnostic,
 } from "../src/moderation.ts";
 import { RateWindow, clientIp, isOwnPage, mimeEssence, pageCorsOf } from "../src/rate-limit.ts";
-import type { SqlRun, SqlValue } from "./account.ts";
+import type { SqlRow, SqlRun } from "./account.ts";
 
 export const REPORT_PATH = "/report";
 export const MOD_API_PREFIX = "/mod/api/";
@@ -151,7 +151,7 @@ function json(body: unknown, status = 200, extra: Record<string, string> = {}): 
   });
 }
 
-function reportOf(row: Record<string, SqlValue>): Report {
+function reportOf(row: SqlRow): Report {
   let diagnostic: ReportDiagnostic;
   try {
     diagnostic = JSON.parse(String(row.diagnostic_json)) as ReportDiagnostic;

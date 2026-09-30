@@ -83,7 +83,12 @@ import { nameNoticeOf, safeNameOf } from "../src/name-filter.ts";
 const SESSION_SWEEP_MS = 60 * 60 * 1000;
 
 export type SqlValue = string | number | null;
-export type SqlRow = Record<string, SqlValue>;
+/**
+ * A row as the store hands it back. Durable Object SQLite can return an
+ * `ArrayBuffer` for a BLOB column; nothing here stores one, but the type says
+ * what the runtime can return rather than what we hope it will.
+ */
+export type SqlRow = Record<string, SqlValue | ArrayBuffer>;
 export type SqlRun = (query: string, ...bind: SqlValue[]) => SqlRow[];
 
 export interface AccountEnv {
