@@ -134,6 +134,29 @@ export function signedArea(ring: { x: number; y: number }[]): number {
 /** Sun direction on screen, as a unit vector. From the upper left, low. */
 const SUN = { x: -0.78, y: -0.63 };
 
+/** A camera-facing wall, as indices into the ground ring and the roof ring. */
+export interface WallFace {
+  /** Ground ring index of the wall's first corner; `b` is the second. */
+  a: number;
+  b: number;
+  light: number;
+  depth: number;
+}
+
+/**
+ * A prism as POINTS: the roof ring (`top`, index-aligned with the ground ring
+ * it was lifted from) and the camera-facing walls.
+ *
+ * What a canvas wants. The skyline paints on a canvas every camera frame, and
+ * turning every corner into `toFixed` text only for `Path2D` to parse it back
+ * was most of what the prism cost.
+ */
+export interface PrismPoint {
+  top: { x: number; y: number }[];
+  face: WallFace[];
+  depth: number;
+}
+
 /**
  * Extrude one screen-space ground ring into a prism.
  *
@@ -145,11 +168,11 @@ const SUN = { x: -0.78, y: -0.63 };
  * emitted. The rest are behind the roof cap and drawing them costs paint and
  * buys nothing but a seam where two fills meet.
  */
-export function extrude(
+export function extrudePoint(
   ring: ScreenPoint[],
   height_m: number,
   rise_px: (scale: number) => number,
-): Prism | null {
+): PrismPoint | null {
   if (ring.length < 3) return null;
   const area = signedArea(ring);
   if (area === 0) return null;
@@ -159,7 +182,7 @@ export function extrude(
 
   const top = ring.map((p) => ({ x: p.x, y: p.y - rise_px(p.scale) * height_m }));
 
-  const wall: Wall[] = [];
+  const face: WallFace[] = [];
   let depth = -Infinity;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
     const a = ring[j];
@@ -173,17 +196,38 @@ export function extrude(
     const ny = (sign * -dx) / len;
     /* Normal pointing down the screen means the wall faces the camera. */
     if (ny <= 0) continue;
-    const ta = top[j];
-    const tb = top[i];
-    wall.push({
-      d: `M${a.x.toFixed(1)} ${a.y.toFixed(1)}L${b.x.toFixed(1)} ${b.y.toFixed(1)}L${tb.x.toFixed(1)} ${tb.y.toFixed(1)}L${ta.x.toFixed(1)} ${ta.y.toFixed(1)}Z`,
+    face.push({
+      a: j,
+      b: i,
       /* Lambert against a fixed sun, remapped so the darkest wall is still
          legibly a wall rather than a hole. */
       light: Math.max(0, nx * SUN.x + ny * SUN.y) * 0.5 + 0.5,
       depth: Math.max(a.y, b.y),
     });
   }
+  return { top, face, depth };
+}
 
+/** `extrudePoint` as SVG path data, for anything that draws a `<path>`. */
+export function extrude(
+  ring: ScreenPoint[],
+  height_m: number,
+  rise_px: (scale: number) => number,
+): Prism | null {
+  const prism = extrudePoint(ring, height_m, rise_px);
+  if (!prism) return null;
+  const { top, face, depth } = prism;
+  const wall: Wall[] = face.map(({ a: j, b: i, light, depth: wall_depth }) => {
+    const a = ring[j];
+    const b = ring[i];
+    const ta = top[j];
+    const tb = top[i];
+    return {
+      d: `M${a.x.toFixed(1)} ${a.y.toFixed(1)}L${b.x.toFixed(1)} ${b.y.toFixed(1)}L${tb.x.toFixed(1)} ${tb.y.toFixed(1)}L${ta.x.toFixed(1)} ${ta.y.toFixed(1)}Z`,
+      light,
+      depth: wall_depth,
+    };
+  });
   const roof = `${top.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join("")}Z`;
   return { roof, wall, depth };
 }

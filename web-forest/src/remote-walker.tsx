@@ -256,9 +256,10 @@ export default function RemoteWalkerLayer({
             data-remote-walker={one.pose.walker_id}
             style={{
               position: "absolute",
-              left: at.x,
-              top: at.y,
-              transform: `translate(-50%, -100%) scale(${scale.toFixed(3)})`,
+              left: 0,
+              top: 0,
+              /* By transform, not left/top: no layout per camera frame. */
+              transform: `translate(${at.x.toFixed(1)}px, ${at.y.toFixed(1)}px) translate(-50%, -100%) scale(${scale.toFixed(3)})`,
               transformOrigin: "50% 100%",
               pointerEvents: "none",
               zIndex: 5,

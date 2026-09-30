@@ -33,6 +33,7 @@ import { avatarFrom } from "./avatar";
 const HikerAvatar = lazy(() => import("./hiker-avatar"));
 import { avatarPx, clampPitch, pitchForZoom, roadCasingPx, roadWidthPx, walkStopMs } from "./camera-feel";
 import FrameProbe from "./frame-probe";
+import { planePair, planePoint } from "./plane-cache";
 import { BUDGET, qualityLabel, type QualityPick } from "./quality";
 
 /**
@@ -160,6 +161,26 @@ const tuft = scatterTuft();
 const resident_by_sector = residentBySector();
 const marker: Encounter[] = [...resident_by_sector.values()].flat();
 
+/**
+ * The overlay's pieces that do NOT move with the camera, memoised.
+ *
+ * `overlay` is rendered every camera frame (the glide commits each frame with
+ * `flushSync`, `tile-map.tsx`), and everything in it re-rendered with it: the
+ * walker's whole sticker SVG, the horizon's sky and ridge, the walker count,
+ * the tier badge — none of which had a prop change between frames. Their
+ * props are primitives or stable objects, so a shallow compare is the whole
+ * cost now. (The walker's WRAPPER still moves every frame; only the figure
+ * inside is skipped.)
+ */
+const WalkerFigure = memo(Character);
+const HorizonBand = memo(Horizon);
+const HallCountPill = memo(HallCount);
+const FrameProbeOnce = memo(FrameProbe);
+/** "out until 3:40 PM" — one formatter for every find (see `spawn_title`). */
+const UNTIL_FORMAT = new Intl.DateTimeFormat([], { hour: "numeric", minute: "2-digit" });
+/** `?avatar=` never changes under a running page; read it once, not per frame. */
+const is_hiker = typeof window !== "undefined" && avatarFrom(window.location.search) === "hiker";
+
 /** Fixed cast so they do not reshuffle every render. Decoration, not data. */
 const BIRD = [
   { top: 12, size: 22, duration: 38, delay: 0, track: "yc-fly-a" },
@@ -272,6 +293,20 @@ function ringPath(ring: [number, number][], project: Project, close: boolean): s
   return close ? `${d} Z` : d;
 }
 
+/**
+ * A transform that puts an element's box at (`x`, `y`) on the glass, then
+ * applies `rest` (the usual centring and scale).
+ *
+ * Everything on the glass moves every camera frame. Moved by `left`/`top` it
+ * is re-laid-out every frame; moved by a transform it is not — the transform
+ * only touches its own paint property. The leading translate composes with
+ * `rest` exactly as `left`/`top` did, whatever the transform origin, because
+ * a translation commutes with where the origin is.
+ */
+function glassAt(x: number, y: number, rest: string): string {
+  return `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) ${rest}`;
+}
+
 /** The right-hand map controls, as a screen-space box labels stay out of. */
 const CONTROL_KEEP_OUT_X = 76;
 const CONTROL_KEEP_OUT_Y = 300;
@@ -305,7 +340,7 @@ function pickLabel(
 ): LabelPlace[] {
   const placed: LabelPlace[] = [];
   const spoken = new Set<string>();
-  const { project, toScreen, fromScreen, centre, width, height } = projection;
+  const { project, toScreen, fromScreen, centre, width, height, plane_meter_per_pixel } = projection;
   /* A pill must land below 0.3 of the glass (see the haze check below), and
      under the rake that caps how far away its ground can be. Anything past
      that is skipped BEFORE the projection, instead of projecting all ~90
@@ -315,6 +350,8 @@ function pickLabel(
       distanceMeter(centre, fromScreen(0, height * 0.3)),
       distanceMeter(centre, fromScreen(width, height * 0.3)),
     ) + 30;
+  const reach_px = reach_m / Math.max(plane_meter_per_pixel, 1e-6);
+  const centre_px = project(centre);
   /* Every check below is in SCREEN space. Checking in plane space is what let
      labels clip off the right edge: the perspective divide pushes points away
      from the centre, so a pill that fits the plane can still hang off the
@@ -329,9 +366,12 @@ function pickLabel(
        information — the sector card names the piece you actually tapped. */
     const base = s.name.replace(/\s*\([^)]*\)$/, "");
     if (spoken.has(base)) continue;
-    if (Number.isFinite(reach_m) && distanceMeter(centre, { lat: s.label_point[0], lon: s.label_point[1] }) > reach_m) continue;
+    /* In plane pixels against the anchor-cached label point: one
+       subtraction per sector a frame instead of a great-circle distance. */
+    const at = planePair(project, s.label_point);
+    if (Number.isFinite(reach_px) && (at.x - centre_px.x) ** 2 + (at.y - centre_px.y) ** 2 > reach_px ** 2) continue;
 
-    const p = toScreen(project({ lat: s.label_point[0], lon: s.label_point[1] }));
+    const p = toScreen(at);
     const half_w = halfWidth(s);
 
     /* Fully on screen, pill included — a clipped label is worse than none. */
@@ -403,6 +443,20 @@ const Ground = memo(function Ground({
 }) {
   const cull: Cull = { x: cull_x, y: cull_y, r: cull_r };
   const near = (ring: [number, number][]) => isNear(ring, project, cull);
+  /* The subpaths, one string per look — see the comment on the grass below. */
+  const merged = { grass: "", building: "", outside_road: "", outside_foot: "", road: "", foot: "" };
+  for (const row of sector_row) if (row.is_biome && near(row.point)) merged.grass += ringPath(row.point, project, true);
+  for (const b of campus_building) if (near(b.point)) merged.building += ringPath(b.point, project, true);
+  for (const p of outside_path) {
+    if (!near(p.point)) continue;
+    if (p.is_road) merged.outside_road += ringPath(p.point, project, false);
+    else merged.outside_foot += ringPath(p.point, project, false);
+  }
+  for (const p of campus_path) {
+    if (!near(p.point)) continue;
+    if (p.is_road) merged.road += ringPath(p.point, project, false);
+    else merged.foot += ringPath(p.point, project, false);
+  }
   return (
     <>
       {/* 1 · sector fills — the map itself, through `gradeFill`. The
@@ -438,11 +492,18 @@ const Ground = memo(function Ground({
           />
         );
       })}
-      {sector_row
-        .filter((row) => row.is_biome && near(row.point))
-        .map((row) => (
-          <path key={`g${row.sector_code}`} d={ringPath(row.point, project, true)} fill="url(#pm-grass)" stroke="none" />
-        ))}
+      {/* Everything below that shares one look is ONE `<path>` of many
+             subpaths, not one element per ring. Measured at the pulled-back
+             camera (z19, 4× CPU, `bench/frame-2026-10-01-z19.json`): the plane
+             held ~1,450 ground elements and the page ran at ~4 fps with
+             `PaintArtifactCompositor::Update` taking ~9 of every 10 s of
+             main thread — Chrome re-layerises per element on every frame
+             something repaints, whether or not the ground changed. Hiding
+             the ground alone brought it back to ~33 fps; hiding the
+             overlay changed nothing. The picture is the same: rings of one
+             fill never overlap (grass, buildings), and a path network drawn
+             casing-then-fill looks the same as one stroke. */}
+      <path d={merged.grass} fill="url(#pm-grass)" stroke="none" />
 
       {/* 2 · where each building MEETS the ground.
              The building itself is a prism drawn in screen space by
@@ -450,27 +511,20 @@ const Ground = memo(function Ground({
              stay in the plane so it stays welded to the sector under
              it. Drawn dark rather than pale: a prism rising out of a
              light block looks like it is floating on one. */}
-      {campus_building.map((b, i) => near(b.point) && (
-        <path
-          key={`b${i}`}
-          d={ringPath(b.point, project, true)}
-          fill="rgba(104,96,78,0.30)"
-          stroke="none"
-        />
-      ))}
+      <path d={merged.building} fill="rgba(104,96,78,0.30)" stroke="none" />
 
       {/* 3a · the city outside, at a whisper.
              Cutting it entirely left campus floating in a void, which
              reads as isolation rather than as a boundary. Faded says
              "this continues, you just do not play here" without
              inviting anyone into Katipunan traffic. */}
-      {outside_path.map((p, i) => near(p.point) && (
+      {[true, false].map((is_road) => (
         <path
-          key={`po${i}`}
-          d={ringPath(p.point, project, false)}
+          key={is_road ? "po-road" : "po-foot"}
+          d={is_road ? merged.outside_road : merged.outside_foot}
           fill="none"
           stroke={is_night ? "rgba(160,176,214,0.3)" : "rgba(255,255,255,0.34)"}
-          strokeWidth={roadWidthPx(p.is_road, plane_meter_per_pixel) * 0.7}
+          strokeWidth={roadWidthPx(is_road, plane_meter_per_pixel) * 0.7}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
@@ -481,42 +535,28 @@ const Ground = memo(function Ground({
              campus road 5.5 m, a footpath 2.6 m), so a path is as wide as
              the ground it covers at every zoom instead of a fixed 9 px that
              was a ribbon at z19 and a thread at z22. An edge, a sand-coloured
-             walk, and on roads a dashed centre line once there is room. */}
+             walk, and on roads a dashed centre line once there is room.
+             Every casing under every walk, as before; within each, roads
+             over footpaths, which is how a crossing reads anyway. */}
       {(() => {
         const road_fill = roadWidthPx(true, plane_meter_per_pixel);
+        const foot_fill = roadWidthPx(false, plane_meter_per_pixel);
         const dash = Math.max(4, 1.6 / Math.max(plane_meter_per_pixel, 0.001));
-        const shown = campus_path.filter((p) => near(p.point));
         return (
           <g fill="none" strokeLinecap="round" strokeLinejoin="round">
-            {shown.map((p, i) => (
+            <path d={merged.foot} stroke={is_night ? "#8E88BC" : "#DCC188"} strokeWidth={roadCasingPx(foot_fill)} />
+            <path d={merged.road} stroke={is_night ? "#9A86C0" : "#C8BD9F"} strokeWidth={roadCasingPx(road_fill)} />
+            <path d={merged.foot} stroke={is_night ? "#6C6AA2" : "#F4E6BC"} strokeWidth={foot_fill} />
+            <path d={merged.road} stroke={is_night ? "#3E4A86" : "#ECE5D2"} strokeWidth={road_fill} />
+            {road_fill > 16 && (
               <path
-                key={`pc${i}`}
-                d={ringPath(p.point, project, false)}
-                stroke={is_night ? (p.is_road ? "#9A86C0" : "#8E88BC") : p.is_road ? "#C8BD9F" : "#DCC188"}
-                strokeWidth={roadCasingPx(roadWidthPx(p.is_road, plane_meter_per_pixel))}
+                d={merged.road}
+                stroke={is_night ? "rgba(255,246,220,0.45)" : "rgba(255,255,255,0.95)"}
+                strokeWidth={Math.max(1.5, road_fill * 0.035)}
+                strokeDasharray={`${dash * 1.6} ${dash * 1.4}`}
+                strokeLinecap="butt"
               />
-            ))}
-            {shown.map((p, i) => (
-              <path
-                key={`pf${i}`}
-                d={ringPath(p.point, project, false)}
-                stroke={is_night ? (p.is_road ? "#3E4A86" : "#6C6AA2") : p.is_road ? "#ECE5D2" : "#F4E6BC"}
-                strokeWidth={roadWidthPx(p.is_road, plane_meter_per_pixel)}
-              />
-            ))}
-            {road_fill > 16 &&
-              shown
-                .filter((p) => p.is_road)
-                .map((p, i) => (
-                  <path
-                    key={`pd${i}`}
-                    d={ringPath(p.point, project, false)}
-                    stroke={is_night ? "rgba(255,246,220,0.45)" : "rgba(255,255,255,0.95)"}
-                    strokeWidth={Math.max(1.5, road_fill * 0.035)}
-                    strokeDasharray={`${dash * 1.6} ${dash * 1.4}`}
-                    strokeLinecap="butt"
-                  />
-                ))}
+            )}
           </g>
         );
       })()}
@@ -545,6 +585,40 @@ const Ground = memo(function Ground({
     </>
   );
 });
+
+/** The top of the glass the horizon's ridge covers (`horizon.tsx`, `band_h`). */
+const RIDGE_Y = 0.2;
+/** The camera's furthest drift from its anchor (`ANCHOR_GRID` / 2, diagonal) plus a margin. */
+const ANCHOR_SLACK_PX = 1500;
+/** Cull radii are rounded up to this, so a few metres of drift keep `Ground`'s memo. */
+const CULL_STEP_PX = 256;
+
+/**
+ * How far out, in plane pixels from the camera anchor, the ground can show.
+ *
+ * It was `3.2 × the screen's long side` — the reach at the STEEPEST pitch —
+ * at every pitch. At the pulled-back camera (z19, 46°) the ground actually
+ * seen ends ~950 plane px away, under the ridge, and the old circle took in
+ * the whole campus: ~1,450 elements, rebuilt on every anchor step. Now it is
+ * the real distance to the ground under the ridge line for THIS pitch and
+ * zoom (it does not depend on where the camera is, only how it is tilted), a
+ * tenth over, plus the anchor's slack — the camera glides up to ~1,450 px from
+ * its anchor before the ground is rebuilt. A pitch change re-renders the plane
+ * anyway, so a steeper tilt gets the bigger circle it needs.
+ */
+function groundCullPx(projection: Projection): number {
+  const { centre, fromScreen, width, height, plane_meter_per_pixel, meter_per_pixel } = projection;
+  const reach_m = Math.max(
+    distanceMeter(centre, fromScreen(0, height * RIDGE_Y)),
+    distanceMeter(centre, fromScreen(width, height * RIDGE_Y)),
+  );
+  const reach_px = Number.isFinite(reach_m)
+    ? (reach_m * 1.1) / Math.max(plane_meter_per_pixel, 1e-6)
+    : /* A pitch so shallow the ridge line has no ground under it: the old,
+         steepest-pitch bound. */
+      (Math.max(width, height) * 3.2 * meter_per_pixel) / Math.max(plane_meter_per_pixel, 1e-6);
+  return Math.ceil((reach_px + ANCHOR_SLACK_PX) / CULL_STEP_PX) * CULL_STEP_PX;
+}
 
 /**
  * Pulses are capped in size. At the street camera the 40 m reach is three
@@ -739,6 +813,24 @@ export default function PlayMap({
      changes when the world rotates, which is what lets `Flora` memoise the
      check instead of redoing it for every tree on every frame. */
   const keep_clear = useMemo<LatLon[]>(() => [...marker, ...spawn], [spawn]);
+  /* A find's hover title, once per rotation rather than once per find per
+     camera frame, and through ONE shared formatter: `toLocaleTimeString`
+     builds an `Intl` formatter every call, and at the pulled-back camera,
+     with every find on the glass, that one line was ~1 s of main thread in a
+     10 s walk at 4× CPU — the single largest line in the overlay (z19
+     profile, 10-01). The world re-rolls its finds as the walker moves, so
+     even once per rotation it was a 15 ms stall at 4× without the shared
+     formatter. */
+  const spawn_title = useMemo(() => {
+    const out = new Map<string, string>();
+    for (const row of spawn) {
+      out.set(
+        row.spawn_id,
+        `${row.common_name}${row.rarity ? ` — ${row.rarity}` : ""}, out until ${UNTIL_FORMAT.format(new Date(row.ends_at))}`,
+      );
+    }
+    return out;
+  }, [spawn]);
   const label_order = useMemo(() => orderLabel(biome_sector, here?.sector_code ?? null), [here?.sector_code]);
 
   /* Pitch = the zoom's resting pitch plus whatever two fingers added. Kept as
@@ -828,8 +920,10 @@ export default function PlayMap({
            glass, so nothing floats in the sky. The size is the perspective
            scale alone — what the plane's rake gave a find when it lived there —
            so moving it up here does not shrink a tap target. */
+        /* `point` is a stable row (a marker, a spawn), so its plane point is
+           cached per camera anchor (`plane-cache.ts`). */
         const toScreenFind = (point: LatLon) => {
-          const at = projection.toScreen(projection.project(point));
+          const at = projection.toScreen(planePoint(projection.project, point));
           if (at.scale <= 0 || at.y < projection.height * 0.34 || at.y > projection.height + 40) return null;
           if (at.x < -60 || at.x > projection.width + 60) return null;
           const k = Math.min(1.3, Math.max(0.5, at.scale));
@@ -848,7 +942,7 @@ export default function PlayMap({
           const sp = species[e.species_code];
           const pin_kind = pinKindOf(sp);
           if (pin_filter && pin_filter.size > 0 && !pin_filter.has(pin_kind)) continue;
-          const p = toScreenFind({ lat: e.lat, lon: e.lon });
+          const p = toScreenFind(e);
           if (!p) continue;
           const is_logged = seen_species.has(e.species_code);
           const in_range = fix ? distanceMeter(fix, e) <= AT_TREE_RADIUS_M : false;
@@ -864,12 +958,10 @@ export default function PlayMap({
                 data-play-marker="1"
                 onClick={() => onSelectEncounter(e)}
                 title={sp ? `${sp.common_name} — demo-map position` : e.where}
+                className="pm-find-at"
                 style={{
-                  position: "absolute",
-                  left: p.x,
-                  top: p.y,
-                  transform: `translate(-50%, -100%) scale(${p.k.toFixed(3)})`,
-                  transformOrigin: "50% 100%",
+                  /* Placed by transform, not left/top — see `glassAt`. */
+                  transform: glassAt(p.x, p.y, `translate(-50%, -100%) scale(${p.k.toFixed(3)})`),
                   cursor: "pointer",
                   filter: in_range ? "drop-shadow(0 0 10px rgba(255,255,255,0.65))" : undefined,
                 }}
@@ -895,13 +987,10 @@ export default function PlayMap({
               <div
                 data-play-marker="1"
                 onClick={onSelectSpawn ? () => onSelectSpawn(row) : undefined}
-                title={`${row.common_name}${row.rarity ? ` — ${row.rarity}` : ""}, out until ${new Date(row.ends_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`}
+                title={spawn_title.get(row.spawn_id)}
+                className="pm-find-at"
                 style={{
-                  position: "absolute",
-                  left: p.x,
-                  top: p.y,
-                  transform: `translate(-50%, -100%) scale(${p.k.toFixed(3)})`,
-                  transformOrigin: "50% 100%",
+                  transform: glassAt(p.x, p.y, `translate(-50%, -100%) scale(${p.k.toFixed(3)})`),
                   cursor: onSelectSpawn ? "pointer" : undefined,
                   filter: in_range ? "drop-shadow(0 0 8px rgba(255,255,255,0.55))" : undefined,
                 }}
@@ -926,7 +1015,7 @@ export default function PlayMap({
               is_shadow={budget.is_building_shadow}
             />
             <RemoteWalkerLayer hall={hall} projection={projection} bearing_degree={bearing_degree} zoom={view.zoom} />
-            <HallCount hall={hall} />
+            <HallCountPill hall={hall} />
             <Flora
               tuft={tuft}
               find={glass_find}
@@ -946,7 +1035,7 @@ export default function PlayMap({
                 where they do. Painted AFTER the skyline and the trees: whatever
                 is far enough away to reach the horizon should dissolve into
                 it, not stand on top of the sky. */}
-            <Horizon width={projection.width} height={projection.height} bearing_degree={bearing_degree} is_night={is_night} />
+            <HorizonBand width={projection.width} height={projection.height} bearing_degree={bearing_degree} is_night={is_night} />
 
             {/* The walker, drawn on the glass rather than in the ground.
                 It used to live inside the tilted plane and counter-rotate out
@@ -981,9 +1070,9 @@ export default function PlayMap({
                   className="pm-walker"
                   style={{
                     position: "absolute",
-                    left: at.x,
-                    top: at.y,
-                    transform: `translate(-50%, -100%) scale(${Math.max(0.6, Math.min(1.35, at.scale)).toFixed(3)})`,
+                    left: 0,
+                    top: 0,
+                    transform: glassAt(at.x, at.y, `translate(-50%, -100%) scale(${Math.max(0.6, Math.min(1.35, at.scale)).toFixed(3)})`),
                     transformOrigin: "50% 100%",
                     pointerEvents: "none",
                     zIndex: 6,
@@ -996,14 +1085,14 @@ export default function PlayMap({
                       here spun the tree by the camera angle: the visible bug
                       where the walker leans over and parts company with its own
                       shadow the moment you rotate. */}
-                  {avatarFrom(window.location.search) === "hiker" ? (
+                  {is_hiker ? (
                     <Suspense
-                      fallback={<Character stage={stage} vigor={vigor} size={avatar_px} is_walking={travel.current.is_walking} heading_degree={travel.current.heading} />}
+                      fallback={<WalkerFigure stage={stage} vigor={vigor} size={avatar_px} is_walking={travel.current.is_walking} heading_degree={travel.current.heading} />}
                     >
                       <HikerAvatar size={avatar_px} is_walking={travel.current.is_walking} heading_degree={travel.current.heading} />
                     </Suspense>
                   ) : (
-                    <Character
+                    <WalkerFigure
                       stage={stage}
                       vigor={vigor}
                       size={avatar_px}
@@ -1056,25 +1145,13 @@ export default function PlayMap({
               return (
                 <div
                   key={`label-${row.sector_code}`}
+                  /* Everything but the place is `.pm-label` (`game.css`). */
+                  className={is_here ? "pm-label is-here" : "pm-label"}
                   style={{
-                    position: "absolute",
-                    left: screen_x,
-                    top: screen_y,
                     /* Screen space: no counter-rotation to undo, and the pill
                        lands exactly where the fit check said it would. It still
                        shrinks with distance so it belongs to its ground. */
-                    transform: `translate(-50%, -50%) scale(${Math.max(0.72, Math.min(1.1, scale)).toFixed(2)})`,
-                    pointerEvents: "none",
-                    zIndex: 4,
-                    whiteSpace: "nowrap",
-                    fontSize: is_here ? 13 : 11.5,
-                    fontWeight: is_here ? 800 : 700,
-                    color: is_here ? "#1B2E16" : "rgba(27,46,22,0.88)",
-                    background: is_here ? "rgba(255,246,222,0.97)" : "rgba(255,255,255,0.9)",
-                    border: `1.5px solid ${is_here ? "#F0B429" : "rgba(255,255,255,0.95)"}`,
-                    borderRadius: 999,
-                    padding: is_here ? "5px 12px" : "3px 9px",
-                    boxShadow: "0 2px 8px rgba(24,38,20,0.22)",
+                    transform: glassAt(screen_x, screen_y, `translate(-50%, -50%) scale(${Math.max(0.72, Math.min(1.1, scale)).toFixed(2)})`),
                   }}
                 >
                   {row.name.length > 24 ? `${row.name.slice(0, 23)}…` : row.name}
@@ -1082,7 +1159,7 @@ export default function PlayMap({
               );
             })}
             <QualityBadge pick={quality} onOpen={onQuality} />
-            <FrameProbe />
+            <FrameProbeOnce />
           </>
         );
       }}
@@ -1135,17 +1212,10 @@ export default function PlayMap({
                 here_code={here?.sector_code ?? null}
                 is_restricted_on={is_restricted_on}
                 is_night={is_night}
-                /* The anchor sits at the container centre in plane pixels.
-                   The radius covers the raked view out to the sky haze at the
-                   steepest pitch, in plane pixels (hence the zoom scale), plus
-                   the anchor's own slack. */
+                /* The anchor sits at the container centre in plane pixels. */
                 cull_x={width / 2}
                 cull_y={height / 2}
-                cull_r={Math.round(
-                  (Math.max(width, height) * 3.2 * projection.meter_per_pixel) /
-                    Math.max(projection.plane_meter_per_pixel, 1e-6) +
-                    1500,
-                )}
+                cull_r={groundCullPx(projection)}
               />
 
               {/* 5 · soft ground contact under each find (and in-range ripples).
@@ -1257,7 +1327,7 @@ export default function PlayMap({
  * map says why. Small, dim, out of the thumb's way above the credit "i", and a
  * tap opens where the tier is changed.
  */
-function QualityBadge({ pick, onOpen }: { pick: QualityPick; onOpen?: () => void }) {
+const QualityBadge = memo(function QualityBadge({ pick, onOpen }: { pick: QualityPick; onOpen?: () => void }) {
   const label = qualityLabel(pick);
   return (
     <button
@@ -1285,4 +1355,4 @@ function QualityBadge({ pick, onOpen }: { pick: QualityPick; onOpen?: () => void
       {label}
     </button>
   );
-}
+});

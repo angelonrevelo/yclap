@@ -70,7 +70,8 @@ All at the bench above, medians of ≥ 3 valid interleaved runs.
 | A8 | JS heap while walking | ≤ 32 MB | 11.1 MB — met |
 | A9 | The tier is on screen (`data-quality-tier` badge), auto picks lite on a small-device hint or a slow measurement and says so in a toast, Settings and `?quality=` override | behaviour, `test/quality.test.ts` | met |
 | A10 | Checked on a real minimum phone and a real minimum laptop with `?probe=1` (`frame-probe.tsx`), numbers written here | on-device | **not done** |
-| A11 | fps p50 at the pulled-back camera (`zoom=19`), 4× | ≥ 30 | **not met: ~4 fps, before and after** |
+| A11 | fps p50 at the pulled-back camera (`zoom=19`), 4× | ≥ 30 | 65.4 lite, 64.9 full (was ~4) — met |
+| A12 | fps p5 at the pulled-back camera (`zoom=19`), **lite**, 4× | ≥ 30 | 32.6 (3 of 5 runs; the other 2 at 21.9) — met on the median, with no margin |
 
 A5 is a proxy, stated as one: the bench does not measure tap-to-paint
 directly. What it does measure bounds it — input is dispatched between tasks,
@@ -107,11 +108,80 @@ What this says, plainly:
   win is fewer re-renders per camera frame, not fewer trees.
 - **Software raster** (graphics blocklisted) improved less, and lite is not
   faster than full there. Paint cost dominates and the tier does not cut it.
-- **The pulled-back camera (`zoom=19`) is not fixed**: at 4× every run, before
-  and after, fell to ~4 fps and walked < 130 px (invalid). At 1× it is ~22
-  fps. Far more campus is on the glass; this is the open item for Stable Alpha.
+- **The pulled-back camera (`zoom=19`) was not fixed by this pass**: at 4×
+  every run fell to ~4 fps and walked < 130 px (invalid). §4b is the fix.
 - The host was shared with other lanes throughout; single runs moved by up to
   30 fps. Only the interleaved medians above are claims.
+
+## 4b. The pulled-back camera (z19), 10-01 second pass
+
+From `web-forest/bench/frame-2026-10-01-z19.json`: five interleaved rounds,
+**before** = `fc002ab` (built into `dist-before`), **after** = this change, 4×,
+`--query zoom=19` and `zoom=21`. A before-z19 run never walks 200 px, so the
+bench marks it invalid; its row below is the median of the invalid runs.
+
+| Arm | n valid | fps p50 | fps p5 | fps mean | long tasks (total, max) | jitter p50 / p95 | DOM elements |
+|---|---|---|---|---|---|---|---|
+| before z19 lite | 0/5 | 3.9 | 2.7 | 3.5 | 11,191 ms | — | 2,050 |
+| before z19 full | 0/5 | 3.9 | 3.0 | 3.6 | 10,585 ms | — | 2,065 |
+| **after z19 lite** | 5/5 | **65.4** | **32.6** | 49.1 | 59 ms, max 59 | 0.024 / 0.115 | 634 |
+| after z19 full | 5/5 | 64.9 | 21.8 | 39.6 | 412 ms, max 70 | 0.027 / 0.163 | 638 |
+| before z21 lite | 5/5 | 33.0 | 13.3 | 29.6 | 761 ms, max 116 | 0.037 / 0.22 | 957 |
+| after z21 lite | 5/5 | 65.8 | 32.9 | 51.8 | 206 ms, max 94 | 0.006 / 0.074 | 409 |
+| before z21 full | 5/5 | 33.1 | 16.4 | 29.7 | 695 ms, max 96 | 0.043 / 0.20 | 993 |
+| after z21 full | 5/5 | 65.8 | 32.9 | 55.4 | 58 ms, max 57 | 0.007 / 0.11 | 417 |
+
+The z19 lite p5 runs were 21.9, 21.9, 32.6, 32.6, 32.6. A frame at 4× lands
+on one, two or three vsyncs, so p5 is either ~33 or ~22: the median clears 30,
+but a busier host tips it. It is met, not met with room. Full at z19 is not
+held to A12 and does not meet it.
+
+What the time was, and what was cut (DevTools traces at z19, lite, 4×):
+
+- **~90% of the main thread was `PaintArtifactCompositor::Update`**, not React.
+  The ground in the raked plane was ~1,450 SVG elements (one per sector, per
+  way's casing, fill and dash, per building patch), and Chrome re-layerises
+  per element, through the 3D transform, on every frame anything on the page
+  repaints. Hiding the ground took the page from ~4 to ~33 fps; hiding the
+  whole overlay changed nothing. Every shared look is now one `<path>` of
+  subpaths (grass, building patches, road and footpath casings and fills,
+  dashes, the city outside): ~110 elements. Sector fills stay one per sector
+  (each has its own measured colour); they still cost ~1.3 ms a frame.
+- **The ground's cull circle** was the steepest pitch's reach at every pitch —
+  at z19 the whole campus. It is now the real distance to the ground under the
+  horizon's ridge for this pitch and zoom, plus the anchor's slack
+  (`groundCullPx`).
+- **The skyline paints into one canvas** in a layout effect inside the camera
+  frame, from points (no path strings). It was ~100 `d` attributes rewritten a
+  frame. A commit outside a camera frame (a GPS fix, a swing) paints on the next
+  animation frame instead (`isCameraFrame` in `tile-map.tsx`): painting a GPU
+  canvas twice between frames tripped Chrome's canvas rate limiter, a 160–200 ms
+  stall. Buildings wholly off the glass are dropped on one centre point before
+  any corner is projected, and building keys are now stable (they were the
+  painter's-order index, so React remounted and recoloured buildings as the
+  camera turned).
+- **Plane points are cached per camera anchor** (`plane-cache.ts`) for trees,
+  building corners, finds and sector names: `toWorld` (a Mercator log and tan)
+  no longer runs per point per frame. `toScreen`'s camera trig is hoisted.
+- **One find's title** called `toLocaleTimeString` (a new `Intl` formatter)
+  per find per frame: ~1 s of a 10 s walk. Now once per rotation, one shared
+  formatter.
+- Everything on the glass (finds, walker, pet, remote walkers, labels) moves by
+  `transform`, not `left`/`top` (no layout per frame), and the pieces that do
+  not move (walker figure, horizon, walker count, tier badge, credit) are
+  memoised. Static standee styles are CSS classes (`.pm-tree`, `.pm-label` …).
+- Tried and not kept: compositing every standee (`will-change: transform`) was
+  slower; merging the horizon's ~150 tower rects changed nothing measurable.
+
+What is left per frame at z19 (lite, 4×, traced): ~9 ms React render and
+commit plus the skyline canvas, ~4.3 ms layerisation (1.3 of it the sector
+fills), ~2.5 ms paint, ~2 ms style. The next cut is fewer React fibers per
+camera frame (moving standees without a render), not fewer trees.
+
+**Camera judder did not regress past the bound, but moved.** `bench:hall`,
+scenario "both" (`fit_rms_px`), 12 interleaved pairs on this host: before
+median 2.3 px, after median 3.1 px (last 7 on the final code: 3.2 px). Both
+builds throw the same occasional ~34 px run (4 of 12 before, 2 of 12 after).
 
 ## 5. How to run
 
@@ -121,6 +191,7 @@ npm run bench:frame                                  # build, then 4× and 6×, 
 node script/bench-frame.mjs --throttle 4 --quality lite --run 3
 node script/bench-frame.mjs --quality none           # the app's own (auto) choice
 node script/bench-frame.mjs --query "zoom=19"        # the pulled-back camera
+node script/bench-frame.mjs --port 4287 …            # a lane sharing the host: its own preview port
 node script/bench-frame.mjs --soft                   # software raster
 node script/bench-frame.mjs --trace --dump ../tmp    # where the time goes
 
@@ -131,6 +202,6 @@ node script/bench-frame.mjs --no-build --out b.json
 node script/bench-merge.mjs bench/frame-<date>.json before=a.json after=b.json
 ```
 
-Port 4182 must be free: the bench refuses to measure a server it did not
+Port 4182 (or `--port`) must be free: the bench refuses to measure a server it did not
 start. On a phone: open the play view with `?probe=1` for the on-screen frame
 readout, and `?quality=lite|full` to pin a tier.

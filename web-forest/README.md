@@ -302,6 +302,14 @@ The play layer, wired in `src/live.tsx`:
     the camera and re-projected only every 2,048 plane px; between those
     anchors a move is one CSS transform. The pulsing rings are composited HTML,
     not animated SVG.
+  - *The pulled-back camera (z19)* ran at ~4 fps at 4× CPU: Chrome re-layerised
+    ~1,450 ground elements every frame. The ground is now one `<path>` per look
+    (sector fills stay one per sector), culled to the ground actually seen
+    (`groundCullPx`); the skyline is one canvas painted inside the camera frame
+    (`isCameraFrame`); plane points are cached per anchor (`plane-cache.ts`);
+    everything on the glass moves by transform. At 4×, z19: lite 65.4 fps p50 /
+    32.6 p5, full 64.9 / 21.8; z21 lite 65.8 / 32.9 (was 33 / 13.3).
+    `bench/frame-2026-10-01-z19.json`, `../docs/spec/device-profile.md` §4b.
   - *Measured*, headless Chrome, 390×844, play view, holding W (release build,
     `vite preview`, same machine, two runs each): before **~13 fps walking,
     ~18 idle** (p50 76 ms / 60 ms, nearly every frame over 33 ms); after
