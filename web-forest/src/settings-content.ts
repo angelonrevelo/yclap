@@ -87,6 +87,15 @@ export const PARTNER: PartnerRow[] = [
     is_confirmed: false,
   },
   {
+    /* Added 10-01 with the Emergency & DRR module (Gelo 09-30, `3:58`–`4:46`).
+       Named by function, not by title: we have not confirmed the office's
+       exact name, and guessing it on a settings screen is its own small lie. */
+    name: "University disaster risk reduction and management office, with CFMO",
+    short: "DRRM",
+    ask: "The official campus emergency plan: assembly points, evacuation routes, first-aid and AED locations and the hazard areas you track, so the Emergency layer can show yours instead of only what OpenStreetMap volunteers mapped.",
+    is_confirmed: false,
+  },
+  {
     name: "Manila Observatory",
     short: "MO",
     ask: "Urban-heat and land-cover framing, so the climate-resilience copy is sourced rather than asserted.",

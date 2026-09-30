@@ -133,6 +133,8 @@ import {
 import { matchCampus, suggestedPick } from "./inat-match";
 import { pinReply } from "./pin-reply";
 import InatStrip from "./inat-strip";
+import { ModuleButton, ModuleDock, ModuleLayer } from "./module-ui";
+import { fromLabel, moduleAttribution, useModuleState } from "./module-state";
 import { Card, Chip, Eyebrow, Fab, GlyphDisc, Pill, PrimaryPill, RADIUS, SheetClose, SpeciesName, SpeciesPill, TaxonName, TaxonThumb } from "./ui";
 import { DexCard, DexHeader, GameDock, GameToast, PlayerHud, QuestBanner, StageSticker, TodayHuntCard } from "./hud";
 import {
@@ -3489,6 +3491,8 @@ export default function App() {
   const [is_restricted, setRestricted] = useState(true);
   /* `guide` reads better on a walk than imagery; satellite is one tap away. */
   const [layer, setLayer] = useState<Layer>("guide");
+  /* Campus modules (hotspots, emergency & DRR, trails) — Gelo 09-30 `3:58`–`5:11`. All UI in module-ui.tsx. */
+  const module_state = useModuleState();
   /* `?zoom=` is the bearing parameter's twin and exists for the same reason: a
      projector can be set up at a known camera, and a screenshot of a given zoom
      is reproducible. Clamped to the play band, so the parameter cannot reach a
@@ -4463,6 +4467,8 @@ export default function App() {
         is_restricted_on={is_restricted}
         at_id={at_id}
         disc_size={is_desktop ? 38 : 32}
+        extra={(projection) => <ModuleLayer state={module_state} projection={projection} from={geo.fix ?? CAMPUS_CENTER} />}
+        extra_attribution={moduleAttribution(module_state)}
       />
       <MapChrome
         is_desktop={is_desktop}
@@ -4472,6 +4478,7 @@ export default function App() {
           <>
             <ModeSwitch mode={map_mode} onMode={setMode} />
             <Compass bearing={bearing} onReset={returnToStreet} />
+            <ModuleButton state={module_state} />
             {/* The basemap cycler lives under the switch in the same column, so
                 it can never sit on top of it the way it used to. */}
             <button
@@ -4501,6 +4508,16 @@ export default function App() {
         }
       />
       <MapNote is_desktop={is_desktop} layer={layer} />
+      <ModuleDock
+        state={module_state}
+        from={geo.fix ?? CAMPUS_CENTER}
+        from_label={fromLabel(geo.fix)}
+        is_desktop={is_desktop}
+        onFocus={(point) => {
+          stopFollowing();
+          setView((prev) => ({ lat: point.lat, lon: point.lon, zoom: Math.max(prev.zoom, 18) }));
+        }}
+      />
       {!is_desktop && !is_sheet_open && (
         <Fab
           label={`Log a ${sel_sp.common_name} sighting`}

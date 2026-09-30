@@ -131,7 +131,7 @@ The owner's ask is that every edge case is met, from every side. Rows are groupe
 | Data retention for reports | done: 30 days (`docs/spec/moderation.md`) |
 | The Worker and the tests are not typechecked (`tsconfig` includes `src/` only) | done for the Worker: `tsconfig.worker.json` is in `npm run build` / `npm run typecheck` and found one real type gap (Durable Object SQLite rows can be BLOBs). **Open:** the tests: a test tsconfig (Node + Workers types, `allowJs`) reports 35 errors, mostly loose fakes; fix after the rig and module lanes merge |
 | Lane worktrees share one `.vite` cache and break each other's dev servers | done: `MAGISPHERE_VITE_CACHE` |
-| Institution wants its own campus | lane `reveal/module`: module registry and trail template |
+| Institution wants its own campus | done: module registry with per-campus config and a trail template (`docs/spec/campus-module.md`) |
 | Official emergency data | **blocked** on the DRRM office / CFMO. Until then, OSM-sourced and labelled not official |
 
 ### Presenter at the reveal
@@ -143,12 +143,13 @@ The owner's ask is that every edge case is met, from every side. Rows are groupe
 | Venue wifi is one public IP for every phone | done (09-26): 40 sockets per IP at the edge |
 | Projector needs a fixed camera | done: `?zoom=`, `?bearing=`, `?time=`, `?weather=`, `?boot=off` |
 | A judge asks "is this official?" | Positioning above: never claim official data |
+| On a phone, a route to the nearest clinic is drawn behind the panel | done: a found route closes the panel and flies the map to it |
 
 ### Data honesty
 
 | Case | Status |
 |------|--------|
-| Emergency layer shows an invented assembly point | lane `reveal/module` forbids it, and tests enforce a source on every feature |
+| Emergency layer shows an invented assembly point | done: OSM has none on campus and the row says so; tests enforce a source and date on every feature |
 | AI note roles read as real assignments | flagged in the brief |
 | KPI targets without a baseline | refused above |
 

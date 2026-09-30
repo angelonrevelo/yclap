@@ -1,0 +1,371 @@
+{
+ "_comment": "Every OSM feature over CAMPUS_BOX tagged emergency=*, amenity=clinic|hospital|doctors|dentist|pharmacy|fire_station|police, healthcare=* or highway=emergency_access_point — exactly what the public database holds, nothing added. Community mapping, NOT the official Ateneo emergency plan: no assembly point, hazard zone or evacuation route here was drawn by us. Regenerate with script/fetch-osm-emergency.mjs.",
+ "source": "OpenStreetMap via the Overpass API",
+ "licence": "ODbL — © OpenStreetMap contributors",
+ "fetched_on": "2026-09-30",
+ "osm_base": "2026-09-30T17:32:34Z",
+ "endpoint": "overpass-api.de",
+ "box": {
+  "south": 14.633,
+  "west": 121.074,
+  "north": 14.6455,
+  "east": 121.084
+ },
+ "query": "nwr[\"emergency\"](14.633,121.074,14.6455,121.084); nwr[\"amenity\"~\"^(clinic|hospital|doctors|dentist|pharmacy|fire_station|police)$\"](14.633,121.074,14.6455,121.084); nwr[\"healthcare\"](14.633,121.074,14.6455,121.084); nwr[\"highway\"=\"emergency_access_point\"](14.633,121.074,14.6455,121.084);",
+ "count": {
+  "clinic": 2,
+  "dentist": 2,
+  "fire_hydrant": 3,
+  "fire_station": 1,
+  "pharmacy": 4,
+  "police": 1,
+  "psychotherapist": 4
+ },
+ "feature": [
+  {
+   "osm_id": "node/686074693",
+   "kind": "clinic",
+   "name": "Barangka Health Center",
+   "lat": 14.6330533,
+   "lon": 121.0823397,
+   "tag": {
+    "amenity": "clinic",
+    "name": "Barangka Health Center",
+    "public": "yes",
+    "ref:doh": "2286"
+   },
+   "source": "OpenStreetMap",
+   "source_url": "https://www.openstreetmap.org/node/686074693",
+   "fetched_on": "2026-09-30"
+  },
+  {
+   "osm_id": "way/160457563",
+   "kind": "clinic",
+   "name": "JM Lucas Infirmary",
+   "lat": 14.6377675,
+   "lon": 121.0806242,
+   "tag": {
+    "amenity": "clinic",
+    "building": "school",
+    "healthcare": "clinic",
+    "name": "JM Lucas Infirmary"
+   },
+   "source": "OpenStreetMap",
+   "source_url": "https://www.openstreetmap.org/way/160457563",
+   "fetched_on": "2026-09-30"
+  },
+  {
+   "osm_id": "node/12987238326",
+   "kind": "dentist",
+   "name": "Reyes Dental Clinic",
+   "lat": 14.6399938,
+   "lon": 121.0740023,
+   "tag": {
+    "addr:housename": "Xanland Place",
+    "addr:unit": "309",
+    "amenity": "dentist",
+    "check_date": "2025-07-08",
+    "healthcare": "dentist",
+    "healthcare:speciality": "orthodontics",
+    "name": "Reyes Dental Clinic",
+    "operator": "Maria Victoria Reyes, DMD"
+   },
+   "source": "OpenStreetMap",
+   "source_url": "https://www.openstreetmap.org/node/12987238326",
+   "fetched_on": "2026-09-30"
+  },
+  {
+   "osm_id": "node/408774937",
+   "kind": "dentist",
+   "name": "V. V. Dental Clinic",
+   "lat": 14.6425707,
+   "lon": 121.0744152,
+   "tag": {
+    "addr:city": "Quezon City",
+    "addr:housenumber": "331",
+    "addr:street": "Katipunan Avenue",
+    "amenity": "dentist",
+    "brand": "Western Union",
+    "check_date": "2025-10-04",
+    "healthcare": "dentist",
+    "mapillary": "4255297691257475",
+    "money_transfer": "western_union",
+    "name": "V. V. Dental Clinic",
+    "shop": "pawnbroker"
+   },
+   "source": "OpenStreetMap",
+   "source_url": "https://www.openstreetmap.org/node/408774937",
+   "fetched_on": "2026-09-30"
+  },
+  {
+   "osm_id": "node/12075087288",
+   "kind": "fire_hydrant",
+   "name": null,
+   "lat": 14.6414236,
+   "lon": 121.0744214,
+   "tag": {
+    "colour": "yellow",
+    "emergency": "fire_hydrant",
+    "fire_hydrant:position": "sidewalk",
+    "fire_hydrant:type": "pillar",
+    "water_source": "main"
+   },
+   "source": "OpenStreetMap",
+   "source_url": "https://www.openstreetmap.org/node/12075087288",
+   "fetched_on": "2026-09-30"
+  },
+  {
+   "osm_id": "node/3229352271",
+   "kind": "fire_hydrant",
+   "name": null,
+   "lat": 14.6361069,
+   "lon": 121.0766993,
+   "tag": {
+    "emergency": "fire_hydrant",
+    "fire_hydrant:type": "pillar"
+   },
+   "source": "OpenStreetMap",
+   "source_url": "https://www.openstreetmap.org/node/3229352271",
+   "fetched_on": "2026-09-30"
+  },
+  {
+   "osm_id": "node/4795922991",
+   "kind": "fire_hydrant",
+   "name": null,
+   "lat": 14.6362662,
+   "lon": 121.0740996,
+   "tag": {
+    "colour": "yellow",
+    "emergency": "fire_hydrant",
+    "fire_hydrant:position": "sidewalk",
+    "fire_hydrant:type": "pillar",
+    "mapillary": "294313558899250",
+    "water_source": "main"
+   },
+   "source": "OpenStreetMap",
+   "source_url": "https://www.openstreetmap.org/node/4795922991",
+   "fetched_on": "2026-09-30"
+  },
+  {
+   "osm_id": "node/5477249502",
+   "kind": "fire_station",
+   "name": null,
+   "lat": 14.6415184,
+   "lon": 121.0743838,
+   "tag": {
+    "addr:street": "Katipunan Avenue",
+    "amenity": "fire_station",
+    "check_date": "2025-10-02",
+    "mapillary": "816688062303024",
+    "operator": "Barangay Loyola Heights"
+   },
+   "source": "OpenStreetMap",
+   "source_url": "https://www.openstreetmap.org/node/5477249502",
+   "fetched_on": "2026-09-30"
+  },
+  {
+   "osm_id": "node/10603844586",
+   "kind": "pharmacy",
+   "name": "Mercury Drug",
+   "lat": 14.6403325,
+   "lon": 121.0742887,
+   "tag": {
+    "amenity": "pharmacy",
+    "brand": "Mercury Drug",
+    "brand:wikidata": "Q6818610",
+    "check_date": "2025-10-06",
+    "dispensing": "yes",
+    "healthcare": "pharmacy",
+    "level": "0",
+    "name": "Mercury Drug"
+   },
+   "source": "OpenStreetMap",
+   "source_url": "https://www.openstreetmap.org/node/10603844586",
+   "fetched_on": "2026-09-30"
+  },
+  {
+   "osm_id": "node/12794513371",
+   "kind": "pharmacy",
+   "name": "Southstar Drug",
+   "lat": 14.6419791,
+   "lon": 121.0744072,
+   "tag": {
+    "amenity": "pharmacy",
+    "brand": "Southstar Drug",
+    "brand:wikidata": "Q7568544",
+    "check_date": "2025-10-04",
+    "dispensing": "yes",
+    "healthcare": "pharmacy",
+    "level": "0",
+    "name": "Southstar Drug"
+   },
+   "source": "OpenStreetMap",
+   "source_url": "https://www.openstreetmap.org/node/12794513371",
+   "fetched_on": "2026-09-30"
+  },
+  {
+   "osm_id": "node/1688046429",
+   "kind": "pharmacy",
+   "name": "TGP",
+   "lat": 14.6429245,
+   "lon": 121.0743958,
+   "tag": {
+    "addr:city": "Quezon City",
+    "addr:housename": "Golan Plaza",
+    "addr:housenumber": "333",
+    "addr:street": "Katipunan Avenue",
+    "alt_name": "The Generics Pharmacy",
+    "amenity": "pharmacy",
+    "brand": "The Generics Pharmacy",
+    "brand:wikidata": "Q61948677",
+    "healthcare": "pharmacy",
+    "name": "TGP",
+    "name:abbr": "TGP",
+    "name:it": "The Generics",
+    "official_name": "The Generics Pharmacy"
+   },
+   "source": "OpenStreetMap",
+   "source_url": "https://www.openstreetmap.org/node/1688046429",
+   "fetched_on": "2026-09-30"
+  },
+  {
+   "osm_id": "way/121222328",
+   "kind": "pharmacy",
+   "name": "Mercury Drug",
+   "lat": 14.6330915,
+   "lon": 121.0828889,
+   "tag": {
+    "addr:city": "Marikina",
+    "addr:street": "A. Bonifacio Avenue",
+    "amenity": "pharmacy",
+    "brand": "Mercury Drug",
+    "brand:wikidata": "Q6818610",
+    "brand:wikipedia": "en:Mercury Drug",
+    "building": "commercial",
+    "dispensing": "yes",
+    "healthcare": "pharmacy",
+    "mapillary": "1227810018191351",
+    "name": "Mercury Drug",
+    "opening_hours": "24/7"
+   },
+   "source": "OpenStreetMap",
+   "source_url": "https://www.openstreetmap.org/way/121222328",
+   "fetched_on": "2026-09-30"
+  },
+  {
+   "osm_id": "way/316753817",
+   "kind": "police",
+   "name": "Campus Safety and Mobility Office",
+   "lat": 14.6348812,
+   "lon": 121.0758465,
+   "tag": {
+    "amenity": "police",
+    "building": "yes",
+    "name": "Campus Safety and Mobility Office"
+   },
+   "source": "OpenStreetMap",
+   "source_url": "https://www.openstreetmap.org/way/316753817",
+   "fetched_on": "2026-09-30"
+  },
+  {
+   "osm_id": "node/7140608259",
+   "kind": "psychotherapist",
+   "name": "AAAI Assessment Psychologists, Inc.",
+   "lat": 14.6433824,
+   "lon": 121.0743899,
+   "tag": {
+    "addr:city": "Quezon City",
+    "addr:full": "3rd Floor, 337 Katipunan Avenue, Loyola Heights, Quezon City 1108",
+    "addr:housenumber": "3/F 337",
+    "addr:street": "Katipunan Avenue",
+    "contact:phone": "09209204598; (02) 5139278",
+    "contact:website": "https://aaaipsych.com",
+    "email": "aaaipsych@gmail.com",
+    "fee": "no",
+    "healthcare": "psychotherapist",
+    "healthcare:speciality": "psychiatry",
+    "indoor": "yes",
+    "name": "AAAI Assessment Psychologists, Inc.",
+    "note": "Psychological testing and assessment, Psychotherapy, Counseling",
+    "operator": "Ma. Aurora B. Bulatao"
+   },
+   "source": "OpenStreetMap",
+   "source_url": "https://www.openstreetmap.org/node/7140608259",
+   "fetched_on": "2026-09-30"
+  },
+  {
+   "osm_id": "node/7140626603",
+   "kind": "psychotherapist",
+   "name": "Ateneo Bulatao Centre",
+   "lat": 14.6416672,
+   "lon": 121.0795362,
+   "tag": {
+    "addr:city": "Quezon City",
+    "addr:full": "Room 103-A Bellarmine Hall, Ateneo de Manila University, Katipunan Ave., Loyola Heights, Quezon City",
+    "addr:housename": "Bellarmine Hall",
+    "addr:postcode": "917",
+    "addr:unit": "Room 103-A",
+    "contact:email": "bulataocenter.ls@ateneo.edu",
+    "contact:phone": "426-5982",
+    "contact:website": "http://ateneobulataocenter.com/",
+    "fee": "yes",
+    "healthcare": "psychotherapist",
+    "healthcare:speciality": "psychotherapist",
+    "indoor": "yes",
+    "name": "Ateneo Bulatao Centre",
+    "note": "counseling, therapy, assessment,",
+    "operator": "Ateneo de Manila University",
+    "wheelchair": "yes"
+   },
+   "source": "OpenStreetMap",
+   "source_url": "https://www.openstreetmap.org/node/7140626603",
+   "fetched_on": "2026-09-30"
+  },
+  {
+   "osm_id": "node/7140634830",
+   "kind": "psychotherapist",
+   "name": "Center for Family Ministries",
+   "lat": 14.6364891,
+   "lon": 121.0803533,
+   "tag": {
+    "addr:city": "Quezon City",
+    "addr:full": "Spiritual-Pastoral Center  Ateneo de Manila University Campus  Loyola Heights, Quezon City",
+    "addr:postcode": "1108",
+    "addr:street": "Seminary Road",
+    "contact:email": "cefam@affiliate.ateneo.edu",
+    "contact:phone": "(02) 426-4289 to 92",
+    "contact:website": "http://cefam.ph",
+    "denomination": "catholic",
+    "healthcare": "psychotherapist",
+    "name": "Center for Family Ministries",
+    "religion": "christian"
+   },
+   "source": "OpenStreetMap",
+   "source_url": "https://www.openstreetmap.org/node/7140634830",
+   "fetched_on": "2026-09-30"
+  },
+  {
+   "osm_id": "node/7140716383",
+   "kind": "psychotherapist",
+   "name": "EMMAUS Center for Psycho-Spiritual Formation",
+   "lat": 14.6361799,
+   "lon": 121.0801064,
+   "tag": {
+    "addr:full": "Ateneo de Manila University Campus, Seminary Drive, Loyola Heights, Quezon City",
+    "contact:phone": "9270077",
+    "fee": "yes",
+    "healthcare": "psychotherapist",
+    "indoor": "yes",
+    "initial_fee": "2000",
+    "name": "EMMAUS Center for Psycho-Spiritual Formation",
+    "note": "Look for Ms. Lissie Bermio (Psychologist), Dra. Luzviminda Katigbak (Psychiatrist), Ms. Lei Lopez (Psychologist)",
+    "operator:type": "private",
+    "succeeding_fee": "1500",
+    "wheelchair": "yes"
+   },
+   "source": "OpenStreetMap",
+   "source_url": "https://www.openstreetmap.org/node/7140716383",
+   "fetched_on": "2026-09-30"
+  }
+ ]
+}

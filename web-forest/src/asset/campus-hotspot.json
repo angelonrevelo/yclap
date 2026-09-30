@@ -1,0 +1,779 @@
+{
+ "_comment": "Per-sector iNaturalist observation density and species richness, beside the sector's measured vegetation_ratio (copied from campus-sector.json). Counts only — no observation is redistributed. A sector is a hotspot when it has >= 10 kept observations and its species_count is in the top fifth of such sectors. iNat density follows where people walk and look; this is not a survey. Regenerate with script/build-hotspot.mjs.",
+ "source": "iNaturalist observations API v2, CAMPUS_BOX, geoprivacy=open & taxon_geoprivacy=open",
+ "attribution": "Observations © iNaturalist users (counts only)",
+ "fetched_on": "2026-09-30",
+ "method": {
+  "observation_in_box": 13985,
+  "observation_open_location": 13983,
+  "dropped_accuracy_over_50_m": 3067,
+  "kept_unrecorded_accuracy": 937,
+  "outside_every_sector": 2560,
+  "kept_in_sector": 8356,
+  "accuracy_max_m": 50,
+  "richness_rank": [
+   "species",
+   "hybrid",
+   "subspecies",
+   "variety",
+   "form",
+   "infrahybrid"
+  ],
+  "hotspot_min_observation": 10,
+  "hotspot_species_cut": 71
+ },
+ "sector": [
+  {
+   "sector_code": "s01",
+   "observation_count": 808,
+   "species_count": 193,
+   "observation_per_ha": 265.8,
+   "vegetation_ratio": 0.797,
+   "is_hotspot": true
+  },
+  {
+   "sector_code": "s02",
+   "observation_count": 1286,
+   "species_count": 199,
+   "observation_per_ha": 464.7,
+   "vegetation_ratio": 0.89,
+   "is_hotspot": true
+  },
+  {
+   "sector_code": "s03",
+   "observation_count": 13,
+   "species_count": 7,
+   "observation_per_ha": 5.9,
+   "vegetation_ratio": 0.493,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s04",
+   "observation_count": 329,
+   "species_count": 104,
+   "observation_per_ha": 169.7,
+   "vegetation_ratio": 0.552,
+   "is_hotspot": true
+  },
+  {
+   "sector_code": "s05",
+   "observation_count": 662,
+   "species_count": 153,
+   "observation_per_ha": 401.6,
+   "vegetation_ratio": 0.455,
+   "is_hotspot": true
+  },
+  {
+   "sector_code": "s06",
+   "observation_count": 24,
+   "species_count": 12,
+   "observation_per_ha": 15.2,
+   "vegetation_ratio": 0.165,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s07",
+   "observation_count": 12,
+   "species_count": 7,
+   "observation_per_ha": 8.8,
+   "vegetation_ratio": 0.441,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s08",
+   "observation_count": 1822,
+   "species_count": 301,
+   "observation_per_ha": 1433.2,
+   "vegetation_ratio": 0.604,
+   "is_hotspot": true
+  },
+  {
+   "sector_code": "s09",
+   "observation_count": 44,
+   "species_count": 17,
+   "observation_per_ha": 37,
+   "vegetation_ratio": 0.403,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s10",
+   "observation_count": 20,
+   "species_count": 13,
+   "observation_per_ha": 20,
+   "vegetation_ratio": 0.419,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s11",
+   "observation_count": 1,
+   "species_count": 1,
+   "observation_per_ha": 1.1,
+   "vegetation_ratio": 0.166,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s12",
+   "observation_count": 229,
+   "species_count": 71,
+   "observation_per_ha": 275.3,
+   "vegetation_ratio": 0.581,
+   "is_hotspot": true
+  },
+  {
+   "sector_code": "s13",
+   "observation_count": 64,
+   "species_count": 26,
+   "observation_per_ha": 89.6,
+   "vegetation_ratio": 0.356,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s14",
+   "observation_count": 226,
+   "species_count": 71,
+   "observation_per_ha": 339,
+   "vegetation_ratio": 0.561,
+   "is_hotspot": true
+  },
+  {
+   "sector_code": "s15",
+   "observation_count": 25,
+   "species_count": 11,
+   "observation_per_ha": 39.6,
+   "vegetation_ratio": 0.276,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s16",
+   "observation_count": 241,
+   "species_count": 73,
+   "observation_per_ha": 451.3,
+   "vegetation_ratio": 0.166,
+   "is_hotspot": true
+  },
+  {
+   "sector_code": "s17",
+   "observation_count": 2,
+   "species_count": 2,
+   "observation_per_ha": 3.8,
+   "vegetation_ratio": 0.325,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s18",
+   "observation_count": 102,
+   "species_count": 51,
+   "observation_per_ha": 194.7,
+   "vegetation_ratio": 0.611,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s19",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.514,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s20",
+   "observation_count": 121,
+   "species_count": 42,
+   "observation_per_ha": 316.8,
+   "vegetation_ratio": 0.752,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s21",
+   "observation_count": 641,
+   "species_count": 138,
+   "observation_per_ha": 1907.7,
+   "vegetation_ratio": 0.539,
+   "is_hotspot": true
+  },
+  {
+   "sector_code": "s22",
+   "observation_count": 89,
+   "species_count": 34,
+   "observation_per_ha": 295.1,
+   "vegetation_ratio": 0.627,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s23",
+   "observation_count": 48,
+   "species_count": 21,
+   "observation_per_ha": 159.3,
+   "vegetation_ratio": 0.406,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s24",
+   "observation_count": 15,
+   "species_count": 7,
+   "observation_per_ha": 49.8,
+   "vegetation_ratio": 0.059,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s25",
+   "observation_count": 11,
+   "species_count": 4,
+   "observation_per_ha": 41,
+   "vegetation_ratio": 0.428,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s26",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.656,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s27",
+   "observation_count": 2,
+   "species_count": 1,
+   "observation_per_ha": 7.9,
+   "vegetation_ratio": 0.911,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s28",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.761,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s29",
+   "observation_count": 10,
+   "species_count": 5,
+   "observation_per_ha": 42.1,
+   "vegetation_ratio": 0.919,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s30",
+   "observation_count": 6,
+   "species_count": 4,
+   "observation_per_ha": 25.9,
+   "vegetation_ratio": 0.692,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s31",
+   "observation_count": 6,
+   "species_count": 3,
+   "observation_per_ha": 26.3,
+   "vegetation_ratio": 0.934,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s32",
+   "observation_count": 1,
+   "species_count": 0,
+   "observation_per_ha": 4.6,
+   "vegetation_ratio": 0.657,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s33",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.575,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s34",
+   "observation_count": 13,
+   "species_count": 4,
+   "observation_per_ha": 61.8,
+   "vegetation_ratio": 0.826,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s35",
+   "observation_count": 128,
+   "species_count": 40,
+   "observation_per_ha": 624.4,
+   "vegetation_ratio": 0.37,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s36",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.573,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s37",
+   "observation_count": 256,
+   "species_count": 61,
+   "observation_per_ha": 1321.6,
+   "vegetation_ratio": 0.347,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s38",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.647,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s39",
+   "observation_count": 3,
+   "species_count": 2,
+   "observation_per_ha": 16,
+   "vegetation_ratio": 0.94,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s40",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.631,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s41",
+   "observation_count": 2,
+   "species_count": 2,
+   "observation_per_ha": 11,
+   "vegetation_ratio": 0.09,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s42",
+   "observation_count": 1,
+   "species_count": 1,
+   "observation_per_ha": 5.6,
+   "vegetation_ratio": 0.684,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s43",
+   "observation_count": 22,
+   "species_count": 14,
+   "observation_per_ha": 123.2,
+   "vegetation_ratio": 0.596,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s44",
+   "observation_count": 4,
+   "species_count": 3,
+   "observation_per_ha": 22.7,
+   "vegetation_ratio": 0.137,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s45",
+   "observation_count": 23,
+   "species_count": 8,
+   "observation_per_ha": 134.7,
+   "vegetation_ratio": 0.582,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s46",
+   "observation_count": 6,
+   "species_count": 4,
+   "observation_per_ha": 35.3,
+   "vegetation_ratio": 0.873,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s47",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.679,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s48",
+   "observation_count": 4,
+   "species_count": 3,
+   "observation_per_ha": 25.3,
+   "vegetation_ratio": 0.559,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s49",
+   "observation_count": 234,
+   "species_count": 59,
+   "observation_per_ha": 1498.1,
+   "vegetation_ratio": 0.715,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s50",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.522,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s51",
+   "observation_count": 1,
+   "species_count": 0,
+   "observation_per_ha": 6.7,
+   "vegetation_ratio": 0.945,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s52",
+   "observation_count": 1,
+   "species_count": 1,
+   "observation_per_ha": 6.9,
+   "vegetation_ratio": 0.815,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s53",
+   "observation_count": 4,
+   "species_count": 0,
+   "observation_per_ha": 27.9,
+   "vegetation_ratio": 0.56,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s54",
+   "observation_count": 197,
+   "species_count": 54,
+   "observation_per_ha": 1386.3,
+   "vegetation_ratio": 1,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s55",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.516,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s56",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.715,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s57",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.156,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s58",
+   "observation_count": 10,
+   "species_count": 4,
+   "observation_per_ha": 80.8,
+   "vegetation_ratio": 0.847,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s59",
+   "observation_count": 1,
+   "species_count": 1,
+   "observation_per_ha": 8.5,
+   "vegetation_ratio": 0.26,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s60",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.38,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s61",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.41,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s62",
+   "observation_count": 79,
+   "species_count": 22,
+   "observation_per_ha": 707.9,
+   "vegetation_ratio": 0.806,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s63",
+   "observation_count": 2,
+   "species_count": 1,
+   "observation_per_ha": 18.1,
+   "vegetation_ratio": 0.478,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s64",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.305,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s65",
+   "observation_count": 3,
+   "species_count": 1,
+   "observation_per_ha": 27.2,
+   "vegetation_ratio": 0.861,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s66",
+   "observation_count": 1,
+   "species_count": 0,
+   "observation_per_ha": 9.1,
+   "vegetation_ratio": 0.665,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s67",
+   "observation_count": 7,
+   "species_count": 4,
+   "observation_per_ha": 64.2,
+   "vegetation_ratio": 0.814,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s68",
+   "observation_count": 3,
+   "species_count": 0,
+   "observation_per_ha": 28.1,
+   "vegetation_ratio": 0.946,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s69",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.871,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s70",
+   "observation_count": 2,
+   "species_count": 1,
+   "observation_per_ha": 19.8,
+   "vegetation_ratio": 0.62,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s71",
+   "observation_count": 36,
+   "species_count": 14,
+   "observation_per_ha": 357.9,
+   "vegetation_ratio": 0.742,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s72",
+   "observation_count": 16,
+   "species_count": 6,
+   "observation_per_ha": 160.3,
+   "vegetation_ratio": 0.855,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s73",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.755,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s74",
+   "observation_count": 13,
+   "species_count": 9,
+   "observation_per_ha": 136.7,
+   "vegetation_ratio": 0.977,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s75",
+   "observation_count": 29,
+   "species_count": 16,
+   "observation_per_ha": 311.2,
+   "vegetation_ratio": 0.994,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s76",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.579,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s77",
+   "observation_count": 17,
+   "species_count": 6,
+   "observation_per_ha": 196.1,
+   "vegetation_ratio": 0.778,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s78",
+   "observation_count": 145,
+   "species_count": 48,
+   "observation_per_ha": 1691.9,
+   "vegetation_ratio": 0.911,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s79",
+   "observation_count": 1,
+   "species_count": 1,
+   "observation_per_ha": 11.8,
+   "vegetation_ratio": 0.278,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s80",
+   "observation_count": 105,
+   "species_count": 32,
+   "observation_per_ha": 1245.6,
+   "vegetation_ratio": 0.684,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s81",
+   "observation_count": 1,
+   "species_count": 0,
+   "observation_per_ha": 12,
+   "vegetation_ratio": 0.566,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s82",
+   "observation_count": 20,
+   "species_count": 9,
+   "observation_per_ha": 242.1,
+   "vegetation_ratio": 0.949,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s83",
+   "observation_count": 19,
+   "species_count": 6,
+   "observation_per_ha": 230,
+   "vegetation_ratio": 0.526,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s84",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.117,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s85",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.904,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s86",
+   "observation_count": 6,
+   "species_count": 4,
+   "observation_per_ha": 76.9,
+   "vegetation_ratio": 0.545,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s87",
+   "observation_count": 17,
+   "species_count": 6,
+   "observation_per_ha": 224,
+   "vegetation_ratio": 0.49,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s88",
+   "observation_count": 26,
+   "species_count": 11,
+   "observation_per_ha": 343.5,
+   "vegetation_ratio": 0.98,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s89",
+   "observation_count": 32,
+   "species_count": 19,
+   "observation_per_ha": 428.4,
+   "vegetation_ratio": 0.987,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s90",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.222,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s91",
+   "observation_count": 2,
+   "species_count": 1,
+   "observation_per_ha": 27.5,
+   "vegetation_ratio": 0.929,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s92",
+   "observation_count": 3,
+   "species_count": 3,
+   "observation_per_ha": 41.8,
+   "vegetation_ratio": 0.088,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s93",
+   "observation_count": 1,
+   "species_count": 1,
+   "observation_per_ha": 14.1,
+   "vegetation_ratio": 0.414,
+   "is_hotspot": false
+  },
+  {
+   "sector_code": "s94",
+   "observation_count": 0,
+   "species_count": 0,
+   "observation_per_ha": 0,
+   "vegetation_ratio": 0.536,
+   "is_hotspot": false
+  }
+ ]
+}

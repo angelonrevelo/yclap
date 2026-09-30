@@ -12,6 +12,7 @@ import { RESTRICTED_POLYGON, species } from "./data";
 import { EncounterDisc, PlayerMark } from "./icon";
 import TileMap, { SOURCE, type Layer, type Projection, type View } from "./tile-map";
 import type { Fix } from "./geo";
+import type { ReactNode } from "react";
 
 /**
  * The campus walk, drawn on real imagery.
@@ -44,6 +45,10 @@ interface Props {
   disc_size?: number;
   is_interactive?: boolean;
   onGesture?: () => void;
+  /** Campus-module layers (`module-ui.tsx`), drawn in the same plane as the discs. */
+  extra?: (projection: Projection) => ReactNode;
+  /** Credit lines those layers owe, joined onto the ODbL line. */
+  extra_attribution?: string[];
 }
 
 /**
@@ -267,12 +272,15 @@ export default function CampusMap({
   disc_size = 32,
   is_interactive = true,
   onGesture,
+  extra,
+  extra_attribution = [],
 }: Props) {
   /* ODbL is a licence term, not chrome: any OSM-derived layer on screen must
      carry the credit. Biome rings and paths each earn their own line. */
   const overlay_attribution = [
     is_path_on ? PATH_ATTRIBUTION : null,
     is_biome_on ? SECTOR_ATTRIBUTION : null,
+    ...extra_attribution,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -291,6 +299,7 @@ export default function CampusMap({
           {is_boundary_on && <CampusOutline projection={projection} layer={layer} />}
           {is_path_on && <PathNetwork projection={projection} layer={layer} />}
           {is_restricted_on && <RestrictedArea projection={projection} />}
+          {extra?.(projection)}
 
           {encounter.map((row) => {
             const sp = species[row.species_code];

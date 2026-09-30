@@ -23,6 +23,7 @@ export const DEMO_PARAM = [
   "view",
   "probe",
   "quality",
+  "module",
 ] as const;
 
 /** `path` with whichever demo params `search` carries, in DEMO_PARAM order. */
