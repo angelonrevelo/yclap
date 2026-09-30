@@ -10,6 +10,7 @@ import {
   type PrismPoint,
   type ScreenPoint,
 } from "./building";
+import { fogAt } from "./camera-feel";
 import type { LatLon } from "./geo";
 import { planePoint, planeRing } from "./plane-cache";
 import { isCameraFrame, type Projection } from "./tile-map";
@@ -34,18 +35,6 @@ import { isCameraFrame, type Projection } from "./tile-map";
 /** How far out buildings are drawn, in metres from the camera centre. */
 const DRAW_RADIUS_M = 420;
 
-/**
- * A building whose footprint lies wholly above this line on the glass is not
- * drawn. The horizon (`horizon.tsx`, painted OVER the skyline) is opaque from
- * the top of the glass down through its haze band, which is solid from about
- * 0.29 to 0.34 of the height — and a roof only ever rises ABOVE its footprint.
- * So such a building is fully covered, yet it was still extruded, stringified
- * and written into the DOM on every camera frame: under the rake the far
- * distance piles dozens of buildings into that band. Measured cost before the
- * cut: the skyline was the single largest render on the play view (09-30 trace,
- * `bench/frame-2026-10-01-before.json`).
- */
-const HAZE_Y = 0.29;
 
 /**
  * Slack on the seen-ground radius: `centre` is where the camera is going, the
@@ -178,6 +167,8 @@ interface Drawn {
   top: PrismPoint["top"];
   face: PrismPoint["face"];
   depth: number;
+  /** 1 clear, 0 gone into the horizon (`fogAt` at the building's distance). */
+  clear: number;
   label: { x: number; y: number; width: number } | null;
 }
 
@@ -263,12 +254,12 @@ function paintSkyline(
      stroke for every edge. The walls of one prism face the camera and do not
      overlap each other, so the order among them never showed. */
   const step_of: number[] = [];
-  for (const { row, ring, top, face } of drawn) {
+  for (const { row, ring, top, face, clear } of drawn) {
     const colour = roofColour(row);
     if (face.length > 0 && style !== "shadow") {
       step_of.length = 0;
       for (const w of face) step_of.push(Math.round(w.light * LIGHT_STEP));
-      ctx.globalAlpha = style === "hollow" ? 0.34 : 1;
+      ctx.globalAlpha = (style === "hollow" ? 0.34 : 1) * clear;
       for (let i = 0; i < face.length; i += 1) {
         const step = step_of[i];
         if (step < 0) continue;
@@ -281,7 +272,7 @@ function paintSkyline(
         ctx.fillStyle = shadeOf(colour, step);
         ctx.fill();
       }
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = clear;
       /* `solid` walls had no edge; `block` and `hollow` did, at full
          strength over the hollow's see-through face. */
       if (style !== "solid") {
@@ -294,13 +285,14 @@ function paintSkyline(
     }
     ctx.beginPath();
     ringTo(ctx, style === "shadow" ? ring : top);
-    ctx.globalAlpha = style === "hollow" ? 0.92 : 1;
+    ctx.globalAlpha = (style === "hollow" ? 0.92 : 1) * clear;
     ctx.fillStyle = colour;
     ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = clear;
     ctx.strokeStyle = "rgba(96,84,64,0.42)";
     ctx.lineWidth = 0.9;
     ctx.stroke();
+    ctx.globalAlpha = 1;
   }
 }
 
@@ -313,24 +305,17 @@ export default function Skyline({
   is_night = false,
   is_shadow = true,
 }: Props) {
-  const { project, toScreen, fromScreen, meter_per_pixel, tilt_degree, width, height } = projection;
+  const { project, toScreen, meter_per_pixel, tilt_degree, width, height } = projection;
 
   /* Four figures: the exact value drifts with the walker's latitude on every
      fix, which would re-run the memo below (and repaint the canvas outside a
      camera frame) for no visible change. */
   const mpp = Number(meter_per_pixel.toPrecision(4));
 
-  /* Only as far as the ground can still be SEEN. Under the rake a ground
-     point's height on the glass depends only on how far ahead of the camera
-     it is, so nothing past the ground under the haze line (HAZE_Y) can show,
-     whichever way the camera faces. That distance — ~60 m at the street
-     camera, far more pulled back — replaces a flat 420 m, so the ring of
-     every building in a 420 m circle is no longer projected every frame just
-     to be thrown away. */
-  const reach_m = Math.max(
-    meterBetween(projection.centre, fromScreen(0, height * HAZE_Y)),
-    meterBetween(projection.centre, fromScreen(width, height * HAZE_Y)),
-  );
+  /* Only as far as the camera sees: the view distance, where the world ends
+     in the horizon (`camera-feel.ts`). Nothing past it is drawn — it would
+     stand in the sky — and nothing is projected to find that out. */
+  const reach_m = projection.view_distance_m;
   const radius_m = Number.isFinite(reach_m)
     ? Math.min(DRAW_RADIUS_M, Math.ceil((reach_m + REACH_SLACK_M) / NEAR_STEP_M) * NEAR_STEP_M)
     : DRAW_RADIUS_M;
@@ -369,7 +354,7 @@ export default function Skyline({
       if (c0.scale > 0) {
         const reach_px = ((radius_of.get(row) ?? 0) / mpp) * c0.scale * 2 + 40 + rise1 * row.height_m * c0.scale * 2;
         if (c0.x + reach_px < 0 || c0.x - reach_px > width) continue;
-        if (c0.y - reach_px > height || c0.y + reach_px < height * HAZE_Y) continue;
+        if (c0.y - reach_px > height) continue;
       }
       /* Plane points are cached per camera anchor (`plane-cache.ts`); the
          Mercator projection of every corner used to run every frame. */
@@ -392,8 +377,9 @@ export default function Skyline({
       const pad = 40 + rise1 * row.height_m;
       if (max_x < -pad || min_x > width + pad) continue;
       if (max_y < -pad || min_y > height + pad) continue;
-      /* Behind the horizon's opaque haze — see HAZE_Y. */
-      if (max_y < height * HAZE_Y) continue;
+      /* Past the view distance: gone into the horizon, never drawn over the sky. */
+      const clear = 1 - fogAt(meterBetween(projection.centre, centre_of.get(row) ?? ringCentre(row.point)), projection.view_distance_m);
+      if (clear <= 0.01) continue;
 
       /* Too close to be a building any more — see MAX_SCREEN_COVER. */
       if (
@@ -429,7 +415,7 @@ export default function Skyline({
         if (fits) label = { x: c.x, y, width: span };
       }
 
-      out.push({ row, ring, top: prism.top, face: prism.face, depth: prism.depth, label });
+      out.push({ row, ring, top: prism.top, face: prism.face, depth: prism.depth, label, clear });
     }
 
     /* Ration the names: the biggest few on screen keep theirs, the rest go

@@ -24,6 +24,12 @@ import {
   walkStopMs,
   WALK_STOP_GPS_MS,
   WALK_STOP_TICK_MS,
+  aheadScreenY,
+  cameraClipOf,
+  FOG_START,
+  fogAt,
+  viewAheadPx,
+  type CameraGeometry,
 } from "../src/camera-feel.ts";
 
 describe("glideStep — the camera eases toward the walker", () => {
@@ -212,5 +218,72 @@ describe("walkStopMs — when the walker stops stepping", () => {
     assert.equal(walkStopMs("gps"), WALK_STOP_GPS_MS);
     assert.equal(walkStopMs(undefined), WALK_STOP_GPS_MS);
     assert.ok(WALK_STOP_GPS_MS > 2000);
+  });
+});
+
+/* ── the real horizon (10-01) ─────────────────────────────────────────────── */
+
+/** The geometry `tile-map.tsx` builds for a screen, at a pitch. */
+function geometryOf(width: number, height: number, tilt_degree: number): CameraGeometry {
+  return { width, height, depth: Math.max(600, height * 1.6), tilt_degree, pivot_y: height / 2, shift_y: height * (0.7 - 0.5) };
+}
+
+const SCREEN = [
+  { name: "phone", width: 390, height: 844 },
+  { name: "laptop", width: 1366, height: 768 },
+  { name: "wide desktop", width: 1780, height: 880 },
+];
+
+describe("the real horizon", () => {
+  it("never keeps ground behind the eye, at any pitch the camera allows, on any screen", () => {
+    /* The bug (Gelo, 10-01): a ground layer reaching behind the camera, which
+       Chrome cannot bound, rasterised past its budget and dropped tiles. */
+    for (const sc of SCREEN) {
+      for (let tilt = PITCH_MIN; tilt <= PITCH_MAX; tilt += 1) {
+        const g = geometryOf(sc.width, sc.height, tilt);
+        const clip = cameraClipOf(g);
+        const eye = g.depth / Math.sin((tilt * Math.PI) / 180);
+        assert.ok(clip.behind < eye * 0.75, `${sc.name} ${tilt}°: behind ${clip.behind} vs eye ${eye}`);
+        assert.ok(aheadScreenY(g, -clip.behind) >= sc.height, `${sc.name} ${tilt}°: the bottom of the glass is covered`);
+      }
+    }
+  });
+
+  it("is a bounded box, so what the GPU rasterises is finite", () => {
+    for (const sc of SCREEN) {
+      const clip = cameraClipOf(geometryOf(sc.width, sc.height, PITCH_MAX));
+      const area = clip.half_width * 2 * (clip.ahead + clip.behind);
+      assert.ok(Number.isFinite(area) && area < 60e6, `${sc.name}: ${Math.round(area / 1e6)} Mpx`);
+    }
+  });
+
+  it("sits in the upper part of the glass at the street camera, with sky above it", () => {
+    for (const sc of SCREEN) {
+      const g = geometryOf(sc.width, sc.height, PITCH_AT_CLOSE);
+      const y = aheadScreenY(g, viewAheadPx(sc.height));
+      assert.ok(y > sc.height * 0.05 && y < sc.height * 0.3, `${sc.name}: horizon at ${Math.round((y / sc.height) * 100)} %`);
+    }
+  });
+
+  it("moves with the camera: tilting up brings it down the glass, and further ahead is always higher", () => {
+    const g = geometryOf(390, 844, 50);
+    const steep = geometryOf(390, 844, 66);
+    assert.ok(aheadScreenY(steep, viewAheadPx(844)) > aheadScreenY(g, viewAheadPx(844)));
+    let prev = Infinity;
+    for (let ahead = 0; ahead <= viewAheadPx(844); ahead += 100) {
+      const y = aheadScreenY(g, ahead);
+      assert.ok(y < prev);
+      prev = y;
+    }
+  });
+
+  it("fogs by real distance: clear until FOG_START, gone at the view distance", () => {
+    assert.equal(fogAt(10, 400), 0);
+    assert.equal(fogAt(400 * FOG_START, 400), 0);
+    assert.equal(fogAt(400, 400), 1);
+    assert.equal(fogAt(900, 400), 1);
+    const mid = fogAt(400 * (FOG_START + (1 - FOG_START) / 2), 400);
+    assert.ok(mid > 0.3 && mid < 0.7);
+    assert.equal(fogAt(1000, Infinity), 0, "the flat camera has no fog");
   });
 });

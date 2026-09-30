@@ -31,7 +31,7 @@ import { avatarFrom } from "./avatar";
 /* The proposed 3D hiker (`?avatar=hiker`, see avatar.ts): its own lazy chunk,
    so nobody who did not ask for it downloads model-viewer for the map. */
 const HikerAvatar = lazy(() => import("./hiker-avatar"));
-import { avatarPx, clampPitch, pitchForZoom, roadCasingPx, roadWidthPx, walkStopMs } from "./camera-feel";
+import { avatarPx, clampPitch, FOG_START, pitchForZoom, roadCasingPx, roadWidthPx, walkStopMs } from "./camera-feel";
 import FrameProbe from "./frame-probe";
 import { planePair, planePoint } from "./plane-cache";
 import { BUDGET, qualityLabel, type QualityPick } from "./quality";
@@ -340,16 +340,17 @@ function pickLabel(
 ): LabelPlace[] {
   const placed: LabelPlace[] = [];
   const spoken = new Set<string>();
-  const { project, toScreen, fromScreen, centre, width, height, plane_meter_per_pixel } = projection;
-  /* A pill must land below 0.3 of the glass (see the haze check below), and
-     under the rake that caps how far away its ground can be. Anything past
-     that is skipped BEFORE the projection, instead of projecting all ~90
-     sectors every camera frame to reject them one by one. */
-  const reach_m =
-    Math.max(
-      distanceMeter(centre, fromScreen(0, height * 0.3)),
-      distanceMeter(centre, fromScreen(width, height * 0.3)),
-    ) + 30;
+  const { project, toScreen, fromScreen, centre, width, height, plane_meter_per_pixel, view_distance_m, fog_start_y } = projection;
+  /* A pill goes only on clear ground — nearer than where the fog starts
+     (`FOG_START` of the view distance). Anything further is skipped BEFORE
+     the projection, instead of projecting all ~90 sectors every camera frame
+     to reject them one by one. The flat camera has no fog: the old bound. */
+  const reach_m = Number.isFinite(view_distance_m)
+    ? view_distance_m * FOG_START + 30
+    : Math.max(
+        distanceMeter(centre, fromScreen(0, height * 0.3)),
+        distanceMeter(centre, fromScreen(width, height * 0.3)),
+      ) + 30;
   const reach_px = reach_m / Math.max(plane_meter_per_pixel, 1e-6);
   const centre_px = project(centre);
   /* Every check below is in SCREEN space. Checking in plane space is what let
@@ -376,10 +377,10 @@ function pickLabel(
 
     /* Fully on screen, pill included — a clipped label is worse than none. */
     if (p.x - half_w < 6 || p.x + half_w > width - 6) continue;
-    /* Not up in the haze, where the rake makes a pill unreadable. */
-    /* Not up in the haze, and not down where the stage card and the shutter
-       live — a pill behind a button is a pill nobody reads. */
-    if (p.y < height * 0.3 || p.y > height * 0.84) continue;
+    /* Not up in the fog, where the ground is fading into the horizon, and not
+       down where the stage card and the shutter live — a pill behind a button
+       is a pill nobody reads. */
+    if (p.y < (fog_start_y ?? height * 0.3) || p.y > height * 0.84) continue;
     /* Not under the right-hand control column (weather, layers, locate,
        compass and the walker count — ~300 px tall on every screen size). */
     if (p.x + half_w > width - CONTROL_KEEP_OUT_X && p.y < CONTROL_KEEP_OUT_Y) continue;
@@ -586,8 +587,6 @@ const Ground = memo(function Ground({
   );
 });
 
-/** The top of the glass the horizon's ridge covers (`horizon.tsx`, `band_h`). */
-const RIDGE_Y = 0.2;
 /** The camera's furthest drift from its anchor (`ANCHOR_GRID` / 2, diagonal) plus a margin. */
 const ANCHOR_SLACK_PX = 1500;
 /** Cull radii are rounded up to this, so a few metres of drift keep `Ground`'s memo. */
@@ -607,16 +606,12 @@ const CULL_STEP_PX = 256;
  * anyway, so a steeper tilt gets the bigger circle it needs.
  */
 function groundCullPx(projection: Projection): number {
-  const { centre, fromScreen, width, height, plane_meter_per_pixel, meter_per_pixel } = projection;
-  const reach_m = Math.max(
-    distanceMeter(centre, fromScreen(0, height * RIDGE_Y)),
-    distanceMeter(centre, fromScreen(width, height * RIDGE_Y)),
-  );
-  const reach_px = Number.isFinite(reach_m)
-    ? (reach_m * 1.1) / Math.max(plane_meter_per_pixel, 1e-6)
-    : /* A pitch so shallow the ridge line has no ground under it: the old,
-         steepest-pitch bound. */
-      (Math.max(width, height) * 3.2 * meter_per_pixel) / Math.max(plane_meter_per_pixel, 1e-6);
+  const { plane_meter_per_pixel, meter_per_pixel, width, height, view_distance_m } = projection;
+  /* The clip box in `tile-map.tsx` already cuts the ground at the view
+     distance; geometry past it is never seen, so it is not built. */
+  const reach_px = Number.isFinite(view_distance_m)
+    ? (view_distance_m * 1.1) / Math.max(plane_meter_per_pixel, 1e-6)
+    : (Math.max(width, height) * 3.2 * meter_per_pixel) / Math.max(plane_meter_per_pixel, 1e-6);
   return Math.ceil((reach_px + ANCHOR_SLACK_PX) / CULL_STEP_PX) * CULL_STEP_PX;
 }
 
@@ -924,7 +919,9 @@ export default function PlayMap({
            cached per camera anchor (`plane-cache.ts`). */
         const toScreenFind = (point: LatLon) => {
           const at = projection.toScreen(planePoint(projection.project, point));
-          if (at.scale <= 0 || at.y < projection.height * 0.34 || at.y > projection.height + 40) return null;
+          /* Only on clear ground: not in the fog over the last stretch of
+             the view distance, and never out past it in the sky. */
+          if (at.scale <= 0 || at.y < (projection.fog_start_y ?? projection.height * 0.34) || at.y > projection.height + 40) return null;
           if (at.x < -60 || at.x > projection.width + 60) return null;
           const k = Math.min(1.3, Math.max(0.5, at.scale));
           return { x: at.x, y: at.y, k, is_front: walker_at !== null && at.y > walker_at.y };
@@ -1003,7 +1000,19 @@ export default function PlayMap({
         const label = pickLabel(label_order, projection, walker_at);
         return (
           <>
-            {/* The campus, standing up. Under the sky, over the ground, and
+            {/* The sky, ending at the real horizon — the view distance where it
+                lands on the glass, and the fog over the last stretch of ground
+                before it (`horizon.tsx`). Under the buildings and trees, which
+                fade by their own distance. Rounded, so a camera frame that
+                moves the horizon by a fraction of a pixel re-renders nothing. */}
+            <HorizonBand
+              width={projection.width}
+              height={projection.height}
+              horizon_y={projection.horizon_y === null ? null : Math.round(projection.horizon_y)}
+              fog_start_y={projection.fog_start_y === null ? null : Math.round(projection.fog_start_y)}
+              is_night={is_night}
+            />
+            {/* The campus, standing up. Over the sky and the ground, and
                 below every marker — see `skyline.tsx` on why it cannot live
                 in the tilted plane with the rest of the map. */}
             <Skyline
@@ -1029,13 +1038,6 @@ export default function PlayMap({
               walker_x={walker_at ? walker_at.x : null}
               is_night={is_night}
             />
-            {/* The rake opens a band of empty ground above the campus. A flat
-                gradient there read as "the map ends"; a horizon reads as
-                distance — see `horizon.tsx` for why its hills and towers sit
-                where they do. Painted AFTER the skyline and the trees: whatever
-                is far enough away to reach the horizon should dissolve into
-                it, not stand on top of the sky. */}
-            <HorizonBand width={projection.width} height={projection.height} bearing_degree={bearing_degree} is_night={is_night} />
 
             {/* The walker, drawn on the glass rather than in the ground.
                 It used to live inside the tilted plane and counter-rotate out

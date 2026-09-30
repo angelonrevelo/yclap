@@ -32,6 +32,10 @@ import {
   tickLerpNext,
   type Glide,
   type TickLerp,
+  aheadScreenY,
+  cameraClipOf,
+  FOG_START,
+  viewAheadPx,
 } from "./camera-feel";
 
 /**
@@ -159,6 +163,15 @@ export interface Projection {
    * you zig-zagged by that much against the ground (`script/bench-hall.mjs`).
    */
   frame_ms?: number;
+  /**
+   * The real horizon: how far ahead the raked camera draws the world, in
+   * metres (`viewAheadPx` × metres per screen pixel), and where that distance
+   * and the start of its fog land on the glass. Infinity / null on the flat
+   * camera, which has no horizon. See `camera-feel.ts` "how far the camera sees".
+   */
+  view_distance_m: number;
+  horizon_y: number | null;
+  fog_start_y: number | null;
   /** Inverse of `toScreen` then `project`: a click on the glass → lat/lon. */
   fromScreen: (x: number, y: number) => LatLon;
 }
@@ -866,6 +879,15 @@ export default function TileMap({
   );
   from_screen.current = fromScreen;
 
+  /* The real horizon and the clip box it bounds — `camera-feel.ts`. */
+  const camera_geometry = { width: size.width, height: size.height, depth, tilt_degree, pivot_y: origin_y, shift_y };
+  const view_ahead_px = viewAheadPx(size.height);
+  const clip = tilt_degree ? cameraClipOf(camera_geometry, view_ahead_px) : null;
+  const screen_mpp = meterPerPixel(view.lat, zoom) / zoom_scale;
+  const view_distance_m = tilt_degree ? view_ahead_px * screen_mpp : Infinity;
+  const horizon_y = tilt_degree ? aheadScreenY(camera_geometry, view_ahead_px) : null;
+  const fog_start_y = tilt_degree ? aheadScreenY(camera_geometry, view_ahead_px * FOG_START) : null;
+
   const projection: Projection = {
     project,
     /* Ground metres per SCREEN pixel, so it has to divide by the plane scale:
@@ -883,6 +905,9 @@ export default function TileMap({
     fromScreen,
     centre,
     frame_ms: is_glide ? glide.at : undefined,
+    view_distance_m,
+    horizon_y,
+    fog_start_y,
   };
 
   /**
@@ -903,16 +928,31 @@ export default function TileMap({
     [children, project, size.width, size.height, zoom_exact, tilt_degree, bearing_degree, plane_screen_key],
   );
 
-  /* One transform for the entire ground plane. `transformOrigin` sits below the
-   * centre so the player, who lives at the centre, stays at a comfortable
-   * screen height instead of sliding to the top as the pitch increases. */
-  const plane_style: React.CSSProperties = tilt_degree
+  /**
+   * The raked camera is two elements with a clip between them.
+   *
+   * It used to be ONE element carrying the whole transform — tilt, rotation,
+   * zoom, shift — over the whole campus's ground: at z22 a layer >30,000 px
+   * across that reached behind the camera. Chrome cannot tell which part of a
+   * perspective layer crossing the eye is visible; on a real GPU it
+   * rasterised past its budget and dropped tiles, and the ground broke into
+   * floating fragments when zoomed in (Gelo, 10-01; headless software raster
+   * never showed it).
+   *
+   * Now `camera` carries translate · perspective · tilt; inside it a box in the
+   * CAMERA's frame clips the ground to the view distance ahead and to short of
+   * the eye behind (`cameraClipOf`); inside that, `ground` carries rotation ·
+   * zoom · shift. The two compose to exactly the old transform (same pivot),
+   * so `toScreen` is unchanged — but the rasterised layer is now finite and
+   * wholly in front of the camera, and turning rotates the ground under a
+   * fixed clip rather than growing it.
+   */
+  const camera_style: React.CSSProperties = tilt_degree
     ? {
         position: "absolute",
         inset: 0,
-        transformStyle: "preserve-3d",
         transformOrigin: "50% 50%",
-        transform: `translateY(${shift_y}px) perspective(${depth}px) rotateX(${tilt_degree}deg) rotateZ(${bearing_degree}deg) scale(${zoom_scale}) translate3d(${(-shift.x).toFixed(2)}px, ${(-shift.y).toFixed(2)}px, 0)`,
+        transform: `translateY(${shift_y}px) perspective(${depth}px) rotateX(${tilt_degree}deg)`,
         willChange: "transform",
       }
     : {
@@ -924,26 +964,29 @@ export default function TileMap({
         transformOrigin: "50% 50%",
         willChange: zoom_scale === 1 ? undefined : "transform",
       };
-
-  return (
-    <div
-      ref={box_ref}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={endDrag}
-      onPointerCancel={endDrag}
-      /* A right-button drag tilts, so it must not open the browser menu. */
-      onContextMenu={onTilt ? (event) => event.preventDefault() : undefined}
-      style={{
+  const clip_box = clip
+    ? {
+        left: Math.round(origin_x - clip.half_width),
+        top: Math.round(origin_y - clip.ahead),
+        width: Math.round(clip.half_width * 2),
+        height: Math.round(clip.ahead + clip.behind),
+      }
+    : null;
+  const ground_style: React.CSSProperties | null = clip_box
+    ? {
         position: "absolute",
-        inset: 0,
-        overflow: "hidden",
-        background: ground ?? "#dfe3d8",
-        touchAction: is_interactive ? "none" : undefined,
-        cursor: is_interactive ? (drag.current ? "grabbing" : "grab") : "default",
-      }}
-    >
-      <div style={plane_style}>
+        left: -clip_box.left,
+        top: -clip_box.top,
+        width: size.width,
+        height: size.height,
+        transformOrigin: "50% 50%",
+        transform: `rotateZ(${bearing_degree}deg) scale(${zoom_scale}) translate3d(${(-shift.x).toFixed(2)}px, ${(-shift.y).toFixed(2)}px, 0)`,
+        willChange: "transform",
+      }
+    : null;
+
+  const ground_node = (
+    <>
       {!is_tile_hidden && tile_y.map((ty) =>
         tile_x.map((tx) => {
           const wrapped_x = ((tx % count) + count) % count;
@@ -975,6 +1018,35 @@ export default function TileMap({
       )}
 
       {plane_node}
+    </>
+  );
+
+  return (
+    <div
+      ref={box_ref}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      /* A right-button drag tilts, so it must not open the browser menu. */
+      onContextMenu={onTilt ? (event) => event.preventDefault() : undefined}
+      style={{
+        position: "absolute",
+        inset: 0,
+        overflow: "hidden",
+        background: ground ?? "#dfe3d8",
+        touchAction: is_interactive ? "none" : undefined,
+        cursor: is_interactive ? (drag.current ? "grabbing" : "grab") : "default",
+      }}
+    >
+      <div style={camera_style}>
+      {clip_box && ground_style ? (
+        <div data-camera-clip style={{ position: "absolute", ...clip_box, overflow: "hidden" }}>
+          <div style={ground_style}>{ground_node}</div>
+        </div>
+      ) : (
+        ground_node
+      )}
       </div>
 
       {size.width > 0 && overlay?.(projection)}

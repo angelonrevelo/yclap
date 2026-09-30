@@ -61,12 +61,21 @@ export function glideStep(state: Glide, target: number, dt_s: number, smooth_s =
 
 /** The flattest the play camera goes. Below this the ground reads as a diagram. */
 export const PITCH_MIN = 40;
-/** The steepest. Past this the horizon eats the top of a phone screen. */
-export const PITCH_MAX = 64;
+/**
+ * The steepest. Past this the horizon comes a third of the way down a phone
+ * screen and the ground under the walker flattens to a strip.
+ */
+export const PITCH_MAX = 68;
 
-/** Pitch at the widest play zoom and at the closest one. */
-export const PITCH_AT_WIDE = 46;
-export const PITCH_AT_CLOSE = 58;
+/**
+ * Pitch at the widest play zoom and at the closest one. 62 at the street
+ * camera (was 58): with the world ending at its real view distance, 62° puts
+ * the horizon about an eighth of the way down the glass with sky above it, as
+ * GO does; at 58° the sky was a sliver. Pulled back the camera looks down more
+ * and the horizon leaves the screen — also as GO does.
+ */
+export const PITCH_AT_WIDE = 48;
+export const PITCH_AT_CLOSE = 62;
 const WIDE_ZOOM = 19;
 const CLOSE_ZOOM = 22;
 
@@ -251,4 +260,93 @@ export const WALK_STOP_GPS_MS = 2500;
 
 export function walkStopMs(source: string | undefined): number {
   return source === "play" || source === "demo" ? WALK_STOP_TICK_MS : WALK_STOP_GPS_MS;
+}
+
+/* ── how far the camera sees: the real horizon ──────────────────────────── */
+
+/**
+ * How far ahead the raked camera draws the world, in camera-frame pixels (the
+ * plane after rotation and zoom, before the tilt), as a multiple of the view
+ * height.
+ *
+ * This is the play view's horizon, and it is a DISTANCE, not a band on the
+ * glass. The ground is drawn out to it, fades into the sky's horizon colour
+ * over its last stretch (`FOG_START`), and the sky begins where it lands on
+ * screen — the way Pokémon GO ends its world at the edge of what it has
+ * loaded. Until 10-01 a painted panorama (hills, a skyline) and a haze band
+ * sat over a fixed 20–42 % of the screen whatever the camera did, covering
+ * ground that was really only 100–400 m away.
+ *
+ * Fixed in camera pixels, so the distance in metres follows the zoom: about
+ * 110 m at the street camera, about 900 m pulled back — zoomed out, you see
+ * further, as you would.
+ *
+ * It also bounds what the GPU has to rasterise. The ground used to be one
+ * CSS-3D layer spanning the whole campus, >30,000 px at z22, reaching behind
+ * the camera; Chrome cannot work out which part of such a layer is visible,
+ * rasterised past its memory budget and dropped tiles — the ground broke into
+ * fragments at the close camera (Gelo, 10-01). `cameraClipOf` keeps the layer
+ * finite and entirely in front of the eye.
+ */
+export const VIEW_AHEAD_PER_HEIGHT = 3.6;
+/** Fog starts at this share of the view distance and is complete at its end. */
+export const FOG_START = 0.55;
+/** Never keep ground closer to the eye than this share of the eye's own distance. */
+const BEHIND_SAFE = 0.7;
+
+export interface CameraGeometry {
+  width: number;
+  height: number;
+  /** CSS perspective, px. */
+  depth: number;
+  tilt_degree: number;
+  /** Screen y of the plane's pivot (the walker), before the tilt. */
+  pivot_y: number;
+  /** Post-projection shift down the glass, px (`PLAYER_SCREEN_Y`). */
+  shift_y: number;
+}
+
+/** Camera-frame pixels ahead of the pivot the world is drawn to. */
+export function viewAheadPx(height: number): number {
+  return Math.max(600, height * VIEW_AHEAD_PER_HEIGHT);
+}
+
+/** Screen y of a ground point `ahead_px` straight ahead of the pivot (negative = behind). */
+export function aheadScreenY(g: CameraGeometry, ahead_px: number): number {
+  const rad = (g.tilt_degree * Math.PI) / 180;
+  const scale = g.depth / (g.depth + ahead_px * Math.sin(rad));
+  return g.pivot_y - ahead_px * Math.cos(rad) * scale + g.shift_y;
+}
+
+/**
+ * The box the ground is clipped to, in the camera frame, relative to the pivot:
+ * `ahead` px forward, `behind` px back, `half_width` px either side.
+ *
+ * Behind stops short of the eye (`BEHIND_SAFE` of depth / sin tilt — where a
+ * point would land behind the camera) and needs to go no further than the
+ * bottom of the glass. Sideways it covers the view at the far end, which is
+ * where the frustum is widest. Rotation happens INSIDE this box (the ground
+ * turns under a camera-fixed clip), so turning never needs a larger box.
+ */
+export function cameraClipOf(g: CameraGeometry, ahead_px = viewAheadPx(g.height)): { ahead: number; behind: number; half_width: number } {
+  const rad = (g.tilt_degree * Math.PI) / 180;
+  const sin = Math.sin(rad);
+  const cos = Math.cos(rad);
+  const eye_px = sin > 1e-6 ? g.depth / sin : Infinity;
+  /* The ground under the bottom edge of the glass. */
+  const bottom = g.height - g.shift_y - g.pivot_y;
+  const bottom_scale = 1 + (bottom * Math.tan(rad)) / g.depth;
+  const behind_needed = bottom_scale > 0.05 ? bottom / (cos * bottom_scale) : eye_px;
+  const behind = Math.max(0, Math.min(eye_px * BEHIND_SAFE, behind_needed + 160));
+  const far_scale = g.depth / (g.depth + ahead_px * sin);
+  const half_width = (g.width / 2) / Math.max(far_scale, 0.02) + 96;
+  return { ahead: ahead_px, behind, half_width };
+}
+
+/** Fog at a ground distance: 0 clear, 1 gone into the horizon. Smoothstep over the last stretch. */
+export function fogAt(distance_m: number, view_m: number): number {
+  if (!(view_m > 0) || !Number.isFinite(view_m)) return 0;
+  const t = (distance_m - view_m * FOG_START) / (view_m * (1 - FOG_START));
+  const c = Math.max(0, Math.min(1, t));
+  return c * c * (3 - 2 * c);
 }

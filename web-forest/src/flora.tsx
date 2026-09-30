@@ -1,5 +1,6 @@
 import { memo, useMemo, type ReactNode } from "react";
 import { byDepth, isCovering } from "./depth";
+import { fogAt } from "./camera-feel";
 import type { LatLon } from "./geo";
 import { planePoint } from "./plane-cache";
 import type { Projection } from "./tile-map";
@@ -188,7 +189,7 @@ export default function Flora({
   tree_max,
   tree_radius_m,
 }: Props) {
-  const { project, toScreen, width, height, meter_per_pixel } = projection;
+  const { project, toScreen, width, height, meter_per_pixel, view_distance_m } = projection;
 
   /* The tufts no find sits on. Finds change when the world rotates, not per
      frame — but this check ran every frame for every nearby tuft against
@@ -216,7 +217,7 @@ export default function Flora({
     return clear.filter((i) => Math.abs(tuft[i].lat - lat) <= reach_lat && Math.abs(tuft[i].lon - lon) <= reach_lon);
   }, [clear, tuft, cell_x, cell_y, cell_lat, cell_lon, tree_radius_m]);
 
-  const drawn: { key: number; x: number; y: number; w: number; h: number; shape: Shape; dark: boolean }[] = [];
+  const drawn: { key: number; x: number; y: number; w: number; h: number; shape: Shape; dark: boolean; clear: number }[] = [];
   const lat_span = tree_radius_m / 111_320;
   const lon_span = lat_span / Math.cos((centre.lat * Math.PI) / 180);
   for (const i of candidate) {
@@ -232,11 +233,13 @@ export default function Flora({
     const px_per_m = at.scale / Math.max(meter_per_pixel, 0.001);
     const h = Math.min(260, Math.max(10, h_m * px_per_m));
     const w = h * aspectOf(shape);
-    /* 0.36: the raked plane's far edge sits at about a third of the glass,
-       under the haze. Past it there is no ground to stand a tree on, and one
-       drawn there floats in the sky. */
-    if (at.x + w / 2 < 0 || at.x - w / 2 > width || at.y < height * 0.36 || at.y - h > height) continue;
-    drawn.push({ key: i, x: at.x, y: at.y, w, h, shape, dark: t.dark });
+    if (at.x + w / 2 < 0 || at.x - w / 2 > width || at.y - h > height) continue;
+    /* Past the view distance there is no ground to stand a tree on — the
+       world has ended in the horizon — and over its last stretch a tree fades
+       into the fog with the ground under it (`fogAt`). */
+    const clear = 1 - fogAt(meterBetween(centre, t), view_distance_m);
+    if (clear <= 0.01) continue;
+    drawn.push({ key: i, x: at.x, y: at.y, w, h, shape, dark: t.dark, clear });
   }
   /* The cap keeps the NEAREST trees (lowest on the glass), not whichever the
      scatter happened to list first — a far tree is the one nobody misses. */
@@ -295,7 +298,7 @@ export default function Flora({
             transform: `translate(${(d.x - d.w / 2).toFixed(1)}px, ${(d.y - d.h).toFixed(1)}px) scale(${k.toFixed(4)})`,
             zIndex: zOf(d.y),
             /* A distant tree is also a hazier one. */
-            opacity: is_over_walker || is_over_find ? 0.4 : Math.min(1, 0.55 + (d.y / height) * 0.6),
+            opacity: is_over_walker || is_over_find ? 0.4 * d.clear : d.clear,
           }}
         >
           <Glyph shape={d.shape} dark={d.dark} is_night={is_night} />

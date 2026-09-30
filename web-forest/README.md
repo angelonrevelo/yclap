@@ -679,10 +679,28 @@ built). In short:
   bonus: the +40 pts is the hunt's own, paid only when the species is logged.
   The hunt tab flies the map to the hunt's finds (the species itself if the
   window spawned it, else the finds in its area), not to the area's label.
-- **Horizon** (`src/horizon.tsx`). A 360° panorama keyed to camera bearing, with
-  the Sierra Madre foothills east, Ortigas and Cubao south, and QC west. Shapes
-  are schematic, directions are real. At night there are stars, lit windows
-  and a blue dusk grade.
+- **The horizon is a real distance** (`src/horizon.tsx`, `camera-feel.ts`
+  "how far the camera sees"). The camera draws the world out to a view distance
+  fixed in camera pixels (`VIEW_AHEAD_PER_HEIGHT` × the screen height: about
+  110 m at the street camera, about 900 m pulled back), the ground and
+  everything on it fade into the sky's horizon colour over its last 45 %
+  (`fogAt`), and the sky begins where that distance lands on the glass
+  (`Projection.horizon_y`). Tilt up and the horizon comes down; zoom out and
+  you see further; at the pulled-back camera the view looks down and the sky
+  leaves the screen — as in Pokémon GO. Until 10-01 this was a painted
+  panorama (schematic hills and a skyline) over a haze band pinned at 20–42 %
+  of the screen, covering ground that was really 100–400 m away. Buildings,
+  trees, sector names and finds are culled and faded by the same distance.
+- **The ground is clipped in the camera's own frame** (`tile-map.tsx`). The
+  raked camera is `camera` (translate · perspective · tilt) › a clip box ›
+  `ground` (rotate · zoom · shift); together they are exactly the old single
+  transform, so every projection is unchanged. The clip keeps the rasterised
+  layer to the view distance ahead and short of the eye behind
+  (`cameraClipOf`). The old single layer spanned the whole campus — >30,000 px
+  at z22, reaching behind the camera — and on a real GPU Chrome dropped its
+  tiles: walking and turning at a steep pitch, the ground broke into a smeared
+  band and the walker, trees and dock vanished in 7 of 20 frames of a stress
+  run; the clipped camera had 0 of 20 on desktop and 0 of 10 on a phone.
 - **Paths are metres, not pixels.** Roads draw ≈6 m wide with a dashed centre
   line and footpaths ≈2 m, so they are ribbons at z22 instead of hairlines.
 - **Standing flora** (`src/flora.tsx`). Cartoon trees and bushes on the same

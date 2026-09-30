@@ -288,6 +288,16 @@ Source: [`docs/brainstorm/magisphere-institution/`](docs/brainstorm/magisphere-i
 | P0 | The university's DPO has a Child Privacy Impact Assessment to sign before the pilot | NPC child-transparency FAQ (Q9); no CPIA in `docs/` | `docs/spec/cpia-draft.md` | Tier 3 (governance): PASS iff the DPO has the draft and a decision on the live-visibility default is recorded | **Draft written** (`docs/spec/cpia-draft.md`). It found two things the app's own copy did not say: shared finds, player rows and accounts have **no retention limit**, and an account backup holds journal **notes and exact positions** ("notes never leave this phone" is untrue for a signed-in backup). Its kill switch is real: `HALL_OFF=1` refuses every live-position route on both servers (LAN smoke: 503 `hall_off`, `/world` still 200). **Not done:** a DPO has not seen it; the controller question is open |
 | P0 | If personal data leaks, the team knows who tells the NPC, the students and their parents within 72 hours | NPC Circular 16-03; FAQ Q19; no runbook in `docs/` | `docs/spec/breach-runbook.md` | Tier 3 (governance): PASS iff the runbook names each role and the 72-hour clock | **Written** (`docs/spec/breach-runbook.md`) with the 72-hour clock, parents' notice for minors and a containment step that now exists (`HALL_OFF`). Both containment switches exist: `HALL_OFF=1` (live positions) and `WRITE_OFF=1` (sync, sign-up, Google sign-in, account saves; reads and reports stay open). LAN smoke: sync 503, sign-up 503, `/world` 200, report 201. **Not done:** the role names are blank until the pilot; the drill has not been run |
 
+
+### 2026-10-01 — the real horizon, and the close camera that broke
+
+Gelo, 10-01: "i really dont like this artifical horizon, in the real pokemon go, they use the actual distance as the horizon", and "its still super buggy when super zoomed in, like the whole app will break, every thing unrenders".
+
+| Behavior | Surface | PASS iff | Status |
+|----------|---------|----------|--------|
+| The horizon is where the world really ends: ground drawn out to a view distance, fading by real distance into the sky, which begins where that distance lands on screen. No painted hills, skyline or haze band | Play view (`horizon.tsx`, `camera-feel.ts`, `tile-map.tsx`); buildings, trees, labels and finds fade and cull by the same distance | `camera-feel.test.ts` "the real horizon": at the street camera the horizon lands 5–30 % down a phone, a laptop and a wide desktop; tilting up brings it down; fog is 0 before `FOG_START` and 1 at the view distance | Shipped. Close pitch 58° → 62° (max 64° → 68°) so the sky shows as in GO |
+| The close camera never breaks: no ground, walker, trees or dock dropping out while walking and turning at a steep pitch | Play view | Stress run (max tilt, walking and turning, 1 frame/s, pixel check for the dock and the walker): old build 7 of 20 frames broken, new build 0 of 20 on a 1780×880 desktop and 0 of 10 on a 390×844 phone. `camera-feel.test.ts`: the clip never reaches behind the eye at any pitch 40–68° on any screen (red with the guard removed), and its area is bounded | Shipped. **Not done:** tested with Chrome on this machine's RTX 2060 (headless, GPU compositing on); not yet on a physical phone or a low-end laptop's integrated GPU |
+
 ---
 
 ## How to read this file
