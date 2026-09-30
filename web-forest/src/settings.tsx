@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { photoCreditList } from "./taxon-photo";
+import { buildIdOf } from "./report";
 import { RADIUS } from "./ui";
 import { sticker } from "./asset/kit";
 import {
@@ -525,6 +526,9 @@ export default function SettingsScreen({
                   </tbody>
                 </Table>
               </div>
+              {/* Which build this phone is running — the same id a problem report
+                  carries. The reveal script checks it before doors open. */}
+              <p style={{ marginTop: 10, fontSize: 11, color: TONE.faint }}>Build {buildIdOf()}</p>
             </>
           )}
 

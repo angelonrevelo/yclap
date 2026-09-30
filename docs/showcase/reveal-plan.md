@@ -148,6 +148,8 @@ The owner's ask is that every edge case is met, from every side. Rows are groupe
 | Case | Status |
 |------|--------|
 | Live URL serves an old build | **open until Oct 10 deploy**. Gate G8 |
+| The presenter's cue card describes the 09-26 build | done: [`reveal-script.md`](reveal-script.md) leads with a use (route to a clinic), then biodiversity, then the game, with never-say lines and the settings to decide beforehand |
+| Nobody can tell on the day which build a phone runs | done: Settings → Why shows "Build <commit>.<date>" |
 | Venue wifi blocks WebSockets | done (09-25): falls back to polling. The interpolation delay adapts (3.6 s when polling) |
 | Venue wifi is one public IP for every phone | done (09-26): 40 sockets per IP at the edge |
 | Projector needs a fixed camera | done: `?zoom=`, `?bearing=`, `?time=`, `?weather=`, `?boot=off` |
