@@ -258,6 +258,11 @@ const server = createServer(async (req, res) => {
     }
     return;
   }
+  if (multiplayer.isHallOff(process.env.HALL_OFF) && multiplayer.HALL_POSITION_PATH.has(url.pathname)) {
+    res.writeHead(503, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify(multiplayer.HALL_OFF_BODY));
+    return;
+  }
   /* Its own page only. CORS headers go to an allowed page on another origin
      (another port of this LAN host, or HALL_PAGE_ORIGIN) and nobody else —
      not even on the preflight. */
@@ -370,6 +375,11 @@ const server = createServer(async (req, res) => {
 });
 
 server.on("upgrade", (req, socket) => {
+  /* HALL_OFF: refuse the socket too; the phone falls back to polling, gets 503 and shows no hall. */
+  if (multiplayer.isHallOff(process.env.HALL_OFF)) {
+    socket.destroy();
+    return;
+  }
   if (!hall.upgrade(req, socket)) socket.destroy();
 });
 
@@ -389,7 +399,7 @@ server.listen(PORT, () => {
   const via = key.plantnet ? "Pl@ntNet" : key.inat && key.is_inat_permitted ? "iNaturalist (permitted)" : null;
   console.log(`  identify POST /inat/identify · ${via ?? "no service (503 needs_token → the phone offers Seek)"}${key.inat && !key.is_inat_permitted ? " · INAT_API_TOKEN ignored without INAT_CV_PERMITTED=1" : ""}`);
 }
-  console.log(`  hall    WS /live/socket · POST /live/pose · GET /live/walker`);
+  console.log(`  hall    WS /live/socket · POST /live/pose · GET /live/walker${multiplayer.isHallOff(process.env.HALL_OFF) ? " · OFF (HALL_OFF=1)" : ""}`);
   console.log(`  report  POST /report · console /mod/api/* ${moderation.isOn ? "on (MOD_TOKEN set)" : "OFF (no MOD_TOKEN)"}`);
   if (pageOrigin.length) console.log(`  pages   HALL_PAGE_ORIGIN ${pageOrigin.join(", ")}`);
 });

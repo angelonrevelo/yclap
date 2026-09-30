@@ -111,7 +111,10 @@ The owner's ask is that every edge case is met, from every side. Rows are groupe
 | A student under 18 | **open**: under 18 is a child for the NPC, there is no age of digital consent, and a CPIA is required before launch (blueprint §13). Draft CPIA + visibility default before the pilot (ROADMAP P0) |
 | Identify calls iNaturalist's visual API, which is fee-based by permission | done in code: Pl@ntNet first, iNaturalist only with `INAT_CV_PERMITTED=1`, else Seek. **Open:** a Pl@ntNet key |
 | Species-card photos carry no licence or photographer | done: licence + attribution on every photo; an all-rights-reserved Teak photo and a no-derivatives Dao photo removed |
-| Nobody knows who notifies whom after a data breach | **open**: breach runbook (ROADMAP P0) |
+| Nobody knows who notifies whom after a data breach | done: `docs/spec/breach-runbook.md` (roles to fill) |
+| Shared finds, player rows and accounts are kept forever | **open**: CPIA F-1 proposes one term + 30 days; needs the DPO |
+| An account backup holds journal notes and exact positions, though the app says notes never leave the phone | **open**: CPIA F-2 recommends stripping notes |
+| No way to switch live positions off quickly | done: `HALL_OFF=1` |
 | Anyone in the hall could become anyone (raw `player_id` in `/world`) | done: ae2f43d |
 | A hidden student is still named by "X logged Y near you" | done: hidden walkers' finds read "A walker" and are never called out |
 | A threatened species' shared find publishes where it grows | done: shared without coordinates, never called out (curated list only) |

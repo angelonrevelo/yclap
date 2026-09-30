@@ -26,6 +26,25 @@ import { isLocationWithheld, walkerIdOf, type WorldFind } from "./campus-world.t
 import { distanceMeter, isInsideCampus, type FixSource, type LatLon } from "./geo.ts";
 import { nameNoticeOf, safeNameOf, type NameRefusal } from "./name-filter.ts";
 
+/**
+ * The campus's switch for live positions: HALL_OFF=1 on the Worker (a secret or
+ * var) or in the LAN server's env. With it on, /live/socket, /live/pose and
+ * /live/walker answer 503 `hall_off` and no position is taken or shown; shared
+ * finds, accounts and reports carry on. It is the kill switch the Child Privacy
+ * Impact Assessment and the breach runbook name (docs/spec/cpia-draft.md,
+ * breach-runbook.md): no signed CPIA, or a breach, means the hall is off.
+ */
+export const HALL_POSITION_PATH = new Set(["/live/socket", "/live/pose", "/live/walker"]);
+
+export function isHallOff(value: string | undefined | null): boolean {
+  return value?.trim() === "1";
+}
+
+export const HALL_OFF_BODY = {
+  error: "hall_off",
+  detail: "The live map is switched off on this campus. Finds, the journal and reports still work.",
+} as const;
+
 /** A walker not heard from in this long is gone, on the server and on glass. */
 export const STALE_MS = 60_000;
 /** Never send a pose more often than this. */

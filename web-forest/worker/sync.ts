@@ -16,7 +16,7 @@ import {
 } from "../src/campus-world.ts";
 import { AccountService, isAccountPath, type AccountEnv, type SqlValue } from "./account.ts";
 import { handleIdentify, IDENTIFY_PATH, identifyKeyOf } from "./inat.ts";
-import { freshFindOf } from "../src/multiplayer.ts";
+import { freshFindOf, HALL_OFF_BODY, HALL_POSITION_PATH, isHallOff } from "../src/multiplayer.ts";
 import { EDGE_REPORT_IP_PER_HOUR } from "../src/moderation.ts";
 import { safeNameOf, nameNoticeOf } from "../src/name-filter.ts";
 import { LIVE_PATH, LiveHall } from "./live-socket.ts";
@@ -37,6 +37,8 @@ export interface Env extends AccountEnv {
    * another host than this Worker (a preview deploy pointing `?sync=` here).
    */
   HALL_PAGE_ORIGIN?: string;
+  /** "1" switches live positions off campus-wide (`isHallOff`). */
+  HALL_OFF?: string;
   /**
    * The moderator console's password (`wrangler secret put MOD_TOKEN`, 16+
    * characters). Unset or short: /mod/api/* answers 404 and the console is off.
@@ -166,6 +168,7 @@ export class CampusWorld {
       return new Response(null, { status: 204, headers: this.cors() });
     }
 
+    if (isHallOff(this.env.HALL_OFF) && HALL_POSITION_PATH.has(url.pathname)) return this.json(HALL_OFF_BODY, 503);
     const live = await this.hall.handle(request, url);
     if (live) return live;
 

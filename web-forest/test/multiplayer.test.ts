@@ -6,8 +6,10 @@ import { CAMPUS_CENTER, distanceMeter } from "../src/geo.ts";
 import {
   applyHall,
   freshFindOf,
+  HALL_POSITION_PATH,
   headingAt,
   INTERP_DELAY_MS,
+  isHallOff,
   isMoving,
   SAMPLE_MAX,
   SEND_MOVE_PLAY_M,
@@ -423,4 +425,13 @@ test("openHall falls back to polling when the socket never opens", async () => {
   } finally {
     link.close();
   }
+});
+
+test("HALL_OFF switches off exactly the routes that carry live positions", () => {
+  assert.equal(isHallOff("1"), true);
+  assert.equal(isHallOff(" 1 "), true);
+  assert.equal(isHallOff("0"), false);
+  assert.equal(isHallOff(undefined), false);
+  assert.deepEqual([...HALL_POSITION_PATH].sort(), ["/live/pose", "/live/socket", "/live/walker"]);
+  assert.equal(HALL_POSITION_PATH.has("/live"), false, "the shared-finds feed is not a position");
 });
