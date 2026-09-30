@@ -45,6 +45,24 @@ export const HALL_OFF_BODY = {
   detail: "The live map is switched off on this campus. Finds, the journal and reports still work.",
 } as const;
 
+/**
+ * WRITE_OFF=1 — the breach runbook's second switch (docs/spec/breach-runbook.md).
+ * Every route that STORES something new about a student is refused: a sync,
+ * a sign-up, a Google sign-in, an account save. Reads keep working, and a
+ * problem report stays open, because during an incident a report is how people
+ * tell you what they saw.
+ */
+export function isWriteRoute(method: string, pathname: string): boolean {
+  if (method === "POST" && (pathname === "/sync" || pathname === "/auth/signup")) return true;
+  if (method === "PUT" && pathname === "/account/save") return true;
+  return pathname === "/auth/google" || pathname === "/auth/google/callback";
+}
+
+export const WRITE_OFF_BODY = {
+  error: "write_off",
+  detail: "Saving is paused on this campus while something is checked. Your journal on this phone is safe.",
+} as const;
+
 /** A walker not heard from in this long is gone, on the server and on glass. */
 export const STALE_MS = 60_000;
 /** Never send a pose more often than this. */

@@ -18,7 +18,7 @@ import {
 } from "../src/campus-world.ts";
 import { AccountService, isAccountPath, type AccountEnv, type SqlValue } from "./account.ts";
 import { handleIdentify, IDENTIFY_PATH, identifyKeyOf } from "./inat.ts";
-import { freshFindOf, HALL_OFF_BODY, HALL_POSITION_PATH, isHallOff } from "../src/multiplayer.ts";
+import { freshFindOf, HALL_OFF_BODY, HALL_POSITION_PATH, isHallOff, isWriteRoute, WRITE_OFF_BODY } from "../src/multiplayer.ts";
 import { EDGE_REPORT_IP_PER_HOUR } from "../src/moderation.ts";
 import { safeNameOf, nameNoticeOf } from "../src/name-filter.ts";
 import { LIVE_PATH, LiveHall } from "./live-socket.ts";
@@ -43,6 +43,8 @@ export interface Env extends AccountEnv {
   HALL_OFF?: string;
   /** Days the shared world keeps a find (`pruneCampus`); default 150. */
   RETENTION_DAY?: string;
+  /** "1" refuses every route that stores something new (`isWriteRoute`) — the breach switch. */
+  WRITE_OFF?: string;
   /**
    * The moderator console's password (`wrangler secret put MOD_TOKEN`, 16+
    * characters). Unset or short: /mod/api/* answers 404 and the console is off.
@@ -55,6 +57,9 @@ const SYNC_PATH = new Set(["/world", "/sync", "/live", "/health", "/join", "/par
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    if (isHallOff(env.WRITE_OFF) && isWriteRoute(request.method, url.pathname)) {
+      return new Response(JSON.stringify(WRITE_OFF_BODY), { status: 503, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
+    }
     /* Accounts and identify answer a page on another origin (a preview deploy,
        a LAN build pointed here) with its own origin + credentials, never `*`. */
     if (isAccountCorsPath(url.pathname)) {

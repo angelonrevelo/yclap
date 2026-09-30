@@ -10,6 +10,7 @@ import {
   headingAt,
   INTERP_DELAY_MS,
   isHallOff,
+  isWriteRoute,
   isMoving,
   SAMPLE_MAX,
   SEND_MOVE_PLAY_M,
@@ -434,4 +435,15 @@ test("HALL_OFF switches off exactly the routes that carry live positions", () =>
   assert.equal(isHallOff(undefined), false);
   assert.deepEqual([...HALL_POSITION_PATH].sort(), ["/live/pose", "/live/socket", "/live/walker"]);
   assert.equal(HALL_POSITION_PATH.has("/live"), false, "the shared-finds feed is not a position");
+});
+
+test("WRITE_OFF refuses exactly the routes that store something new, and keeps reports open", () => {
+  assert.equal(isWriteRoute("POST", "/sync"), true);
+  assert.equal(isWriteRoute("POST", "/auth/signup"), true);
+  assert.equal(isWriteRoute("PUT", "/account/save"), true);
+  assert.equal(isWriteRoute("GET", "/auth/google/callback"), true);
+  assert.equal(isWriteRoute("GET", "/world"), false);
+  assert.equal(isWriteRoute("GET", "/account/save"), false, "reading a backup still works");
+  assert.equal(isWriteRoute("POST", "/report"), false, "a report is how people say what they saw");
+  assert.equal(isWriteRoute("POST", "/auth/login"), false);
 });

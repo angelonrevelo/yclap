@@ -223,6 +223,11 @@ function cors(res) {
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host ?? "localhost"}`);
+  if (multiplayer.isHallOff(process.env.WRITE_OFF) && multiplayer.isWriteRoute(req.method ?? "GET", url.pathname)) {
+    res.writeHead(503, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify(multiplayer.WRITE_OFF_BODY));
+    return;
+  }
   /* A page on another origin (Path A: the build on :4177, this on :8788) signs
      in and identifies here. Its preflight gets its own origin + credentials;
      anyone else's gets nothing, so the browser refuses it. */

@@ -15,7 +15,7 @@ For the pilot team. A breach is any unauthorised access to, or loss or disclosur
 
 ## Hour 0–4: contain
 
-1. **Stop live positions:** `npx wrangler secret put HALL_OFF` with the value `1` (LAN box: restart with `HALL_OFF=1`). `/live/socket`, `/live/pose` and `/live/walker` then answer 503 `hall_off`, and phones show no hall. **Stopping sign-ups and `/sync` has no switch yet** (ROADMAP § 2026-10-01, breach runbook row). Until it exists, containment for those routes means rotating secrets and revoking sessions (step 2).
+1. **Stop live positions:** `npx wrangler secret put HALL_OFF` with the value `1` (LAN box: restart with `HALL_OFF=1`). `/live/socket`, `/live/pose` and `/live/walker` then answer 503 `hall_off`, and phones show no hall. Then **stop new writes:** `WRITE_OFF=1` the same way. `/sync`, sign-up, Google sign-in and account saves answer 503 `write_off`, while reads and problem reports keep working.
 2. **Rotate every secret:**
    - `MOD_TOKEN` (every `name:token`);
    - `PLANTNET_API_KEY`;
