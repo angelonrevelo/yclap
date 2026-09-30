@@ -1,4 +1,4 @@
-import { memo, type ReactNode } from "react";
+import { memo, useMemo, type ReactNode } from "react";
 import { byDepth, isCovering } from "./depth";
 import type { LatLon } from "./geo";
 import type { Projection } from "./tile-map";
@@ -32,12 +32,14 @@ export interface Tuft extends LatLon {
   is_shrub_only: boolean;
 }
 
-/** Only this far from the camera centre is worth a billboard. */
-const DRAW_RADIUS_M = 140;
 /** Clear ground left around each find and the walker, in metres. */
 const CLEAR_RADIUS_M = 6;
-/** No more than this many at once: a phone, not a forest renderer. */
-const MAX_DRAWN = 90;
+/**
+ * The candidate list is re-cut only when the camera has moved this far, not
+ * every frame. The draw radius and the tree cap come from the graphics tier
+ * (`BUDGET` in `quality.ts`): 140 m and 90 trees at full, less at lite.
+ */
+const CANDIDATE_STEP_M = 25;
 
 type Shape = "tree" | "bush" | "tall";
 
@@ -154,35 +156,90 @@ interface Props {
   find: readonly GlassFind[];
   projection: Projection;
   centre: LatLon;
-  /** Finds and the walker: nothing is painted on top of these. */
+  /** Every find's ground spot: no tree is painted on top of one. Should be a
+   *  stable array (memoised by the caller) — it keys a memo here. */
   keep_clear: readonly LatLon[];
+  /** The walker's ground spot, kept clear the same way. */
+  walker: LatLon | null;
   walker_screen_y: number | null;
   walker_x: number | null;
   is_night: boolean;
+  /** Most trees drawn at once. */
+  tree_max: number;
+  /** How far from the camera a tree is still drawn, metres. */
+  tree_radius_m: number;
 }
 
-export default function Flora({ tuft, find, projection, centre, keep_clear, walker_screen_y, walker_x, is_night }: Props) {
+/** The glyph's box at a drawn height of 100 px; everything else is a scale of it. */
+const GLYPH_BASE_H = 100;
+const aspectOf = (shape: Shape) => (shape === "bush" ? 1.7 : shape === "tall" ? 0.5 : 0.9);
+
+export default function Flora({
+  tuft,
+  find,
+  projection,
+  centre,
+  keep_clear,
+  walker,
+  walker_screen_y,
+  walker_x,
+  is_night,
+  tree_max,
+  tree_radius_m,
+}: Props) {
   const { project, toScreen, width, height, meter_per_pixel } = projection;
+
+  /* The tufts no find sits on. Finds change when the world rotates, not per
+     frame — but this check ran every frame for every nearby tuft against
+     every find (`meterBetween`, ~300 ms of a 10 s walk at 4× CPU throttle in
+     the 09-30 trace). Now it runs when the finds change. */
+  const clear = useMemo(() => {
+    const out: number[] = [];
+    for (let i = 0; i < tuft.length; i += 1) {
+      if (!keep_clear.some((k) => meterBetween(k, tuft[i]) < CLEAR_RADIUS_M)) out.push(i);
+    }
+    return out;
+  }, [tuft, keep_clear]);
+
+  /* The tufts near the camera, re-cut on a coarse grid so a glide frame only
+     walks the near ones, not the whole campus. */
+  const cell_lat = CANDIDATE_STEP_M / 111_320;
+  const cell_lon = cell_lat / Math.cos((centre.lat * Math.PI) / 180);
+  const cell_y = Math.round(centre.lat / cell_lat);
+  const cell_x = Math.round(centre.lon / cell_lon);
+  const candidate = useMemo(() => {
+    const reach_lat = (tree_radius_m + CANDIDATE_STEP_M) / 111_320;
+    const lat = cell_y * cell_lat;
+    const lon = cell_x * cell_lon;
+    const reach_lon = reach_lat / Math.cos((lat * Math.PI) / 180);
+    return clear.filter((i) => Math.abs(tuft[i].lat - lat) <= reach_lat && Math.abs(tuft[i].lon - lon) <= reach_lon);
+  }, [clear, tuft, cell_x, cell_y, cell_lat, cell_lon, tree_radius_m]);
+
   const drawn: { key: number; x: number; y: number; w: number; h: number; shape: Shape; dark: boolean }[] = [];
-  const lat_span = DRAW_RADIUS_M / 111_320;
+  const lat_span = tree_radius_m / 111_320;
   const lon_span = lat_span / Math.cos((centre.lat * Math.PI) / 180);
-  for (let i = 0; i < tuft.length; i += 1) {
+  for (const i of candidate) {
     const t = tuft[i];
     if (Math.abs(t.lat - centre.lat) > lat_span || Math.abs(t.lon - centre.lon) > lon_span) continue;
-    if (keep_clear.some((k) => meterBetween(k, t) < CLEAR_RADIUS_M)) continue;
+    if (walker && meterBetween(walker, t) < CLEAR_RADIUS_M) continue;
     const at = toScreen(project(t));
     if (at.scale <= 0) continue;
     const shape = shapeOf(t, i);
     const h_m = heightOf(shape, t);
     const px_per_m = at.scale / Math.max(meter_per_pixel, 0.001);
     const h = Math.min(260, Math.max(10, h_m * px_per_m));
-    const w = h * (shape === "bush" ? 1.7 : shape === "tall" ? 0.5 : 0.9);
+    const w = h * aspectOf(shape);
     /* 0.36: the raked plane's far edge sits at about a third of the glass,
        under the haze. Past it there is no ground to stand a tree on, and one
        drawn there floats in the sky. */
     if (at.x + w / 2 < 0 || at.x - w / 2 > width || at.y < height * 0.36 || at.y - h > height) continue;
     drawn.push({ key: i, x: at.x, y: at.y, w, h, shape, dark: t.dark });
-    if (drawn.length >= MAX_DRAWN) break;
+  }
+  /* The cap keeps the NEAREST trees (lowest on the glass), not whichever the
+     scatter happened to list first — a far tree is the one nobody misses. */
+  if (drawn.length > tree_max) {
+    drawn.sort((a, b) => b.y - a.y);
+    drawn.length = tree_max;
   }
   /* Painter's order, trees and finds together: further up the glass is
      further away, and paints first. */
@@ -216,16 +273,24 @@ export default function Flora({ tuft, find, projection, centre, keep_clear, walk
         /* And the same for a find: a tree nearer the camera than a find, and
            over it, lets it show through. */
         const is_over_find = find.some((f) => isCovering(d, f));
+        const k = d.h / GLYPH_BASE_H;
         return (
         <div
           key={d.key}
           aria-hidden
           style={{
             position: "absolute",
-            left: d.x - d.w / 2,
-            top: d.y - d.h,
-            width: d.w,
-            height: d.h,
+            left: 0,
+            top: 0,
+            /* A FIXED box moved and sized by a 2D transform, not left/top/
+               width/height. Those four changed on every tree every camera
+               frame, and each change is a layout; a transform is not. 2D on
+               purpose: `translate3d` would give each of up to 90 trees its own
+               compositor layer to re-raster as it scales. */
+            width: GLYPH_BASE_H * aspectOf(d.shape),
+            height: GLYPH_BASE_H,
+            transformOrigin: "0 0",
+            transform: `translate(${(d.x - d.w / 2).toFixed(1)}px, ${(d.y - d.h).toFixed(1)}px) scale(${k.toFixed(4)})`,
             zIndex: zOf(d.y),
             /* A distant tree is also a hazier one. */
             opacity: is_over_walker || is_over_find ? 0.4 : Math.min(1, 0.55 + (d.y / height) * 0.6),

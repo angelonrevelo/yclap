@@ -253,6 +253,8 @@ export default function SettingsScreen({
   icon = {},
   onJoin,
   plan,
+  quality_label,
+  is_setup_first = false,
 }: {
   is_desktop: boolean;
   preference: Preference;
@@ -270,10 +272,18 @@ export default function SettingsScreen({
    * long-form plan keeps a home at the bottom of the Path panel.
    */
   plan?: ReactNode;
+  /** What the map's badge says right now, e.g. "Lite graphics · auto, measured". */
+  quality_label?: string;
+  /** Open on Setup — the map's graphics badge sends people here to change it. */
+  is_setup_first?: boolean;
 }) {
   /* Back from Google sign-in (?account= / ?account_error=) → open on the account. */
   const [panel, setPanel] = useState<PanelKey>(() =>
-    typeof location !== "undefined" && /[?&]account(_error)?=/.test(location.search) ? "walker" : "why",
+    is_setup_first
+      ? "setup"
+      : typeof location !== "undefined" && /[?&]account(_error)?=/.test(location.search)
+        ? "walker"
+        : "why",
   );
   const [name_draft, setNameDraft] = useState(preference.walker_name || walker_name);
   const [join_draft, setJoinDraft] = useState("");
@@ -664,6 +674,45 @@ export default function SettingsScreen({
                     Block is a low building, a few metres of wall on every one, so it looks built without
                     hiding much. Full walls look most solid but are drawn above the map, so a building can
                     cover a path that is actually in front of it. Shadow never does.
+                  </Td>
+                </tr>
+                <tr>
+                  <Td is_head>
+                    Graphics
+                    <div style={{ display: "flex", gap: 4, marginTop: 7 }}>
+                      {(["auto", "full", "lite"] as const).map((choice) => (
+                        <button
+                          key={choice}
+                          type="button"
+                          aria-pressed={preference.quality === choice}
+                          onClick={() => onPreference({ ...preference, quality: choice })}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            padding: "5px 2px",
+                            borderRadius: 7,
+                            border: `1.5px solid ${preference.quality === choice ? TONE.green : TONE.edge}`,
+                            background: preference.quality === choice ? TONE.green_soft : "transparent",
+                            color: preference.quality === choice ? "var(--mg-green-text)" : TONE.dim,
+                            fontWeight: 800,
+                            fontSize: 10.5,
+                            textTransform: "capitalize",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {choice}
+                        </button>
+                      ))}
+                    </div>
+                  </Td>
+                  <Td>
+                    Lite draws fewer trees, no birds or drifting clouds, and no soft shadow under the
+                    buildings, so a slower phone or laptop walks smoothly. The map, the finds and your walker
+                    are the same in both. Auto starts full and switches to lite if this device measures slow
+                    while you walk.
+                    {quality_label && (
+                      <div style={{ marginTop: 5, fontWeight: 700, color: TONE.text }}>Now: {quality_label}</div>
+                    )}
                   </Td>
                 </tr>
               </tbody>

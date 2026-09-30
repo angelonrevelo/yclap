@@ -106,12 +106,26 @@ export default function Joystick({ onSteer, is_on, bottom = 178 }: Props) {
     };
   }, [is_on, release]);
 
+  /**
+   * The stick's centre, read ONCE when the thumb lands.
+   *
+   * It used to be `getBoundingClientRect()` on every pointer move. Every move
+   * follows a frame in which the map changed half the DOM, so each read forced
+   * a synchronous layout in the middle of input handling — layout thrash,
+   * ~290 ms of a 10 s walk at 4× CPU throttle in the 09-30 trace. The stick
+   * does not move while it is held, so the centre cannot go stale.
+   */
+  const centre = useRef<{ x: number; y: number } | null>(null);
+
   const track = useCallback(
     (client_x: number, client_y: number) => {
-      const rect = base_ref.current?.getBoundingClientRect();
-      if (!rect) return;
-      const dx = client_x - (rect.left + rect.width / 2);
-      const dy = client_y - (rect.top + rect.height / 2);
+      if (!centre.current) {
+        const rect = base_ref.current?.getBoundingClientRect();
+        if (!rect) return;
+        centre.current = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      }
+      const dx = client_x - centre.current.x;
+      const dy = client_y - centre.current.y;
       const len = Math.hypot(dx, dy);
       const clamp = len > THROW_PX ? THROW_PX / len : 1;
       const kx = dx * clamp;
@@ -138,6 +152,7 @@ export default function Joystick({ onSteer, is_on, bottom = 178 }: Props) {
       onPointerDown={(event) => {
         if (pointer_id.current !== null) return;
         pointer_id.current = event.pointerId;
+        centre.current = null;
         (event.target as Element).setPointerCapture?.(event.pointerId);
         setHeld(true);
         /* The stick is the one control you use without looking at it, so the

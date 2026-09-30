@@ -1,3 +1,5 @@
+import { parseQualityChoice, type QualityChoice } from "./quality.ts";
+
 /**
  * Device preferences.
  *
@@ -20,6 +22,8 @@ export interface Preference {
   is_restricted_shown: boolean;
   /** Name shown to other walkers on the live campus. */
   walker_name: string;
+  /** Graphics tier: auto (measured on this device), or pinned full / lite. See `quality.ts`. */
+  quality: QualityChoice;
 }
 
 export const PREFERENCE_DEFAULT: Preference = {
@@ -27,6 +31,7 @@ export const PREFERENCE_DEFAULT: Preference = {
   skyline_style: "block",
   is_restricted_shown: true,
   walker_name: "",
+  quality: "auto",
 };
 
 const KEY = "field-guide.preference";
@@ -58,6 +63,7 @@ export function readPreference(storage: Storage | null = safeStorage()): Prefere
           ? parsed.is_restricted_shown
           : PREFERENCE_DEFAULT.is_restricted_shown,
       walker_name: typeof parsed.walker_name === "string" ? parsed.walker_name.slice(0, 40) : "",
+      quality: parseQualityChoice(parsed.quality),
     };
   } catch {
     return { ...PREFERENCE_DEFAULT };

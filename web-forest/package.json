@@ -14,7 +14,8 @@
     "sync": "node --experimental-strip-types server/sync-server.mjs --port 8788",
     "deploy": "npm run build && wrangler deploy",
     "audit:model": "node script/audit-model.mjs",
-    "audit:location": "node --experimental-strip-types script/audit-location.ts"
+    "audit:location": "node --experimental-strip-types script/audit-location.ts",
+    "bench:frame": "node script/bench-frame.mjs"
   },
   "dependencies": {
     "@google/model-viewer": "^4.3.1",
