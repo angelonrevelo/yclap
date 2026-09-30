@@ -105,7 +105,7 @@ The owner's ask is that every edge case is met, from every side. Rows are groupe
 | GPS wobble standing still makes you shuffle on others' screens | done — GPS keeps the 3 m threshold |
 | Off campus: the GPS fix is refused | done (09-26) — switches to the stick and says why |
 | Cheap laptop or phone lags | done in part: graphics tier + frame fixes (6× CPU 16.6 → 33 fps). **Open:** zoomed-out view at ~4 fps on a mid-range phone profile; real-device check |
-| Avatar limbs come apart | lane `reveal/rig` |
+| Avatar limbs come apart | done: 128 models fixed at the generator, audit gates every keyframe; hiker prototype behind `?avatar=hiker` for Aleij |
 | A player's display name is offensive | done: 040db72, server-side filter on hall, sync and accounts |
 | Someone follows or harasses another walker on the map | done: hide / report a walker (040db72), and Settings → "Hide me from the live map" (cfce666). **Open:** who should see whom by default — Q-safety |
 | A student under 18 | **open**. The app asks no age. Positions are shared by display name only, but the university's policy on minors in location features is unknown |
@@ -131,6 +131,7 @@ The owner's ask is that every edge case is met, from every side. Rows are groupe
 | Data retention for reports | done: 30 days (`docs/spec/moderation.md`) |
 | The Worker and the tests are not typechecked (`tsconfig` includes `src/` only) | done for the Worker: `tsconfig.worker.json` is in `npm run build` / `npm run typecheck` and found one real type gap (Durable Object SQLite rows can be BLOBs). **Open:** the tests: a test tsconfig (Node + Workers types, `allowJs`) reports 35 errors, mostly loose fakes; fix after the rig and module lanes merge |
 | Lane worktrees share one `.vite` cache and break each other's dev servers | done: `MAGISPHERE_VITE_CACHE` |
+| Screenshot and bench runs leave a ~90 MB Chrome profile each and filled the disk | done: `shot.mjs` and `bench-hall.mjs` delete theirs |
 | Institution wants its own campus | done: module registry with per-campus config and a trail template (`docs/spec/campus-module.md`) |
 | Official emergency data | **blocked** on the DRRM office / CFMO. Until then, OSM-sourced and labelled not official |
 

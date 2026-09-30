@@ -28,6 +28,7 @@
  * species' scientific name.
  */
 import { APP, FLOWERS, FUNGI_CAPS, grad, shade, mix, hash32, hex } from "./kit.mjs";
+import { posedPart, surfaceGap } from "../audit-model.mjs";
 
 const TAU = Math.PI * 2;
 const ink = APP.ink;
@@ -744,41 +745,30 @@ class Plant {
     for (const b of box) for (let k = 0; k < 3; k += 1) { lo[k] = Math.min(lo[k], b.lo[k]); hi[k] = Math.max(hi[k], b.hi[k]); }
     const tol = Math.max(1e-6, Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) / 2) * slack;
 
-    /* A grid at the tolerance, so contact is a neighbour-cell scan rather than
-       every vertex in the model against every other. */
-    const grid = new Map();
-    const key = (a, b, c) => `${a},${b},${c}`;
-    const cellOf = (q) => [Math.floor(q[0] / tol), Math.floor(q[1] / tol), Math.floor(q[2] / tol)];
-    pt.forEach((s, i) => {
-      for (const q of s) {
-        const c = cellOf(q);
-        const k = key(c[0], c[1], c[2]);
-        let bucket = grid.get(k);
-        if (!bucket) { bucket = []; grid.set(k, bucket); }
-        bucket.push([q, i]);
+    /* Islands are decided on SURFACES, by the rig audit's own test
+       (`surfaceGap` in script/audit-model.mjs): an edge crossing a triangle,
+       one part inside another, or nearest surfaces within `tol`. The vertex
+       replay this used to run could not see two surfaces crossing between
+       vertex rings, and at its 5% slack it left every gap under 5% of the
+       plant open — maesa's top spray and lucuma's crown among them (the rig
+       lane's 09-30 audit, Gelo `5:42`: "make sure none of the limbs are
+       disconnected"). The sampled points above still pick WHERE a stem goes. */
+    const solid = node.map((n) => {
+      const v = [];
+      const index = [];
+      for (const part of n.parts) {
+        const base = v.length / 3;
+        for (const q of part.positions) v.push((q[0] + n.at[0]) * sx, (q[1] + n.at[1]) * sy, (q[2] + n.at[2]) * sz);
+        for (const t of part.indices) index.push(base + t[0], base + t[1], base + t[2]);
       }
+      return posedPart(Float64Array.from(v), Uint32Array.from(index), n.name);
     });
-
     const parent = node.map((_, i) => i);
     const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
-    const tol2 = tol * tol;
-    let island = node.length;
-    outer:
-    for (const [, bucket] of grid) {
-      for (const [q, i] of bucket) {
-        const c = cellOf(q);
-        for (let dx = -1; dx <= 1; dx += 1) for (let dy = -1; dy <= 1; dy += 1) for (let dz = -1; dz <= 1; dz += 1) {
-          const other = grid.get(key(c[0] + dx, c[1] + dy, c[2] + dz));
-          if (!other) continue;
-          for (const [r, j] of other) {
-            const ri = find(i), rj = find(j);
-            if (ri === rj) continue;
-            if ((q[0] - r[0]) ** 2 + (q[1] - r[1]) ** 2 + (q[2] - r[2]) ** 2 > tol2) continue;
-            parent[ri] = rj;
-            island -= 1;
-            if (island === 1) break outer;
-          }
-        }
+    for (let i = 0; i < node.length; i += 1) {
+      for (let j = i + 1; j < node.length; j += 1) {
+        if (find(i) === find(j)) continue;
+        if (surfaceGap(solid[i], solid[j], tol) <= tol) parent[find(i)] = find(j);
       }
     }
     const group = new Map();
@@ -904,8 +894,11 @@ class Plant {
      * hair and therefore the scales, and at a tolerance tighter than the gate's
      * own so that hair cannot reopen anything.
      */
+    /* 1% of the half-diagonal: under the rig audit's 1.5% joint slack
+       (`CONNECT.joint_slack`), for the same reason the old 5% sat under the
+       old 6% gate. */
     for (let pass = 0; pass < 4; pass += 1) {
-      if (this.repairConnection(f.sx, H, f.sz, 0.05) <= 1) break;
+      if (this.repairConnection(f.sx, H, f.sz, 0.01) <= 1) break;
       f = fit();
     }
     this.body.scale = [f.sx, H, f.sz];
@@ -1333,11 +1326,143 @@ function grow(k, col, style) {
   k.cute.breathe(k.root, { k: style.breathe ?? 0.02 });
   const swingable = p.node.filter((n) => n !== p.spineNode && n.parts.length);
   const step = Math.max(1, Math.ceil(swingable.length / 8));
+  const swaying = pickSway(p, swingable.filter((_, i) => i % step === 0));
+  hingeAtContact(p, swaying);
   swingable.forEach((n, i) => {
-    if (i % step) return;
+    if (i % step || !swaying.includes(n)) return;
     k.cute.swing(n, { axis: i % 2 ? "x" : "z", amp: style.sway ?? 0.05, dur: 2.1 + (i % 5) * 0.3, phase: (i % 4) * 0.4 });
   });
   return p;
+}
+
+/**
+ * Which of the candidate parts may sway without tearing the plant apart.
+ *
+ * A part that rotates about its own contact keeps THAT contact, and nothing
+ * else. So it may sway only if (a) it touches something that stays still —
+ * the hinge needs a fixed thing to sit on — and (b) nothing that stays still
+ * is held on through it. Polyscias swayed a leaf that touched only another
+ * swaying leaf, and a guinea grass swayed the one blade a whole clump of still
+ * blades hung from; both came apart mid-clip in the rig audit (Gelo 09-30
+ * `5:42`). Candidates are taken greedily in their existing order, so a plant
+ * whose sway was already sound keeps exactly the clip it had.
+ *
+ * Contact is the rig audit's own exact surface test, at the 1% slack the hole
+ * repair uses.
+ */
+function pickSway(p, candidate) {
+  const node = p.node.filter((n) => n.parts.length);
+  const scale = p.body.scale ?? [1, 1, 1];
+  const solid = node.map((n) => {
+    const v = [];
+    const index = [];
+    for (const part of n.parts) {
+      const base = v.length / 3;
+      for (const q of part.positions) v.push((q[0] + n.at[0]) * scale[0], (q[1] + n.at[1]) * scale[1], (q[2] + n.at[2]) * scale[2]);
+      for (const t of part.indices) index.push(base + t[0], base + t[1], base + t[2]);
+    }
+    return posedPart(Float64Array.from(v), Uint32Array.from(index), n.name);
+  });
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (const b of solid) for (let k = 0; k < 3; k += 1) { lo[k] = Math.min(lo[k], b.lo[k]); hi[k] = Math.max(hi[k], b.hi[k]); }
+  const tol = Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) / 2 * 0.01;
+  const touch = node.map(() => []);
+  for (let i = 0; i < node.length; i += 1) {
+    for (let j = i + 1; j < node.length; j += 1) {
+      if (surfaceGap(solid[i], solid[j], tol) <= tol) { touch[i].push(j); touch[j].push(i); }
+    }
+  }
+  const at = new Map(node.map((n, i) => [n, i]));
+  const sway = new Set();
+  /* Are the still parts (everything outside `moving`) one connected piece? */
+  const stillWhole = (moving) => {
+    const still = node.map((_, i) => i).filter((i) => !moving.has(i));
+    if (still.length <= 1) return true;
+    const seen = new Set([still[0]]);
+    const stack = [still[0]];
+    while (stack.length) {
+      for (const j of touch[stack.pop()]) if (!moving.has(j) && !seen.has(j)) { seen.add(j); stack.push(j); }
+    }
+    return seen.size === still.length;
+  };
+  for (const n of candidate) {
+    const i = at.get(n);
+    if (i === undefined) continue;
+    const moving = new Set([...sway, i]);
+    /* Every swaying part, not just this one: a part that qualified by touching
+       a neighbour loses its hinge the moment that neighbour starts to sway. */
+    if (![...moving].every((m) => touch[m].some((j) => !moving.has(j)))) continue;
+    if (!stillWhole(moving)) continue;
+    sway.add(i);
+  }
+  return node.filter((_, i) => sway.has(i));
+}
+
+/**
+ * Move each swaying part's hinge to where it actually TOUCHES the plant.
+ *
+ * A slot node's origin is wherever `place()` left it: on the axis, at the
+ * height that lands the part's box centre in its band. That is not the joint.
+ * `place()` squashes a tall part about its own centre, which slides the
+ * pedicel's base off the origin, and a canopy spray that straddles the axis
+ * was never hinged at its contact at all — so the idle sway swung it about a
+ * point up to half a part away, and the part that met the stem at rest walked
+ * off it mid-clip (Gelo 09-30 `5:42`: "make sure that none of the limbs are
+ * disconnected"). The rig audit caught it as maesa's and gardenia's top
+ * sprays lifting clear of the shrub.
+ *
+ * The new hinge is the part's vertex nearest to anything that does NOT sway.
+ * A point on both surfaces does not move when the part rotates about it, so
+ * the contact holds at every frame by construction. The move is exact: the
+ * node shifts by the pivot and its geometry by minus the pivot, so the rest
+ * pose is unchanged (to float rounding).
+ *
+ * Distances are compared in body space (the body's scale is anisotropic), but
+ * the pivot is written in node space, where the rotation happens; a point
+ * fixed by the rotation is fixed under the scale that follows it too.
+ */
+function hingeAtContact(p, swaying) {
+  const moving = new Set(swaying);
+  const scale = p.body.scale ?? [1, 1, 1];
+  const toBody = (n, q) => [(q[0] + n.at[0]) * scale[0], (q[1] + n.at[1]) * scale[1], (q[2] + n.at[2]) * scale[2]];
+  const still = [];
+  for (const n of p.node) {
+    if (moving.has(n) || !n.parts.length) continue;
+    for (const part of n.parts) for (const q of part.positions) still.push(toBody(n, q));
+  }
+  if (!still.length) return;
+  /* Bucket what stays put, so each swaying vertex looks only nearby. */
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (const q of still) for (let k = 0; k < 3; k += 1) { lo[k] = Math.min(lo[k], q[k]); hi[k] = Math.max(hi[k], q[k]); }
+  const cell = Math.max(1e-4, Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) * 0.04);
+  const key = (x, y, z) => `${x},${y},${z}`;
+  const grid = new Map();
+  for (const q of still) {
+    const k = key(Math.floor(q[0] / cell), Math.floor(q[1] / cell), Math.floor(q[2] / cell));
+    if (!grid.has(k)) grid.set(k, []);
+    grid.get(k).push(q);
+  }
+  for (const n of swaying) {
+    let best = Infinity, pivot = null;
+    for (let ring = 1; ring <= 4 && !pivot; ring *= 2) {
+      for (const part of n.parts) {
+        for (const q of part.positions) {
+          const w = toBody(n, q);
+          const cx = Math.floor(w[0] / cell), cy = Math.floor(w[1] / cell), cz = Math.floor(w[2] / cell);
+          for (let dx = -ring; dx <= ring; dx += 1) for (let dy = -ring; dy <= ring; dy += 1) for (let dz = -ring; dz <= ring; dz += 1) {
+            for (const r of grid.get(key(cx + dx, cy + dy, cz + dz)) ?? []) {
+              const d = (w[0] - r[0]) ** 2 + (w[1] - r[1]) ** 2 + (w[2] - r[2]) ** 2;
+              if (d < best) { best = d; pivot = q; }
+            }
+          }
+        }
+      }
+    }
+    if (!pivot) continue; // nothing still within reach: leave the hinge where it was
+    const shift = [...pivot];
+    n.at = [n.at[0] + shift[0], n.at[1] + shift[1], n.at[2] + shift[2]];
+    for (const part of n.parts) part.positions = part.positions.map((q) => [q[0] - shift[0], q[1] - shift[1], q[2] - shift[2]]);
+  }
 }
 
 /* ══ the flower a species is actually known for ════════════════════════════

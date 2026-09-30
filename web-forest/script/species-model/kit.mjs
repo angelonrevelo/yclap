@@ -70,6 +70,25 @@ export function grad(top, bottom, lo = -0.35, hi = 0.35) {
 }
 
 /**
+ * Move the part just added to `node` by `offset`, AFTER its own scale and
+ * rotation.
+ *
+ * `Cute.add` composes S·R·T, so an `at` handed to it is applied FIRST and then
+ * scaled by the part's radii and turned by its rotation. For the primitives
+ * below that `at` is the offset from a `pivot` to the part's centre — and a
+ * leaf 0.075 out from its stem, scaled by its own 0.11 × 0.016 × 0.07 radii,
+ * landed 0.008 out: centred on the stem. That is why the seedling's two leaves
+ * read as one flat disc round its stalk rather than a pair reaching out, and
+ * why a pivoted part was never where its caller put it. A zero offset (every
+ * un-pivoted part — the whole species pack) is untouched, byte for byte.
+ */
+function shiftLast(node, offset) {
+  if (!offset.some((v) => v !== 0)) return;
+  const part = node.parts[node.parts.length - 1];
+  part.positions = part.positions.map((q) => [q[0] + offset[0], q[1] + offset[1], q[2] + offset[2]]);
+}
+
+/**
  * High-level builder bound to one Cute. Every helper creates node(s) for you
  * and returns the main node so animation can target it.
  */
@@ -105,7 +124,8 @@ export class Kit {
     const origin = pivot ?? at;
     const offset = [at[0] - origin[0], at[1] - origin[1], at[2] - origin[2]];
     const node = this.cute.node(name, { parent, at: origin });
-    this.cute.add(node, icosphere(Math.max(1, s)), { at: offset, rotX, rotY, rotZ, scale, color, colorFn, smooth });
+    this.cute.add(node, icosphere(Math.max(1, s)), { rotX, rotY, rotZ, scale, color, colorFn, smooth });
+    shiftLast(node, offset);
     return node;
   }
 
@@ -119,7 +139,8 @@ export class Kit {
     const origin = pivot ?? at;
     const offset = [at[0] - origin[0], at[1] - origin[1], at[2] - origin[2]];
     const node = this.cute.node(name, { parent, at: origin });
-    this.cute.add(node, discGeo(r, seg), { at: offset, rotX, rotY, rotZ, color, colorFn, smooth });
+    this.cute.add(node, discGeo(r, seg), { rotX, rotY, rotZ, color, colorFn, smooth });
+    shiftLast(node, offset);
     return node;
   }
 
@@ -133,7 +154,8 @@ export class Kit {
     const origin = pivot ?? at;
     const offset = [at[0] - origin[0], at[1] - origin[1], at[2] - origin[2]];
     const node = this.cute.node(name, { parent, at: origin });
-    this.cute.add(node, cylinderGeo(r, r2 ?? r, h, seg, { exactSeg, capBase, capTop }), { at: offset, rotX, rotY, rotZ, color, colorFn, smooth });
+    this.cute.add(node, cylinderGeo(r, r2 ?? r, h, seg, { exactSeg, capBase, capTop }), { rotX, rotY, rotZ, color, colorFn, smooth });
+    shiftLast(node, offset);
     return node;
   }
 
@@ -142,7 +164,8 @@ export class Kit {
     const origin = pivot ?? at;
     const offset = [at[0] - origin[0], at[1] - origin[1], at[2] - origin[2]];
     const node = this.cute.node(name, { parent, at: origin });
-    this.cute.add(node, capsuleGeo(r, h, seg, cap), { at: offset, rotX, rotY, rotZ, color, colorFn, smooth });
+    this.cute.add(node, capsuleGeo(r, h, seg, cap), { rotX, rotY, rotZ, color, colorFn, smooth });
+    shiftLast(node, offset);
     return node;
   }
 
@@ -151,7 +174,8 @@ export class Kit {
     const origin = pivot ?? at;
     const offset = [at[0] - origin[0], at[1] - origin[1], at[2] - origin[2]];
     const node = this.cute.node(name, { parent, at: origin });
-    this.cute.add(node, torusArcGeo(R, r, a0, a1, segs, { exactSeg }), { at: offset, rotX, rotY, rotZ, color, colorFn, smooth });
+    this.cute.add(node, torusArcGeo(R, r, a0, a1, segs, { exactSeg }), { rotX, rotY, rotZ, color, colorFn, smooth });
+    shiftLast(node, offset);
     return node;
   }
 

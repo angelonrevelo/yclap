@@ -140,13 +140,32 @@ and deliberately **not** precached — but its 422 kB manifest
 and without it offline the "Out right now" strip renders nothing at all.
 
 `npm run audit:model` (`script/audit-model.mjs`) checks every `.glb` the app
-can ask for — the manifest plus the five character slots — as files: glTF 2.0
-binary, chunks and accessors in range, at least one mesh, not over 1.5 MB, not
-zero-size, standing on y=0, manifest `bytes` matching disk, every animation
-channel aimed at a node the scene draws (`dangling_track`), no orphans or
-duplicates. `test/model-audit.test.ts` runs it, so a regression fails
-`npm test`. Current state: 1,103 files, all clean, median 2,452 triangles,
-largest 114 kB. On 09-25 it found 110 models floating over or sunk through the
+can ask for — the manifest plus the five character slots and the proposed
+hiker — as files: glTF 2.0 binary, chunks and accessors in range, at least one
+mesh, not over 1.5 MB, not zero-size, standing on y=0, manifest `bytes`
+matching disk, every animation channel aimed at a node the scene draws
+(`dangling_track`), no orphans or duplicates. `test/model-audit.test.ts` runs
+the file checks, so a regression fails `npm test`. Current state: 1,104 files,
+all clean, median 2,444 triangles, largest 114 kB.
+
+The same command also checks every model's **joints** (`disconnected`, about
+90 s; `--fast` skips it): every mesh part must touch the part it hangs from,
+and the whole model must be one piece, in the rest pose **and** at every
+keyframe of every clip, because the clip is what a viewer sees. Contact is
+decided on surfaces, exactly (`surfaceGap`: an edge crossing a triangle, one
+part inside another, or nearest surfaces within 1.5% of the model's size), not
+on nearby vertices, which could not see a six-sided stem passing through its
+soil. The species look-audit and the flora builder's hole repair use the same
+test. Gelo's 09-30 note ("his limbs are not connected") is where it came from:
+it found 128 of 1,102 models apart (118 at rest, 10 only mid-clip) — the
+sapling companion's face floating 14% of the model in front of its trunk,
+butterfly abdomens as beads with gaps, a jumping spider's third eye pair off
+the side of its head, the angelfish's tail fin, a slug's keel off the end of
+its foot, and plant parts whose idle sway hinged a part away from where it
+met the plant. All 1,104 pass now. `test/rig.test.ts` runs it on the
+generator's own output (a well-hinged limb passes; a mid-limb hinge fails in
+motion; a floating part fails at rest) and on every character file plus a
+fixed sample of species, which on the old pack fails 12 of 37. On 09-25 it found 110 models floating over or sunk through the
 ground plane (a cat 14 cm up, spiders' legs through the floor); the builder now
 measures the rest pose and wraps such a model in a `ground` node, using the
 same `groundOffset` rule the audit checks. Flying poses (butterflies, moths,
@@ -158,6 +177,14 @@ root in the scene. A flowering tree's blossoms sit on the crown's surface at
 their own height rather than at the footprint's full reach, which had hung
 top-of-crown flowers in the air on a bare stick (the Narra's stray branch).
 How the models LOOK is a separate gate: `node script/species-model/audit.mjs`.
+In the flora builder a swaying part is hinged where it touches the plant, and
+only sways if it touches something still and nothing still hangs from it; the
+kit's pivoted parts (`pivot:`) land where the caller put them (the seedling's
+two leaves used to collapse onto its stalk as one disc).
+
+The gallery can pin a clip for inspection: `&t=<seconds>` freezes it,
+`&clip=walk` picks a clip, `&yaw=`/`&pitch=`/`&zoom=` place the camera, and
+`&file=character-hiker.glb` loads any model under `/model/`.
 
 The character's four stages render through a self-hosted `<model-viewer>`
 (`src/character-model.tsx`, lazy-loaded) and their `.glb` files are precached,
@@ -167,6 +194,18 @@ Each stage is framed on the figure's height, not the whole bounding box
 its soil disc. No viewer shows model-viewer's loading bar (it left a dark
 strip on the pin sheet and the species card). The stage reveal headlines the
 stage its sticker shows ("Sprout") and names the cosmetic it unlocked under it.
+
+**The hiker (proposal, opt-in: `?avatar=hiker`).** A walking 3D body for the
+map (`public/model/character-hiker.glb`, built with the stages by
+`script/build-character-model.mjs` from the brand's hiker sticker): the Sprout's
+yellow body and sprout, a pack and bedroll, arms, legs and boots, with an
+`idle` and a `walk` clip. Every limb is a capsule whose end cap is centred on
+its hinge and every hinge sits inside the part it hangs from, so no pose can
+separate a joint. With the param set, your own walker on the play map is the
+hiker in a lazy `<model-viewer>` (`src/hiker-avatar.tsx`) that walks while you
+move, idles when you stop, and turns to face your heading; the sticker stands
+in while it loads. Other players still show as stickers. It is not the
+default: the design is Aleij's to accept, redraw or reject.
 
 **The 3D species card** (`src/species-card.tsx`, lazy-loaded; pure half in
 `src/species-card-core.ts`) is where the pack is actually shown. It opens from
@@ -645,10 +684,11 @@ built). In short:
 
 Projector parameters: `?boot=off` skips the boot, `?weather=storm|rain|heat|clear|night`
 pins a reading (the card says it is pinned), `?time=day|night` pins the sky,
-`?at=lat,lon` sets the stick start, and `?skyline=block|shadow|hollow|solid`
-sets the building style. These (and `?bearing`, `?zoom`, `?seed`, `?sync`,
-`?view`, `?probe`) survive every in-app route change: all navigation goes
-through `navigateTo` in `src/nav.ts`.
+`?at=lat,lon` sets the stick start, `?skyline=block|shadow|hollow|solid`
+sets the building style, and `?avatar=hiker` puts the proposed 3D hiker on the
+map in place of the stage sticker. These (and `?bearing`, `?zoom`, `?seed`,
+`?sync`, `?view`, `?probe`) survive every in-app route change: all navigation
+goes through `navigateTo` in `src/nav.ts`.
 
 ## Two map views
 

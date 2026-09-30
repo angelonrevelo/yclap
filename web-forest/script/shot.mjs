@@ -14,7 +14,7 @@
  * Usage: node script/shot.mjs <url> <out.png> [width] [height] [wait_ms]
  */
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -93,4 +93,12 @@ console.log(`${out}  ${width}x${height}`);
 
 ws.close();
 chrome.kill();
+/* Each profile is ~90 MB. Left behind, a day of lanes taking screenshots
+   filled a 476 GB disk on 10-01. Chrome holds it for a moment after the kill. */
+await sleep(1500);
+try {
+  rmSync(profile, { recursive: true, force: true });
+} catch {
+  /* still locked; the OS temp sweep will get it */
+}
 process.exit(0);
