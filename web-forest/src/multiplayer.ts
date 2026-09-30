@@ -29,12 +29,35 @@ import { distanceMeter, isInsideCampus, type FixSource, type LatLon } from "./ge
 export const STALE_MS = 60_000;
 /** Never send a pose more often than this. */
 export const SEND_MIN_MS = 1_000;
-/** Moving at least this far is worth a pose... */
+/** Moving at least this far on GPS is worth a pose — less is fix noise... */
 export const SEND_MOVE_M = 3;
+/** ...while a stick or demo walk has no noise, so any real step is. */
+export const SEND_MOVE_PLAY_M = 0.25;
 /** ...and standing still still says "here" this often, so nobody goes stale. */
 export const SEND_HEARTBEAT_MS = 10_000;
-/** Longest glide between two poses. A late pose should not crawl. */
-export const GLIDE_MAX_MS = 1_500;
+/**
+ * How far behind real time a remote walker is drawn, over a socket. It has to
+ * cover one send interval (1–1.25 s: the send check runs every 250 ms against a
+ * 1 s throttle) PLUS the worst arrival jitter a shared hall wifi adds (~400 ms),
+ * so there is a real pose on each side of the moment being drawn. 1,250 ms was
+ * measured short: a pose 400 ms late left a 150 ms stall every few seconds
+ * (`multiplayer.test.ts`, "09-30 jitter"). 1.7 s behind is ~2 m at walking pace.
+ */
+export const INTERP_DELAY_MS = 1_700;
+/** The same, when polling: a phone posts and reads the roster only every 2 s. */
+export const INTERP_DELAY_POLL_MS = 3_600;
+/**
+ * A gap between two poses longer than this was the walker standing still, not
+ * walking slowly: the move is drawn over the last `STEP_MS` of it. Above the
+ * 2 s poll cadence, or a polled walk would read as a string of pauses.
+ */
+export const SEGMENT_MAX_MS = 2_600;
+/** How long the step after a pause takes to draw. */
+export const STEP_MS = 2_000;
+/** Poses kept per walker. Ten seconds at one a second, with room to spare. */
+export const SAMPLE_MAX = 12;
+/** A sender clock that jumps by more than this against ours restarts the timeline. */
+export const CLOCK_JUMP_MS = 10_000;
 /** A jump longer than this is a teleport (a joined walker code), not a walk. */
 export const SNAP_M = 150;
 /** A find this close to you gets called out on the play view. */
@@ -86,6 +109,14 @@ export interface Pose {
   source: FixSource;
   /** Server receive time, ms epoch. */
   at: number;
+  /**
+   * The SENDER's clock when the pose left, ms. Receivers pace the walk on this
+   * rather than on arrival, because arrival carries the network's jitter and
+   * the sender's clock does not. Only ever compared with other poses from the
+   * same sender, so a phone whose clock is wrong is still drawn right. Absent
+   * from a build before 09-30; `at` stands in.
+   */
+  sent?: number;
 }
 
 /** What a phone sends. `player_id` is hashed on arrival and never echoed. */
@@ -97,6 +128,7 @@ export interface PoseInput {
   lat: number;
   lon: number;
   source: FixSource;
+  sent?: number;
 }
 
 export type HallMessage =
@@ -121,7 +153,9 @@ export function sanitizePose(raw: unknown, now: number): Pose | null {
   if (!isInsideCampus({ lat, lon })) return null;
   const level = Number(r.level);
   const source = SOURCE.has(r.source as FixSource) ? (r.source as FixSource) : "play";
+  const sent = Number(r.sent);
   return {
+    ...(Number.isFinite(sent) && sent > 0 ? { sent: Math.trunc(sent) } : {}),
     walker_id: walkerIdOf(r.player_id.trim().slice(0, 64)),
     name: String(r.name ?? "Walker").trim().slice(0, 40) || "Walker",
     level: Number.isFinite(level) ? Math.max(1, Math.min(999, Math.trunc(level))) : 1,
@@ -178,57 +212,78 @@ export interface SentPose {
 }
 
 /**
- * The throttle. At most one pose a second; one whenever the walker moved
- * `SEND_MOVE_M` or changed what they look like; otherwise a heartbeat.
+ * The throttle. At most one pose a second; one whenever the walker moved far
+ * enough to be a move, or changed what they look like; otherwise a heartbeat.
+ *
+ * "Far enough" depends on the source. A GPS fix wanders a few metres standing
+ * still, so under `SEND_MOVE_M` it is noise and sending it makes the walker
+ * shuffle on every other phone. A stick or demo walk has no noise, and at
+ * walking pace a 3 m threshold sent a pose every ~2.3 s — a stop-go cadence the
+ * receiver could only draw as a walker that stops and starts (09-30 note,
+ * `0:56`). Those send every second they move.
  */
-export function shouldSend(last: SentPose | null, next: Omit<SentPose, "at">, now: number): boolean {
+export function shouldSend(
+  last: SentPose | null,
+  next: Omit<SentPose, "at"> & { source?: FixSource },
+  now: number,
+): boolean {
   if (!last) return true;
   const since = now - last.at;
   if (since < SEND_MIN_MS) return false;
   if (since >= SEND_HEARTBEAT_MS) return true;
   if (last.level !== next.level || last.stage !== next.stage || last.name !== next.name) return true;
-  return distanceMeter(last, next) >= SEND_MOVE_M;
+  const threshold = next.source === "gps" || next.source === undefined ? SEND_MOVE_M : SEND_MOVE_PLAY_M;
+  return distanceMeter(last, next) >= threshold;
 }
 
 /* ── receiving: a remote walker on glass ────────────────────────────────── */
 
 /**
- * One remote walker as this phone draws them.
+ * One remote walker as this phone draws them — buffered snapshot
+ * interpolation, the way every networked game draws somebody else.
  *
- * Poses arrive about once a second, so drawing each one where it lands is a
- * walker that teleports a few metres at a time. Instead each new pose starts a
- * glide FROM WHERE THE WALKER IS CURRENTLY DRAWN to the new spot, lasting as
- * long as the gap between the two poses was. A pose that arrives mid-glide
- * therefore bends the path rather than snapping it.
+ * The 09-26 build glided from where a walker was drawn to each new pose with
+ * an ease-out, for as long as the gap since the last ARRIVAL. The 09-30 note
+ * (`0:56`–`1:21`) is what that looked like: fine standing still, and a walker
+ * that "moves weirdly across the screen" the moment anybody walked or turned.
+ * Three things did it, all fixed here:
+ *
+ * - The ease-out started every pose at twice walking speed and braked to a
+ *   stop, once a second — a 1 Hz surge that the smooth follow camera made
+ *   plain. The walk between two poses is now linear: constant speed.
+ * - Each glide lasted as long as the network took to deliver the pose, so
+ *   network jitter became speed jitter. Poses are now placed on the SENDER's
+ *   clock (`Pose.sent`), shifted onto ours by the smallest offset seen, and the
+ *   walker is drawn `INTERP_DELAY_MS` (1.7 s) in the past, where there is almost always
+ *   a real pose on each side of the moment being drawn.
+ * - A pose that came late ran out of glide and the walker stood still until the
+ *   next. With the delay, a late pose is usually still in the future when it
+ *   lands; a lost one holds the walker at the last spot, never guesses ahead
+ *   and snaps back.
  */
 export interface Track {
   pose: Pose;
-  from: LatLon;
-  to: LatLon;
-  /** Local ms when the glide began. */
-  start: number;
-  duration: number;
+  /** Poses on OUR clock, oldest first. */
+  sample: TrackSample[];
+  /** Our ms minus the sender's, the smallest seen: the fastest delivery. */
+  offset: number;
   /** Local ms of the last pose, for staleness. Server clocks are not ours. */
   heard: number;
   /** Compass degrees of the last real move. */
   heading: number;
 }
 
-function ease(t: number): number {
-  return t < 0 ? 0 : t > 1 ? 1 : t * (2 - t);
+export interface TrackSample {
+  /** Local-clock ms this spot was true on the sender. */
+  t: number;
+  lat: number;
+  lon: number;
+  /** Compass degrees of the move that ended here, or the one before it. */
+  heading: number;
 }
 
-export function positionOf(track: Track, now: number): LatLon {
-  const t = track.duration <= 0 ? 1 : ease((now - track.start) / track.duration);
-  return {
-    lat: track.from.lat + (track.to.lat - track.from.lat) * t,
-    lon: track.from.lon + (track.to.lon - track.from.lon) * t,
-  };
-}
-
-export function isGliding(track: Track, now: number): boolean {
-  return now - track.start < track.duration;
-}
+/** Below this a move is standing still, for heading and for the walk cycle. */
+const STILL_M = 0.3;
 
 function headingOf(a: LatLon, b: LatLon): number {
   const dy = b.lat - a.lat;
@@ -236,21 +291,88 @@ function headingOf(a: LatLon, b: LatLon): number {
   return (Math.atan2(dx, dy) * 180) / Math.PI;
 }
 
-export function receivePose(prev: Track | undefined, pose: Pose, now: number): Track {
-  const to = { lat: pose.lat, lon: pose.lon };
-  if (!prev) return { pose, from: to, to, start: now, duration: 0, heard: now, heading: 0 };
-  const from = positionOf(prev, now);
-  const gap = distanceMeter(from, to);
-  const is_snap = gap > SNAP_M;
+/** The segment the drawn moment sits in: `[i, i + 1]`, or null past either end. */
+function segmentAt(sample: TrackSample[], t: number): number | null {
+  for (let i = sample.length - 2; i >= 0; i -= 1) {
+    if (sample[i].t <= t && t < sample[i + 1].t) return i;
+  }
+  return null;
+}
+
+export function positionOf(track: Track, now: number, delay_ms = INTERP_DELAY_MS): LatLon {
+  const { sample } = track;
+  const t = now - delay_ms;
+  const first = sample[0];
+  const last = sample[sample.length - 1];
+  if (t <= first.t) return { lat: first.lat, lon: first.lon };
+  if (t >= last.t) return { lat: last.lat, lon: last.lon };
+  const i = segmentAt(sample, t);
+  if (i === null) return { lat: last.lat, lon: last.lon };
+  const a = sample[i];
+  const b = sample[i + 1];
+  const k = (t - a.t) / (b.t - a.t);
+  return { lat: a.lat + (b.lat - a.lat) * k, lon: a.lon + (b.lon - a.lon) * k };
+}
+
+/** Still something left to draw — the frame clock keeps running while this is true. */
+export function isGliding(track: Track, now: number, delay_ms = INTERP_DELAY_MS): boolean {
+  return now - delay_ms < track.sample[track.sample.length - 1].t;
+}
+
+/** Actually walking at the drawn moment — the walk cycle plays only then. */
+export function isMoving(track: Track, now: number, delay_ms = INTERP_DELAY_MS): boolean {
+  const i = segmentAt(track.sample, now - delay_ms);
+  if (i === null) return false;
+  return distanceMeter(track.sample[i], track.sample[i + 1]) > STILL_M;
+}
+
+/** Which way the walker faces at the drawn moment. */
+export function headingAt(track: Track, now: number, delay_ms = INTERP_DELAY_MS): number {
+  const i = segmentAt(track.sample, now - delay_ms);
+  return i === null ? track.heading : track.sample[i + 1].heading;
+}
+
+function freshTrack(pose: Pose, now: number, offset: number, heading: number): Track {
   return {
     pose,
-    from: is_snap ? to : from,
-    to,
-    start: now,
-    duration: is_snap ? 0 : Math.max(200, Math.min(GLIDE_MAX_MS, now - prev.heard)),
+    sample: [{ t: now, lat: pose.lat, lon: pose.lon, heading }],
+    offset,
     heard: now,
-    heading: gap > 0.3 && !is_snap ? headingOf(from, to) : prev.heading,
+    heading,
   };
+}
+
+export function receivePose(prev: Track | undefined, pose: Pose, now: number): Track {
+  const sent = pose.sent ?? pose.at;
+  const raw_offset = now - sent;
+  if (!prev) return freshTrack(pose, now, raw_offset, 0);
+
+  const last = prev.sample[prev.sample.length - 1];
+  const gap = distanceMeter(last, pose);
+  /* A teleport (a joined walker code) is not a walk; nor is a sender clock
+     that jumped — a phone set by hand, or a different phone on the same code.
+     Both restart the timeline where the walker now is. */
+  if (gap > SNAP_M || Math.abs(raw_offset - prev.offset) > CLOCK_JUMP_MS) {
+    return freshTrack(pose, now, raw_offset, prev.heading);
+  }
+  const offset = Math.min(prev.offset, raw_offset);
+  let t = sent + offset;
+  /* Out of order or a duplicate stamp: never walk backwards in time. */
+  if (t <= last.t) t = last.t + 1;
+
+  const heading = gap > STILL_M ? headingOf(last, pose) : last.heading;
+  const sample = [...prev.sample];
+  /* A long gap was standing still, then a step — not a slow crawl across it. */
+  if (t - last.t > SEGMENT_MAX_MS) {
+    sample.push({ t: t - STEP_MS, lat: last.lat, lon: last.lon, heading: last.heading });
+  }
+  sample.push({ t, lat: pose.lat, lon: pose.lon, heading });
+  /* Keep what the delay can still reach, and never fewer than two. */
+  const horizon = now - INTERP_DELAY_POLL_MS - SEGMENT_MAX_MS;
+  let drop = 0;
+  while (sample.length - drop > 2 && (sample.length - drop > SAMPLE_MAX || sample[drop + 1].t < horizon)) drop += 1;
+
+  return { pose, sample: sample.slice(drop), offset, heard: now, heading };
 }
 
 /** Drop every walker unheard for `STALE_MS`. Returns the same map if nothing went. */

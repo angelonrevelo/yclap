@@ -6,7 +6,11 @@ import { CAMPUS_CENTER, distanceMeter } from "../src/geo.ts";
 import {
   applyHall,
   freshFindOf,
-  GLIDE_MAX_MS,
+  headingAt,
+  INTERP_DELAY_MS,
+  isMoving,
+  SAMPLE_MAX,
+  SEND_MOVE_PLAY_M,
   isGliding,
   isNearbyFind,
   openHall,
@@ -146,53 +150,148 @@ test("shouldSend: a sub-3 m shuffle waits for the heartbeat; a level-up does not
 test("a first pose is drawn exactly where it is — nothing to glide from", () => {
   const t = receivePose(undefined, pose(), 0);
   assert.deepEqual(positionOf(t, 0), CAMPUS_CENTER);
-  assert.equal(isGliding(t, 0), false);
+  assert.deepEqual(positionOf(t, 60_000), CAMPUS_CENTER);
+  assert.equal(isGliding(t, INTERP_DELAY_MS), false);
 });
 
-test("the next pose glides from the drawn spot to the new one, never jumping", () => {
-  const a = receivePose(undefined, pose({ at: 0 }), 0);
-  const target = offsetFromCenter(10);
-  const b = receivePose(a, pose({ at: 1_000, ...target }), 1_000);
-  assert.equal(b.duration, 1_000, "glides for as long as the gap between poses");
-  assert.deepEqual(positionOf(b, 1_000), CAMPUS_CENTER, "starts where it was drawn");
-  const mid = distanceMeter(CAMPUS_CENTER, positionOf(b, 1_500));
-  assert.ok(mid > 2 && mid < 10, `mid-glide at ${mid} m`);
-  assert.ok(distanceMeter(positionOf(b, 2_000), target) < 0.01, "lands on the pose");
-  assert.equal(isGliding(b, 1_999), true);
-  assert.equal(isGliding(b, 2_000), false);
-  /* Monotonic: every frame closer to the target than the last. */
-  let prev = Infinity;
-  for (let t = 1_000; t <= 2_000; t += 50) {
-    const d = distanceMeter(positionOf(b, t), target);
-    assert.ok(d <= prev + 1e-9);
+/**
+ * A walker at a steady pace, one pose a second, arriving with the network's
+ * jitter. Returns the metres the walker is DRAWN to cover in each 100 ms frame
+ * step across the stretch where the buffer has poses on both sides.
+ */
+function drawnStep(input: { jitter_ms: number[]; pace_m_per_s: number }): number[] {
+  const latency = 80;
+  const inbox = input.jitter_ms
+    .map((jitter, i) => ({ sent: 1_000 + i * 1_000, arrive: 1_000 + i * 1_000 + latency + jitter, meter: i * input.pace_m_per_s }))
+    .sort((x, y) => x.arrive - y.arrive);
+  let track: Track | undefined;
+  let prev: ReturnType<typeof positionOf> | null = null;
+  const step: number[] = [];
+  const end = 1_000 + (input.jitter_ms.length - 2) * 1_000 + INTERP_DELAY_MS;
+  /* Frame by frame, the way the phone does it: deliver what has arrived, then draw. */
+  for (let now = 0; now <= end; now += 100) {
+    while (inbox.length && inbox[0].arrive <= now) {
+      const one = inbox.shift()!;
+      track = receivePose(track, pose({ at: one.arrive, sent: one.sent, ...offsetFromCenter(one.meter) }), one.arrive);
+    }
+    if (!track || now < 3_000 + INTERP_DELAY_MS) continue;
+    const at = positionOf(track, now);
+    if (prev) step.push(distanceMeter(prev, at));
+    prev = at;
+  }
+  return step;
+}
+
+test("09-30 jitter: a walker at a steady pace is DRAWN at a steady pace, whatever the network does", () => {
+  /* Arrival jitter up to 400 ms — a hall on shared wifi. */
+  const jitter_ms = [0, 310, 20, 400, 90, 0, 250, 380, 10, 200, 0, 330];
+  const step = drawnStep({ jitter_ms, pace_m_per_s: 1.3 });
+  assert.ok(step.length >= 60, `sampled ${step.length} frames`);
+  const expected = 0.13;
+  for (const one of step) {
+    assert.ok(Math.abs(one - expected) < 0.01, `a 100 ms frame moved ${one.toFixed(3)} m, expected ${expected}`);
+  }
+});
+
+test("the walk between two poses is linear — no surge at the start, no brake at the end", () => {
+  let t = receivePose(undefined, pose({ at: 0, sent: 0 }), 0);
+  t = receivePose(t, pose({ at: 1_000, sent: 1_000, ...offsetFromCenter(10) }), 1_000);
+  const d = (ms: number) => distanceMeter(CAMPUS_CENTER, positionOf(t, ms + INTERP_DELAY_MS));
+  assert.ok(Math.abs(d(250) - 2.5) < 0.05, `quarter-way at ${d(250)} m`);
+  assert.ok(Math.abs(d(500) - 5) < 0.05, `half-way at ${d(500)} m`);
+  assert.ok(Math.abs(d(750) - 7.5) < 0.05, `three-quarters at ${d(750)} m`);
+  assert.ok(distanceMeter(positionOf(t, 1_000 + INTERP_DELAY_MS), offsetFromCenter(10)) < 1e-6, "lands on the pose");
+  assert.equal(isMoving(t, 500 + INTERP_DELAY_MS), true);
+  assert.equal(isMoving(t, 1_500 + INTERP_DELAY_MS), false, "stands once the poses run out");
+});
+
+test("a sender clock hours off ours is still drawn at its own pace", () => {
+  const skew = 3 * 3_600_000;
+  let t = receivePose(undefined, pose({ at: 0, sent: skew }), 50);
+  t = receivePose(t, pose({ at: 1_000, sent: skew + 1_000, ...offsetFromCenter(1.3) }), 1_120);
+  t = receivePose(t, pose({ at: 2_000, sent: skew + 2_000, ...offsetFromCenter(2.6) }), 2_050);
+  const mid = distanceMeter(CAMPUS_CENTER, positionOf(t, 1_550 + INTERP_DELAY_MS));
+  assert.ok(Math.abs(mid - 1.95) < 0.05, `drawn at ${mid} m`);
+});
+
+test("a lost pose holds the walker at the last spot — never a guess ahead that snaps back", () => {
+  let t = receivePose(undefined, pose({ at: 0, sent: 0 }), 0);
+  t = receivePose(t, pose({ at: 1_000, sent: 1_000, ...offsetFromCenter(1.3) }), 1_000);
+  const held = positionOf(t, 5_000 + INTERP_DELAY_MS);
+  assert.ok(distanceMeter(held, offsetFromCenter(1.3)) < 1e-6);
+  /* The walk resumes from where it was held, forward only. */
+  t = receivePose(t, pose({ at: 3_000, sent: 3_000, ...offsetFromCenter(3.9) }), 3_000);
+  let prev = 0;
+  for (let ms = 1_000; ms <= 3_000; ms += 100) {
+    const d = distanceMeter(CAMPUS_CENTER, positionOf(t, ms + INTERP_DELAY_MS));
+    assert.ok(d >= prev - 1e-9, `walked backwards at ${ms}`);
     prev = d;
   }
 });
 
-test("a pose that lands mid-glide bends the path from where the walker is drawn", () => {
-  const a = receivePose(undefined, pose({ at: 0 }), 0);
-  const b = receivePose(a, pose({ at: 1_000, ...offsetFromCenter(10) }), 1_000);
-  const drawn = positionOf(b, 1_400);
-  const c = receivePose(b, pose({ at: 1_400, ...offsetFromCenter(20) }), 1_400);
-  assert.ok(distanceMeter(positionOf(c, 1_400), drawn) < 1e-6, "no jump at the hand-off");
+test("standing, then a step, is drawn as a step — not a slow crawl across the pause", () => {
+  let t = receivePose(undefined, pose({ at: 0, sent: 0 }), 0);
+  /* Eight seconds standing still (under the heartbeat), then one metre, drawn over STEP_MS. */
+  t = receivePose(t, pose({ at: 8_000, sent: 8_000, ...offsetFromCenter(1) }), 8_000);
+  const d = (ms: number) => distanceMeter(CAMPUS_CENTER, positionOf(t, ms + INTERP_DELAY_MS));
+  assert.ok(d(5_900) < 1e-6, "still standing at 5.9 s");
+  assert.ok(d(7_000) > 0.4 && d(7_000) < 0.6, `mid-step at ${d(7_000)} m`);
 });
 
-test("a late pose glides for at most GLIDE_MAX_MS, and a teleport snaps", () => {
-  const a = receivePose(undefined, pose({ at: 0 }), 0);
-  const late = receivePose(a, pose({ at: 9_000, ...offsetFromCenter(10) }), 9_000);
-  assert.equal(late.duration, GLIDE_MAX_MS);
+test("a teleport snaps, and does not draw a walk across campus", () => {
+  let t = receivePose(undefined, pose({ at: 0, sent: 0 }), 0);
   const far = offsetFromCenter(SNAP_M + 50);
-  const snap = receivePose(a, pose({ at: 1_000, ...far }), 1_000);
-  assert.equal(snap.duration, 0);
-  assert.deepEqual(positionOf(snap, 1_000), far);
+  t = receivePose(t, pose({ at: 1_000, sent: 1_000, ...far }), 1_000);
+  assert.deepEqual(positionOf(t, 1_000), far);
+  assert.deepEqual(positionOf(t, 1_000 + INTERP_DELAY_MS), far);
+});
+
+test("poses out of order never walk the walker backwards in time", () => {
+  let t = receivePose(undefined, pose({ at: 0, sent: 0 }), 0);
+  t = receivePose(t, pose({ at: 2_000, sent: 2_000, ...offsetFromCenter(2.6) }), 2_000);
+  t = receivePose(t, pose({ at: 1_000, sent: 1_000, ...offsetFromCenter(1.3) }), 2_010);
+  for (let i = 1; i < t.sample.length; i += 1) assert.ok(t.sample[i].t > t.sample[i - 1].t);
+});
+
+test("the buffer stays bounded however long a walker walks", () => {
+  let t: Track | undefined;
+  for (let i = 0; i < 600; i += 1) {
+    t = receivePose(t, pose({ at: i * 1_000, sent: i * 1_000, ...offsetFromCenter(i % 100) }), i * 1_000);
+  }
+  assert.ok((t as Track).sample.length <= SAMPLE_MAX);
+});
+
+test("a build before 09-30 (no sent stamp) still walks, paced on server time", () => {
+  let t = receivePose(undefined, pose({ at: 0 }), 0);
+  t = receivePose(t, pose({ at: 1_000, ...offsetFromCenter(10) }), 1_000);
+  const mid = distanceMeter(CAMPUS_CENTER, positionOf(t, 500 + INTERP_DELAY_MS));
+  assert.ok(Math.abs(mid - 5) < 0.05);
 });
 
 test("heading follows the move: walking north reads as 0°, east as 90°", () => {
-  const a = receivePose(undefined, pose({ at: 0 }), 0);
-  const north = receivePose(a, pose({ at: 1_000, ...offsetFromCenter(10) }), 1_000);
+  const a = receivePose(undefined, pose({ at: 0, sent: 0 }), 0);
+  const north = receivePose(a, pose({ at: 1_000, sent: 1_000, ...offsetFromCenter(10) }), 1_000);
   assert.ok(Math.abs(north.heading) < 1);
-  const east = receivePose(a, pose({ at: 1_000, lat: CAMPUS_CENTER.lat, lon: CAMPUS_CENTER.lon + 0.0001 }), 1_000);
+  assert.ok(Math.abs(headingAt(north, 500 + INTERP_DELAY_MS)) < 1);
+  const east = receivePose(a, pose({ at: 1_000, sent: 1_000, lat: CAMPUS_CENTER.lat, lon: CAMPUS_CENTER.lon + 0.0001 }), 1_000);
   assert.ok(Math.abs(east.heading - 90) < 1);
+});
+
+test("shouldSend: a stick walk sends every second it moves; GPS waits out its own noise", () => {
+  const last = { ...CAMPUS_CENTER, level: 2, stage: "egg", name: "A", at: 0 };
+  const step = { ...offsetFromCenter(1.3), level: 2, stage: "egg", name: "A" };
+  assert.equal(shouldSend(last, { ...step, source: "play" }, SEND_MIN_MS), true);
+  assert.equal(shouldSend(last, { ...step, source: "demo" }, SEND_MIN_MS), true);
+  assert.equal(shouldSend(last, { ...step, source: "gps" }, SEND_MIN_MS), false, "1.3 m on GPS is noise");
+  const still = { ...offsetFromCenter(SEND_MOVE_PLAY_M / 2), level: 2, stage: "egg", name: "A", source: "play" as const };
+  assert.equal(shouldSend(last, still, SEND_MIN_MS), false, "standing still on the stick sends nothing");
+});
+
+test("sanitizePose carries the sender clock through, and only a real number", () => {
+  const raw = { player_id: "p", name: "A", level: 1, stage: "egg", ...CAMPUS_CENTER, source: "play" };
+  assert.equal(sanitizePose({ ...raw, sent: 12_345.7 }, 0)?.sent, 12_345);
+  assert.equal(sanitizePose({ ...raw, sent: "soon" }, 0)?.sent, undefined);
+  assert.equal("sent" in (sanitizePose(raw, 0) ?? {}), false);
 });
 
 /* ── applying hall messages ─────────────────────────────────────────────── */

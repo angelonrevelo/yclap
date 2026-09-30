@@ -6,7 +6,11 @@ import { isInsideCampus, type Fix } from "./geo";
 import {
   applyHall,
   FIND_SHOW_MS,
+  headingAt,
+  INTERP_DELAY_MS,
+  INTERP_DELAY_POLL_MS,
   isGliding,
+  isMoving,
   isNearbyFind,
   openHall,
   positionOf,
@@ -102,13 +106,18 @@ export function useHall(input: { fix: Fix | null | undefined; stage: Stage; leve
       if (!fix || !isInsideCampus(fix)) return;
       const next = { lat: fix.lat, lon: fix.lon, level, stage, name };
       const now = Date.now();
-      if (!shouldSend(last, next, now)) return;
+      if (!shouldSend(last, { ...next, source: fix.source }, now)) return;
       last = { ...next, at: now };
-      link.sendPose({ player_id: me.player_id, source: fix.source, ...next });
+      /* `sent` is this phone's clock: receivers pace the walk on it, so the
+         network's jitter does not become the walker's. */
+      link.sendPose({ player_id: me.player_id, source: fix.source, sent: now, ...next });
       setSharing(true);
     };
     send();
-    const send_timer = setInterval(send, SEND_MIN_MS);
+    /* Checked four times a second, sent at most once: a timer AT the throttle
+       fires a hair early half the time, and `shouldSend` then waits a whole
+       second more — a 2 s cadence nobody asked for. */
+    const send_timer = setInterval(send, SEND_MIN_MS / 4);
     const prune_timer = setInterval(() => {
       const now = Date.now();
       setTrack((prev) => pruneTrack(prev, now));
@@ -125,19 +134,27 @@ export function useHall(input: { fix: Fix | null | undefined; stage: Stage; leve
   return { track, callout, mode, is_sharing };
 }
 
-/** Re-render every frame while anyone is mid-glide, and not at all otherwise. */
-function useGlideClock(track: Map<string, Track>): number {
+/**
+ * How far in the past remote walkers are drawn. Polling delivers a roster every
+ * 2 s, so it needs the longer buffer or the walker would stand and wait at each.
+ */
+export function interpDelayOf(mode: HallMode): number {
+  return mode === "poll" ? INTERP_DELAY_POLL_MS : INTERP_DELAY_MS;
+}
+
+/** Re-render every frame while anyone has buffered walk left to draw, and not at all otherwise. */
+function useGlideClock(track: Map<string, Track>, delay_ms: number): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     let frame = 0;
     const tick = () => {
       const t = Date.now();
       setNow(t);
-      if ([...track.values()].some((one) => isGliding(one, t))) frame = requestAnimationFrame(tick);
+      if ([...track.values()].some((one) => isGliding(one, t, delay_ms))) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [track]);
+  }, [track, delay_ms]);
   return now;
 }
 
@@ -153,7 +170,8 @@ export default function RemoteWalkerLayer({
   /** The camera zoom your own walker is sized by — remote walkers follow it, a size down. */
   zoom: number;
 }) {
-  const now = useGlideClock(hall.track);
+  const delay_ms = interpDelayOf(hall.mode);
+  const now = useGlideClock(hall.track, delay_ms);
   const { width, height } = projection;
   /* Same source as your own walker, a size down — present, but plainly not you. */
   const size = Math.round(avatarPx(zoom, Math.min(width, height)) * REMOTE_WALKER_SHARE);
@@ -161,7 +179,7 @@ export default function RemoteWalkerLayer({
   return (
     <>
       {[...hall.track.values()].map((one) => {
-        const at = projection.toScreen(projection.project(positionOf(one, now)));
+        const at = projection.toScreen(projection.project(positionOf(one, now, delay_ms)));
         if (at.x < -80 || at.y < -120 || at.x > width + 80 || at.y > height + 120) return null;
         /* Same clamp as your own walker, so two phones side by side agree. */
         const scale = Math.max(0.6, Math.min(1.35, at.scale));
@@ -202,8 +220,8 @@ export default function RemoteWalkerLayer({
               stage={(one.pose.stage as Stage) ?? "egg"}
               size={size}
               is_idle_animated={false}
-              is_walking={isGliding(one, now)}
-              heading_degree={signedAngle(screenAngleOf(one.heading, bearing_degree))}
+              is_walking={isMoving(one, now, delay_ms)}
+              heading_degree={signedAngle(screenAngleOf(headingAt(one, now, delay_ms), bearing_degree))}
             />
           </div>
         );
