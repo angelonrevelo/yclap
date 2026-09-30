@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import campus_shape from "./asset/campus-shape.json" with { type: "json" };
 import Botanical from "./botanical";
 import { BUILDING_ATTRIBUTION, building as campus_building } from "./building";
@@ -27,6 +27,10 @@ import { kindOf } from "./kind";
 import { KindPath, KIND_TONE } from "./kind-mark";
 import RemoteWalkerLayer, { HallCount, type Hall } from "./remote-walker";
 import PetEagle from "./pet-eagle";
+import { avatarFrom } from "./avatar";
+/* The proposed 3D hiker (`?avatar=hiker`, see avatar.ts): its own lazy chunk,
+   so nobody who did not ask for it downloads model-viewer for the map. */
+const HikerAvatar = lazy(() => import("./hiker-avatar"));
 import { avatarPx, clampPitch, pitchForZoom, roadCasingPx, roadWidthPx, walkStopMs } from "./camera-feel";
 import FrameProbe from "./frame-probe";
 
@@ -954,13 +958,21 @@ export default function PlayMap({
                       here spun the tree by the camera angle: the visible bug
                       where the walker leans over and parts company with its own
                       shadow the moment you rotate. */}
-                  <Character
-                    stage={stage}
-                    vigor={vigor}
-                    size={avatar_px}
-                    is_walking={travel.current.is_walking}
-                    heading_degree={travel.current.heading}
-                  />
+                  {avatarFrom(window.location.search) === "hiker" ? (
+                    <Suspense
+                      fallback={<Character stage={stage} vigor={vigor} size={avatar_px} is_walking={travel.current.is_walking} heading_degree={travel.current.heading} />}
+                    >
+                      <HikerAvatar size={avatar_px} is_walking={travel.current.is_walking} heading_degree={travel.current.heading} />
+                    </Suspense>
+                  ) : (
+                    <Character
+                      stage={stage}
+                      vigor={vigor}
+                      size={avatar_px}
+                      is_walking={travel.current.is_walking}
+                      heading_degree={travel.current.heading}
+                    />
+                  )}
                 </div>
                 {/* The pet eagle — companion by day, sleep pet when you stop. See `pet.ts`. */}
                 <PetEagle projection={projection} fix={fix} anchor={anchor} avatar_px={avatar_px} />

@@ -412,14 +412,30 @@ function vary(k) {
 /* ── shared creature parts ────────────────────────────────────────────────── */
 
 /** A glossy bead eye pair with pupil and catch-light. */
+/**
+ * Pull a point that lies outside an ellipsoid (centred on the parent's origin,
+ * semi-axes `host`) back onto its surface along the ray from the centre. A
+ * part centred ON the surface straddles it — half in, half out — so it cannot
+ * float, whatever spacing the caller's dice rolled.
+ */
+function seat(at, host) {
+  const q = Math.hypot(at[0] / host[0], at[1] / host[1], at[2] / host[2]);
+  return q > 1 ? at.map((v) => v / q) : at;
+}
+
 function beadEyes(k, parent, o) {
   const { r, at, gap, color = paper, pupil = ink, spark = true, subdiv = 1, name = "eye" } = o;
   const out = [];
   for (const s of [1, -1]) {
     const tag = s > 0 ? "l" : "r";
+    /* `host` (the parent's own ellipsoid semi-axes) seats each bead on the
+       head. A jumping spider's third eye row sat at x = ±1.06 of a
+       cephalothorax only 1.0 wide, and hung beside the head (rig audit,
+       Gelo 09-30 `1:35`). */
+    const spot = [at[0] + s * gap, at[1], at[2]];
     const e = ball(k, parent, `${name}-${tag}`, {
       rx: r, ry: r * (o.squash ?? 1), rz: r * (o.bulge ?? 1),
-      at: [at[0] + s * gap, at[1], at[2]], color, subdiv,
+      at: o.host ? seat(spot, o.host) : spot, color, subdiv,
     });
     ball(k, e, `${name}-pupil-${tag}`, { merge: true, r: r * (o.pupilR ?? 0.46), at: [s * r * 0.22, r * 0.06, r * 0.7], color: pupil, subdiv: 0 });
     if (spark) ball(k, e, `${name}-spark-${tag}`, { merge: true, r: r * 0.22, at: [s * r * 0.42, r * 0.4, r * 0.62], color: paper, subdiv: 0 });
@@ -1620,7 +1636,17 @@ function fish(k, col, opt = {}) {
     at: [0, angel ? -by * 0.1 : 0, -bz * 0.9], rot: [0, 0, Math.PI / 2],
     axis: "y", base: 0, amp: v.f("swish", 0.3, 0.5), dur: v.f("swishd", 0.8, 1.4),
   });
-  k.cute.add(tail, bladeGeo(tailOut, 0.024), { at: [0, 0, -0.13 * tailSize], color: dark });
+  /* Seat the fin by its REAL front edge. The offset was the outline's nominal
+     half-length (0.13·size), but `notch` pulls the outline's fore and aft
+     points in to (1 - notch) of that, so every fork- and fan-tailed fish had
+     its fin bolted on with a built-in gap that the swish then widened — the
+     angelfish's tail hung 7% of the model clear of its body mid-stroke (rig
+     audit; Gelo 09-30 `1:35`, "his limbs are not connected"). Now the fin's
+     front quarter sits ahead of the hinge, inside the peduncle, so it pivots
+     in its socket instead of beside it. */
+  const tailGeo = bladeGeo(tailOut, 0.024);
+  const tailFront = Math.max(...tailGeo.positions.map((q) => q[2]));
+  k.cute.add(tail, tailGeo, { at: [0, 0, -tailFront * 0.75], color: dark });
   if (sword) {
     /* The swordtail's sword: a long spine off the LOWER caudal lobe, and the
        only reason the species has its name. */
@@ -1726,11 +1752,20 @@ function lepidoptera(k, col, opt = {}) {
   });
   const abdN = v.i("abdn", 2, 6);
   const abdLen = v.f("abdl", 0.05, 0.115) * (hawk ? 1.35 : 1) * giant;
+  /* Each segment is at least long enough along the chain to overlap the next.
+     The step between segment centres is `abdLen * 0.82`, but a segment's depth
+     was the thorax-derived `r` alone — unrelated to `abdLen` — so a species
+     that rolled a long abdomen on a slim thorax shipped a string of beads with
+     daylight between them (Ypthima stellera's tip sat 4% of the model clear of
+     the rest; Gelo 09-30 `1:35`: "his limbs are not connected"). 0.6 of the
+     step on each of two neighbours is 1.2 steps of reach: overlap by
+     construction, whatever the dice say. */
+  const abdStep = abdLen * 0.82;
   for (let i = 0; i < abdN; i += 1) {
     const r = thoraxR * (0.92 - i * (skipper ? 0.16 : 0.1));
     ball(k, thorax, `abdomen${i}`, {
-      rx: r, ry: abdLen * 0.62, rz: r,
-      at: [0, -thoraxR * (0.22 + i * 0.16) * (hawk ? 0.5 : 1), -thoraxR * 0.55 - abdLen * i * 0.82],
+      rx: r, ry: abdLen * 0.62, rz: Math.max(r, abdStep * 0.6),
+      at: [0, -thoraxR * (0.22 + i * 0.16) * (hawk ? 0.5 : 1), -thoraxR * 0.55 - abdStep * i],
       color: i % 2 ? shade(bodyCol, v.f("abdb", 0.06, 0.4)) : shade(bodyCol, -0.06),
     });
   }
@@ -3204,8 +3239,9 @@ function spider(k, col, opt = {}) {
   const stand = v.f("stand", 0.08, 0.2);
   const cx = (jumping ? 0.095 : 0.07) * v.f("cx", 0.85, 1.3);
   const cz = cx * (jumping ? v.f("cz", 0.9, 1.15) : v.f("cz", 1.0, 1.5));
+  const cephY = cx * v.f("cy", 0.65, 0.95);
   const ceph = ball(k, k.root, "cephalothorax", {
-    rx: cx, ry: cx * v.f("cy", 0.65, 0.95), rz: cz,
+    rx: cx, ry: cephY, rz: cz,
     at: [0, stand + legLen * 0.12, cz * 0.9], rot: [v.f("pitch", -0.3, 0.26), 0, 0], color: dark,
   });
 
@@ -3328,7 +3364,7 @@ function spider(k, col, opt = {}) {
       color: i === 0 ? paper : ink, pupil: i === 0 ? ink : paper,
       pupilR: i === 0 && jumping ? 0.68 : 0.46,
       spark: i === 0, subdiv: i === 0 ? 1 : 0,
-      name: `eye${i}`,
+      name: `eye${i}`, host: [cx, cephY, cz],
     });
   }
   k.idle({ breatheK: v.f("br", 0.035, 0.06), bobAmp: v.f("bob", 0.006, 0.02) });
@@ -3463,12 +3499,22 @@ function snail(k, col, opt = {}) {
       rx: footR * 0.94, ry: footR * v.f("mantleh", 0.34, 0.48), rz: footL * v.f("mantlez", 0.24, 0.34),
       at: [0, footR * 0.22, footL * v.f("mantlep", 0.0, 0.14)], color: shade(col.base, -0.12),
     });
+    /* The keel rides the foot's own back. It used to run to z = -0.6·footL,
+       past the tip of a foot only 0.5·footL long, at one fixed height over a
+       back that tapers to nothing — so the last bead floated behind and above
+       the tail (rig audit: Laevicaulis alte, 2.8% of the model clear; Gelo
+       09-30 `5:42`). Now the run stops at 80% of the foot's half-length and
+       every bead sits at 85% of the foot's height at its own z, i.e. seated
+       in the back. */
+    const footRy = footR * v.f("footh", 0.3, 0.44);
     const keelN = v.i("keeln", 3, 5);
     for (let i = 0; i < keelN; i += 1) {
       const t = i / (keelN - 1);
+      const z = footL * (0.1 - t * 0.5);
+      const back = footRy * Math.sqrt(Math.max(0, 1 - (z / (footL * 0.5)) ** 2));
       ball(k, foot, `keel${i}`, {
         rx: footR * (0.42 - t * 0.24), ry: footR * v.f("keelh", 0.2, 0.34), rz: footL * 0.13,
-        at: [0, footR * 0.3, footL * (0.1 - t * 0.7)], color: shade(col.base, -0.28 + t * 0.16),
+        at: [0, back * 0.85, z], color: shade(col.base, -0.28 + t * 0.16),
       });
     }
     for (const sd of [1, -1]) {

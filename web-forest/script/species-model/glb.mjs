@@ -420,6 +420,10 @@ export class Cute {
     this.smooth = smooth;
     this.nodes = [];
     this.channels = [];
+    /* Which clip new channels land in. Every species model has exactly one,
+       "idle"; the hiker (build-character-model.mjs) adds a "walk" beside it.
+       One clip writes exactly the bytes it always did. */
+    this.clip_name = "idle";
     this.root = this.node("root");
     /* Y shift applied by a wrapping "ground" node at export. 0 = none. Set by
        the builder after measuring the rest pose (script/audit-model.mjs), so a
@@ -479,6 +483,11 @@ export class Cute {
     return dst;
   }
 
+  /** Start a new named clip: every channel added after this belongs to it. */
+  beginClip(name) {
+    this.clip_name = name;
+  }
+
   // ---- idle-clip helpers (all sample a seamless sine loop) ----
 
   samples(dur, phase, n = 10) {
@@ -491,21 +500,29 @@ export class Cute {
     return times;
   }
 
-  /** Rotation swing around one axis, radians, around the node's rest pose. */
-  swing(node, { axis = "z", base = 0, amp = 0.4, dur, phase = 0, n = 10 } = {}) {
+  /**
+   * Rotation swing around one axis, radians, around the node's rest pose.
+   *
+   * `phase` only moves WHERE the loop is sampled, not the curve. `lag` shifts
+   * the curve itself, as a fraction of a cycle — how a knee trails its hip by
+   * a quarter stride in the hiker's walk. 0 writes the bytes it always did.
+   */
+  swing(node, { axis = "z", base = 0, amp = 0.4, dur, phase = 0, n = 10, lag = 0 } = {}) {
     const D = dur ?? this.idleDur;
     const ax = axis === "x" ? [1, 0, 0] : axis === "y" ? [0, 1, 0] : [0, 0, 1];
     const times = this.samples(D, phase, n);
-    const vals = times.map((t) => quatAxisAngle(ax, base + amp * Math.sin(2 * Math.PI * (t / D))));
-    this.channels.push({ node, path: "rotation", times, vals, vec: 4 });
+    const vals = times.map((t) => quatAxisAngle(ax, base + amp * Math.sin(2 * Math.PI * (t / D + lag))));
+    this.channels.push({ node, path: "rotation", times, vals, vec: 4, clip: this.clip_name });
   }
 
-  /** Y bob around the node's rest translation. */
-  bob(node, { amp = 0.05, dur, phase = 0, n = 10 } = {}) {
+  /** Y bob around the node's rest translation. `cycles` bobs per loop — a walk
+   *  rises twice a stride, once per footfall, and a half-length channel would
+   *  hold still for the second half of the clip. */
+  bob(node, { amp = 0.05, dur, phase = 0, n = 10, cycles = 1 } = {}) {
     const D = dur ?? this.idleDur;
     const times = this.samples(D, phase, n);
-    const vals = times.map((t) => [node.at[0], node.at[1] + amp * Math.sin(2 * Math.PI * (t / D)), node.at[2]]);
-    this.channels.push({ node, path: "translation", times, vals, vec: 3 });
+    const vals = times.map((t) => [node.at[0], node.at[1] + amp * Math.sin(2 * Math.PI * cycles * (t / D)), node.at[2]]);
+    this.channels.push({ node, path: "translation", times, vals, vec: 3, clip: this.clip_name });
   }
 
   /** Squash-and-stretch breathing on the node's scale. */
@@ -516,7 +533,7 @@ export class Cute {
       const s = Math.sin(2 * Math.PI * (t / D));
       return [1 - k * 0.5 * s, 1 + k * s, 1 - k * 0.5 * s];
     });
-    this.channels.push({ node, path: "scale", times, vals, vec: 3 });
+    this.channels.push({ node, path: "scale", times, vals, vec: 3, clip: this.clip_name });
   }
 
   /** One quick blink at fraction t0 of the clip (scale-y squash on the eyes). */
@@ -527,7 +544,7 @@ export class Cute {
     const vals = [
       [1, 1, 1], [1, 1, 1], [1, 0.06, 1], [1, 1, 1], [1, 1, 1],
     ];
-    this.channels.push({ node, path: "scale", times, vals, vec: 3 });
+    this.channels.push({ node, path: "scale", times, vals, vec: 3, clip: this.clip_name });
   }
 
   // ---- export ----
@@ -666,10 +683,13 @@ export class Cute {
     const root_index = nodeIndex.get(this.root);
     if (roots.length) gltfNodes[root_index].children = roots;
 
-    // animations
-    const samplers = [];
-    const gltfChannels = [];
+    // animations: one per clip name, in the order the clips were begun
+    const clipOrder = [...new Set(this.channels.map((ch) => ch.clip ?? "idle"))];
+    const animations = clipOrder.map((name) => ({ name, channels: [], samplers: [] }));
     for (const ch of this.channels) {
+      const anim = animations[clipOrder.indexOf(ch.clip ?? "idle")];
+      const samplers = anim.samplers;
+      const gltfChannels = anim.channels;
       const input = pushAccessor(
         new Float32Array(ch.times),
         5126,
@@ -710,8 +730,8 @@ export class Cute {
       bufferViews,
       buffers: [{ byteLength: offset }],
     };
-    if (gltfChannels.length) {
-      gltf.animations = [{ name: "idle", channels: gltfChannels, samplers }];
+    if (animations.length) {
+      gltf.animations = animations;
     }
 
     // GLB container

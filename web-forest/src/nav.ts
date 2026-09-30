@@ -22,6 +22,9 @@ export const DEMO_PARAM = [
   "sync",
   "view",
   "probe",
+  /* `?avatar=hiker` — the proposed 3D walker (src/avatar.ts). A demo that
+     shows it must keep showing it after the first tap to the Journal. */
+  "avatar",
 ] as const;
 
 /** `path` with whichever demo params `search` carries, in DEMO_PARAM order. */

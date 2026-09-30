@@ -3,9 +3,18 @@
  * The Field Guide app itself will render models through <model-viewer> (build
  * spec T4.1); this page is the inspection bench for the whole pack and the
  * render target for deck screenshots (?shot=<species_code>).
+ *
+ * Rig inspection (09-30, Gelo `1:35`: "his limbs are not connected"): a limb
+ * that swings off its joint is only visible mid-clip, so a still of the rest
+ * pose proves nothing. These pin the clip at one moment instead:
+ *   &t=<seconds>     freeze the clip there (no auto-rotate)
+ *   &clip=<name>     which clip to play (default: the first; e.g. walk, idle)
+ *   &yaw=<rad>       camera yaw; &pitch=<rad>; &zoom=<factor> (<1 is closer)
+ *   &file=<path>     load any .glb under /model/ by path, e.g. character-hiker.glb
  */
 const params = new URLSearchParams(location.search);
-const SHOT = params.get("shot");
+const SHOT = params.get("shot") ?? (params.get("file") ? "file" : null);
+const FREEZE = params.has("t") ? Number(params.get("t")) : null;
 if (SHOT) document.body.classList.add("shot");
 
 const canvas = document.getElementById("gl");
@@ -181,7 +190,7 @@ async function loadGlb(url) {
 
   let anim = null;
   if (json.animations?.length) {
-    const a = json.animations[0];
+    const a = json.animations.find((c) => c.name === params.get("clip")) ?? json.animations[0];
     anim = {
       duration: Math.max(...a.samplers.map((s) => json.accessors[s.input].max[0])),
       channels: a.channels.map((c) => {
@@ -221,7 +230,8 @@ function sampleAnim(model, t) {
 }
 
 // ---- camera ----
-let yaw = SHOT ? 0.5 : 0.6, pitchCam = 0.22, dist = 2.1, auto = !SHOT;
+let yaw = params.has("yaw") ? Number(params.get("yaw")) : SHOT ? 0.5 : 0.6;
+let pitchCam = params.has("pitch") ? Number(params.get("pitch")) : 0.22, dist = 2.1, auto = !SHOT;
 let dragging = false, lx = 0, ly = 0;
 canvas.addEventListener("pointerdown", (e) => { dragging = true; lx = e.clientX; ly = e.clientY; });
 canvas.addEventListener("pointerup", () => { dragging = false; });
@@ -287,7 +297,7 @@ const DEBUG = { draws: 0 };
 
 let t0 = performance.now();
 function frame(now) {
-  const t = (now - t0) / 1000;
+  const t = FREEZE ?? (now - t0) / 1000;
   DEBUG.draws = 0;
   if (auto) yaw += 0.004;
   if (model?.anim) sampleAnim(model, t);
@@ -361,7 +371,7 @@ function computeFit(m) {
     shadowRx: (max[0] - min[0]) * 0.62 + 0.05,
     shadowRz: (max[2] - min[2]) * 0.62 + 0.05,
   };
-  dist = (span * 1.6) / (2 * Math.tan(0.36)) + 0.3;
+  dist = ((span * 1.6) / (2 * Math.tan(0.36)) + 0.3) * Number(params.get("zoom") ?? 1);
 }
 
 // ---- UI ----
@@ -376,6 +386,7 @@ async function main() {
     { species_code: "character-seedling", scientific_name: "Stage 2", common_name: "Companion — Seedling", iconic_taxon_name: "Character", archetype: "seedling", file: "character-seedling.glb", count: null },
     { species_code: "character-sapling", scientific_name: "Stage 3", common_name: "Companion — Sapling", iconic_taxon_name: "Character", archetype: "sapling", file: "character-sapling.glb", count: null },
     { species_code: "character-tree", scientific_name: "Stage 4", common_name: "Companion — Tree", iconic_taxon_name: "Character", archetype: "tree", file: "character-tree.glb", count: null },
+    { species_code: "character-hiker", scientific_name: "Map avatar proposal (?avatar=hiker) — &clip=walk", common_name: "Hiker (proposal)", iconic_taxon_name: "Character", archetype: "hiker", file: "character-hiker.glb", count: null },
   );
   const totalMb = manifest.model.reduce((s, e) => s + (e.bytes ?? 0), 0) / 1048576;
   document.getElementById("stats").innerHTML =
@@ -425,7 +436,11 @@ async function main() {
     }
   }
 
-  if (SHOT) {
+  if (params.get("file")) {
+    const file = params.get("file");
+    manifest.model.unshift({ species_code: "file", scientific_name: file, common_name: file, iconic_taxon_name: "Character", archetype: "file", file, count: null });
+    renderList();
+  } else if (SHOT) {
     renderList();
   } else {
     renderList();

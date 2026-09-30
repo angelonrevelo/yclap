@@ -33,6 +33,7 @@
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { posedPart, surfaceGap } from "../audit-model.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const MODEL_DIR = join(here, "..", "..", "public", "model");
@@ -185,7 +186,11 @@ export function worldPart(json, bin) {
       const vert = [];
       const stride = Math.max(3, Math.floor(pos.length / 3 / 220) * 3);
       for (let v = 0; v < pos.length; v += stride) vert.push(xform(world, [pos[v], pos[v + 1], pos[v + 2]]));
-      part.push({ node: idx, name: n.name ?? `node${idx}`, mesh: n.mesh, lo, hi, matrix: world, vert });
+      /* The whole surface, for the exact contact test below. */
+      const flat = new Float64Array(pos.length);
+      for (let v = 0; v < pos.length; v += 3) flat.set(xform(world, [pos[v], pos[v + 1], pos[v + 2]]), v);
+      const solid = posedPart(flat, Uint32Array.from(accessor(json, bin, prim.indices)), n.name ?? `node${idx}`);
+      part.push({ node: idx, name: n.name ?? `node${idx}`, mesh: n.mesh, lo, hi, matrix: world, vert, solid });
     }
     for (const c of n.children ?? []) walk(c, world);
   };
@@ -234,22 +239,25 @@ export function connectivity(part, slack) {
   const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
   const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; };
 
-  const tol2 = tol * tol;
+  /*
+   * ...and then on SURFACES, not on vertices (the rig lane, 09-30).
+   *
+   * Vertices were the fix for boxes, and they carried a blind spot of their
+   * own that the flora builder spent a stem and a bead on at every joint: two
+   * surfaces that CROSS between vertex rings — a six-sided stem through its
+   * soil, a mushroom cap over its stipe — have no vertex of one near a vertex
+   * of the other, so a plainly attached part read as floating. The builder
+   * then grew sampler-appeasing beads to satisfy the gate rather than the eye.
+   * `surfaceGap` (script/audit-model.mjs, shared with the builder and with the
+   * animated rig audit) answers the real question: an edge crossing a
+   * triangle, one part inside the other, or nearest surfaces within `tol`.
+   */
   for (let i = 0; i < part.length; i += 1) {
     for (let j = i + 1; j < part.length; j += 1) {
       if (find(i) === find(j)) continue;
-      /* Boxes still act as a cheap reject: if the boxes are far apart the
-         surfaces certainly are, so skip the vertex work. */
+      /* Boxes still act as a cheap reject. */
       if (boxGap(part[i], part[j]) > tol) continue;
-      const a = part[i].vert, b = part[j].vert;
-      let touch = false;
-      for (let x = 0; x < a.length && !touch; x += 1) {
-        for (let y = 0; y < b.length; y += 1) {
-          const d = (a[x][0] - b[y][0]) ** 2 + (a[x][1] - b[y][1]) ** 2 + (a[x][2] - b[y][2]) ** 2;
-          if (d <= tol2) { touch = true; break; }
-        }
-      }
-      if (touch) union(i, j);
+      if (surfaceGap(part[i].solid, part[j].solid, tol) <= tol) union(i, j);
     }
   }
   const group = new Map();

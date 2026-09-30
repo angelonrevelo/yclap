@@ -25,6 +25,12 @@ interface ModelViewerAttributes extends HTMLAttributes<HTMLElement> {
   "camera-target"?: string;
   "camera-orbit"?: string;
   "min-camera-orbit"?: string;
+  "max-camera-orbit"?: string;
+  /** Which embedded clip plays — the hiker carries "idle" and "walk" (avatar.ts). */
+  "animation-name"?: string;
+  "disable-zoom"?: boolean;
+  /** How fast camera changes ease, in ms-ish decay (lower is snappier). */
+  "interpolation-decay"?: string;
   "field-of-view"?: string;
   /** "eager" | "lazy" | "auto". */
   loading?: string;
