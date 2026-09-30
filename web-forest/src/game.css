@@ -121,7 +121,11 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  width: min(292px, calc(100vw - 88px));
+  /* Grows with the area name on wide screens instead of ellipsing it; the
+     88px keeps the right-hand orbs clear on phones. */
+  width: max-content;
+  min-width: min(292px, calc(100vw - 88px));
+  max-width: min(460px, calc(100vw - 88px));
   padding: 8px 12px 8px 8px;
   border-radius: 20px;
   background: var(--mg-surface-glass);
@@ -134,15 +138,16 @@
   transform: scale(0.98);
 }
 
+/* A round portrait, like a Pokémon GO trainer's — the buddy on a soft tint. */
 .gm-avatar {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   flex-shrink: 0;
-  border-radius: 14px;
+  border-radius: 999px;
   display: grid;
   place-items: center;
-  background: var(--mg-surface-2);
+  background: #eef6e8;
 }
 
 /* The level: a sunny sticker disc hung off the avatar corner. */
@@ -612,16 +617,10 @@
   animation: gm-rise 0.4s cubic-bezier(0.2, 1, 0.4, 1) both;
   transition: transform var(--mg-motion);
 }
+/* One shape per card: the portrait sits on its own tinted disc. The inner
+   panel that used to frame it made three nested outlines per card. */
 .gm-card::before {
-  content: "";
-  position: absolute;
-  left: 6px;
-  right: 6px;
-  top: 6px;
-  height: 56%;
-  border-radius: 15px;
-  background: var(--mg-surface-2);
-  z-index: 0;
+  content: none;
 }
 .gm-card > * {
   position: relative;
@@ -799,7 +798,10 @@
 
 /* ── Today's hunt: the day's first open ─────────────────────────────────── */
 
-.gm-today {
+/* Doubled with .al-scrim on purpose: boot.css loads after this file and its
+   .al-scrim {display: grid; place-items: center} would otherwise win, split
+   ribbon and card into two grid rows and lose the -18px overlap. */
+.al-scrim.gm-today {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -811,7 +813,9 @@
 .gm-today-ribbon {
   position: relative;
   z-index: 2;
-  width: min(92vw, 400px);
+  flex-shrink: 0;
+  /* 48px leaves room for both 22px swallowtails inside the scrim padding */
+  width: min(calc(100% - 48px), 400px);
   margin-bottom: -18px;
   padding: 14px 0 12px;
   text-align: center;
@@ -850,6 +854,7 @@
   text-shadow: 0 2px 0 rgba(107, 53, 25, 0.6);
 }
 .gm-today-card {
+  flex-shrink: 0;
   width: min(76vw, 300px);
   border-radius: 20px;
   overflow: hidden;
@@ -1060,4 +1065,79 @@ model-viewer::part(default-progress-bar) {
   background: rgba(255, 246, 222, 0.97);
   border-color: #f0b429;
   padding: 5px 12px;
+}
+/* Curated finds: a glass bubble on a stalk, drawn to match `toon.tsx`. */
+.pm-bubble-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.pm-bubble {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 999px;
+  /* the outline, then the cel band as an inset crescent on the unlit side */
+  border: 2.6px solid #1e4a2c;
+  background: radial-gradient(circle at 34% 28%, #ffffff 0%, #f6fbf1 58%, #e3efd8 60%, #d6e8c8 100%);
+  box-shadow: inset -7px -9px 0 rgba(11, 42, 24, 0.1), 0 3px 0 rgba(11, 42, 24, 0.12);
+}
+.pm-bubble[data-logged="true"] {
+  background: radial-gradient(circle at 34% 28%, #eef6e8 0%, #dcebd0 58%, #c9dfba 60%, #bdd6ab 100%);
+}
+.pm-bubble-shine {
+  position: absolute;
+  left: 16%;
+  top: 9%;
+  width: 36%;
+  height: 22%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0));
+  transform: rotate(-24deg);
+  pointer-events: none;
+}
+.pm-bubble-stalk {
+  width: 7px;
+  height: 14px;
+  margin-top: -1px;
+  border: 2px solid #1e4a2c;
+  border-top: 0;
+  border-radius: 0 0 4px 4px;
+  background: linear-gradient(90deg, #f6f1e4 0%, #ede7d8 55%, #cfc8b6 57%, #c4bca8 100%);
+}
+.pm-bubble-disc {
+  width: 30px;
+  height: 8px;
+  margin-top: -2px;
+  border-radius: 999px;
+  background: rgba(62, 154, 74, 0.22);
+  border: 1.5px solid rgba(62, 154, 74, 0.7);
+}
+
+/* In range: the disc breathes, so you know you can log it without reading. */
+@keyframes pm-find-ring {
+  0% { opacity: 0.95; transform: scale(0.7); }
+  100% { opacity: 0; transform: scale(1.25); }
+}
+.pm-find-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pm-find-ring 1.6s ease-out infinite;
+}
+
+/* Flora sways a degree or two from the base, like a toy in a breeze. */
+@keyframes fl-sway {
+  0%, 100% { transform: rotate(-1.1deg); }
+  50% { transform: rotate(1.1deg); }
+}
+.fl-sway {
+  transform-origin: 50% 100%;
+  animation: fl-sway 5.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fl-sway,
+  .pm-find-ring {
+    animation: none;
+  }
 }

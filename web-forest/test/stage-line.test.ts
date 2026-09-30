@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { STAGE_AT, STAGE_LABEL, stageLine } from "../src/stage.ts";
+import { STAGE_AT, STAGE_LABEL, stageLine, withArticle } from "../src/stage.ts";
 
 /**
  * One ladder, one label set. The round-5 playtest found the growth card saying
@@ -12,9 +12,14 @@ import { STAGE_AT, STAGE_LABEL, stageLine } from "../src/stage.ts";
 const SECOND_LADDER = /seedling|young tree|mature tree|week/i;
 
 test("the growth line names the next stage off the sector ladder", () => {
-  assert.equal(stageLine(0), `Walk into 1 more area of campus to grow into a ${STAGE_LABEL.sprout}.`);
-  assert.equal(stageLine(1), `Walk into 3 more areas of campus to grow into a ${STAGE_LABEL.sapling}.`);
-  assert.equal(stageLine(8), `Walk into 1 more area of campus to grow into a ${STAGE_LABEL.tree}.`);
+  assert.equal(stageLine(0), `Walk into 1 more area of campus to grow into ${withArticle(STAGE_LABEL.sprout)}.`);
+  assert.equal(stageLine(1), `Walk into 3 more areas of campus to grow into ${withArticle(STAGE_LABEL.sapling)}.`);
+  assert.equal(stageLine(8), `Walk into 1 more area of campus to grow into ${withArticle(STAGE_LABEL.tree)}.`);
+});
+
+test("the article follows the label's first sound", () => {
+  assert.equal(withArticle("Eagle"), "an Eagle");
+  assert.equal(withArticle("Hatchling"), "a Hatchling");
 });
 
 test("fully grown says so", () => {

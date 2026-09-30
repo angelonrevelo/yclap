@@ -3,7 +3,7 @@ import campus_shape from "./asset/campus-shape.json" with { type: "json" };
 import Botanical from "./botanical";
 import { BUILDING_ATTRIBUTION, building as campus_building } from "./building";
 import Skyline, { type SkylineStyle } from "./skyline";
-import Character, { type Stage } from "./character";
+import Character, { Walker, type Stage } from "./character";
 import { AT_TREE_RADIUS_M, RESTRICTED_POLYGON, species, type Encounter } from "./data";
 import { residentBySector } from "./nearby";
 import { pinKindOf, type PinKind } from "./pin";
@@ -173,13 +173,16 @@ const marker: Encounter[] = [...resident_by_sector.values()].flat();
  * inside is skipped.)
  */
 const WalkerFigure = memo(Character);
+/* The 3D trainer (`agila-trainer.glb`), the default walker since 10-02. */
+const TrainerFigure = memo(Walker);
 const HorizonBand = memo(Horizon);
 const HallCountPill = memo(HallCount);
 const FrameProbeOnce = memo(FrameProbe);
 /** "out until 3:40 PM" — one formatter for every find (see `spawn_title`). */
 const UNTIL_FORMAT = new Intl.DateTimeFormat([], { hour: "numeric", minute: "2-digit" });
 /** `?avatar=` never changes under a running page; read it once, not per frame. */
-const is_hiker = typeof window !== "undefined" && avatarFrom(window.location.search) === "hiker";
+const avatar = typeof window !== "undefined" ? avatarFrom(window.location.search) : "trainer";
+const is_hiker = avatar === "hiker";
 
 /** Fixed cast so they do not reshuffle every render. Decoration, not data. */
 const BIRD = [
@@ -1093,7 +1096,7 @@ export default function PlayMap({
                     >
                       <HikerAvatar size={avatar_px} is_walking={travel.current.is_walking} heading_degree={travel.current.heading} />
                     </Suspense>
-                  ) : (
+                  ) : avatar === "sticker" ? (
                     <WalkerFigure
                       stage={stage}
                       vigor={vigor}
@@ -1101,10 +1104,17 @@ export default function PlayMap({
                       is_walking={travel.current.is_walking}
                       heading_degree={travel.current.heading}
                     />
+                  ) : (
+                    <TrainerFigure
+                      stage={stage}
+                      size={avatar_px}
+                      is_walking={travel.current.is_walking}
+                      heading_degree={travel.current.heading}
+                    />
                   )}
                 </div>
                 {/* The pet eagle — companion by day, sleep pet when you stop. See `pet.ts`. */}
-                <PetEagle projection={projection} fix={fix} anchor={anchor} avatar_px={avatar_px} />
+                <PetEagle stage={stage} projection={projection} fix={fix} anchor={anchor} avatar_px={avatar_px} />
                 </>
               );
             })()}

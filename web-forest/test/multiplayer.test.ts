@@ -417,7 +417,11 @@ test("openHall falls back to polling when the socket never opens", async () => {
     poll_ms: 20,
   });
   try {
-    await new Promise((r) => setTimeout(r, 60));
+    /* Wait for the fall-back rather than a fixed 60 ms: under a loaded
+       machine the 5 ms close and the first 20 ms poll can both run late. */
+    for (let waited = 0; waited < 2000 && !(mode.includes("poll") && inbox.length > 0); waited += 20) {
+      await new Promise((r) => setTimeout(r, 20));
+    }
     assert.ok(mode.includes("poll"));
     assert.ok(inbox.length > 0);
     link.sendPose({ player_id: "p", name: "N", level: 1, stage: "egg", source: "play", ...CAMPUS_CENTER });

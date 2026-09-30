@@ -300,6 +300,81 @@ Gelo, 10-01: "i really dont like this artifical horizon, in the real pokemon go,
 
 ---
 
+## 2026-09-26 — Showcase panel: better features
+
+Source: [`docs/plaud/2026-09-26-showcase-panel.md`](docs/plaud/2026-09-26-showcase-panel.md) — seven readable asks from the panel after the demo. Checked against `demo-0926` at `eaacdf1a`: 1 already shipped, 5 genuine, 2 triage, 2 rejected (one a repeat of an old rejection). Every row below is **not built** unless its status says so.
+
+### P1 — the panel's asks that fit the product
+
+| Lane | Behavior | Surface | Grounding | PASS iff (Tier 3 unless marked) | Status |
+|------|----------|---------|-----------|----------|--------|
+| safety | A freshie plays a **Campus Safety quest**: three to five stops on the walkable map (heat, flood, earthquake, where to go) — reaching a stop opens a card with one do / don't line and its source, and finishing all stops earns a badge. On a storm or heat day the quest opens first | Trainer sheet quest beside Today's Hunt; `src/safety.ts`; badge on `/journal` | `src/weather.ts:1-40` already warns storm / rain / heat off PAGASA's heat-index classes; `src/` has 0 hits for evacuat / earthquake / assembly; the daily hunt (`src/gamify.ts:334`) is the quest shape to reuse | Open `/?weather=storm`, start the quest, walk (stick) to every stop: PASS iff each card names a source, the badge lands once, and **no stop calls itself an official Ateneo evacuation or assembly point** unless the campus safety office supplied it | Not built. Hazard lines can ship from public sources (PAGASA, PHIVOLCS, UP NOAH), labelled. **Official assembly points BLOCKED** on the campus safety / DRRM office |
+| verify | "Who checks my find?" has a real answer: a logged find with a photo can be **sent to iNaturalist**, where identifiers (scientists among them) confirm it to Research Grade, and the journal shows that grade when it comes back | "Share to iNaturalist" on a journal entry; the entry's status line | `src/inat.ts:87` only reads nearby observations and identifies via `/inat/identify`; journal statuses Verified / Needs ID / Duplicate are device-only (ROADMAP NOT DOING row) | **Tier 2 (live iNat, non-idempotent):** with a test iNat account, share one journal photo; PASS iff an observation appears on inaturalist.org under that account with the photo and the campus species, and the entry shows its quality grade after reload | Not built. Needs iNat OAuth (the identify token is a 24 h API token, not a user login) |
+| conditions | A walker sees **today's campus conditions and the standing hazards** in one card: heat-index band, rain / storm now, plus Loyola Heights' flood and earthquake exposure, each with its source and read date | Weather chip → "Conditions" card | `src/weather.ts` has the live half; no static hazard data anywhere in `src/` | Open the card online: PASS iff every figure carries a source and a read date, an unread figure shows "—" not a value, and **no CO₂, offset or canopy figure appears** (rejected, `docs/roadmap-rejected.md` ForestDrop row) | Not built. Flood / fault figures must be read from UP NOAH and PHIVOLCS HazardHunterPH and dated — not written from memory |
+| fact | Every species card carries **one sourced "Did you know"** line, also shown the first time you log that species | Species card (`species-card.tsx`) + log reveal; `fact: { line, source }` per species in `src/data.ts` | `src/data.ts:150` detail has attribute / habitat / confusable, no fact field; `note` lines are framing, not facts | **Tier 1 (escalated: sourcing is this repo's core invariant and `data.ts` changes weekly):** extend `test/species-detail.test.ts` — every curated species has a non-blank fact line and a source already cited in its record. Written when the field lands (promote-on-build), not before, so `npm test` stays green | Not built. Spec only |
+
+### P2
+
+| Lane | Behavior | Surface | Grounding | PASS iff | Status |
+|------|----------|---------|-----------|----------|--------|
+| family | A freshie's family can open the **same safety route without an account** — the stops, the do / don't lines, the sources — and nothing about where the student is | Public `/safety` page | Nothing public exists besides the app shell; positions stay on device (`docs/roadmap-rejected.md` GPS rows) | Open `/safety` signed out on a phone: PASS iff it lists every quest stop with its source and makes no network call that carries a position | After lane `safety` |
+
+### Already shipped (answered on stage)
+
+| Lane | Behavior | Surface | Status |
+|------|----------|---------|--------|
+| areas | The campus is split into areas; tapping one lists the species found there and your progress in it, and entering a biome pops its residents | `SectorCard` (`src/app.tsx:4462`, `sectorResident` / `sectorProgress`), `biomePresenceAt` (`src/nearby.ts:71`) | **Shipped.** Residents are the curated demo placements, not a survey — real geo still BLOCKED on the AIS inventory |
+
+### Triage (need a decision before a row)
+
+| Ask | What blocks it |
+|-----|----------------|
+| Eco-trails in national / private parks (A4) | A named partner site and who owns its species data. The app is campus-bound today (`CAMPUS_BOX`, `src/geo.ts:39`; `campus-sector.json`), so a second site means a site pack (bounds, areas, species, paths). Worth building only once a park says yes |
+| Research officers / locals as contributors (A4, A2) | Same gate as the BLOCKED "Official verification" row: named people and an authority. Until then lane `verify` routes verification to iNaturalist's identifiers |
+
+### Rejected (logged in `docs/roadmap-rejected.md`)
+
+| Ask | Reason |
+|-----|--------|
+| Health or other non-biodiversity uses inside Magisphere (A3) | Magisphere answers the urban-forest problem tree. The engine (areas, quests, journal) can be forked for another brief; the product does not widen |
+| A carbon / CO₂ panel on the climate dashboard | Repeat of the ForestDrop and no-carbon-product rejections; lane `conditions` shows hazards and heat only |
+
+### The Ateneo proposal as presented — targets, timeline, and what the app must do to prove them
+
+Source: an AI summary of the showcase session (pasted 09-26, not a transcript — see [`docs/plaud/2026-09-26-showcase-panel.md`](docs/plaud/2026-09-26-showcase-panel.md) § Proposal). Its numbers are **as the summary reports them** and are not yet checked against the deck presented on 09-26.
+
+**Checked against the docs (09-26): the submitted targets are the ones to quote.** `ADMU.pptx` slide 3 (Downloads, 9 Sep — the only deck on this machine) targets ≥20 students and stakeholders consulted (Q3), ≥80% of identified trees mapped in one campus area (Q3), the website + map piloted (Q4) and **≥100 students engaged** by end of AY 2026–27, as [`docs/showcase/concept-note.md`](docs/showcase/concept-note.md) § 3 already says. The summary's **500** and **200** are the superseded Output 2 draft (commit `b37c1ed7`, "Reach 500 students", "Engage 200 students"); **150 weekly users** and **+70% naming three natives** appear in no doc or commit. Either the 09-26 slides added them or the summary invented them — nobody has the 09-26 deck on this machine to tell. The table keeps the summary's numbers only to show what each would take to count.
+
+| Target (summary) | Can the app count it today? | Row that makes it countable |
+|------------------|-----------------------------|-----------------------------|
+| ≥500 students engaged | **No.** No analytics in the build (concept note § 3); guests are local-only | `stats` |
+| ≥200 student contributors with **verified** data | **No.** Verification is device-local (NOT DOING row) | `verify` (P1 above) + `stats` |
+| ≥150 weekly active users | **Partly.** Signed-in accounts have a server `save.updated_at` (`web-forest/worker/account.ts:95-110`); guests are invisible | `stats` |
+| +70% of students correctly naming ≥3 native species | **No.** Pre/post questions are PENDING (`docs/evaluation/pre-post-test.md`) | `idcheck` |
+| 70% of mapped species verified by scientists / academia | **No** | `verify` + named reviewers (BLOCKED) |
+
+| When (summary) | Milestone | App side |
+|----------------|-----------|----------|
+| Sep – Dec 2026 | Finalize and pilot-test the website / game map | Handset proof, two-phone hall and iNat token (NEXT) are the pilot's preconditions; `stats` must exist **before** the pilot or its numbers are lost |
+| Jan – Mar 2027 | Pitch to academic offices, sustainability units, orgs | Partner asks already listed in Settings → offices (all NOT YET) |
+| Mid – late 2027 | Campus-wide campaign; onboarding at freshman orientation (Get Up); campus walks | `onboard` |
+| 2027 | Biodiversity Monitoring Report for planting, conservation zoning and campus management | `report` |
+
+| Lane | Behavior | Surface | Grounding | PASS iff (Tier 3) | Status |
+|------|----------|---------|-----------|----------|--------|
+| stats | **P1.** A coordinator can read, for any week, how many accounts signed up, how many were active, and how many logged at least one find — counts only, no names, no positions | `npm run stats -- --week 2026-W40` against the sync database (D1 / `server/yclap-sync.json`) | `worker/account.ts` has `created_at` / `updated_at` and the save blob holds the journal; nothing reads them in aggregate | Seed two accounts, one with a find this week: PASS iff the command prints signed up 2 · active 2 · contributors 1 for that week and the output holds no username. **Guests are not counted and the output says so** | Not built. Must land before the Sep–Dec pilot |
+| idcheck | **P2.** Before and after using Magisphere, a student answers a short "name three natives" check, and the team sees the share that got all three right each time | **The existing pre/post-test Google Form** (QR link, as in `docs/evaluation/pre-post-test.md`); in-app `/check` only if the Form's response rate fails in the pilot | Questions are PENDING in `docs/evaluation/pre-post-test.md`; the anti-fabrication rule there applies | Two test responses (one "before", one "after") in the Form's sheet: PASS iff the sheet separates before from after and computes the all-three-right share for each | Decided 09-26: Form first — it already has a delivery path and needs no build. Question text must come from the team |
+| onboard | **P2.** A freshie at Get Up scans one QR and lands in a short first run: pick a walker, the Safety quest (`safety`), then one find | QR → `/?start=getup` | Boot already goes splash → loading → safety card (`boot` lane) | Open `/?start=getup` on a fresh phone: PASS iff it reaches the Safety quest's first stop in ≤3 taps with no sign-in | BLOCKED on the Get Up / orientation office agreeing; build after `safety` |
+| report | **P3.** The team can export verified sightings per campus area for the 2027 monitoring report | `npm run report` → CSV per sector: species, count, verified count, date range | `sectorResident` / `sectorProgress` already group finds by sector (`src/nearby.ts:99`) | PASS iff every row's verified count ≤ its count and every verified row traces to an iNat Research Grade id or a named reviewer | BLOCKED on real data: AIS inventory + `verify` + reviewers. Not a 2026 row |
+
+**Judges' recommendations** (summary): link to ecotourism, public parks and **LGUs** for community hazard management and green-space mapping — folded into the parks Triage row above (partner first, site pack second); and robust expert validation of student logs — lane `verify`, then named reviewers.
+
+**Not carried over from the summary:**
+- *Leaderboards* — only the local demo board stays; official or campus-wide ranks remain NOT DOING. *Buddy groups* need a decision on whether they mean the existing friend list or something new.
+- The waste pilot, algae photobioreactor, energy framework, Young Climate Leaders Centre, ethics clearances (PHREB, FPIC, PAMB/DENR) and the LGU flood-alert / policy-brief questions are other teams' proposals in the same session, not Magisphere work.
+
+---
+
 ## How to read this file
 
 1. **North star** = truth of the live app.
@@ -311,3 +386,4 @@ Gelo, 10-01: "i really dont like this artifical horizon, in the real pokemon go,
 7. **2026-09-12 play layer** = 09-09 Plaud showcase demo rows. They sit under the Showcase clock; they do not replace handset / QR.
 8. **2026-09-25 demo push** = one row per lane merged into `demo-0926` from Gelo's 09-25 note, each with its PASS-iff test and what it could not do.
 9. **2026-10-01 grand reveal** = one row per lane merged into `reveal-1015` from Gelo's 09-30 note. The plan, the gate and the edge-case register live in `docs/showcase/reveal-plan.md`.
+9. **2026-09-26 showcase panel** = the panel's asks after the demo, each grounded in the code, with its PASS-iff test. None is built unless the row says so.

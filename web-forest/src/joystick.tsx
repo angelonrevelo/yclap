@@ -37,6 +37,28 @@ import { STICK_DEADZONE, type PlayStick } from "./play-walk";
  */
 const THROW_PX = 44;
 const KNOB_PX = 52;
+/**
+ * How far the knob's centre may move: the ring's radius less the knob's, so
+ * at full throw the knob touches the ring from inside. Travelling the full
+ * THROW_PX hung 26 px of knob outside the ring. The steer is normalised by the
+ * same number, so full speed is still reached at the ring.
+ */
+const TRAVEL_PX = THROW_PX - KNOB_PX / 2;
+
+/** Default lift above the bottom edge — see `bottom` below. */
+const JOYSTICK_BOTTOM = 178;
+const JOYSTICK_LEFT = 18;
+
+/**
+ * The stick's hit box in its container, which is the play map's own box. The
+ * play map keeps finds out of it: the stick sits over the map at zIndex 30, so
+ * a find drawn under it could be seen but a tap on it started a walk instead.
+ */
+export const JOYSTICK_BOX = {
+  left: JOYSTICK_LEFT,
+  bottom: JOYSTICK_BOTTOM,
+  size: THROW_PX * 2 + KNOB_PX,
+} as const;
 
 interface Props {
   onSteer: (stick: PlayStick) => void;
@@ -53,7 +75,7 @@ interface Props {
   bottom?: number;
 }
 
-export default function Joystick({ onSteer, is_on, bottom = 178 }: Props) {
+export default function Joystick({ onSteer, is_on, bottom = JOYSTICK_BOTTOM }: Props) {
   const base_ref = useRef<HTMLDivElement | null>(null);
   const pointer_id = useRef<number | null>(null);
   const [knob, setKnob] = useState({ x: 0, y: 0 });
@@ -127,21 +149,21 @@ export default function Joystick({ onSteer, is_on, bottom = 178 }: Props) {
       const dx = client_x - centre.current.x;
       const dy = client_y - centre.current.y;
       const len = Math.hypot(dx, dy);
-      const clamp = len > THROW_PX ? THROW_PX / len : 1;
+      const clamp = len > TRAVEL_PX ? TRAVEL_PX / len : 1;
       const kx = dx * clamp;
       const ky = dy * clamp;
       setKnob({ x: kx, y: ky });
       /* Screen y grows downward and the walk's y grows up the screen. The one
          negation in this file is here, and `play-walk.ts` documents why it is
          here rather than in four callers. */
-      onSteer({ x: kx / THROW_PX, y: -ky / THROW_PX });
+      onSteer({ x: kx / TRAVEL_PX, y: -ky / TRAVEL_PX });
     },
     [onSteer],
   );
 
   if (!is_on) return null;
 
-  const throw_ = Math.hypot(knob.x, knob.y) / THROW_PX;
+  const throw_ = Math.hypot(knob.x, knob.y) / TRAVEL_PX;
   const is_walking = throw_ >= STICK_DEADZONE;
 
   return (
@@ -173,7 +195,7 @@ export default function Joystick({ onSteer, is_on, bottom = 178 }: Props) {
       onLostPointerCapture={release}
       style={{
         position: "absolute",
-        left: 18,
+        left: JOYSTICK_LEFT,
         bottom,
         width: THROW_PX * 2 + KNOB_PX,
         height: THROW_PX * 2 + KNOB_PX,

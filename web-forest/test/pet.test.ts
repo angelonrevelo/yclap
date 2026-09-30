@@ -60,6 +60,14 @@ describe("pet state machine", () => {
     assert.deepEqual(petState({ is_walking: true, idle_ms: 0, hour: 2 }), { pose: "fly", reason: "night_walk" });
   });
 
+  it("an egg neither flies nor perches", () => {
+    for (const reason of ["walking", "night_walk", "still"] as const) {
+      const line = petStatusLine("Agila", { pose: "perch", reason }, true);
+      assert.doesNotMatch(line, /fly|flying|perched/i);
+    }
+    assert.match(petStatusLine("Agila", { pose: "perch", reason: "still" }), /perched/);
+  });
+
   it("status lines never claim to measure the user", () => {
     for (const reason of ["walking", "night_walk", "still", "idle", "night"] as const) {
       const line = petStatusLine("Agila", { pose: "sleep", reason });

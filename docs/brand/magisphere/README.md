@@ -43,6 +43,8 @@ Source files, not in this folder:
 - **Characters** — `web-forest/src/asset/magi/sticker/`: 1024 px transparent
   PNG masters of the Sprout buddy (sprout, cheer, map, sleep, trail), the
   yellow explorer, and the four growth stages (seed, seedling, sapling, tree).
+  The app ships the 400 px WebP copies in `web-forest/src/asset/magi/web/`
+  (trimmed to the ink, 8 px margin), which `render.mjs` rebuilds from these.
 
 ## The system
 
@@ -82,7 +84,7 @@ PLAY and GROW sheets; the name is still the team's to choose.
 |---|---|---|
 | **Generated** (characters) | Illustration is the one thing code can't draw well | `node <codex skill>/scripts/imagen.mjs web-forest/script/magi-asset/sticker.spec.json --resume` |
 | **Drawn by code** (logo, icons, scenes) | Exact spelling, exact geometry, any size, no generator artefacts | `node web-forest/script/magi-asset/build-vector.mjs` |
-| **Rendered** (every PNG here) | Composed from the two above, with live text in the real fonts | `node web-forest/script/magi-asset/render.mjs` |
+| **Rendered** (every PNG here, the PWA icons, the app's WebP stickers) | Composed from the two above, with live text in the real fonts | `node web-forest/script/magi-asset/render.mjs` |
 
 The characters were made with `codex` (gpt-image-2) on a flat `#FF00FF` key,
 all referencing one anchor (`buddy-sprout`) so they read as a single set. Each

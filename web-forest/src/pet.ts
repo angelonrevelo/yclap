@@ -74,14 +74,18 @@ export function petState(input: { is_walking: boolean; idle_ms: number; hour: nu
   return { pose: "perch", reason: "still" };
 }
 
-export function petStatusLine(name: string, state: PetState): string {
+/**
+ * The card's one line. `is_egg`: the buddy has not hatched, so it neither
+ * flies nor perches — an egg on the map read "perched, watching the trees".
+ */
+export function petStatusLine(name: string, state: PetState, is_egg = false): string {
   switch (state.reason) {
     case "walking":
-      return `${name} is flying along with you.`;
+      return is_egg ? `${name} is riding along in its nest.` : `${name} is flying along with you.`;
     case "night_walk":
-      return `${name} is up past its roost time to fly with you.`;
+      return is_egg ? `${name} is riding along in its nest, past its roost time.` : `${name} is up past its roost time to fly with you.`;
     case "still":
-      return `${name} is perched, watching the trees.`;
+      return is_egg ? `${name} is warm in its nest, waiting to hatch.` : `${name} is perched, watching the trees.`;
     case "idle":
       return `${name} dozed off while you stood still. Walk or tap to wake it.`;
     case "night":
