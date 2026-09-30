@@ -30,7 +30,7 @@ function glbJson(path: string): { json: any; bytes: number } {
   assert.equal(dv.getUint32(0, true), 0x46546c67, "glTF magic");
   assert.equal(dv.getUint32(4, true), 2, "glTF version 2");
   const jsonLen = dv.getUint32(12, true);
-  const json = JSON.parse(buf.slice(20, 20 + jsonLen).toString("utf8"));
+  const json = JSON.parse(Buffer.from(buf.subarray(20, 20 + jsonLen)).toString("utf8"));
   return { json, bytes: buf.byteLength };
 }
 
@@ -67,7 +67,7 @@ test("every iNaturalist sweep species is modeled (the exhaustive claim)", () => 
     .filter((r: any) => ["species", "hybrid", "complex"].includes(r.taxon.rank))
     .filter((r: any) => norm(r.taxon.name) !== "homo sapiens")
     .map((r: any) => norm(r.taxon.name));
-  const modeled = new Set(manifest.model.map((e: any) => norm(e.scientific_name)));
+  const modeled = new Set<string>(manifest.model.map((e: any) => norm(e.scientific_name)));
   for (const sci of expected) {
     assert.ok(modeled.has(sci), `iNat species without a model: ${sci}`);
   }

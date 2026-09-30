@@ -208,7 +208,7 @@ describe("the moderator token", () => {
     const mod = new ModerationService(sqlOf(), {});
     const res = await mod.handle(modRequest("/mod/api/state"), noHall, noWorld);
     assert.equal(res?.status, 404);
-    assert.match((await res!.json()).error, /off/);
+    assert.match(((await res!.json()) as { error: string }).error, /off/);
     assert.equal((await mod.handle(reportRequest(goodReport), noHall, noWorld))?.status, 201, "reports are still taken");
   });
 
@@ -370,7 +370,7 @@ describe("a walker hidden by a moderator", () => {
       new URL("https://magi.example/live/pose"),
     );
     assert.equal(poll?.status, 403);
-    assert.equal((await poll!.json()).notice.kind, "hidden");
+    assert.equal(((await poll!.json()) as { notice: { kind: string } }).notice.kind, "hidden");
   });
 
   it("is refused by the LAN hall the same way", () => {
@@ -538,6 +538,6 @@ function lanText(raw: RawSocket): string[] {
     .filter((buf) => buf[0] === 0x81)
     .map((buf) => {
       const len = buf[1] & 0x7f;
-      return buf.subarray(len === 126 ? 4 : len === 127 ? 10 : 2).toString("utf8");
+      return Buffer.from(buf.subarray(len === 126 ? 4 : len === 127 ? 10 : 2)).toString("utf8");
     });
 }

@@ -129,7 +129,7 @@ The owner's ask is that every edge case is met, from every side. Rows are groupe
 | Moderator token leaks | done: no token (or < 16 chars) means the console is off; rotate by changing the secret. **Open:** one shared token, so the audit log cannot say which moderator acted |
 | Who is allowed to be a moderator | **open**: needs a named person and the university's say |
 | Data retention for reports | done: 30 days (`docs/spec/moderation.md`) |
-| The Worker and the tests are not typechecked (`tsconfig` includes `src/` only) | done for the Worker: `tsconfig.worker.json` is in `npm run build` / `npm run typecheck` and found one real type gap (Durable Object SQLite rows can be BLOBs). **Open:** the tests: a test tsconfig (Node + Workers types, `allowJs`) reports 35 errors, mostly loose fakes; fix after the rig and module lanes merge |
+| The Worker and the tests are not typechecked (`tsconfig` includes `src/` only) | done: `npm run typecheck` (and so `npm run build`) checks the app, the Worker (`tsconfig.worker.json`, which found BLOB rows the type did not allow) and the tests (`tsconfig.test.json`; 20 loose spots fixed, including a test `Sighting` missing a required field) |
 | Lane worktrees share one `.vite` cache and break each other's dev servers | done: `MAGISPHERE_VITE_CACHE` |
 | Screenshot and bench runs leave a ~90 MB Chrome profile each and filled the disk | done: `shot.mjs` and `bench-hall.mjs` delete theirs |
 | Institution wants its own campus | done: module registry with per-campus config and a trail template (`docs/spec/campus-module.md`) |

@@ -14,11 +14,11 @@ const hueOf = (rgb: number[]) => rgbToHsl(rgb[0], rgb[1], rgb[2])[0];
 const lightOf = (rgb: number[]) => rgbToHsl(rgb[0], rgb[1], rgb[2])[2];
 
 test("HSL round-trips within a unit of rounding", () => {
-  for (const hex of band.map((b) => b.hex)) {
+  for (const hex of band.map((b: { hex: string }) => b.hex)) {
     const rgb = hexToRgb(hex);
     const [h, s, l] = rgbToHsl(rgb[0], rgb[1], rgb[2]);
     const back = hslToRgb(h, s, l);
-    back.forEach((v, i) => assert.ok(Math.abs(v - rgb[i]) <= 1, `${hex} channel ${i}`));
+    back.forEach((v: number, i: number) => assert.ok(Math.abs(v - rgb[i]) <= 1, `${hex} channel ${i}`));
   }
 });
 

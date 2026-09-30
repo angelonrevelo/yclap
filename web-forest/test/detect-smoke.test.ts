@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-// @ts-expect-error — plain .mjs script, no type declarations
 import { pickMode, runSmoke, SMOKE_DIR } from "../script/smoke-detect.mjs";
 
 interface ManifestPhoto {

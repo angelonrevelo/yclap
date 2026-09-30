@@ -62,7 +62,7 @@ describe("surfaceGap — the contact test the gate and the builders share", () =
     const post = box([-0.02, 0.5, -0.02], [0.02, 0.6, 0.02]);
     const wide = posedPart(
       Float64Array.from([...ring[0].v, ...ring[1].v]),
-      Uint32Array.from([...ring[0].index, ...Array.from(ring[1].index, (i) => i + 8)]),
+      Uint32Array.from([...ring[0].index, ...Array.from(ring[1].index, (i) => Number(i) + 8)]),
     );
     assert.ok(surfaceGap(post, wide, tol) > tol);
   });

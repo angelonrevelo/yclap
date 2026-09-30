@@ -49,6 +49,7 @@ function make(over: Partial<Sighting>): Sighting {
     walk_id: null,
     entry_kind: "badge",
     reported_name: null,
+    entry_index: 0,
     ...over,
   };
 }

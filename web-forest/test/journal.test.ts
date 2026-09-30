@@ -41,8 +41,8 @@ const CROSS_USER_KEYS = [
 ];
 
 /** Walk every key at every depth; collect any forbidden field name. */
-function crossUserKeysIn(value, path = "") {
-  const found = [];
+function crossUserKeysIn(value: unknown, path = ""): string[] {
+  const found: string[] = [];
   if (!value || typeof value !== "object") return found;
   for (const [key, child] of Object.entries(value)) {
     if (CROSS_USER_KEYS.includes(key)) found.push(path + "." + key);

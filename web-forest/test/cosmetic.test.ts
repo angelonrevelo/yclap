@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { COSMETIC_LIST, grantedCosmetics, nextCosmetic, cosmeticForStage } from "../src/cosmetic.ts";
-import { STAGE_ORDER, stageFor } from "../src/stage.ts";
+import { STAGE_ORDER } from "../src/stage.ts";
 
 /* ── the rule this file guards (build spec T4.5, 2026-09-06) ───────────────
  *
@@ -77,8 +77,8 @@ describe("cosmetic variants — the blind-box (T4.5)", () => {
     assert.notEqual(cosmeticForStage("sprout"), null);
     assert.notEqual(cosmeticForStage("sapling"), null);
     assert.notEqual(cosmeticForStage("tree"), null);
-    assert.equal(cosmeticForStage("sprout").id, "sprout-pot");
-    assert.equal(cosmeticForStage("tree").id, "tree-crown");
+    assert.equal(cosmeticForStage("sprout")?.id, "sprout-pot");
+    assert.equal(cosmeticForStage("tree")?.id, "tree-crown");
   });
 
   it("a stage advance grants exactly one new cosmetic", () => {

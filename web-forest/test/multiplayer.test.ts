@@ -331,7 +331,7 @@ test("hall.mjs frame codec round-trips short, medium and masked frames", () => {
   }
   const body = Buffer.from("masked");
   const mask = Buffer.from([1, 2, 3, 4]);
-  const masked = Buffer.concat([Buffer.from([0x81, 0x80 | body.length]), mask, Buffer.from(body.map((b, i) => b ^ mask[i % 4]))]);
+  const masked = Buffer.concat([Buffer.from([0x81, 0x80 | body.length]), mask, Buffer.from(body.map((b: number, i: number) => b ^ mask[i % 4]))]);
   assert.equal(decodeFrame(masked).payload.toString(), "masked");
   assert.equal(decodeFrame(masked.subarray(0, 5)), null, "incomplete frame waits");
 });
