@@ -96,7 +96,7 @@ The owner's ask is that every edge case is met, from every side. Rows are groupe
 
 | Case | Status |
 |------|--------|
-| Other walkers jitter while you move or turn | done — 67f856b |
+| Other walkers jitter while you move or turn | done: 67f856b + efda55d, measured by `npm run bench:hall` (1.7–2.4 px RMS vs 36–59 px before) |
 | A walker pauses, then steps: drawn as a slow crawl | done — `STEP_MS` |
 | Network drops for 5 s mid-walk | done — the walker holds, then resumes forward, never snaps back |
 | Phone clock set wrong by hours | done — the sender clock is offset per walker |
@@ -106,9 +106,14 @@ The owner's ask is that every edge case is met, from every side. Rows are groupe
 | Off campus: the GPS fix is refused | done (09-26) — switches to the stick and says why |
 | Cheap laptop or phone lags | lane `reveal/perf` |
 | Avatar limbs come apart | lane `reveal/rig` |
-| A player's display name is offensive | lane `reveal/mod` |
+| A player's display name is offensive | done: 040db72, server-side filter on hall, sync and accounts |
 | Someone follows or harasses another walker on the map | lane `reveal/mod` (hide, report). **Open:** is showing live positions of named students acceptable at all? See Q-safety |
 | A student under 18 | **open**. The app asks no age. Positions are shared by display name only, but the university's policy on minors in location features is unknown |
+| Anyone in the hall could become anyone (raw `player_id` in `/world`) | done: ae2f43d |
+| Sharing your code to be a partner handed over your walker | done: ae2f43d, `/partner` answers a `walker_id` |
+| A script guesses walker codes | done: 20 wrong codes per address per 10 min |
+| Walking side by side, the ground judders on a busy phone | lane `reveal/perf` (camera commits land unevenly; `bench:hall` "both") |
+| A fresh visit to Settings raises the map's "No position here" card | **open**: the geo alert should wait for the map |
 | Colour-blind player | done (earlier): rarity is readable without colour |
 | Reduced-motion preference | done (earlier): animations off |
 | Screen reader | **open**. The map is SVG/CSS with few labels; not audited |
@@ -119,11 +124,13 @@ The owner's ask is that every edge case is met, from every side. Rows are groupe
 
 | Case | Status |
 |------|--------|
-| No way to see or act on a problem report | lane `reveal/mod` |
-| No way to remove a walker or a find | lane `reveal/mod` |
-| Moderator token leaks | lane `reveal/mod`: token rotation, and no token means the console is off |
+| No way to see or act on a problem report | done: 040db72 (reports, `/mod`) |
+| No way to remove a walker or a find | done: 040db72 (hide walker 1–168 h, hide find, audit log) |
+| Moderator token leaks | done: no token (or < 16 chars) means the console is off; rotate by changing the secret. **Open:** one shared token, so the audit log cannot say which moderator acted |
 | Who is allowed to be a moderator | **open**: needs a named person and the university's say |
-| Data retention for reports | lane `reveal/mod` picks a number and justifies it |
+| Data retention for reports | done: 30 days (`docs/spec/moderation.md`) |
+| The Worker and the tests are not typechecked (`tsconfig` includes `src/` only) | **open**: add `@cloudflare/workers-types` + `@types/node` and a second tsconfig once the lanes merge |
+| Lane worktrees share one `.vite` cache and break each other's dev servers | done: `MAGISPHERE_VITE_CACHE` |
 | Institution wants its own campus | lane `reveal/module`: module registry and trail template |
 | Official emergency data | **blocked** on the DRRM office / CFMO. Until then, OSM-sourced and labelled not official |
 
