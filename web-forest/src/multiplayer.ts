@@ -22,7 +22,7 @@
  * import this file, so the rules cannot drift between them.
  */
 
-import { walkerIdOf, type WorldFind } from "./campus-world.ts";
+import { isLocationWithheld, walkerIdOf, type WorldFind } from "./campus-world.ts";
 import { distanceMeter, isInsideCampus, type FixSource, type LatLon } from "./geo.ts";
 import { nameNoticeOf, safeNameOf, type NameRefusal } from "./name-filter.ts";
 
@@ -247,10 +247,13 @@ export function rosterOf(row: Iterable<Pose | null | undefined>, now: number, st
 export function freshFindOf(
   known_id: Set<string>,
   row: { sighting_id: string; species_code: string; common_name: string; lat: number | null; lon: number | null; entry_kind: string; created_at: string }[],
-  player: { player_id: string; name: string },
+  player: { player_id: string; name: string; is_hidden?: boolean },
 ): WorldFind[] {
+  /* A walker hidden from the live map is not named near anybody either. */
+  if (player.is_hidden) return [];
   return row
-    .filter((s) => !known_id.has(s.sighting_id) && s.lat !== null && s.lon !== null)
+    /* A threatened species is never called out: "near you" IS its location. */
+    .filter((s) => !known_id.has(s.sighting_id) && s.lat !== null && s.lon !== null && !isLocationWithheld(s.species_code))
     .map((s) => ({
       sighting_id: s.sighting_id,
       /* Same rule as poses: the hall never learns a player_id. */

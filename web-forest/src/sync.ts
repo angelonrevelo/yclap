@@ -195,6 +195,8 @@ export interface PlayerSummary {
   level: number;
   total_points: number;
   streak_weeks: number;
+  /** Hidden from the live map — the server keeps this walker's name off every other phone. */
+  is_hidden?: boolean;
 }
 
 export interface SyncResult {

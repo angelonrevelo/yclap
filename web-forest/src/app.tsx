@@ -3718,6 +3718,7 @@ export default function App() {
       level,
       total_points: gamify.total_points,
       streak_weeks: gamify.streak_weeks,
+      is_hidden: preference.is_hidden_from_hall,
     },
     name: live_name,
   });

@@ -5,7 +5,21 @@
  * cannot drift. Photos and notes never enter this module.
  */
 
+import { species } from "./data.ts";
 import { safeNameOf } from "./name-filter.ts";
+
+/**
+ * Where a species is too sensitive to publish. A threatened species' find
+ * stays in the world — it still counts for a group streak and for "N finds
+ * shared" — but without its coordinates, the way iNaturalist obscures taxa
+ * that collecting or harassment would hurt. Only what this repo's curated data
+ * calls Threatened is withheld (today, Molave); the other 1,073 iNaturalist
+ * species carry no status here, which is a stated gap (ROADMAP 10-01 triage),
+ * not a claim that they are safe to pin.
+ */
+export function isLocationWithheld(species_code: string): boolean {
+  return species[species_code]?.pill.some((p) => p.toLowerCase() === "threatened") ?? false;
+}
 
 export const WORLD_NOTE =
   "Personal journals stay on each device. This server only holds shared finds — no rank, no official AIS board.";
@@ -23,7 +37,17 @@ export interface PlayerRow {
   total_points: number;
   streak_weeks: number;
   updated_at: string;
+  /**
+   * The phone asked to be hidden from the live map (`Preference.is_hidden_from_hall`).
+   * Its finds stay in the world but under "A walker", it is left out of who is
+   * out, and no find of its is called out live. Absent in a store written
+   * before 10-01, which reads as not hidden.
+   */
+  is_hidden?: boolean;
 }
+
+/** The name a hidden walker's finds carry on every other phone. */
+export const HIDDEN_WALKER_NAME = "A walker";
 
 export interface SightingRow {
   sighting_id: string;
@@ -125,6 +149,7 @@ export function sanitizePlayer(input: {
   level?: unknown;
   total_points?: unknown;
   streak_weeks?: unknown;
+  is_hidden?: unknown;
 }): PlayerRow | null {
   if (typeof input.player_id !== "string" || !input.player_id.trim()) return null;
   const player_id = input.player_id.trim().slice(0, 64);
@@ -145,6 +170,7 @@ export function sanitizePlayer(input: {
     total_points: Number.isFinite(total_points) ? Math.max(0, Math.trunc(total_points)) : 0,
     streak_weeks: Number.isFinite(streak_weeks) ? Math.max(0, Math.trunc(streak_weeks)) : 0,
     updated_at: new Date().toISOString(),
+    is_hidden: input.is_hidden === true,
   };
 }
 
@@ -246,9 +272,10 @@ export interface WorldHide {
 export function worldFrom(store: MemoryCampusStore, now = Date.now(), hide: WorldHide = {}): World {
   const find_since = new Date(now - FIND_WINDOW_MS).toISOString();
   const present_since = new Date(now - PRESENT_WINDOW_MS).toISOString();
-  const name_of = new Map(store.player.map((p) => [p.player_id, p.name]));
+  /* A hidden walker's finds still count, under a name that is nobody's. */
+  const name_of = new Map(store.player.map((p) => [p.player_id, p.is_hidden ? HIDDEN_WALKER_NAME : p.name]));
   const find = store.sighting
-    .filter((s) => s.lat !== null && s.created_at > find_since && !hide.sighting?.(s))
+    .filter((s) => (s.lat !== null || isLocationWithheld(s.species_code)) && s.created_at > find_since && !hide.sighting?.(s))
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
     .slice(0, FIND_LIMIT)
     .map((s) => ({
@@ -257,13 +284,13 @@ export function worldFrom(store: MemoryCampusStore, now = Date.now(), hide: Worl
       player_name: name_of.get(s.player_id) ?? "Walker",
       species_code: s.species_code,
       common_name: s.common_name,
-      lat: s.lat,
-      lon: s.lon,
+      lat: isLocationWithheld(s.species_code) ? null : s.lat,
+      lon: isLocationWithheld(s.species_code) ? null : s.lon,
       entry_kind: s.entry_kind,
       created_at: s.created_at,
     }));
   const walker = store.player
-    .filter((p) => p.updated_at > present_since && !hide.player?.(p.player_id))
+    .filter((p) => p.updated_at > present_since && !p.is_hidden && !hide.player?.(p.player_id))
     .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))
     .map((p) => ({
       walker_id: walkerIdOf(p.player_id),

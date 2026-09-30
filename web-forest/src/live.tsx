@@ -607,7 +607,7 @@ export function useLiveWorld(input: {
   const [world, setWorld] = useState<World | null>(null);
   const [sync_problem, setSyncProblem] = useState<Exclude<SyncOutcome["status"], "ok" | "none"> | null>(null);
   const sighting_key = input.sighting.map((s) => s.sighting_id).join(",");
-  const summary_key = `${input.summary.stage}:${input.summary.level}:${input.summary.total_points}:${input.summary.streak_weeks}:${input.name}`;
+  const summary_key = `${input.summary.stage}:${input.summary.level}:${input.summary.total_points}:${input.summary.streak_weeks}:${input.name}:${input.summary.is_hidden === true}`;
 
   useEffect(() => {
     if (!syncUrl()) return;

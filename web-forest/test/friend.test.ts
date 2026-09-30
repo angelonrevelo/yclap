@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 import {
   CODE_MISS_MAX,
   CODE_MISS_WINDOW_MS,
+  HIDDEN_WALKER_NAME,
+  isLocationWithheld,
   joinCodeOf,
   lookupByCode,
   MemoryCampusStore,
@@ -13,6 +15,7 @@ import {
   type WorldFind,
 } from "../src/campus-world.ts";
 import { RateWindow } from "../src/rate-limit.ts";
+import { freshFindOf } from "../src/multiplayer.ts";
 import {
   addFriend,
   groupMember,
@@ -285,5 +288,45 @@ describe("the streak flame", () => {
       last = band;
       assert.ok(heatFor(w).core.startsWith("#"));
     }
+  });
+});
+
+describe("the 10-01 privacy pass", () => {
+  function storeWith(is_hidden: boolean, species_code = "narra") {
+    const store = new MemoryCampusStore();
+    const player = sanitizePlayer({ player_id: "p-hide", name: "Ana Reyes", is_hidden });
+    if (player) store.upsertPlayer(player);
+    const row = sanitizeSighting(
+      { sighting_id: `s-${species_code}`, species_code, common_name: species_code, lat: 14.639, lon: 121.078, entry_kind: "badge", created_at: new Date().toISOString() },
+      "p-hide",
+    );
+    if (row) store.insertSighting(row);
+    return { store, player: player!, row: row! };
+  }
+
+  it("a walker hidden from the live map is never named: not in the world, not in who is out, not called out", () => {
+    const { store, player, row } = storeWith(true);
+    const text = JSON.stringify(worldFrom(store));
+    assert.ok(!text.includes("Ana Reyes"), "the name never leaves the server");
+    assert.equal(worldFrom(store).find[0].player_name, HIDDEN_WALKER_NAME, "the find still counts, under nobody's name");
+    assert.equal(worldFrom(store).walker.length, 0, "and is not in who is out");
+    assert.deepEqual(freshFindOf(new Set(), [row], player), [], "and nobody nearby is told");
+  });
+
+  it("a walker who is not hidden is named as before", () => {
+    const { store, player, row } = storeWith(false);
+    assert.equal(worldFrom(store).find[0].player_name, "Ana Reyes");
+    assert.equal(freshFindOf(new Set(), [row], player).length, 1);
+  });
+
+  it("a threatened species' find is shared without where it grows, and never called out", () => {
+    assert.equal(isLocationWithheld("molave"), true);
+    assert.equal(isLocationWithheld("narra"), false);
+    const { store, player, row } = storeWith(false, "molave");
+    const find = worldFrom(store).find[0];
+    assert.equal(find.species_code, "molave", "it still counts");
+    assert.equal(find.lat, null);
+    assert.equal(find.lon, null);
+    assert.deepEqual(freshFindOf(new Set(), [row], player), []);
   });
 });

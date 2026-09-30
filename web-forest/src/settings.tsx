@@ -636,9 +636,9 @@ export default function SettingsScreen({
                     </div>
                   </Td>
                   <Td>
-                    Other phones stop drawing you and your name as you walk, at once, and you still see everyone
-                    else. A find you log is still shared the way it always is — the species, where, and your name
-                    — because that is what the campus inventory is for.
+                    Other phones stop drawing you and your name, at once, and you still see everyone else. A find
+                    you log is still shared — the species and where — but under "A walker", never your name, and
+                    nobody nearby is told you logged it.
                   </Td>
                 </tr>
                 <tr>

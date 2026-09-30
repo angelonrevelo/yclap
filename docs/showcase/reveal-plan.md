@@ -110,8 +110,8 @@ The owner's ask is that every edge case is met, from every side. Rows are groupe
 | Someone follows or harasses another walker on the map | done: hide / report a walker (040db72), and Settings → "Hide me from the live map" (cfce666). **Open:** who should see whom by default — Q-safety |
 | A student under 18 | **open**. The app asks no age. Positions are shared by display name only, but the university's policy on minors in location features is unknown |
 | Anyone in the hall could become anyone (raw `player_id` in `/world`) | done: ae2f43d |
-| A hidden student is still named by "X logged Y near you" | **open**: ROADMAP P0 (10-01 pass) |
-| A threatened species' shared find publishes where it grows | **open**: ROADMAP P0 (10-01 pass) |
+| A hidden student is still named by "X logged Y near you" | done: hidden walkers' finds read "A walker" and are never called out |
+| A threatened species' shared find publishes where it grows | done: shared without coordinates, never called out (curated list only) |
 | Sharing your code to be a partner handed over your walker | done: ae2f43d, `/partner` answers a `walker_id` |
 | A script guesses walker codes | done: 20 wrong codes per address per 10 min |
 | Walking side by side, the ground judders on a busy phone | done: camera step flushed in its own frame; `bench:hall` "both" 2.51 px RMS |
