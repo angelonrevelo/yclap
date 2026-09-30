@@ -108,7 +108,10 @@ The owner's ask is that every edge case is met, from every side. Rows are groupe
 | Avatar limbs come apart | done: 128 models fixed at the generator, audit gates every keyframe; hiker prototype behind `?avatar=hiker` for Aleij |
 | A player's display name is offensive | done: 040db72, server-side filter on hall, sync and accounts |
 | Someone follows or harasses another walker on the map | done: hide / report a walker (040db72), and Settings → "Hide me from the live map" (cfce666). **Open:** who should see whom by default — Q-safety |
-| A student under 18 | **open**. The app asks no age. Positions are shared by display name only, but the university's policy on minors in location features is unknown |
+| A student under 18 | **open**: under 18 is a child for the NPC, there is no age of digital consent, and a CPIA is required before launch (blueprint §13). Draft CPIA + visibility default before the pilot (ROADMAP P0) |
+| Identify calls iNaturalist's visual API, which is fee-based by permission | **open**: Pl@ntNet primary, Seek fallback (ROADMAP P0) |
+| Species-card photos carry no licence or photographer | **open**: ROADMAP P0 |
+| Nobody knows who notifies whom after a data breach | **open**: breach runbook (ROADMAP P0) |
 | Anyone in the hall could become anyone (raw `player_id` in `/world`) | done: ae2f43d |
 | A hidden student is still named by "X logged Y near you" | done: hidden walkers' finds read "A walker" and are never called out |
 | A threatened species' shared find publishes where it grows | done: shared without coordinates, never called out (curated list only) |

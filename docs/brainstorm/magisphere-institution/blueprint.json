@@ -1,0 +1,253 @@
+{
+  "mode": "extend",
+  "idea": {
+    "name": "Magisphere for institutions",
+    "one_liner": "A campus map students actually open because walking it is a game, which an institution uses to teach its biodiversity, show hazard and emergency points, and run nature trails, with adoption numbers it can report.",
+    "north_star": "Returning weekly walkers per campus, counted from shared finds (weeklyActivity)",
+    "non_goal": [
+      "Not an official emergency or evacuation system; every DRR layer stays labelled not official until the university DRRM office signs it",
+      "Not a Roblox or Pokemon GO look-alike sold to consumers; no ads, no in-app purchases, no selling student data",
+      "Not an in-house species identification model",
+      "Not an official AIS ranking or dataset"
+    ]
+  },
+  "repo": {
+    "path": "C:/Users/maran/Code/yclap-lane/reveal",
+    "branch": "reveal-1015",
+    "is_dirty": false,
+    "feature_existing": [
+      "Play map: 3D walk with stick or GPS, daily hunt, spawns, points, weekly streak, buddy growth stages, blind boxes",
+      "Journal and Dex on the device; camera log; Seek link; identify through an iNaturalist proxy (demo reply without a token)",
+      "Live hall: other walkers on the map with buffered interpolation, walking partners, group streak",
+      "Accounts with password and Google sign-in",
+      "Moderation: problem reports, name filter, hide/report a walker, /mod console with per-moderator tokens and an append-only audit log",
+      "Privacy: walker_id instead of player_id everywhere shared, hide-from-live-map, threatened species shared without coordinates",
+      "Campus modules: biodiversity hotspots, emergency and DRR (OSM + UP NOAH, labelled not official), a campus tree walk",
+      "Graphics tier (auto/full/lite), frame and hall benchmarks, weekly walkers on /mod"
+    ],
+    "feature_in_flight": [
+      "Zoomed-out play view frame rate at 4x CPU (lane reveal/perf2)",
+      "Deploy of reveal-1015 to the live URL (planned 2026-10-10, needs the owner)",
+      "Hiker 3D avatar behind ?avatar=hiker, awaiting the designer's approval"
+    ],
+    "delta": [
+      "An institutional deployment model: who buys, what they provide, who maintains",
+      "A compliance pack for minors and location: CPIA, consent line, breach runbook, visibility default",
+      "A lawful identify path: Pl@ntNet as primary for plants, Seek hand-off as fallback, iNaturalist CV only with written permission",
+      "Photo licence and attribution handling for iNaturalist images",
+      "A funding order and a second-campus pricing experiment"
+    ],
+    "recheck": [
+      { "section": "idea", "is_still_true": true, "note": "Gelo's 09-30 note keeps the 3D walk (judges liked it) and redirects it to institutional utility; the thesis card above is that redirection, not a new idea." },
+      { "section": "customer", "is_still_true": false, "note": "The showcase treated students as the customer. They are the users; the payer and operator is a campus office (sustainability, safety), so the persona moves to that office." },
+      { "section": "competitor", "is_still_true": true, "note": "No PH product combines a campus walk game, biodiversity and DRR; incumbents are static Ateneo maps, free government hazard tools and paid US campus-map vendors (M3, M4, M10)." },
+      { "section": "money", "is_still_true": false, "note": "The plan had no money section. Running cost fits Cloudflare's free tier at one campus (B3); paid tier is USD 5/month (B1). Funding is grant-shaped, not revenue-shaped, for now." }
+    ]
+  },
+  "customer": {
+    "primary_persona": {
+      "who": "The coordinator of a campus sustainability or biodiversity program (for Ateneo: the Institute of Sustainability / Ateneo Wild), who must engage students with the campus's living collection and report participation",
+      "jtbd": "Run a term-long campus biodiversity walk that students do on their own time, and show the office's leadership how many walked and came back",
+      "today": "Guided nature walks, a tree inventory and printed field guides (M8, unverified); static campus map images (M6)"
+    },
+    "secondary_segment": [
+      "Campus safety / DRRM office wanting students to know hazard and help points (after the official map is provided)",
+      "Other universities in the CCC-NYC Youth Climate Leadership Accelerator HEI cohort (B5)",
+      "Parks and nature trails (eco-parks, watersheds) wanting a self-guided trail",
+      "LGU DRRMOs already trained on GeoRiskPH (M11)"
+    ],
+    "accessibility": [
+      "Low-end Android phones and cheap Windows laptops (graphics tier, lite mode)",
+      "Flaky campus wifi and mobile data (PWA shell, polling fallback, offline report queue)",
+      "Taglish copy; English UI with Filipino species names where curated",
+      "Minors among first-year students and visiting senior-high students (child privacy rules apply, R7)",
+      "Screen-reader users: all controls named (measured 0 of 55 unnamed), the map itself is visual"
+    ]
+  },
+  "competitor": [
+    { "name": "Ateneo static campus maps and event map pages", "kind": "local", "source": "https://graju2026.ateneo.edu/maps", "gap_vs_us": "Images only: no position, no species, no hazard or help points, nothing a student would open twice." },
+    { "name": "ADMUNAV (Ateneo pedestrian wayfinding app)", "kind": "local", "source": "unverified", "gap_vs_us": "Wayfinding only, Android-native; no biodiversity, hazard or reason to return; its path graph is one Magisphere asked to share." },
+    { "name": "Ateneo Wild guided walks and printed field guides", "kind": "substitute", "source": "unverified", "gap_vs_us": "Needs a guide on a schedule; reaches the students who already sign up. Magisphere is the self-guided, any-time version and can carry their content." },
+    { "name": "HazardHunterPH / GeoRiskPH (DOST-PHIVOLCS)", "kind": "local", "source": "https://hazardhunter.georisk.gov.ph/", "gap_vs_us": "Authoritative hazard reports by location, free, but not campus-scale, not walkable, and not something a student opens for fun. Magisphere should cite it, not compete." },
+    { "name": "UP NOAH hazard maps", "kind": "local", "source": "https://www.gmanetwork.com/news/scitech/weather/914572/up-noah-hazard-database-map-flood-landslides-storm-surges/story", "gap_vs_us": "Flood, landslide and surge levels by searched location; no evacuation or help points, no campus footpaths. Already a Magisphere data source (D12)." },
+    { "name": "Seek by iNaturalist", "kind": "global", "source": "https://apps.apple.com/app/apple-store/id1353224144", "gap_vs_us": "Excellent free on-device ID and badges, but no campus, no map of where to walk, nothing an institution can configure or measure. Magisphere hands off to it." },
+    { "name": "Concept3D", "kind": "global", "source": "https://www.hawaii.edu/procurement/wp-content/uploads/2026/04/Binder2-1.pdf", "gap_vs_us": "Institutional campus maps with safety layers at about USD 85,000 a year (M3); priced for US universities, no game, no biodiversity walk." },
+    { "name": "Modern Campus Maps", "kind": "global", "source": "https://www.sfasu.edu/application/procurement/contracts/B2600976.pdf", "gap_vs_us": "Cheaper campus map licence (USD 6,300 a year, M4) but a directory, not an engagement tool; no PH presence found." },
+    { "name": "Pokemon GO / Pikmin Bloom (Scopely)", "kind": "global", "source": "http://www.pocketgamer.biz/scopely-acquires-pokmon-go-developer-niantics-games-business-in-35bn-deal/", "gap_vs_us": "Proves students walk for a game, but the content is fiction and the institution has no say; Gelo's note is explicit that Magisphere must not read as one." },
+    { "name": "AllTrails", "kind": "global", "source": "https://subger.com/en/service/alltrails-plus", "gap_vs_us": "Trails with a paid tier (USD 35.99 a year) for hikers, not campus-scale, not biodiversity teaching, not institution-run." }
+  ],
+  "moat": [
+    "Per-campus curated ground truth that takes months to build: measured vegetation per sector, a walkable footpath graph, a species pack from the campus iNaturalist record, and the offices that have signed off each layer",
+    "A privacy and safety posture institutions can procure: no player_id shared, hide switch, threatened-species coordinates withheld, per-moderator audit log, CPIA on file",
+    "Distribution through the CCC-NYC youth climate program and its HEI cohort, where a campus hears about it from a peer campus rather than a vendor"
+  ],
+  "product_form": {
+    "choice": "service",
+    "rationale": "A campus cannot self-serve this: someone must prepare its sectors, paths and species pack, collect the offices' sign-offs, and moderate. The buyer is an office that pays for a run program, so v1 is a managed deployment per campus on the shared PWA, not a product they configure alone.",
+    "rejected": [
+      { "form": "saas", "why": "Self-serve onboarding assumes the campus can produce its own map data and moderation; none can yet, and it hides the work that makes the moat." },
+      { "form": "on_device", "why": "A native app store build adds review delays and device targets; the PWA already runs on the low-end phones that matter and updates without a store." },
+      { "form": "api", "why": "No integrator is asking for campus biodiversity data as an API; the value is students walking, which an API does not produce." }
+    ]
+  },
+  "v1_cut": {
+    "jtbd": "A campus sustainability office runs a term-long self-guided biodiversity walk and reads weekly and returning walkers on /mod",
+    "channel": "The Ateneo Institute of Sustainability / Ateneo Wild, through the Youth CLAP team's existing Ateneo CCC relationship",
+    "pricing_experiment": "Free pilot for Ateneo for one term in exchange for the AIS tree inventory, the official emergency map and a named moderator; the second campus is quoted a per-term fee",
+    "deferred": [
+      "Park and trail deployments (v1.1)",
+      "LGU DRRMO deployments (v1.1, needs official hazard sign-off)",
+      "Self-serve campus setup tooling",
+      "Institution-admin role inside the app",
+      "Moderator sign-in through accounts"
+    ]
+  },
+  "frontend": {
+    "page": ["play map (/)", "field map with campus modules (/map)", "journal (/journal)", "settings (/settings)", "moderator console (/mod)", "an institution one-pager for the reveal (docs, not the app)"],
+    "onboarding": { "is_needed": true, "why": "The first screen must say what the walk is for and, for a minor, what is shared and that they can hide; the boot safety card is the place, before any live position is sent." },
+    "headline": "Walk your campus. Learn what lives on it, where to go when it floods, and how to get help.",
+    "brand_brief": {
+      "positioning": "Campus edutech infrastructure that feels like a game to students and reads like a program to the office that runs it; never a children's game",
+      "audience": "University students 16-22 as walkers; sustainability and safety office coordinators as the buyer",
+      "tone": "Warm and playful on the map, plain and precise on sources, safety and data; no hype, no 'Pokemon GO clone'"
+    }
+  },
+  "backend": {
+    "runtime": "Cloudflare Workers with a SQLite-backed Durable Object per campus",
+    "framework": "Hand-rolled Worker routes (worker/sync.ts, live-socket.ts, moderation.ts) plus a Node LAN twin for booths",
+    "rejected": [
+      { "option": "A VPS with Postgres (Neon or Gelo's own)", "why": "More to run and patch for a student team; the Durable Object already holds the hall, accounts and moderation and sits inside the free tier at one campus (B3)." }
+    ],
+    "api_boundary": ["/sync", "/world", "/live (SSE)", "/live/socket and /live/pose (hall)", "/partner and /join", "/auth/* and /account/*", "/report", "/mod/api/*", "/inat/identify (to be replaced by a plant identify route)"],
+    "data_store": "Durable Object SQLite (accounts, moderation, audit) and DO storage (campus world); journals and photos stay on each phone",
+    "auth": "Optional accounts (password or Google); walker code to merge devices; MOD_TOKEN name:token pairs for moderators",
+    "rate_limit": "Per-IP brakes on reports (60/h edge), hall sockets (40/IP edge), poses (60/s/IP), wrong codes (20 per 10 min), wrong moderator tokens (10 per 15 min)",
+    "observability": "Frame readout (?probe=1), bench:frame and bench:hall, problem reports with diagnostics, /mod weekly activity; no third-party analytics",
+    "compute": "Cloudflare's edge; one Durable Object per campus ('loyola' today)"
+  },
+  "ai": {
+    "is_used": true,
+    "modality": ["vision"],
+    "locality": "hybrid",
+    "locality_rejected": { "option": "cloud only through iNaturalist score_image", "why": "iNaturalist's visual API is not publicly available and is fee-based by permission (D5); relying on it without written permission is the one AI path this product cannot defend." },
+    "model": [
+      { "name": "Pl@ntNet identification API", "role": "primary", "task": "Suggest a plant species from a photo on the camera sheet, labelled as a suggestion", "cost_per_mtok_input": 0, "currency": "EUR", "latency_note": "One HTTPS round trip per photo; 500 free identifications a day covers a campus pilot", "privacy_note": "The photo leaves the phone only when the student taps identify; no location sent", "source": "https://my.plantnet.org/pricing" },
+      { "name": "Seek by iNaturalist (on-device model v2.13)", "role": "fallback", "task": "Hand-off for animals, and for plants when the Pl@ntNet quota is spent or offline", "cost_per_mtok_input": 0, "currency": "USD", "latency_note": "On-device, works offline once installed", "privacy_note": "Stores no precise location unless the user signs in (M9)", "source": "https://forum.inaturalist.org/t/inaturalist-updates-for-february-2025/62406" },
+      { "name": "iNaturalist computer vision (score_image)", "role": "auxiliary", "task": "Only if iNaturalist grants written access; kept behind the existing proxy and switched off otherwise", "cost_per_mtok_input": 0, "currency": "USD", "latency_note": "One round trip; fee and quota unknown", "privacy_note": "Photo sent to iNaturalist", "source": "https://forum.inaturalist.org/t/hidden-computer-vision-api/41775" }
+    ],
+    "fallback": "If Pl@ntNet refuses or the daily quota runs out, the camera sheet says so and offers Open in Seek; the recorded demo reply stays for the booth only and is always labelled as recorded.",
+    "retention": "Identify photos are not stored by Magisphere; journals and photos stay on the phone."
+  },
+  "data": {
+    "source": [
+      { "name": "OpenStreetMap campus ways, buildings, emergency tags", "licence": "ODbL (attribution, share-alike)", "how": "Committed extracts with date and attribution (R15)" },
+      { "name": "UP NOAH 100-year flood hazard", "licence": "ODbL", "how": "Published shapefile, not the referrer-locked web tiles (D12)" },
+      { "name": "iNaturalist campus observation counts and species list", "licence": "Facts from the API; observations default CC BY-NC (D10)", "how": "Cached sweep within the API's 10,000/day guidance (D1)" },
+      { "name": "iNaturalist taxon photos on species cards", "licence": "Per photo; default CC BY-NC, many all-rights-reserved", "how": "Must carry licence and photographer; only CC0/CC BY for any paid deployment (F1)" },
+      { "name": "University tree inventory (AIS)", "licence": "To be agreed with the university", "how": "Requested, not received" }
+    ],
+    "labeling": "No model training; curation is by hand: species pills (native, threatened), sector names flagged is_named_by_us, emergency features left exactly as OSM tags them.",
+    "edge_case": [
+      "A photo of a whole tree at dusk on a low-end camera (poor ID input)",
+      "An animal photo sent to a plant-only service",
+      "A species absent from the campus list that Pl@ntNet suggests confidently",
+      "A threatened species whose status this repo does not carry (only curated pills are known)",
+      "An OSM emergency feature that is out of date or off campus"
+    ],
+    "crowd_source": "Students' shared finds (species, place, time; never photos or notes) under their consent line, with threatened species' coordinates withheld and hidden walkers anonymised."
+  },
+  "gtm": {
+    "channel": [
+      { "name": "Ateneo Institute of Sustainability / Ateneo Wild", "first_experiment": "Present the reveal build and the one-term free pilot offer to the Ateneo Wild coordinator, asking for the AIS inventory, a named moderator and a DRRM contact in return", "is_primary": true },
+      { "name": "CCC-NYC Youth Climate Leadership Accelerator HEI cohort", "first_experiment": "Offer one partner campus from the cohort a trail-only deployment built from the trail template, quoted per term", "is_primary": false },
+      { "name": "Student competitions and grants (Startup QC Student Competition, Arete Sandbox, Green Rising)", "first_experiment": "Enter the next Startup QC student cycle with the reveal build and the pilot's weekly-walker numbers", "is_primary": false },
+      { "name": "LGU DRRMOs trained on GeoRiskPH", "first_experiment": "After the official-map sign-off works at Ateneo, show one NCR DRRMO a barangay route-to-help-point demo", "is_primary": false }
+    ],
+    "cac_hypothesis": { "value": 0, "currency": "PHP", "unit": "cash per pilot campus; the cost is team time through existing program relationships", "is_assumed": true }
+  },
+  "money": {
+    "pricing": [
+      { "plan": "Pilot term (first campus)", "value": 0, "currency": "PHP", "unit": "per campus per term, in exchange for data and sign-offs", "is_assumed": true },
+      { "plan": "Campus program (second campus onward)", "value": 25000, "currency": "PHP", "unit": "per campus per term, including set-up, moderation support and a trail", "is_assumed": true }
+    ],
+    "build_cost": { "value": 0, "currency": "PHP", "is_assumed": true, "note": "Student team time; no cash spent on development to date" },
+    "monthly_run_cost": { "value": 5, "currency": "USD", "source": "https://developers.cloudflare.com/workers/platform/pricing/", "note": "Workers Paid minimum; one campus fits the free tier (B3)" },
+    "breakeven": "Running cost is USD 5 a month at most; one second-campus term at the assumed PHP 25,000 covers years of hosting. The real cost is maintainer time, which a grant or a per-term fee has to pay for."
+  },
+  "constraint": [
+    "Student team; the reveal is about 2026-10-15",
+    "Web PWA on low-end Android and cheap laptops",
+    "Philippine Data Privacy Act: evidenced consent, retention by purpose, 72-hour breach notice (R2, R3, R5)",
+    "Minors: under 18 is a child, no age of digital consent, CPIA before launch (R7, R8)",
+    "No official emergency data until the DRRM office / CFMO provides it"
+  ],
+  "edge_case": [
+    "A minor's live position and name visible to strangers in the hall",
+    "Someone uses the live map to follow a student (Safe Spaces Act cyberstalking, R10)",
+    "A student treats the unofficial emergency layer as official during a real emergency",
+    "Venue wifi blocks WebSockets or shares one public IP across the booth",
+    "The identify quota runs out mid-event",
+    "A photo on a species card is all-rights-reserved"
+  ],
+  "complaint": [
+    "It lags on my phone when I zoom out",
+    "Why can strangers see where I am?",
+    "The species it suggested is wrong",
+    "Nothing is near me (off campus or quiet sector)"
+  ],
+  "bottleneck": [
+    "The university's data: AIS inventory and the official emergency map",
+    "A named moderator and a DPO contact at the institution",
+    "Maintainer time after the student team's program ends",
+    "iNaturalist's permission for its visual API"
+  ],
+  "risk": [
+    { "name": "Minors' location shown to strangers (Data Privacy Act, NPC child guidance)", "mitigation": "Complete a CPIA with the university DPO before the pilot; default live visibility to partners-only or off for the pilot; consent line on the boot card; hide switch stays", "kill_switch": "If no CPIA is signed off by 2026-10-13, the reveal runs with the live hall off (no positions shared) and the pilot does not start" },
+    { "name": "Harassment or stalking through the live map", "mitigation": "Hide and report on every name tag, /mod hide with audit, escalation to the university's CODI (R11)", "kill_switch": "Any credible stalking report during the pilot turns the hall off campus-wide within 24 hours until the moderator and CODI review it" },
+    { "name": "Using iNaturalist's visual API without permission", "mitigation": "Switch the primary to Pl@ntNet, keep Seek as the fallback, email iNaturalist for written terms", "kill_switch": "No iNaturalist token ships in any deployed build after 2026-10-10 unless iNaturalist has answered in writing" },
+    { "name": "Photo licences: CC BY-NC or all-rights-reserved images on species cards", "mitigation": "Store licence and photographer per photo, show attribution, and for any paid campus use only CC0/CC BY photos or the curated art", "kill_switch": "A paid deployment does not go live while any card shows an image without a recorded compatible licence" },
+    { "name": "The unofficial emergency layer is read as official", "mitigation": "Not-official line leads the panel and the route card; OSM-only data; the DRRM office asked to provide the official map", "kill_switch": "If the DRRM office or CFMO objects, the emergency module is switched off for that campus the same day" },
+    { "name": "Nobody maintains it after the reveal", "mitigation": "Named maintainer and moderator rota in the pilot agreement; costs inside the free tier", "kill_switch": "Fewer than 20 weekly walkers on /mod for four consecutive pilot weeks pauses the program and triggers a re-plan" },
+    { "name": "A personal-data breach", "mitigation": "Store little (no photos, no player_id shared, reports deleted after 30 days); a written 72-hour notice runbook naming who tells the NPC, the children and their parents", "kill_switch": "Any confirmed breach stops sign-ups and the hall until the NPC notice and the parents' notice have gone out" }
+  ],
+  "timeline": {
+    "ai_multiplier": { "value": 3, "is_assumed": true, "note": "Building with Claude lanes compresses code, tests and docs; it does not compress the university's sign-offs, the CPIA, data sharing or walking the trail on campus" },
+    "phase": [
+      { "name": "Reveal", "week_start": 1, "week_end": 2, "deliverable": "reveal-1015 deployed; Stable-Alpha gate passed; CPIA drafted; Pl@ntNet identify; photo attribution", "cut_line": "Anything that fails the gate is cut, not demoed" },
+      { "name": "Ateneo pilot term", "week_start": 3, "week_end": 12, "deliverable": "One self-guided walk program with a named moderator, weekly walkers reported, the AIS inventory imported", "cut_line": "No second campus until four pilot weeks of numbers exist" },
+      { "name": "Second campus", "week_start": 13, "week_end": 18, "deliverable": "One cohort campus live from the module registry and trail template, quoted per term", "cut_line": "Parks and LGUs stay in v1.1" }
+    ],
+    "team": [
+      { "role": "Developer of record (Gelo)", "is_hired": false },
+      { "role": "Designer (Aleij)", "is_hired": false },
+      { "role": "Pilot moderator (to be named by the institution)", "is_hired": false },
+      { "role": "Institution DPO / DRRM contact", "is_hired": false }
+    ]
+  },
+  "endgame": {
+    "exit": "undecided",
+    "acquirer_type": ["Campus-map vendors (Concept3D class)", "A university that adopts it as its own platform", "A nonprofit biodiversity network (iNaturalist-style)"],
+    "rationale": "No Philippine or Southeast Asian precedent for licensing or acquiring a campus or trail app was found, and the only funding in reach is grant-shaped. Decide after two campuses show whether a per-term fee holds."
+  },
+  "open_question": [
+    "Who sees whom in the live hall by default for a university deployment: everyone, partners only, or nobody until the student opts in?",
+    "Is Magisphere a personal information controller or a processor for the university, and who registers, appoints the DPO and notifies breaches?",
+    "Will iNaturalist grant a student campus app written access to its visual API, and at what fee?",
+    "Does Pl@ntNet's free plan allow a key used from a web app and non-affiliated use, or should the team apply for the non-profit plan?",
+    "Does the university's policy allow location features for students under 18, and does it want a parental consent path?",
+    "Which fund can a team that is not DTI/SEC-registered apply to in 2026, and are the CLAP seed figures in the repo real?",
+    "What is the second campus, and what would it actually pay per term?",
+    "Who maintains Magisphere after the Youth CLAP program ends, and for how long?"
+  ],
+  "handoff": {
+    "setup_preset": "vite-react",
+    "roadmap_p0": [
+      "Child Privacy Impact Assessment with the university DPO, and a live-visibility default decided before the pilot",
+      "Plant identify through Pl@ntNet with Seek as the fallback; iNaturalist score_image switched off without written permission",
+      "Species-card photos carry licence and photographer; no incompatible licence on a paid deployment",
+      "A 72-hour breach runbook naming who notifies the NPC, the students and their parents",
+      "Deploy reveal-1015 to the live URL after the Stable-Alpha gate"
+    ]
+  },
+  "research": { "agent_count": 4, "claim_count": 57, "downgraded_count": 0, "dedupe_count": 3 }
+}

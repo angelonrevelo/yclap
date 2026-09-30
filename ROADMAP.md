@@ -276,6 +276,18 @@ Decision from the note (`5:42`): **fix the bugs, fix the assets, then add.** A m
 - **Minors.** No age is asked. Needs the university's policy on location features for under-18s before any default changes.
 - **Which threatened species list counts.** The P0 above uses the 25 curated species' pills. The other 1,073 iNat species carry no status in this repo; importing iNat's taxon geoprivacy would cover them and needs the sweep re-run with that field.
 
+
+### 2026-10-01 — from the institutional blueprint
+
+Source: [`docs/brainstorm/magisphere-institution/`](docs/brainstorm/magisphere-institution/blueprint.md) (`/brainstorm` extend mode; 4 research agents, 57 claims kept, checker PASS). Three findings reached the code: iNaturalist's visual API is fee-based by permission and not public ([forum, staff, 2023-05-17](https://forum.inaturalist.org/t/hidden-computer-vision-api/41775)); iNaturalist photos default to CC BY-NC and the species cards record no licence or photographer; the NPC treats anyone under 18 as a child and requires a Child Privacy Impact Assessment before launch.
+
+| P | Behavior | Grounding | Surface | Benchmark (tier) | Status |
+|---|----------|-----------|---------|------------------|--------|
+| P0 | A student can identify a plant through a service the app is allowed to use, and is sent to Seek for animals or when it is unavailable | `worker/inat.ts` proxies `score_image` with a build-time token (`VITE_INAT_API_TOKEN`); Pl@ntNet's free plan is 500 identifications/day | Camera sheet → identify | Tier 3: with `PLANTNET_API_KEY` set, photograph a leaf; PASS iff the sheet shows a Pl@ntNet suggestion credited "powered by Pl@ntNet"; with no key and no iNaturalist permission, PASS iff it offers Open in Seek and never calls `score_image` | Open |
+| P0 | Every photo on a species card says whose it is and under what licence | `src/taxon-photo.ts` hard-codes iNaturalist photo URLs with no licence or attribution | Species card, Nearby, camera picker | Tier 1, escalated (a licensing invariant on data): every photo entry carries `licence_code` + `attribution`; a test fails any entry without them | Open |
+| P0 | The university's DPO has a Child Privacy Impact Assessment to sign before the pilot | NPC child-transparency FAQ (Q9); no CPIA in `docs/` | `docs/spec/cpia-draft.md` | Tier 3 (governance): PASS iff the DPO has the draft and a decision on the live-visibility default is recorded | Open |
+| P0 | If personal data leaks, the team knows who tells the NPC, the students and their parents within 72 hours | NPC Circular 16-03; FAQ Q19; no runbook in `docs/` | `docs/spec/breach-runbook.md` | Tier 3 (governance): PASS iff the runbook names each role and the 72-hour clock | Open |
+
 ---
 
 ## How to read this file
