@@ -17,6 +17,8 @@ Done when: `/health` answers 200 on the live URL, `/seeds` asks for a token, and
 
 ## 2. Phone test (anyone with two phones, ~30 min, on campus)
 
+**A preview is already up for this** (2026-10-01, `wrangler deploy --temporary`, build `fddb9a1`+route fix): https://yclap-field-guide.chocolate-coral-dd5.workers.dev — the same Worker, Durable Object and assets as production, on a temporary Cloudflare account. Its SEEDS console token was handed to Gelo directly (not in git). Claim it into the real account from the claim link wrangler printed, or just deploy for real (step 1). A temporary preview expires; don't hand it to students as the live link.
+
 | # | Do | PASS iff |
 |---|---|---|
 | 1 | Open the live URL on a phone, allow location, walk 50 m outdoors | the walker turns and walks with you; the map never drops ground or the dock at the closest zoom while turning |
