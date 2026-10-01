@@ -139,6 +139,29 @@ const moderation = new ModerationService((query, ...bind) => account_db.prepare(
   token: process.env.MOD_TOKEN,
 });
 const hall = createHall(multiplayer, pageOrigin, moderation);
+/** /sync pushes per address (the Worker keeps the same brake). */
+const sync_limit = new RateWindow(30, 60_000);
+
+/* SEEDS challenges — the SAME QuestService as the Worker (worker/quest.ts), in
+   the account database, so a claim is judged on this box exactly as at the
+   edge. SEEDS_TOKEN (16+ characters) turns the organiser console on. */
+const { QuestService, QUEST_BODY_MAX } = await import(pathToFileURL(resolve(process.cwd(), "worker/quest.ts")).href);
+const quest = new QuestService((query, ...bind) => account_db.prepare(query).all(...bind), {
+  token: process.env.SEEDS_TOKEN,
+  session: async (request) => {
+    const session = await account.sessionOf(request);
+    return session ? { account_code: session.account.account_code, display_name: session.account.display_name } : null;
+  },
+});
+
+/** /quest, /quest/claim and /seeds/api/* → the shared handler, body byte-capped as it streams. */
+async function serveQuest(req, res) {
+  const response = await quest.handle(webRequestOf(req, QUEST_BODY_MAX), pageOrigin);
+  const head = { ...Object.fromEntries(response.headers), ...(url_is_cors(req) ? corsOfReq(req) : {}) };
+  res.writeHead(response.status, head);
+  res.end(Buffer.from(await response.arrayBuffer()));
+}
+const url_is_cors = (req) => /^\/quest(\/claim)?(\?|$)/.test(req.url ?? "");
 
 /** The world as every phone sees it: what a moderator hid is filtered out. */
 const worldOf = () => worldFrom(store, Date.now(), moderation.worldHide(), hallDefaultOf(process.env.HALL_DEFAULT));
@@ -244,6 +267,15 @@ const server = createServer(async (req, res) => {
     }
     return;
   }
+  if (url.pathname === "/quest" || url.pathname === "/quest/claim" || url.pathname.startsWith("/seeds/api/")) {
+    try {
+      await serveQuest(req, res);
+    } catch {
+      if (!res.headersSent) res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "challenge service failed" }));
+    }
+    return;
+  }
   if (url.pathname === "/report" || url.pathname.startsWith("/mod/api/")) {
     try {
       await serveModeration(req, res);
@@ -344,6 +376,12 @@ const server = createServer(async (req, res) => {
   }
 
   if (req.method === "POST" && url.pathname === "/sync") {
+    /* Same brake as the Worker: thirty pushes a minute per address. */
+    if (sync_limit.take(remoteIp(req) ?? "local", Date.now()) > 0) {
+      res.writeHead(429, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "too many syncs from this network — try again shortly" }));
+      return;
+    }
     let body;
     try {
       body = await readJson(req, undefined, res);
@@ -377,7 +415,7 @@ const server = createServer(async (req, res) => {
   }
 
   res.writeHead(404, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ error: "not found", route: ["GET /world", "GET /live", "GET /live/socket", "POST /live/pose", "GET /live/walker", "GET /join", "GET /mine", "POST /sync", "/auth/*", "/account/save", "POST /inat/identify", "POST /report", "/mod/api/*"] }));
+  res.end(JSON.stringify({ error: "not found", route: ["GET /world", "GET /live", "GET /live/socket", "POST /live/pose", "GET /live/walker", "GET /join", "GET /mine", "POST /sync", "/auth/*", "/account/save", "POST /inat/identify", "POST /report", "/mod/api/*", "GET /quest", "POST /quest/claim", "/seeds/api/*"] }));
 });
 
 server.on("upgrade", (req, socket) => {
@@ -407,5 +445,6 @@ server.listen(PORT, () => {
 }
   console.log(`  hall    WS /live/socket · POST /live/pose · GET /live/walker${multiplayer.isHallOff(process.env.HALL_OFF) ? " · OFF (HALL_OFF=1)" : ""}`);
   console.log(`  report  POST /report · console /mod/api/* ${moderation.isOn ? "on (MOD_TOKEN set)" : "OFF (no MOD_TOKEN)"}`);
+  console.log(`  quest   GET /quest · POST /quest/claim · console /seeds/api/* ${quest.isOn ? "on (SEEDS_TOKEN set)" : "OFF (no SEEDS_TOKEN)"}`);
   if (pageOrigin.length) console.log(`  pages   HALL_PAGE_ORIGIN ${pageOrigin.join(", ")}`);
 });

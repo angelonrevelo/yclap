@@ -53,7 +53,7 @@ export const HALL_OFF_BODY = {
  * tell you what they saw.
  */
 export function isWriteRoute(method: string, pathname: string): boolean {
-  if (method === "POST" && (pathname === "/sync" || pathname === "/auth/signup")) return true;
+  if (method === "POST" && (pathname === "/sync" || pathname === "/auth/signup" || pathname === "/quest/claim" || pathname === "/seeds/api/action")) return true;
   if (method === "PUT" && pathname === "/account/save") return true;
   return pathname === "/auth/google" || pathname === "/auth/google/callback";
 }
@@ -155,6 +155,10 @@ export interface Pose {
    * from a build before 09-30; `at` stands in.
    */
   sent?: number;
+  /** A group walk this walker is in: a hash of its code, never the code (`party.ts`). */
+  party_tag?: string;
+  /** On the host's pose only: when the group started, ms — the lobby closes 15 min after. */
+  party_since?: number;
 }
 
 /** What a phone sends. `player_id` is hashed on arrival and never echoed. */
@@ -167,6 +171,8 @@ export interface PoseInput {
   lon: number;
   source: FixSource;
   sent?: number;
+  party_tag?: string;
+  party_since?: number;
 }
 
 /**
@@ -228,11 +234,18 @@ export function sanitizePoseVerdict(raw: unknown, now: number): { pose: Pose; re
   const level = Number(r.level);
   const source = SOURCE.has(r.source as FixSource) ? (r.source as FixSource) : "play";
   const sent = Number(r.sent);
+  const party_since = Number(r.party_since);
+  const is_party = typeof r.party_tag === "string" && /^[0-9a-f]{8}$/.test(r.party_tag);
   const player_id = r.player_id.trim().slice(0, 64);
   const { name, refusal } = safeNameOf(r.name ?? "Walker", player_id);
   return {
     pose: {
       ...(Number.isFinite(sent) && sent > 0 ? { sent: Math.trunc(sent) } : {}),
+      ...(is_party ? { party_tag: r.party_tag as string } : {}),
+      /* A start in the future, or older than a party can last, is not believed. */
+      ...(is_party && Number.isFinite(party_since) && party_since <= now + 60_000 && party_since > now - 3 * 60 * 60 * 1000
+        ? { party_since: Math.trunc(party_since) }
+        : {}),
       walker_id: walkerIdOf(player_id),
       name,
       level: Number.isFinite(level) ? Math.max(1, Math.min(999, Math.trunc(level))) : 1,
@@ -314,6 +327,7 @@ export interface SentPose {
   stage: string;
   name: string;
   at: number;
+  party_tag?: string;
 }
 
 /**
@@ -336,7 +350,7 @@ export function shouldSend(
   const since = now - last.at;
   if (since < SEND_MIN_MS) return false;
   if (since >= SEND_HEARTBEAT_MS) return true;
-  if (last.level !== next.level || last.stage !== next.stage || last.name !== next.name) return true;
+  if (last.level !== next.level || last.stage !== next.stage || last.name !== next.name || last.party_tag !== next.party_tag) return true;
   const threshold = next.source === "gps" || next.source === undefined ? SEND_MOVE_M : SEND_MOVE_PLAY_M;
   return distanceMeter(last, next) >= threshold;
 }

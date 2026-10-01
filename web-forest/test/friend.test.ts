@@ -400,3 +400,19 @@ describe("the campus live-map policy (HALL_DEFAULT)", () => {
     assert.equal(worldFrom(new MemoryCampusStore(), Date.now(), {}, "opt_in").hall_default, "opt_in");
   });
 });
+
+describe("the group streak outlives the six-hour world (10-01)", () => {
+  it("weeks seen once are remembered, one row per walker per week, and the streak counts them", async () => {
+    const { rememberWeek, readWeekLog } = await import("../src/friend.ts");
+    const store = new Map<string, string>();
+    const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) } as unknown as Storage;
+    const now = new Date("2026-10-14T03:00:00Z");
+    const week = (n: number) => new Date(now.getTime() - n * 7 * 86400000).toISOString();
+    /* Three separate sessions, each seeing only that week's finds (the world's window). */
+    rememberWeek([{ walker_id: "wB", player_name: "Ben", created_at: week(2) }], storage);
+    rememberWeek([{ walker_id: "wB", player_name: "Ben", created_at: week(1) }, { walker_id: "wB", player_name: "Ben", created_at: week(1) }], storage);
+    const log = rememberWeek([{ walker_id: "wB", player_name: "Ben", created_at: week(0) }], storage);
+    assert.equal(readWeekLog(storage).length, 3);
+    assert.equal(groupStreak(log, new Set(["wB"]), now).weeks, 3);
+  });
+});

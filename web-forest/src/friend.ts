@@ -162,7 +162,7 @@ export interface GroupStreak {
  * events, because only the world knows what somebody else did.
  */
 export function groupStreak(
-  find: WorldFind[],
+  find: Pick<WorldFind, "walker_id" | "player_name" | "created_at">[],
   member: ReadonlySet<string>,
   now: Date = new Date(),
 ): GroupStreak {
@@ -197,4 +197,59 @@ export function groupStreak(
     carried_by: [...(week_member.get(this_week) ?? [])].sort(),
     member_count: member.size,
   };
+}
+
+/* ── the week log behind the group streak ───────────────────────────────────
+ *
+ * The streak above reads the world's finds, and the world keeps only the last
+ * six hours (80 finds): a group streak computed from it could never reach a
+ * second week (10-01 audit). So this phone remembers, compactly, which walker
+ * was out in which week — one row per walker per week, nothing else, capped —
+ * and the streak reads that log plus the live world.
+ */
+const WEEK_LOG_KEY = "magi.friend-week";
+const WEEK_LOG_MAX = 1500;
+
+export interface WeekLogRow {
+  walker_id: string;
+  player_name: string;
+  week_key: string;
+  /** Any moment inside that week, so `weekKey` maps it back. */
+  created_at: string;
+}
+
+export function readWeekLog(storage: Storage | null = typeof localStorage === "undefined" ? null : localStorage): WeekLogRow[] {
+  try {
+    const raw = JSON.parse(storage?.getItem(WEEK_LOG_KEY) ?? "[]") as unknown;
+    return Array.isArray(raw)
+      ? raw.filter((r): r is WeekLogRow => !!r && typeof r.walker_id === "string" && typeof r.week_key === "string" && typeof r.created_at === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Fold the world's finds into the log; returns the log. Newest weeks are kept when it is full. */
+export function rememberWeek(
+  find: Pick<WorldFind, "walker_id" | "player_name" | "created_at">[],
+  storage: Storage | null = typeof localStorage === "undefined" ? null : localStorage,
+): WeekLogRow[] {
+  const log = readWeekLog(storage);
+  const seen = new Set(log.map((r) => `${r.walker_id}|${r.week_key}`));
+  let is_changed = false;
+  for (const f of find) {
+    const week_key = weekKey(f.created_at);
+    if (week_key === "invalid" || seen.has(`${f.walker_id}|${week_key}`)) continue;
+    seen.add(`${f.walker_id}|${week_key}`);
+    log.push({ walker_id: f.walker_id, player_name: f.player_name || "A walker", week_key, created_at: f.created_at });
+    is_changed = true;
+  }
+  if (!is_changed) return log;
+  const kept = log.sort((a, b) => b.week_key.localeCompare(a.week_key)).slice(0, WEEK_LOG_MAX);
+  try {
+    storage?.setItem(WEEK_LOG_KEY, JSON.stringify(kept));
+  } catch {
+    /* full or private: the streak falls back to the live world */
+  }
+  return kept;
 }

@@ -132,3 +132,17 @@ describe("dailyTaskFor on the real campus", () => {
     assert.ok(code.size >= 8, `only ${code.size} species in 30 days`);
   });
 });
+
+describe("the hunt clears at its spot (10-01)", () => {
+  it("pays only for the hunt species logged within HUNT_REACH_M of the hunt", async () => {
+    const { huntClearOf, HUNT_REACH_M } = await import("../src/gamify.ts");
+    const daily = { species_code: "narra", lat: 14.639, lon: 121.077, is_done: false };
+    assert.equal(huntClearOf(daily, "narra", { lat: 14.6391, lon: 121.077 }).is_clear, true);
+    const far = huntClearOf(daily, "narra", { lat: 14.645, lon: 121.077 });
+    assert.equal(far.is_clear, false);
+    assert.ok((far.meter ?? 0) > HUNT_REACH_M);
+    assert.equal(huntClearOf(daily, "narra", null).is_clear, false, "no position, no hunt");
+    assert.equal(huntClearOf(daily, "dao", { lat: 14.639, lon: 121.077 }).is_clear, false);
+    assert.equal(huntClearOf({ ...daily, is_done: true }, "narra", { lat: 14.639, lon: 121.077 }).is_clear, false);
+  });
+});

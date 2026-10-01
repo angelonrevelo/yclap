@@ -13,7 +13,7 @@ import { weekKey } from "./week.ts";
 import { readPlayer } from "./sync.ts";
 import { areaName, isUnnamedSector } from "./area-name.ts";
 import { species } from "./data.ts";
-import type { LatLon } from "./geo.ts";
+import { distanceMeter, type LatLon } from "./geo.ts";
 import { isWalkable } from "./placement.ts";
 import { sectorContains, type Sector } from "./sector.ts";
 import { habitatWeight, rarityFor, type Spawn, type SpawnPoolEntry } from "./spawn.ts";
@@ -692,4 +692,26 @@ export function readChallengePrefs(storage: Storage | null = safeStorage()): str
   } catch {
     return DEFAULT_CHALLENGES.map((c) => c.challenge_id);
   }
+}
+
+
+/**
+ * The hunt clears where the hunt is. Until 10-01 it paid +40 for logging the
+ * hunt species from anywhere — GO opens the camera on it from across campus —
+ * so the one daily task was also the one free 40 points (10-01 audit). Now
+ * the log has to carry a position within HUNT_REACH_M of the hunt's spot.
+ * A stick walk still counts: steering there is the walk, and the stick is how
+ * a desk demo and a student who cannot walk far both play.
+ */
+export const HUNT_REACH_M = 150;
+
+export function huntClearOf(
+  daily: Pick<DailyTask, "species_code" | "lat" | "lon" | "is_done">,
+  species_code: string,
+  at: LatLon | null,
+): { is_clear: boolean; meter: number | null } {
+  if (daily.is_done || daily.species_code !== species_code) return { is_clear: false, meter: null };
+  if (!at) return { is_clear: false, meter: null };
+  const meter = distanceMeter(at, daily);
+  return { is_clear: meter <= HUNT_REACH_M, meter };
 }

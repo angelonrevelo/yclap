@@ -53,7 +53,7 @@ export default defineConfig({
        tell the phones apart: it trusts X-Forwarded-For only from loopback
        (this proxy) and reads the last entry, the one the proxy appended. */
     proxy: Object.fromEntries(
-      ["/world", "/sync", "/live", "/health", "/join", "/partner", "/mine", "/auth/", "/account/", "/inat/identify", "/report", "/mod/api/"].map((path) => [
+      ["/world", "/sync", "/live", "/health", "/join", "/partner", "/mine", "/auth/", "/account/", "/inat/identify", "/report", "/mod/api/", "/quest", "/seeds/api/"].map((path) => [
         path,
         /* `ws` so the hall socket (/live/socket) upgrades through the proxy too. */
         { target: SYNC_TARGET, xfwd: true, ws: path === "/live" },
