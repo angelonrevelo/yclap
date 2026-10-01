@@ -145,7 +145,10 @@ describe("tracks: land, sea, air (track.ts)", () => {
     assert.equal(out[out.length - 1].track_code, "trail-leg-1");
     assert.equal(out.find((t) => t.track_code === "trail-leg-0")!.is_done, true);
     assert.equal(shownTrack({ is_file_shown: false }).length, 0);
-    assert.equal(shownTrack({ is_file_shown: true }).length, FILE_TRACK.length);
+    /* Cebu's tracks are drawn on the field map; the campus play map shows its own. */
+    assert.equal(shownTrack({ is_file_shown: true }).length, FILE_TRACK.filter((t) => !t.site_code).length);
+    assert.ok(FILE_TRACK.some((t) => t.site_code === "cebu" && t.track_kind === "hike"));
+    assert.ok(FILE_TRACK.some((t) => t.site_code === "cebu" && t.track_kind === "dive"));
     const help = shownTrack({ help: { from, waypoint: [{ lat: 14.64, lon: 121.078 }], title: "To the clinic" } });
     assert.equal(help[0].track_kind, "help");
     assert.equal(help[0].point[0], from);

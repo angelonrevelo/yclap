@@ -109,7 +109,7 @@ import {
   type GamifySnapshot,
   type PointEvent,
 } from "./gamify";
-import { CAMPUS_CENTER, distanceMeter, formatLatLon, formatMeter, formatWalkMinute, meterPerPixel, WALK_PACE_MS, type GeoState } from "./geo";
+import { CAMPUS_CENTER, distanceMeter, formatLatLon, formatMeter, formatWalkMinute, isInsideCampus, meterPerPixel, WALK_PACE_MS, type GeoState } from "./geo";
 import { LAYER_ORDER, nextLayer, prefetchCampus, SOURCE, type Layer, type View } from "./tile-map";
 import { geoModeLabel, nextGeoMode, useGeo, type GeoMode } from "./use-geo";
 import { useQuality } from "./use-quality";
@@ -4634,6 +4634,15 @@ export default function App() {
         from_label={fromLabel(geo.fix)}
         is_desktop={is_desktop}
         onFocus={(point) => {
+          /* Off this campus (a Cebu site track): the play map is the campus's
+             own ground and cannot go there, so the field map — tiles
+             everywhere — flies to it instead. */
+          if (!isInsideCampus(point)) {
+            stopFollowing();
+            setMode("field");
+            setView({ lat: point.lat, lon: point.lon, zoom: 14 });
+            return;
+          }
           /* The play camera is welded to the walker, so "show me" on the play
              map means walk there (the routed walk-to), the way every other
              tap on this map does. Without a walker to move, look instead. */
@@ -4778,7 +4787,14 @@ export default function App() {
       />
       <MapChrome
         is_desktop={is_desktop}
-        context={<ContextCard label="Loyola Heights" value={geo_line} />}
+        context={
+          /* Off campus the field map is showing a site track (Cebu), not where you are. */
+          isInsideCampus(camera_view) ? (
+            <ContextCard label="Loyola Heights" value={geo_line} />
+          ) : (
+            <ContextCard label="Site preview · Cebu" value="Routes from OpenStreetMap. Recentre to go back to campus." />
+          )
+        }
         below={geo_chip}
         control={
           <>
@@ -4821,7 +4837,8 @@ export default function App() {
         is_desktop={is_desktop}
         onFocus={(point) => {
           stopFollowing();
-          setView((prev) => ({ lat: point.lat, lon: point.lon, zoom: Math.max(prev.zoom, 18) }));
+          /* A whole hiking route is kilometres long: pull back for one off campus. */
+          setView((prev) => ({ lat: point.lat, lon: point.lon, zoom: isInsideCampus(point) ? Math.max(prev.zoom, 18) : 14 }));
         }}
       />
       {!is_desktop && !is_sheet_open && (

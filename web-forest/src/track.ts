@@ -22,6 +22,9 @@
  */
 import pond_shore from "./asset/track/pond-shore.json" with { type: "json" };
 import demo_flyway from "./asset/track/demo-flyway.json" with { type: "json" };
+import cebu_osmena_kawasan from "./asset/track/cebu-osmena-kawasan.json" with { type: "json" };
+import cebu_mount_naupa from "./asset/track/cebu-mount-naupa.json" with { type: "json" };
+import cebu_hilutungan from "./asset/track/cebu-hilutungan.json" with { type: "json" };
 import type { LatLon } from "./geo.ts";
 
 export type Medium = "land" | "sea" | "air";
@@ -54,6 +57,18 @@ export interface Track {
   is_demo?: boolean;
   /** Where the line comes from, with its licence — shown with the layer. */
   source: string;
+  /**
+   * Which site it belongs to. Absent: this campus (the play map draws it).
+   * "cebu": a Cebu site track — real OSM hiking routes and a marine sanctuary,
+   * drawn on the field map, which has tiles everywhere; the play map is the
+   * campus's own ground and stays there.
+   */
+  site_code?: string;
+}
+
+/** A track on the campus the play map is built for. */
+export function isCampusTrack(track: Pick<Track, "site_code">): boolean {
+  return !track.site_code;
 }
 
 export interface TrackStyle {
@@ -117,7 +132,7 @@ export function altitudeAt(altitude_m: number, t: number): number {
 }
 
 /** The tracks shipped as files — checked once, a bad one dropped with a console line rather than drawn wrong. */
-export const FILE_TRACK: Track[] = ([pond_shore, demo_flyway] as unknown as Track[]).filter((t) => {
+export const FILE_TRACK: Track[] = ([pond_shore, demo_flyway, cebu_osmena_kawasan, cebu_mount_naupa, cebu_hilutungan] as unknown as Track[]).filter((t) => {
   const problem = trackProblem(t);
   if (problem.length && typeof console !== "undefined") console.warn(`track ${t.track_code} dropped: ${problem.join("; ")}`);
   return problem.length === 0;
@@ -152,7 +167,7 @@ export function shownTrack(input: {
   file?: Track[];
 }): Track[] {
   const out: Track[] = [];
-  if (input.is_file_shown) out.push(...(input.file ?? FILE_TRACK));
+  if (input.is_file_shown) out.push(...(input.file ?? FILE_TRACK.filter(isCampusTrack)));
   const at = input.trail_at ?? 0;
   (input.trail_leg ?? []).forEach((leg, k) => {
     if (!leg.waypoint) return;

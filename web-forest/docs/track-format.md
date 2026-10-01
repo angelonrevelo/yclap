@@ -57,9 +57,20 @@ top of `src/track.ts` (the test fails until it is registered).
 - `pond-shore` (sea/shore): the campus pond's OSM outline.
 - `demo-flyway` (air/flyway, **demo**): Gonzaga walk to the pond, 16 m.
 - Trail legs and the help route are computed, not files.
+- Three Cebu site tracks (below).
 
-## Cebu (not built yet)
+## Cebu — a site preview on the field map
 
-Cebu hiking trails, emergency areas and reef lines are tracks in this format,
-but the app is boxed to one campus (`CAMPUS_BOX`, `MODULE_CONFIG`). A Cebu
-site needs its own box, OSM extract and network build first: see ROADMAP.
+Three real Cebu tracks ship, from OpenStreetMap (fetched 2026-10-01 via Overpass), each with `"site_code": "cebu"`:
+
+| track | kind | OSM |
+|---|---|---|
+| Osmeña Peak to Kawasan Falls traverse, 20.6 km | hike | relation 19300409 |
+| Mount Naupa Trail, 1.4 km | hike | way 282023831 |
+| Hilutungan Sanctuary edge | dive | way 47239036 |
+
+A track with a `site_code` is drawn on the **field map** (raster tiles exist everywhere), never on the campus play map — the play map is the campus's own ground. In the routes list, **Show** flies the field map there at zoom 14; the card reads "Site preview · Cebu".
+
+OSM holds **no emergency assembly points** in Cebu (checked 2026-10-01), so no evacuation track ships there; an LGU or DRRM office's list is what fills it.
+
+A full Cebu *site* — walkable play map, spawns, sectors — still needs its own box, OSM extract, network build and `MODULE_CONFIG`; see ROADMAP.

@@ -102,6 +102,24 @@ export function ModuleLayer({ state, projection, from }: { state: ModuleState; p
         </svg>
       )}
 
+      {/* Route files on the field map — the campus's and the Cebu site's alike,
+          in the same per-kind style as the play map (`TRACK_STYLE`). */}
+      {state.shown.track && (
+        <svg width={projection.width} height={projection.height} style={{ ...svg_style, zIndex: 2 }} aria-hidden="true">
+          {FILE_TRACK.map((t) => {
+            const style = TRACK_STYLE[t.track_kind];
+            const is_dotted = style.dash_m?.[0] === 0;
+            const d = pathD(projection, t.point, t.point.length > 2 && t.point[0].lat === t.point[t.point.length - 1].lat && t.point[0].lon === t.point[t.point.length - 1].lon);
+            return (
+              <g key={t.track_code} fill="none" strokeLinejoin="round">
+                <path d={d} stroke={style.casing} strokeWidth={7} strokeLinecap={is_dotted ? "round" : "butt"} strokeOpacity={0.9} />
+                <path d={d} stroke={style.fill} strokeWidth={4} strokeLinecap={is_dotted ? "round" : "butt"} strokeDasharray={is_dotted ? "0 8" : style.dash_m ? "10 6" : undefined} />
+              </g>
+            );
+          })}
+        </svg>
+      )}
+
       {trail && state.shown.trail && (
         <svg width={projection.width} height={projection.height} style={{ ...svg_style, zIndex: 3 }} aria-hidden="true">
           {trail.leg.map((leg, k) =>

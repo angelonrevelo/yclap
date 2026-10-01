@@ -1,0 +1,38 @@
+{
+ "_comment": "OpenStreetMap way 47239036 (Hilutungan Sanctuary), fetched 2026-10-01 via Overpass, thinned to 7 points. A Cebu site track: shown on the field map, not the campus play map.",
+ "track_code": "cebu-hilutungan",
+ "track_kind": "dive",
+ "title": "Hilutungan Sanctuary edge",
+ "site_code": "cebu",
+ "source": "\u00a9 OpenStreetMap contributors, ODbL (way 47239036)",
+ "point": [
+  {
+   "lat": 10.207486,
+   "lon": 123.984167
+  },
+  {
+   "lat": 10.209259,
+   "lon": 123.985807
+  },
+  {
+   "lat": 10.210797,
+   "lon": 123.986693
+  },
+  {
+   "lat": 10.210403,
+   "lon": 123.987389
+  },
+  {
+   "lat": 10.208857,
+   "lon": 123.986485
+  },
+  {
+   "lat": 10.206872,
+   "lon": 123.984548
+  },
+  {
+   "lat": 10.207486,
+   "lon": 123.984167
+  }
+ ]
+}
