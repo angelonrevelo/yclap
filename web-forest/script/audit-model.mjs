@@ -720,7 +720,14 @@ export function auditConnectivity(buf, { joint_slack = CONNECT.joint_slack } = {
     for (const c of node[i]?.children ?? []) walk(c, i);
   };
   for (const r of scene?.nodes ?? []) walk(r, null);
-  const mesh_node = [...in_scene].filter((i) => node[i].mesh !== undefined && shape[node[i].mesh]?.index.length);
+  /* A part under a node named `float_*` hovers ON PURPOSE — the trainer's
+     firefly (`build-eagle-glb.mjs`) — and is left out of both rules. Only an
+     explicit name opts out; nothing floats by accident through this. */
+  const isFloat = (i) => {
+    for (let n = i; n !== undefined; n = parent.get(n)) if (String(node[n]?.name ?? "").startsWith("float_")) return true;
+    return false;
+  };
+  const mesh_node = [...in_scene].filter((i) => node[i].mesh !== undefined && shape[node[i].mesh]?.index.length && !isFloat(i));
 
   /* Joint partner: the nearest ancestor that draws something. */
   const partner = new Map();

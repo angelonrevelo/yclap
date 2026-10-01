@@ -176,6 +176,30 @@ export function sectorFill(row: Sector): string {
   return `hsl(${hue.toFixed(1)} ${sat.toFixed(1)}% ${light.toFixed(1)}%)`;
 }
 
+/**
+ * The play map's tone for a sector: its kind's band, and only two steps of
+ * measured greenness within it — no per-sector jitter.
+ *
+ * `sectorFill` gives every sector a slightly different colour, which is right
+ * on the field map where a sector is a unit of data, and wrong on the play
+ * map: 94 near-identical greens read as a patchwork with a seam along every
+ * edge (Gelo, 10-01: "clean biome boundaries"). Here neighbours of the same
+ * kind come out the SAME tone, so the play map can draw them as one shape and
+ * the only edges left are where the ground really changes — lawn to grove,
+ * grove to pavement.
+ */
+export function biomeTone(row: Sector): string {
+  const band = KIND_BAND[row.kind] ?? KIND_BAND["planted-walk"];
+  const is_lush = greenness(row) >= 0.6;
+  const light = band.light - (is_lush ? 3.5 : 0);
+  const sat = band.sat + (is_lush ? 3 : 0);
+  const hue = row.is_biome ? 118 : 40;
+  return `hsl(${hue} ${sat}% ${light}%)`;
+}
+
+/** Kinds from the most built to the most wooded — the order the play map paints tones in. */
+export const KIND_ORDER = ["built", "paved", "sparse", "planted-walk", "open-field", "cultivated", "wood"];
+
 /** A boundary dark enough to hold a sector apart from its neighbour. */
 export function sectorStroke(row: Sector): string {
   const band = KIND_BAND[row.kind] ?? KIND_BAND["planted-walk"];

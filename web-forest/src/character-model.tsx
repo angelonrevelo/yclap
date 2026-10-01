@@ -16,6 +16,8 @@ import { useEffect, useRef, type CSSProperties } from "react";
 import { stage_sticker } from "./asset/kit";
 import type { Stage } from "./stage.ts";
 import { STAGE_LABEL } from "./stage.ts";
+import { useWorn } from "./use-wear";
+import { wearIdOfMaterial, type WearFigure } from "./wear";
 
 /** Stage → model file. Stage keys are the stored ones (`stage.ts`). */
 export const STAGE_MODEL: Record<Stage, string> = {
@@ -52,6 +54,41 @@ interface Props {
   is_walking?: boolean;
   /** Degrees clockwise from screen-up — the direction of travel. */
   heading_degree?: number;
+  /** Whose accessories: the trainer's or the pet's. Default: the trainer for the trainer model, else the pet. */
+  figure?: WearFigure;
+  /** Wear exactly these instead of the saved outfit — the wardrobe's try-on. */
+  wear?: string[];
+  /** Stand the card camera further back — the wardrobe shows the crest and the crown whole. */
+  is_wide?: boolean;
+}
+
+/** The slice of model-viewer's scene API the dressing uses. */
+interface ViewerMaterial {
+  name: string;
+  pbrMetallicRoughness: { baseColorFactor: number[]; setBaseColorFactor(color: number[]): void };
+  setAlphaMode(mode: "OPAQUE" | "MASK" | "BLEND"): void;
+  setAlphaCutoff?(cutoff: number): void;
+}
+type Dressable = HTMLElement & { model?: { materials: ViewerMaterial[] }; loaded?: boolean; dismissPoster?: () => void };
+
+/**
+ * Show the accessories in `worn`, hide every other one. Each accessory is its
+ * own `acc_<id>_<n>` material in the model (`build-eagle-glb.mjs`); hidden is
+ * alpha 0 under an alpha cutoff, so it neither draws nor blends.
+ */
+function dress(el: Dressable, worn: string[]): boolean {
+  const material = el.model?.materials;
+  if (!material) return false;
+  for (const m of material) {
+    const id = wearIdOfMaterial(m.name);
+    if (!id) continue;
+    const is_on = worn.includes(id);
+    const [r, g, b] = m.pbrMetallicRoughness.baseColorFactor;
+    m.setAlphaMode(is_on ? "OPAQUE" : "MASK");
+    m.setAlphaCutoff?.(0.5);
+    m.pbrMetallicRoughness.setBaseColorFactor([r, g, b, is_on ? 1 : 0]);
+  }
+  return true;
 }
 
 /** The slice of model-viewer's element API the facing uses (`StagingMixin`). */
@@ -76,8 +113,27 @@ export default function CharacterModel({
   is_walker = false,
   is_walking = false,
   heading_degree = 180,
+  figure,
+  wear,
+  is_wide = false,
 }: Props) {
   const ref = useRef<HTMLElement>(null);
+  const saved = useWorn(figure ?? (src === TRAINER_MODEL ? "trainer" : "pet"));
+  const worn = wear ?? saved;
+  const worn_key = worn.join(",");
+  /* Dressed before it is shown: the poster stays up (reveal="manual") until
+     the accessories that are not worn are hidden, so nobody sees every hat at
+     once for a frame. Re-dressed whenever the outfit or the model changes. */
+  useEffect(() => {
+    const el = ref.current as Dressable | null;
+    if (!el) return;
+    const apply = () => {
+      if (dress(el, worn_key ? worn_key.split(",") : [])) el.dismissPoster?.();
+    };
+    if (el.loaded) apply();
+    el.addEventListener("load", apply);
+    return () => el.removeEventListener("load", apply);
+  }, [worn_key, src, stage]);
   const yaw = useRef(IDLE_YAW);
   const reduced = isReducedMotion();
   /* Facing: the model looks down +Z, which is screen-down (heading 180). */
@@ -122,7 +178,7 @@ export default function CharacterModel({
       interaction-prompt="none"
       /* On a card the camera stands back far enough that the crest clears a
          round crop; "auto" frames the model edge to edge. */
-      camera-orbit={is_walker ? "0deg 62deg auto" : "0deg 78deg 3.2m"}
+      camera-orbit={is_walker ? "0deg 62deg auto" : is_wide ? "0deg 76deg 4.1m" : "0deg 78deg 3.2m"}
       max-camera-orbit="Infinity 180deg 20m"
       field-of-view="28deg"
       environment-image="neutral"
@@ -130,6 +186,7 @@ export default function CharacterModel({
       shadow-intensity="1"
       shadow-softness="0.7"
       loading="eager"
+      reveal="manual"
       style={{
         display: "block",
         width: is_fill ? "100%" : size,
