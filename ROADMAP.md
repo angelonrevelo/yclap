@@ -298,6 +298,20 @@ Gelo, 10-01: "i really dont like this artifical horizon, in the real pokemon go,
 | The horizon is where the world really ends: ground drawn out to a view distance, fading by real distance into the sky, which begins where that distance lands on screen. No painted hills, skyline or haze band | Play view (`horizon.tsx`, `camera-feel.ts`, `tile-map.tsx`); buildings, trees, labels and finds fade and cull by the same distance | `camera-feel.test.ts` "the real horizon": at the street camera the horizon lands 5–30 % down a phone, a laptop and a wide desktop; tilting up brings it down; fog is 0 before `FOG_START` and 1 at the view distance | Shipped. Close pitch 58° → 62° (max 64° → 68°) so the sky shows as in GO |
 | The close camera never breaks: no ground, walker, trees or dock dropping out while walking and turning at a steep pitch | Play view | Stress run (max tilt, walking and turning, 1 frame/s, pixel check for the dock and the walker): old build 7 of 20 frames broken, new build 0 of 20 on a 1780×880 desktop and 0 of 10 on a 390×844 phone. `camera-feel.test.ts`: the clip never reaches behind the eye at any pitch 40–68° on any screen (red with the guard removed), and its area is bounded | Shipped. **Not done:** tested with Chrome on this machine's RTX 2060 (headless, GPU compositing on); not yet on a physical phone or a low-end laptop's integrated GPU |
 
+### 2026-10-01 — "do all": the decisions made, pmap's streets, water life, Cebu
+
+Gelo, 10-01: "do all" — every open item that code could close. What needs a person is in `docs/showcase/open-asks.md` (deploy steps, a phone-test checklist, drafts for the DPO and SEEDS/AIS).
+
+| Behavior | Surface | PASS iff | Status |
+|----------|---------|----------|--------|
+| Roads at their reviewed widths, from pmap's own ADMU street network (Katipunan 16–19 m, service roads 4 m); aisles and lot roads dropped; sidewalks cut by each street's own width | Play view; `build-network.mjs` with `script/data/pmap-street.json` (scp from the Mac) | `network.test.ts`; screenshot | Shipped |
+| A graded challenge counts one student once: "students must be signed in", on by default for a class challenge | `/seeds` form; `judgeClaim` | `quest.test.ts` (20) | Shipped |
+| A phone cannot top the shared leaderboard by editing its points: `/sync` shows them at most at a ceiling its synced finds explain | `pointCeiling`, `mergeSync` | `campus-world.test.ts`: a million claimed with two finds → the ceiling; an honest total untouched | Shipped. Personal level stays the phone's |
+| Water life is IN the pond: two aquatic finds per window inside its outline, drawn under the water, reached from the bank; none on a lawn; water is not walkable | Play view (`aquatic.ts`, `UnderwaterMark`, `inWater`) | `aquatic.test.ts`; screenshot of two fish in the pond | Shipped |
+| Cebu routes on the field map: the Osmeña–Kawasan traverse, Mount Naupa, the Hilutungan sanctuary (OSM), flown to from the routes list | Field view; `site_code: "cebu"` tracks | `network.test.ts`; screenshot over Badian | Shipped. No evacuation track: OSM has no assembly points in Cebu. A playable Cebu site is still a box + extract + config away |
+| `main` holds the reveal line | git | `main` = `reveal-1015` (local, not pushed) | Done |
+| Deploy, phone test, Pl@ntNet key, DPO, SEEDS/AIS, reveal date | `docs/showcase/open-asks.md` | each row's "Done when" | Waiting on people |
+
 ### 2026-10-01 — clean biome edges, accessories on the 3D figures, livelier trainer and pet
 
 Gelo, 10-01: "clean biome boundaries, animations 3d figures + accessories (from shop/blindbox/etc.) and pet".
