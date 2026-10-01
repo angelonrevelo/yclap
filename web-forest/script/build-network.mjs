@@ -37,7 +37,7 @@
  * Run: node script/build-network.mjs   (needs script/data/osm-way-raw.json
  * from fetch-osm-way.mjs)
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 const raw = JSON.parse(readFileSync(new URL("./data/osm-way-raw.json", import.meta.url), "utf8"));
 
@@ -217,8 +217,54 @@ for (const w of raw.element) {
   else walk.push({ way_class: t.highway === "steps" ? "stair" : "walk", is_outside: false, line });
 }
 
+/* ── 1b. pmap's streets, when the file is here ────────────────────────────
+ *
+ * pmap (Gelo's place engine) OWNS the ADMU street network: seeded from OSM
+ * once, then edited against imagery — lane-by-lane profiles with reviewed
+ * widths (Katipunan 16–19 m, a campus service road 4 m), designed lots, and
+ * the driveways it already re-drew. When `script/data/pmap-street.json` is
+ * present (scp from the Mac: ~/Code/pmap/place/admu/street.json) its
+ * segments replace the OSM ways: streets at their CARRIAGEWAY width (lanes,
+ * not sidewalks — Pokémon GO shows the road, not the kerb), footways at
+ * theirs, aisles and lot roads dropped. Water and the play area still come
+ * from OSM. Without the file the OSM path above stands. */
+const PMAP = new URL("./data/pmap-street.json", import.meta.url);
+report.source = "osm";
+if (existsSync(PMAP)) {
+  const pm = JSON.parse(readFileSync(PMAP, "utf8"));
+  const at = new Map(pm.node.map((n) => [n.node_code, n.at]));
+  const profile = new Map(pm.profile.map((p) => [p.profile_code, p]));
+  const CARRIAGE = new Set(["drive", "parking", "bike", "median", "shoulder"]);
+  street.length = 0;
+  walk.length = 0;
+  report.source = "pmap";
+  report.pmap_segment = pm.segment.length;
+  for (const seg of pm.segment) {
+    const code = seg.profile_code;
+    const pro = profile.get(code);
+    const from = at.get(seg.from);
+    const to = at.get(seg.to);
+    if (!pro || !from || !to) continue;
+    if (/^aisle|lot/.test(code) || /parking aisle|driveway/i.test(seg.name ?? "")) { report.drop_parking_aisle += 1; continue; }
+    const line = [from, ...(seg.via ?? []), to].map(([lon, lat]) => toM(lat, lon));
+    const is_stair = code.startsWith("steps");
+    const is_walk = is_stair || code.startsWith("footway");
+    const width_m = is_walk
+      ? pro.lane.reduce((sum, l) => sum + l.width_m, 0)
+      : pro.lane.filter((l) => CARRIAGE.has(l.kind)).reduce((sum, l) => sum + l.width_m, 0);
+    if (!(width_m > 0)) continue;
+    if (!line.some((p) => inReach(p, is_walk ? 0 : OUTSIDE_REACH_M))) continue;
+    const is_inside = line.some((p) => pointInRing(play_area, p));
+    if (is_walk && !is_inside) { report.drop_off_campus_walk += 1; continue; }
+    if (is_walk) walk.push({ way_class: is_stair ? "stair" : "walk", is_outside: false, line, width_m });
+    else street.push({ way_class: "street", is_outside: !is_inside, line, width_m });
+  }
+}
+
 /* ── 2. reconcile: streets claim their ribbon, walks are cut out of it ── */
-const claimed = (p) => street.some((s) => nearestOnLine(p, s.line).d < STREET_CLAIM_M);
+/* A street claims half its own width, half a walk, and the kerb gap. */
+const claimOf = (s) => (s.width_m ? s.width_m / 2 + 1.0 + 1.6 : STREET_CLAIM_M);
+const claimed = (p) => street.some((s) => nearestOnLine(p, s.line).d < claimOf(s));
 const walk_kept = [];
 for (const w of walk) {
   const sample = densify(w.line, SAMPLE_M);
@@ -274,7 +320,7 @@ function chain(list) {
     for (const [k, meet] of at) {
       if (meet.length !== 2) continue;
       const [a, b] = meet;
-      if (a === b || a.way_class !== b.way_class || a.is_outside !== b.is_outside) continue;
+      if (a === b || a.way_class !== b.way_class || a.is_outside !== b.is_outside || a.width_m !== b.width_m) continue;
       const p = key(a.line[0]) === k ? a.line[0] : a.line[a.line.length - 1];
       if (touches(p, a, b)) continue;
       const a_line = key(a.line[a.line.length - 1]) === k ? a.line : [...a.line].reverse();
@@ -308,6 +354,8 @@ for (let pass = 0; pass < 3; pass += 1) {
 const way = [...street, ...walk_kept].map((w) => ({
   way_class: w.way_class,
   is_outside: w.is_outside,
+  /* Metres, from pmap's reviewed profile; absent on the OSM path (class width then). */
+  ...(w.width_m ? { width_m: Math.round(w.width_m * 10) / 10 } : {}),
   point: simplify(w.line, SIMPLIFY_M).map(toLatLon),
 }));
 for (const w of way) report[w.way_class] += 1;

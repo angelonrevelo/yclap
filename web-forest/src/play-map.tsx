@@ -33,7 +33,7 @@ import { altitudeAt, lengthFraction, mediumOf, TRACK_STYLE, type Track } from ".
 /* The proposed 3D hiker (`?avatar=hiker`, see avatar.ts): its own lazy chunk,
    so nobody who did not ask for it downloads model-viewer for the map. */
 const HikerAvatar = lazy(() => import("./hiker-avatar"));
-import { avatarPx, clampPitch, FOG_START, pitchForZoom, roadCasingPx, roadWidthPx, walkStopMs } from "./camera-feel";
+import { avatarPx, clampPitch, FOG_START, pitchForZoom, roadCasingPx, roadWidthPx, ROAD_WIDTH_M, walkStopMs } from "./camera-feel";
 import FrameProbe from "./frame-probe";
 import { planePair, planePoint } from "./plane-cache";
 import { BUDGET, qualityLabel, type QualityPick } from "./quality";
@@ -93,7 +93,7 @@ const MAX_LABEL = 5;
  */
 export interface NetworkFile {
   attribution: string;
-  way: { way_class: "street" | "walk" | "stair"; is_outside: boolean; point: [number, number][] }[];
+  way: { way_class: "street" | "walk" | "stair"; is_outside: boolean; width_m?: number; point: [number, number][] }[];
   water: { water_kind: string; name: string | null; point: [number, number][] }[];
 }
 const network = campus_network as unknown as NetworkFile;
@@ -463,8 +463,15 @@ const Ground = memo(function Ground({
   for (const row of sector_row) if (row.is_biome && near(row.point)) merged.grass += ringPath(row.point, project, true);
   for (const b of campus_building) if (near(b.point)) merged.building += ringPath(b.point, project, true);
   for (const w of network.water) if (near(w.point)) merged.water += ringPath(w.point, project, true);
+  /* Streets by width (pmap's reviewed carriageways, `build-network.mjs`),
+     to the half metre: Katipunan draws at its 16–19 m, a service road at 4. */
+  const street_by_width = new Map<number, string>();
   for (const w of network.way) {
     if (!near(w.point)) continue;
+    if (w.way_class === "street") {
+      const width = Math.round((w.width_m ?? ROAD_WIDTH_M) * 2) / 2;
+      street_by_width.set(width, (street_by_width.get(width) ?? "") + ringPath(w.point, project, false));
+    }
     merged[w.way_class] += ringPath(w.point, project, false);
   }
   return (
@@ -553,10 +560,15 @@ const Ground = memo(function Ground({
         const walk_fill = roadWidthPx(false, plane_meter_per_pixel);
         const casing = is_night ? "#6F6A9E" : "#D8CCAA";
         const walk_and_stair = merged.walk + merged.stair;
+        /* Its real width in plane pixels, scaled off the class width the
+           floor and cap of `roadWidthPx` were tuned for. */
+        const streetPx = (width_m: number, class_px: number) => (class_px * width_m) / ROAD_WIDTH_M;
         return (
           <g fill="none" strokeLinecap="butt" strokeLinejoin="round">
             <path d={walk_and_stair} stroke={casing} strokeWidth={roadCasingPx(walk_fill)} />
-            <path d={merged.street} stroke={casing} strokeWidth={roadCasingPx(street_fill)} />
+            {[...street_by_width].map(([width, d]) => (
+              <path key={`c${width}`} d={d} stroke={casing} strokeWidth={roadCasingPx(streetPx(width, street_fill))} />
+            ))}
             <path d={walk_and_stair} stroke={is_night ? "#5E5C94" : "#F3E6C2"} strokeWidth={walk_fill} />
             {merged.stair && (
               <path
@@ -566,7 +578,9 @@ const Ground = memo(function Ground({
                 strokeDasharray={`${Math.max(1.2, walk_fill * 0.12)} ${Math.max(2.4, walk_fill * 0.26)}`}
               />
             )}
-            <path d={merged.street} stroke={is_night ? "#46508C" : "#FBF5E4"} strokeWidth={street_fill} />
+            {[...street_by_width].map(([width, d]) => (
+              <path key={`f${width}`} d={d} stroke={is_night ? "#46508C" : "#FBF5E4"} strokeWidth={streetPx(width, street_fill)} />
+            ))}
           </g>
         );
       })()}
