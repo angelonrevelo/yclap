@@ -297,16 +297,35 @@ export class MemoryCampusStore {
   }
 }
 
+/**
+ * The most points a walker's SYNCED activity can explain — the server's check
+ * on the number a phone sends (10-01: points were the phone's word alone, so
+ * one edited localStorage could top every leaderboard).
+ *
+ * The server cannot see everything a phone pays for (a card read, an area
+ * walked through), so this is a generous ceiling, not a recount: every reading
+ * and exploring point there is, plus 50 per species-in-a-place logged (the
+ * most an observation pays), plus 200 per day with a log (the hunt, three
+ * objectives and a group goal). A phone claiming more is shown at the ceiling.
+ */
+export const POINT_CEILING_FLAT = 600 + 940;
+export function pointCeiling(row: Pick<SightingRow, "species_code" | "lat" | "lon" | "created_at">[]): number {
+  const place = new Set(row.map((s) => `${s.species_code}|${s.lat === null || s.lon === null ? "-" : `${Math.round(s.lat / 0.0005)},${Math.round(s.lon / 0.0005)}`}`));
+  const day = new Set(row.map((s) => s.created_at.slice(0, 10)));
+  return POINT_CEILING_FLAT + 50 * place.size + 200 * day.size;
+}
+
 export function mergeSync(
   store: MemoryCampusStore,
   player: PlayerRow,
   row: SightingRow[],
 ): { merged: number } {
-  store.upsertPlayer(player);
   let merged = 0;
   for (const one of row.slice(0, 500)) {
     if (store.insertSighting(one)) merged += 1;
   }
+  const ceiling = pointCeiling(store.sighting.filter((s) => s.player_id === player.player_id));
+  store.upsertPlayer({ ...player, total_points: Math.min(player.total_points, ceiling) });
   return { merged };
 }
 

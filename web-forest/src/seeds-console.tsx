@@ -370,6 +370,7 @@ function CreateForm({ onCreate }: { onCreate: (quest: Record<string, unknown>) =
   const [point, setPoint] = useState(50);
   const [is_site_code, setSiteCode] = useState(true);
   const [is_photo, setPhoto] = useState(true);
+  const [is_account, setAccount] = useState<boolean | null>(null);
   const [class_code, setClassCode] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const site: QuestSite | null =
@@ -458,8 +459,11 @@ function CreateForm({ onCreate }: { onCreate: (quest: Record<string, unknown>) =
         <label style={{ marginRight: 14 }}>
           <input type="checkbox" checked={is_site_code} onChange={(e) => setSiteCode(e.target.checked)} /> Site code (you show it at the place)
         </label>
-        <label>
+        <label style={{ marginRight: 14 }}>
           <input type="checkbox" checked={is_photo} onChange={(e) => setPhoto(e.target.checked)} /> Photo required
+        </label>
+        <label>
+          <input type="checkbox" checked={is_account ?? Boolean(class_code)} onChange={(e) => setAccount(e.target.checked)} /> Students must be signed in (one claim per student)
         </label>
       </div>
       <button
@@ -479,6 +483,7 @@ function CreateForm({ onCreate }: { onCreate: (quest: Record<string, unknown>) =
             is_site_code,
             is_photo,
             class_code: class_code || null,
+            is_account: is_account ?? Boolean(class_code),
           });
           setMessage(error ?? `Created “${title}”.`);
           if (!error) {

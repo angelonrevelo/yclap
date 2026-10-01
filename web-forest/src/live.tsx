@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { isAquatic, pondSpawn } from "./aquatic";
 import { badgeFor, type BadgeAward } from "./badge";
 import { formatMeter, formatWalkMinute, type Fix, type LatLon } from "./geo";
 import { isBadge, type Sighting } from "./journal";
@@ -144,7 +145,8 @@ export function useSpawnWorld(
        window, whatever the seeded rotation rolled. */
     const hunt = dailyTaskFor(pool, biome_sector, new Date(now_ms), []);
     const hunt_find = hunt ? huntFind(hunt, pool) : null;
-    const spawn = spawnWorld(pool, now_ms, at ?? null, { explored_sector: explored });
+    /* Water life lives in the pond, never on a lawn (`aquatic.ts`). */
+    const spawn = [...spawnWorld(pool.filter((e) => !isAquatic(e)), now_ms, at ?? null, { explored_sector: explored }), ...pondSpawn(pool, now_ms)];
     return {
       spawn: hunt_find ? [...spawn, hunt_find] : spawn,
       pool,

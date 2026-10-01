@@ -113,6 +113,8 @@ export interface Spawn {
   /** ISO instants — this find exists only inside its window. */
   starts_at: string;
   ends_at: string;
+  /** In the pond, not on the ground (`aquatic.ts`): drawn under the water, reached from the bank. */
+  is_underwater?: boolean;
 }
 
 export const SPAWN_WINDOW_MS = 30 * 60 * 1000;

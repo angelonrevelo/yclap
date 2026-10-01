@@ -87,3 +87,22 @@ describe("/sync input is not believed blindly (10-01 audit)", () => {
     assert.equal(sanitizeSighting({ ...base, created_at: "2027-01-01T00:00:00Z" }, "p-1", now)?.created_at, new Date(now).toISOString());
   });
 });
+
+describe("the server bounds the points a phone claims (10-01)", () => {
+  it("a phone claiming a million points with two finds is shown at the ceiling those finds explain", async () => {
+    const { MemoryCampusStore, mergeSync, pointCeiling, sanitizePlayer, sanitizeSighting } = await import("../src/campus-world.ts");
+    const store = new MemoryCampusStore();
+    const player = sanitizePlayer({ player_id: "p-cheat-0001", name: "Ana", total_points: 1_000_000 })!;
+    const row = [
+      sanitizeSighting({ sighting_id: "s1", species_code: "narra", lat: 14.639, lon: 121.078, created_at: "2026-10-10T03:00:00Z" }, player.player_id)!,
+      sanitizeSighting({ sighting_id: "s2", species_code: "dao", lat: 14.6392, lon: 121.0781, created_at: "2026-10-10T03:05:00Z" }, player.player_id)!,
+    ];
+    mergeSync(store, player, row);
+    const kept = store.player.find((p) => p.player_id === player.player_id)!;
+    assert.equal(kept.total_points, pointCeiling(row));
+    assert.ok(kept.total_points < 3000);
+    /* An honest total under the ceiling is left alone. */
+    mergeSync(store, { ...player, total_points: 120 }, []);
+    assert.equal(store.player.find((p) => p.player_id === player.player_id)!.total_points, 120);
+  });
+});

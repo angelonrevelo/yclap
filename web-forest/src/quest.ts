@@ -63,6 +63,13 @@ export interface Quest {
   is_photo: boolean;
   /** Null: open to everyone. Otherwise only students who entered this class code see it. */
   class_code: string | null;
+  /**
+   * Only a signed-in student may claim: one account, one claim, whatever walker
+   * ids a phone makes up. On by default for a class challenge (a grade is
+   * on the line), a choice for an open one. Absent on challenges made before
+   * 10-01: read as false.
+   */
+  is_account?: boolean;
   author: string;
   created_at: string;
   status: "open" | "closed";
@@ -202,9 +209,10 @@ export function plausibilityFlag(
 export function judgeClaim(
   quest: Quest,
   claim: QuestClaimInput,
-  context: { now_ms: number; is_site_code_ok: boolean; last_claim: { lat: number; lon: number; at_ms: number } | null; strike_count: number },
+  context: { now_ms: number; is_site_code_ok: boolean; last_claim: { lat: number; lon: number; at_ms: number } | null; strike_count: number; is_signed_in?: boolean },
 ): QuestVerdict {
   const refuse: string[] = [];
+  if (quest.is_account && !context.is_signed_in) refuse.push("Sign in first (Settings → Account): this challenge counts one claim per student.");
   if (!isQuestOpen(quest, context.now_ms)) refuse.push("This challenge is not open right now.");
   if (claim.fix_source !== "gps") refuse.push("Only a real GPS fix can complete a SEEDS challenge, not a stick or demo walk.");
   if (quest.site) {
@@ -281,6 +289,7 @@ export interface QuestDraft {
   is_site_code: boolean;
   is_photo: boolean;
   class_code: string | null;
+  is_account: boolean;
 }
 
 /** An organiser's form, checked before it is stored. Null with the reason when it cannot be. */
@@ -323,6 +332,8 @@ export function sanitizeQuestDraft(raw: unknown): { draft: QuestDraft } | { erro
       is_site_code: r.is_site_code === true,
       is_photo: r.is_photo === true,
       class_code,
+      /* A class challenge asks for sign-in unless the organiser said no. */
+      is_account: typeof r.is_account === "boolean" ? r.is_account : class_code !== null,
     },
   };
 }
@@ -333,6 +344,7 @@ export function questNeedLine(quest: Quest): string[] {
   if (quest.site) need.push(`at ${quest.site.name} (within ${quest.site.radius_m} m)`);
   if (quest.is_photo) need.push("with a photo");
   if (quest.is_site_code) need.push("and the code shown at the site");
+  if (quest.is_account) need.push("signed in");
   need.push("on real GPS");
   return need;
 }

@@ -1,3 +1,4 @@
+import campus_network from "./asset/campus-network.json" with { type: "json" };
 import { building, buildingNear, type CampusBuilding } from "./building.ts";
 import { RESTRICTED_POLYGON } from "./data.ts";
 import { isInsideCampus, type LatLon } from "./geo.ts";
@@ -65,7 +66,26 @@ export function buildingAt(point: LatLon, row: CampusBuilding[] = building): Cam
  * roof. A footprint is refused exactly the way the grove is.
  */
 export function isWalkable(point: LatLon): boolean {
-  return isInsideCampus(point) && !inRestricted(point) && buildingAt(point) === null;
+  return isInsideCampus(point) && !inRestricted(point) && buildingAt(point) === null && !inWater(point);
+}
+
+/**
+ * Open water (the pond, the pool — `campus-network.json`). Joined 10-01 with
+ * the underwater finds: a find in the pond is reached from the bank, and the
+ * walker stops at the edge instead of strolling across the surface.
+ */
+const WATER: LatLon[][] = (campus_network as unknown as { water: { point: [number, number][] }[] }).water.map((w) =>
+  w.point.map(([lat, lon]) => ({ lat, lon })),
+);
+export function inWater(point: LatLon): boolean {
+  return WATER.some((ring) => {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
+      const [a, b] = [ring[i], ring[j]];
+      if (a.lat > point.lat !== b.lat > point.lat && point.lon < ((b.lon - a.lon) * (point.lat - a.lat)) / (b.lat - a.lat) + a.lon) inside = !inside;
+    }
+    return inside;
+  });
 }
 
 /** Green enough to hold a species — the flag, and the number behind it. */

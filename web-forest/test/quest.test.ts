@@ -256,3 +256,23 @@ describe("QuestService (worker/quest.ts, node:sqlite)", () => {
     assert.equal(with_class.quest.length, 1);
   });
 });
+
+describe("sign-in for a graded challenge (10-01 decision)", () => {
+  it("a class challenge requires sign-in by default; an open one does not; the organiser can choose", () => {
+    const base = { title: "Pond", quest_kind: "visit", site: SITE, start_at: "2026-10-10T00:00:00Z", end_at: "2026-10-11T00:00:00Z" };
+    const draft = (over: Record<string, unknown>) => (sanitizeQuestDraft({ ...base, ...over }) as { draft: { is_account: boolean } }).draft;
+    assert.equal(draft({ class_code: "BIO101" }).is_account, true);
+    assert.equal(draft({}).is_account, false);
+    assert.equal(draft({ class_code: "BIO101", is_account: false }).is_account, false);
+  });
+
+  it("a signed-out claim on a sign-in challenge is refused; signed in it passes", async () => {
+    const q = quest({ is_account: true });
+    assert.equal(judgeClaim(q, claim(), ctx()).status, "refused");
+    assert.equal(judgeClaim(q, claim(), ctx({ is_signed_in: true })).status, "accepted");
+    const { svc } = service();
+    const { quest_code } = await create(svc, { class_code: "BIO101" });
+    const res = await svc.handle(post("/quest/claim", claim({ quest_code })));
+    assert.equal(((await res!.json()) as { verdict: { status: string } }).verdict.status, "refused");
+  });
+});

@@ -879,6 +879,26 @@ const ResidentOrb = memo(function ResidentOrb({
  * so it survives greyscale — the same rule the rarity pill keeps). It bobs,
  * because a find that sits still reads as a pin.
  */
+/**
+ * A find under the water (`aquatic.ts`): a dark shape below the surface and a
+ * ripple on it — you see that something is there, the way you see a fish from
+ * the bank. Flat on the water, no stalk: nothing stands up out of a pond.
+ */
+const UnderwaterMark = memo(function UnderwaterMark({ archetype, in_range }: { archetype: string; in_range: boolean }) {
+  const is_fish = archetype === "fish";
+  return (
+    <svg className="pm-underwater" width="64" height="30" viewBox="0 0 64 30" style={{ overflow: "visible" }} aria-label={is_fish ? "Something swimming here" : "Something under the water here"}>
+      <ellipse cx="32" cy="17" rx="29" ry="10" fill="none" stroke="#FFFFFF" strokeOpacity={in_range ? 0.95 : 0.7} strokeWidth="2" className="pm-ripple-ring" />
+      <ellipse cx="32" cy="17" rx="17" ry="6" fill="none" stroke="#E6F6FF" strokeOpacity="0.8" strokeWidth="1.5" />
+      {is_fish ? (
+        <path d="M18 17 Q28 9 40 15 L48 10 L46 17 L48 24 L40 19 Q28 25 18 17 Z" fill="#0E3B5A" fillOpacity="0.55" />
+      ) : (
+        <ellipse cx="32" cy="17" rx="8" ry="6" fill="#3B2A10" fillOpacity="0.5" />
+      )}
+    </svg>
+  );
+});
+
 const SpawnSticker = memo(function SpawnSticker({
   row,
   kind,
@@ -1216,6 +1236,28 @@ export default function PlayMap({
             continue;
           }
           const is_target = Boolean(target_species?.has(row.species_code));
+          if (row.is_underwater) {
+            const in_water_reach = fix ? distanceMeter(fix, row) <= AT_TREE_RADIUS_M : false;
+            glass_find.push({
+              key: row.spawn_id,
+              x: p.x,
+              y: p.y,
+              w: 64 * p.k,
+              h: 30 * p.k,
+              node: (
+                <div
+                  data-play-marker="1"
+                  onClick={onSelectSpawn ? () => onSelectSpawn(row) : undefined}
+                  title={spawn_title.get(row.spawn_id)}
+                  className="pm-find-at"
+                  style={{ transform: glassAt(p.x, p.y, `translate(-50%, -60%) scale(${p.k.toFixed(3)})`), cursor: onSelectSpawn ? "pointer" : undefined }}
+                >
+                  <UnderwaterMark archetype={row.archetype} in_range={in_water_reach} />
+                </div>
+              ),
+            });
+            continue;
+          }
           const in_range = fix ? distanceMeter(fix, row) <= AT_TREE_RADIUS_M : false;
           glass_find.push({
             key: row.spawn_id,

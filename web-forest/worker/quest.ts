@@ -279,6 +279,7 @@ export class QuestService {
       is_site_code_ok,
       last_claim: last ? { lat: Number(last.lat), lon: Number(last.lon), at_ms: Date.parse(String(last.created_at)) } : null,
       strike_count: this.strikeCount(input.player_id),
+      is_signed_in: account !== null,
     });
     if (verdict.status === "refused") return { status: 200, body: { verdict } };
 
