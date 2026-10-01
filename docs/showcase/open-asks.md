@@ -2,7 +2,11 @@
 
 Everything buildable is built on `reveal-1015`. These need someone's hands, a key, a signature or a date. Each has the exact step and how we know it is done.
 
-## 1. Deploy (Gelo)
+## 1. Deploy (Gelo) — DONE 2026-10-01
+
+Live: https://yclap-field-guide.marangelonrevelo.workers.dev — build `280e6e7`, version `0fbdbf18`. SEEDS_TOKEN and MOD_TOKEN are set as Worker secrets (values handed to Gelo, not in git). Smoke test after deploy: `/health` 200, `/world` and `/quest` answer JSON, `/seeds/api/state` and `/mod/api/state` 401 without a token and 200 with it, the page and the trainer model serve. PLANTNET_API_KEY is still unset (item 3). To redeploy: `npm run deploy` from `web-forest/`.
+
+Steps, for the record:
 
 ```bash
 cd web-forest
@@ -17,7 +21,7 @@ Done when: `/health` answers 200 on the live URL, `/seeds` asks for a token, and
 
 ## 2. Phone test (anyone with two phones, ~30 min, on campus)
 
-**A preview is already up for this** (2026-10-01, `wrangler deploy --temporary`, build `fddb9a1`+route fix): https://yclap-field-guide.chocolate-coral-dd5.workers.dev — the same Worker, Durable Object and assets as production, on a temporary Cloudflare account. Its SEEDS console token was handed to Gelo directly (not in git). Claim it into the real account from the claim link wrangler printed, or just deploy for real (step 1). A temporary preview expires; don't hand it to students as the live link.
+**Use the live URL above.** (A temporary preview was up before the login (2026-10-01, `wrangler deploy --temporary`, build `fddb9a1`+route fix): https://yclap-field-guide.chocolate-coral-dd5.workers.dev — the same Worker, Durable Object and assets as production, on a temporary Cloudflare account. Its SEEDS console token was handed to Gelo directly (not in git). Claim it into the real account from the claim link wrangler printed, or just deploy for real (step 1). It expires; it is no longer needed.)
 
 | # | Do | PASS iff |
 |---|---|---|

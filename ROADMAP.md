@@ -310,6 +310,7 @@ Gelo, 10-01: "do all" — every open item that code could close. What needs a pe
 | Water life is IN the pond: two aquatic finds per window inside its outline, drawn under the water, reached from the bank; none on a lawn; water is not walkable | Play view (`aquatic.ts`, `UnderwaterMark`, `inWater`) | `aquatic.test.ts`; screenshot of two fish in the pond | Shipped |
 | Cebu routes on the field map: the Osmeña–Kawasan traverse, Mount Naupa, the Hilutungan sanctuary (OSM), flown to from the routes list | Field view; `site_code: "cebu"` tracks | `network.test.ts`; screenshot over Badian | Shipped. No evacuation track: OSM has no assembly points in Cebu. A playable Cebu site is still a box + extract + config away |
 | `main` holds the reveal line | git | `main` = `reveal-1015` (local, not pushed) | Done |
+| The reveal line is live, with both consoles on | https://yclap-field-guide.marangelonrevelo.workers.dev | Smoke test: health, world, quest, both consoles 401/200, page and models | Done 2026-10-01 (version `0fbdbf18`) |
 | Deploy, phone test, Pl@ntNet key, DPO, SEEDS/AIS, reveal date | `docs/showcase/open-asks.md` | each row's "Done when" | Waiting on people |
 
 ### 2026-10-01 — clean biome edges, accessories on the 3D figures, livelier trainer and pet
