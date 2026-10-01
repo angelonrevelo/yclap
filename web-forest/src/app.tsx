@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { celebrate } from "./use-wear";
 import { areaName, sectorName } from "./area-name.ts";
 import CampusMap from "./campus-map";
 import Joystick from "./joystick";
@@ -117,6 +118,8 @@ import { noRouteLine } from "./route";
 import { biomePresenceAt, rankEncounter, sectorResident, trayRow, type BiomePresence } from "./nearby";
 import { cosmeticForStage } from "./cosmetic";
 import { BlindboxShelf } from "./blindbox-reveal";
+/* The wardrobe carries the 3D preview: its own chunk, loaded when the Journal opens. */
+const Wardrobe = lazy(() => import("./wardrobe"));
 import { earnedBadges } from "./badge";
 import { BadgeShelf, loadSpawnPool, RarityPill, reachableSpawn, useLiveWorld, useSpawnWorld, WildShelf, WorldStrip } from "./live";
 import { kindOf } from "./kind";
@@ -587,6 +590,11 @@ function TrainerSheet({
             third nested frame around every number. */}
         <div style={{ marginTop: 16, color: "rgb(var(--mg-ink-rgb) / 0.92)" }}>
           <PointsStreakCard snap={snap} is_desktop={false} />
+          <div style={{ marginTop: 12 }}>
+            <Suspense fallback={null}>
+              <Wardrobe total_point={snap.total_points} stage={stage} refresh_key={snap.total_points} />
+            </Suspense>
+          </div>
           <div style={{ marginTop: 10 }}>
             <PartnerCard
               friend={friend}
@@ -4120,6 +4128,8 @@ export default function App() {
   ) => {
     const result = persistAward(kind, subject_key);
     if (result.awarded && result.event) {
+      /* The trainer cheers and the pet is happy for a find or a goal — not for opening a card. */
+      if (kind !== "learn" && kind !== "explore") celebrate();
       setPointEvents(result.events);
       /* Points are the one event worth feeling. It rides alongside the toast,
          never instead of it — half the phones at the showcase are iPhones and

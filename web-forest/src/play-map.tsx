@@ -14,7 +14,8 @@ import {
   SECTOR_ATTRIBUTION,
   sectorAt,
   sectorContains,
-  sectorFill,
+  biomeTone,
+  KIND_ORDER,
   sector as sector_row,
   type Sector,
 } from "./sector";
@@ -471,40 +472,39 @@ const Ground = memo(function Ground({
       {/* 1 · sector fills — the map itself, through `gradeFill`. The
              paths carry their own night colours: one grade over
              everything turned a sand path into mud. */}
-      {sector_row.map((row) => {
-        if (!near(row.point)) return null;
-        const is_here = here_code === row.sector_code;
-        return (
-          <path
-            key={row.sector_code}
-            d={ringPath(row.point, project, true)}
-            fill={gradeFill(sectorFill(row), is_night)}
-            fillOpacity={is_here ? 1 : 0.95}
-            /* Only the sector you stand in is outlined. A hairline round every
-               sector traced the ways it was cut along — including the
-               sidewalks and driveways the network no longer draws — and read
-               as a second, ghost path network under the real one. */
-            stroke={is_here ? "#F0B429" : "none"}
-            strokeWidth={is_here ? 4.5 : 0}
-            strokeLinejoin="round"
-            /* The ground takes no clicks in the play view.
-             *
-             * It used to open the sector card, and that is the wrong
-             * verb for this screen: on a map welded to a walker, a tap
-             * on the ground means GO THERE, and `onTap` on the map
-             * already means exactly that. Having both meant every
-             * attempt to walk somewhere threw a panel of area
-             * statistics over the map instead — and every camera drag
-             * that happened to end on a sector did the same.
-             *
-             * The information is not gone. The sector you are standing
-             * in is named on the HUD, and the full card with coverage,
-             * species and citations is the field view, one tap away —
-             * which is where a survey belongs. */
-            style={undefined}
-          />
-        );
-      })}
+      {/* One shape per TONE, not one per sector (`biomeTone`): neighbours of
+             the same kind merge, so the patchwork of near-identical greens and
+             the hairline seam anti-aliasing left between every two polygons
+             are gone. Each tone is also stroked in its own colour, a metre
+             wide with round joins, which closes the seams that remain between
+             tones and rounds the corners the ways were cut at. Painted from
+             the most built kind to the most wooded, so the greener ground
+             wins the shared edge. */}
+      {(() => {
+        const by_tone = new Map<string, { d: string; rank: number }>();
+        for (const row of sector_row) {
+          if (!near(row.point)) continue;
+          const tone = gradeFill(biomeTone(row), is_night);
+          const rank = KIND_ORDER.indexOf(row.kind);
+          const was = by_tone.get(tone);
+          by_tone.set(tone, { d: (was?.d ?? "") + ringPath(row.point, project, true), rank: Math.max(was?.rank ?? -1, rank) });
+        }
+        const seam = Math.max(1.5, 1 / Math.max(plane_meter_per_pixel, 0.001));
+        return [...by_tone.entries()]
+          .sort((a, b) => a[1].rank - b[1].rank)
+          .map(([tone, { d }]) => <path key={tone} d={d} fill={tone} stroke={tone} strokeWidth={seam} strokeLinejoin="round" />);
+      })()}
+      {/* The sector you stand in, outlined — the only outline on the map. A
+          hairline round every sector traced the ways it was cut along and read
+          as a second, ghost path network. The ground takes no clicks in the
+          play view: a tap means GO THERE (`onTap`), and the sector's card is
+          the field view's. */}
+      {(() => {
+        const here = sector_row.find((row) => row.sector_code === here_code);
+        return here && near(here.point) ? (
+          <path d={ringPath(here.point, project, true)} fill="none" stroke="#F0B429" strokeWidth={4.5} strokeLinejoin="round" />
+        ) : null;
+      })()}
       {/* Everything below that shares one look is ONE `<path>` of many
              subpaths, not one element per ring. Measured at the pulled-back
              camera (z19, 4× CPU, `bench/frame-2026-10-01-z19.json`): the plane

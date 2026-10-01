@@ -1,4 +1,5 @@
 import { lazy, memo, Suspense, useEffect, useRef, useState } from "react";
+import { useCelebrating } from "./use-wear";
 import { createPortal } from "react-dom";
 import fly_svg from "./asset/magi/pet/eagle-fly.svg?raw";
 import perch_svg from "./asset/magi/pet/eagle-perch.svg?raw";
@@ -39,6 +40,9 @@ const CharacterModel = lazy(() => import("./character-model"));
  */
 function PetModel({ stage, pose, size }: { stage: Stage; pose: PetPose; size: number }) {
   const px = Math.round(size * 1.35);
+  const is_happy = useCelebrating();
+  /* Every stage carries idle / walk / sleep / happy (`build-eagle-glb.mjs`). */
+  const clip = is_happy && pose !== "sleep" ? "happy" : pose === "sleep" ? "sleep" : pose === "fly" ? "walk" : "idle";
   const flat = stage === "tree" ? <PetArt pose={pose} size={size} /> : <Character stage={stage} vigor={1} size={size} />;
   return (
     <Suspense fallback={flat}>
@@ -50,7 +54,7 @@ function PetModel({ stage, pose, size }: { stage: Stage; pose: PetPose; size: nu
           filter: pose === "sleep" ? "saturate(.8) brightness(.92)" : undefined,
         }}
       >
-        <CharacterModel stage={stage} size={px} is_paused={pose === "sleep"} />
+        <CharacterModel stage={stage} size={px} animation={clip} figure="pet" />
       </div>
     </Suspense>
   );

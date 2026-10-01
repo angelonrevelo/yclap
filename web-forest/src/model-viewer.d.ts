@@ -42,6 +42,8 @@ interface ModelViewerAttributes extends HTMLAttributes<HTMLElement> {
   "time-scale"?: string;
   /** "eager" | "lazy" | "auto". */
   loading?: string;
+  /** "manual": the poster stays until `dismissPoster()` — used to dress the model first. */
+  reveal?: string;
   /** Listeners for `load` / `error` are attached through the ref (see SpeciesCard). */
   ref?: Ref<HTMLElement>;
   key?: Key | null;

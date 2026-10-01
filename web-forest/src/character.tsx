@@ -52,6 +52,7 @@ export {
   toNextStage,
   type Stage,
 } from "./stage.ts";
+import { useCelebrating } from "./use-wear";
 import type { Stage } from "./stage.ts";
 import { STAGE_LABEL, STAGE_ORDER } from "./stage.ts";
 import { lazy, Suspense } from "react";
@@ -98,6 +99,7 @@ export function Walker({
   heading_degree = 0,
 }: Pick<Props, "stage" | "vigor" | "size" | "is_walking" | "heading_degree">) {
   const px = Math.round(size * 1.3);
+  const is_cheering = useCelebrating();
   /* While the viewer chunk loads: the trainer still in the model's own box, so
      the swap to 3D is the same figure starting to move, not an egg turning
      into a person. */
@@ -113,7 +115,7 @@ export function Walker({
         <CharacterModel
           stage={stage}
           src={TRAINER_MODEL}
-          animation={is_walking ? "walk" : "idle"}
+          animation={is_cheering && !is_walking ? "cheer" : is_walking ? "walk" : "idle"}
           size={px}
           is_walker
           is_walking={is_walking}

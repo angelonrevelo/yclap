@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { OUTFIT_EVENT, readOutfit, wearById, writeOutfit } from "./wear";
 import {
   charmShelf,
   earnedBox,
@@ -119,6 +120,14 @@ export function BlindboxShelf({ refresh_key }: { refresh_key?: unknown }) {
           onDismiss={() => {
             setOpen(reveal.open);
             setReveal(null);
+            /* A new charm goes on at once if its slot is free — you see it on
+               the walker straight away (`wear.ts`, `character-model.tsx`). */
+            const item = wearById(reveal.cosmetic.id);
+            const outfit = readOutfit();
+            if (item && reveal.is_new && !outfit[item.slot]) {
+              writeOutfit({ ...outfit, [item.slot]: item.wear_id });
+              window.dispatchEvent(new Event(OUTFIT_EVENT));
+            }
           }}
         />
       )}
