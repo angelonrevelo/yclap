@@ -54,7 +54,9 @@ export {
 } from "./stage.ts";
 import type { Stage } from "./stage.ts";
 import { STAGE_LABEL, STAGE_ORDER } from "./stage.ts";
-import { stage_sticker } from "./asset/kit";
+import { lazy, Suspense } from "react";
+import { eagle } from "./art";
+import "./art/art.css";
 
 interface Props {
   stage: Stage;
@@ -76,6 +78,55 @@ interface Props {
   is_walking?: boolean;
   /** Degrees clockwise from screen-up. Leans into the direction of travel. */
   heading_degree?: number;
+}
+
+const CharacterModel = lazy(() => import("./character-model"));
+/* Kept in step with `character-model.tsx`; a string here keeps the viewer chunk lazy. */
+const TRAINER_MODEL = "/model/agila-trainer.glb";
+const TRAINER_POSTER = "/model/agila-trainer-poster.webp";
+
+/**
+ * The map avatar — you, as a 3D trainer (`character-model.tsx`), seen from
+ * behind and above like Pokémon GO and turning to face where the walk goes.
+ * Your buddy Agila follows beside (`pet-eagle.tsx`). The flat stage sticker
+ * stands in while the viewer chunk loads.
+ */
+export function Walker({
+  stage,
+  size = 92,
+  is_walking = false,
+  heading_degree = 0,
+}: Pick<Props, "stage" | "vigor" | "size" | "is_walking" | "heading_degree">) {
+  const px = Math.round(size * 1.3);
+  /* While the viewer chunk loads: the trainer still in the model's own box, so
+     the swap to 3D is the same figure starting to move, not an egg turning
+     into a person. */
+  const flat = (
+    <div style={{ width: px, height: px, marginBottom: -Math.round(px * 0.1) }}>
+      <img src={TRAINER_POSTER} alt="" aria-hidden="true" width={px} height={px} style={{ display: "block", width: px, height: px }} />
+    </div>
+  );
+  return (
+    <Suspense fallback={flat}>
+      {/* The model is framed with air around it; pull the feet down onto the anchor. */}
+      <div style={{ width: px, height: px, marginBottom: -Math.round(px * 0.1) }}>
+        <CharacterModel
+          stage={stage}
+          src={TRAINER_MODEL}
+          animation={is_walking ? "walk" : "idle"}
+          size={px}
+          is_walker
+          is_walking={is_walking}
+          heading_degree={heading_degree}
+        />
+      </div>
+    </Suspense>
+  );
+}
+
+/** Seat the stage art in the 100×115 frame, feet on the contact shadow. */
+function placed(svg: string): string {
+  return svg.replace(/^<svg /, '<svg x="2" y="8" width="96" height="100" preserveAspectRatio="xMidYMax meet" ');
 }
 
 export default function Character({
@@ -149,20 +200,16 @@ export default function Character({
         {/* Contact shadow — the single strongest cue that this sits ON ground. */}
         <ellipse cx="50" cy="105" rx={stage === "egg" ? 22 : 28} ry="6.5" fill="url(#yc-shadow)" />
 
-        {/* The Magisphere stage sticker (codex set, `asset/magi`). Its white
-            sticker border is what keeps it legible over any sector colour. */}
+        {/* Agila, inline vector (`art/svg/eagle`). Its white sticker edge is
+            what keeps it legible over any sector colour. The egg rocks now and
+            then; the grown eagle flaps. */}
         <g
           className={sway ? "yc-sway" : undefined}
-          style={{ transformOrigin: "50px 106px", animation: is_idle_animated ? sway : undefined }}
+          style={{ transformOrigin: "50px 106px", animation: is_idle_animated ? sway : undefined, filter: tired }}
         >
-          <image
-            href={stage_sticker[stage]}
-            x="2"
-            y="8"
-            width="96"
-            height="100"
-            preserveAspectRatio="xMidYMax meet"
-            style={{ filter: tired }}
+          <g
+            className={is_idle_animated ? (stage === "tree" ? "art-flap" : stage === "egg" ? "art-wobble" : undefined) : undefined}
+            dangerouslySetInnerHTML={{ __html: placed(eagle[stage]) }}
           />
         </g>
       </svg>

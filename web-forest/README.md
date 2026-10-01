@@ -716,8 +716,11 @@ built). In short:
 - **Buildings default to `block`**: every building gets a low plinth of 3.2 m
   of wall. It reads as built without hiding the path behind it. `solid` still
   draws real heights.
-- The stick walk now starts on the footpath by Schmitt Hall and the Zen Garden
-  (`STICK_START`), not on the empty football field — each player on their own
+- The stick walk now starts on the footpath through the International Residence
+  Halls grounds (`STICK_START`), not on the empty football field. The spot was
+  chosen by measuring finds within 60 m over 48 windows; with the near-field
+  density raised from 0.34 to 0.62 it averages 4.6 finds and never fewer than
+  two, so a first screen is never empty. Each player starts on their own
   walkable spot 10–25 m around it, seeded by `player_id` (`spreadStartOf`), so a
   hall of phones does not pile onto one point. `?at=` still pins exactly.
   Switching to the stick from a GPS fix does the same around the fix
@@ -855,7 +858,7 @@ posters; the list is in `script/magi-asset/build-vector.mjs`):
 | Generated | Sprout buddy (sprout, cheer, map, sleep, trail), the explorer, the four growth stages | `src/asset/magi/sticker/` (1024 px masters), `src/asset/magi/web/` (400 px WebP the app ships) | `script/magi-asset/sticker.spec.json` via the codex skill's `imagen.mjs` |
 | Drawn by code | Mark, wordmark (Fredoka outlines), lockups, app icon, scenes, wood sign, ornaments, the 12 vector game icons (brand/marketing; in-app only `buddy` and `pin`) | `public/brand/magi/*.svg`, `src/asset/magi/icon/*.svg` | `node script/magi-asset/build-vector.mjs` |
 | Recoloured | The 10 chess.com-style game icons the app uses (dex, go, level, lock, nearby, plan, points, quest, streak, trophy), remapped into the brand palette | `src/asset/icon/game/*.png` (masters: `script/icon/game-source/`) | `node script/icon/recolor-game.mjs` |
-| Rendered | PWA icons, PNG exports, posters, social, OG, banner, sticker and brand sheets | `public/brand/icon-*.png`, `../docs/brand/magisphere/` | `node script/magi-asset/render.mjs` (needs Chrome) |
+| Rendered | PWA icons, PNG exports, posters, social, OG, banner, sticker and brand sheets, and the app's WebP stickers (trimmed from the masters) | `public/brand/icon-*.png`, `../docs/brand/magisphere/`, `src/asset/magi/web/` | `node script/magi-asset/render.mjs` (prefers Chrome for Testing) |
 
 Stickers are generated on a `#FF00FF` key and **remapped to the 17-colour
 palette** with no dither, so they cannot drift off-brand; each one met its

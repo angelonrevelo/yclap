@@ -18,10 +18,10 @@ export type Stage = "egg" | "sprout" | "sapling" | "tree";
 export const STAGE_ORDER: Stage[] = ["egg", "sprout", "sapling", "tree"];
 
 export const STAGE_LABEL: Record<Stage, string> = {
-  egg: "Seed",
-  sprout: "Sprout",
-  sapling: "Sapling",
-  tree: "Tree",
+  egg: "Egg",
+  sprout: "Hatchling",
+  sapling: "Eaglet",
+  tree: "Eagle",
 };
 
 /**
@@ -60,7 +60,12 @@ export function toNextStage(sector_seen: number): { stage: Stage; remaining: num
  */
 export function stageLine(sector_seen: number): string {
   const next = toNextStage(sector_seen);
-  if (!next) return `Fully grown · a ${STAGE_LABEL.tree}. Every new area still counts toward badges.`;
+  if (!next) return `Fully grown · ${withArticle(STAGE_LABEL.tree)}. Every new area still counts toward badges.`;
   const area = next.remaining === 1 ? "1 more area" : `${next.remaining} more areas`;
-  return `Walk into ${area} of campus to grow into a ${STAGE_LABEL[next.stage]}.`;
+  return `Walk into ${area} of campus to grow into ${withArticle(STAGE_LABEL[next.stage])}.`;
+}
+
+/** "an Eagle", "a Hatchling" — the labels are English words, so the vowel test is enough. */
+export function withArticle(label: string): string {
+  return `${/^[aeiou]/i.test(label) ? "an" : "a"} ${label}`;
 }

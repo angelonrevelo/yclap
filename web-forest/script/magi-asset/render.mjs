@@ -12,12 +12,15 @@
 // Outputs:
 //   public/brand/icon-192.png, icon-512.png, icon-512-maskable.png   (PWA)
 //   ../docs/brand/magisphere/*.png                                   (marketing kit)
+//   src/asset/magi/web/*.webp                                        (the app's stickers)
 //
-// CHROME=<path> overrides the browser; the default covers Windows and macOS.
+// CHROME=<path> overrides the browser. The default prefers Chrome for Testing
+// (the house rule: agents never drive the daily Chrome), then falls back to an
+// installed Chrome with a throwaway profile, which is all this ever uses.
 
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -31,11 +34,18 @@ const brand = (f) => url(`public/brand/magi/${f}`);
 const sticker = (f) => url(`src/asset/magi/sticker/${f}.png`);
 const icon = (f) => url(`src/asset/magi/icon/${f}.svg`);
 
+const testing = path.join(homedir(), ".agent-browser/browsers");
 const chromePath =
   process.env.CHROME ||
-  ["C:/Program Files/Google/Chrome/Application/chrome.exe", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome"].find(
-    (p) => existsSync(p),
-  );
+  [
+    ...(existsSync(testing) ? readdirSync(testing).sort().reverse() : []).flatMap((d) => [
+      path.join(testing, d, "chrome.exe"),
+      path.join(testing, d, "Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"),
+    ]),
+    "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/usr/bin/google-chrome",
+  ].find((p) => existsSync(p));
 if (!chromePath) throw new Error("no Chrome found — set CHROME=<path>");
 
 /* ── a tiny CDP driver ──────────────────────────────────────────────────── */
@@ -43,7 +53,7 @@ if (!chromePath) throw new Error("no Chrome found — set CHROME=<path>");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const port = 9400 + Math.floor(Math.random() * 400);
 const profile = mkdtempSync(path.join(tmpdir(), "magi-render-"));
-const chrome = spawn(chromePath, ["--headless=new", "--disable-gpu", "--hide-scrollbars", `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, "about:blank"]);
+const chrome = spawn(chromePath, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--allow-file-access-from-files", `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, "about:blank"]);
 
 let target;
 for (let i = 0; i < 60 && !target; i++) {
@@ -269,6 +279,43 @@ await render(
     <div class="abs body" style="left:60px;top:1060px;font-size:40px;color:#11646C">Nunito ExtraBold — taglines and labels. Rediscovering home.</div>
     ${img(sticker("buddy-sprout"), "position:absolute;right:50px;bottom:30px;width:260px")}`,
   );
+}
+
+/* ── 4 · the app's sticker copies ───────────────────────────────────────── */
+
+// src/asset/kit.ts ships these, not the 1024 px masters: each sticker trimmed to
+// its ink, fit into 384 px and centred on a transparent 400 px square, WebP.
+// Encoded in the page (canvas → WebP keeps the alpha a screenshot would not).
+{
+  const web = path.join(root, "src/asset/magi/web");
+  mkdirSync(web, { recursive: true });
+  const blank = path.join(work, "blank.html");
+  writeFileSync(blank, "<!doctype html>");
+  for (const f of readdirSync(path.join(root, "src/asset/magi/sticker")).filter((f) => f.endsWith(".png"))) {
+    await send("Page.navigate", { url: pathToFileURL(blank).href });
+    await sleep(100);
+    const { result } = await send("Runtime.evaluate", {
+      expression: `(async () => {
+        const im = new Image(); im.src = ${JSON.stringify(sticker(f.replace(/\.png$/, "")))}; await im.decode();
+        const a = new OffscreenCanvas(im.width, im.height).getContext("2d"); a.drawImage(im, 0, 0);
+        const px = a.getImageData(0, 0, im.width, im.height).data;
+        let x0 = im.width, y0 = im.height, x1 = -1, y1 = -1;
+        for (let y = 0; y < im.height; y++) for (let x = 0; x < im.width; x++)
+          if (px[(y * im.width + x) * 4 + 3]) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+        const w = x1 - x0 + 1, h = y1 - y0 + 1, s = 384 / Math.max(w, h);
+        const dw = Math.round(w * s), dh = Math.round(h * s);
+        const c = document.createElement("canvas"); c.width = c.height = 400;
+        const g = c.getContext("2d"); g.imageSmoothingQuality = "high";
+        g.drawImage(im, x0, y0, w, h, Math.floor((400 - dw) / 2), Math.floor((400 - dh) / 2), dw, dh);
+        return c.toDataURL("image/webp", 0.9).split(",")[1];
+      })()`,
+      awaitPromise: true,
+      returnByValue: true,
+    });
+    const out = path.join(web, f.replace(/\.png$/, ".webp"));
+    writeFileSync(out, Buffer.from(result.value, "base64"));
+    console.log(`wrote ${path.relative(path.resolve(root, ".."), out)}  400x400`);
+  }
 }
 
 ws.close();

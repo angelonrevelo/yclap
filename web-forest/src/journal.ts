@@ -406,6 +406,9 @@ export interface Progress {
   /** Distinct species with at least one badge that carries a photo — what
    *  "species photographed" may honestly claim. */
   photographed_count: number;
+  /** Badge-kind SIGHTINGS (every non-report log), not earned badges — the
+   *  shelf's "N of 13 earned" is `earnedBadges` in badge.ts. Do not print this
+   *  under a "Badges" heading. */
   badge_count: number;
   contribution_count: number;
   /** Sectors this journal has a located badge inside. */

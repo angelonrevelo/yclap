@@ -1,6 +1,6 @@
 /**
- * Which body walks the map for YOU: the stage sticker (default) or the
- * proposed 3D hiker.
+ * Which body walks the map for YOU: the 3D trainer (default), the proposed
+ * 3D hiker, or the flat stage sticker.
  *
  * 09-30, Gelo `1:35`–`1:41`: "the main character or the guy … he's still very
  * disconnected. Like his limbs are not connected", and `5:42`–`5:51`: "or we
@@ -19,12 +19,19 @@
  * load a `.tsx`, and this rule wants a test.
  */
 
-export type Avatar = "stage" | "hiker";
+/**
+ * Since 10-02 the default body is the 3D trainer (`Walker` in character.tsx,
+ * `agila-trainer.glb` — the Mac's 09-26 3D pass): Gelo asked for the 3D walker
+ * and pet on the map. `?avatar=hiker` is still the rig lane's proposal, and
+ * `?avatar=sticker` is the flat stage sticker, kept for a projector or a phone
+ * that cannot run WebGL. Anything unknown is the trainer.
+ */
+export type Avatar = "trainer" | "hiker" | "sticker";
 
 /** The avatar a query string asks for. */
 export function avatarFrom(search: string): Avatar {
-  const value = new URLSearchParams(search).get("avatar");
-  return value?.trim().toLowerCase() === "hiker" ? "hiker" : "stage";
+  const value = new URLSearchParams(search).get("avatar")?.trim().toLowerCase();
+  return value === "hiker" ? "hiker" : value === "sticker" ? "sticker" : "trainer";
 }
 
 /** The hiker's model file, served same-origin from `public/`. */

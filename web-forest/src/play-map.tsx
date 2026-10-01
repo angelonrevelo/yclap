@@ -1,9 +1,9 @@
 import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import campus_shape from "./asset/campus-shape.json" with { type: "json" };
+import campus_network from "./asset/campus-network.json" with { type: "json" };
 import Botanical from "./botanical";
 import { BUILDING_ATTRIBUTION, building as campus_building } from "./building";
 import Skyline, { type SkylineStyle } from "./skyline";
-import Character, { type Stage } from "./character";
+import Character, { Walker, type Stage } from "./character";
 import { AT_TREE_RADIUS_M, RESTRICTED_POLYGON, species, type Encounter } from "./data";
 import { residentBySector } from "./nearby";
 import { pinKindOf, type PinKind } from "./pin";
@@ -15,7 +15,6 @@ import {
   sectorAt,
   sectorContains,
   sectorFill,
-  sectorStroke,
   sector as sector_row,
   type Sector,
 } from "./sector";
@@ -28,6 +27,7 @@ import { KindPath, KIND_TONE } from "./kind-mark";
 import RemoteWalkerLayer, { HallCount, type Hall } from "./remote-walker";
 import PetEagle from "./pet-eagle";
 import { avatarFrom } from "./avatar";
+import { altitudeAt, lengthFraction, mediumOf, TRACK_STYLE, type Track } from "./track";
 /* The proposed 3D hiker (`?avatar=hiker`, see avatar.ts): its own lazy chunk,
    so nobody who did not ask for it downloads model-viewer for the map. */
 const HikerAvatar = lazy(() => import("./hiker-avatar"));
@@ -83,15 +83,18 @@ export const PLAY_MAX_ZOOM = 22;
 export const PLAY_MIN_ZOOM = 19;
 const MAX_LABEL = 5;
 
-interface ShapeFile {
+/**
+ * The ways, already cleaned by `script/build-network.mjs`: one line per way,
+ * sidewalks cut out of the streets they shadow, driveways and parking aisles
+ * gone, ends snapped, bends chained. What is drawn here is exactly that file —
+ * nothing is filtered at run time, so the picture and the build report agree.
+ */
+export interface NetworkFile {
   attribution: string;
-  path: { is_road: boolean; is_outside?: boolean; point: [number, number][] }[];
-  building: { point: [number, number][] }[];
+  way: { way_class: "street" | "walk" | "stair"; is_outside: boolean; point: [number, number][] }[];
+  water: { water_kind: string; name: string | null; point: [number, number][] }[];
 }
-const shape = campus_shape as unknown as ShapeFile;
-
-const campus_path = shape.path.filter((p) => !p.is_outside);
-const outside_path = shape.path.filter((p) => p.is_outside);
+const network = campus_network as unknown as NetworkFile;
 
 /**
  * Ambient greenery, scattered once at module load.
@@ -173,13 +176,16 @@ const marker: Encounter[] = [...resident_by_sector.values()].flat();
  * inside is skipped.)
  */
 const WalkerFigure = memo(Character);
+/* The 3D trainer (`agila-trainer.glb`), the default walker since 10-02. */
+const TrainerFigure = memo(Walker);
 const HorizonBand = memo(Horizon);
 const HallCountPill = memo(HallCount);
 const FrameProbeOnce = memo(FrameProbe);
 /** "out until 3:40 PM" — one formatter for every find (see `spawn_title`). */
 const UNTIL_FORMAT = new Intl.DateTimeFormat([], { hour: "numeric", minute: "2-digit" });
 /** `?avatar=` never changes under a running page; read it once, not per frame. */
-const is_hiker = typeof window !== "undefined" && avatarFrom(window.location.search) === "hiker";
+const avatar = typeof window !== "undefined" ? avatarFrom(window.location.search) : "trainer";
+const is_hiker = avatar === "hiker";
 
 /** Fixed cast so they do not reshuffle every render. Decoration, not data. */
 const BIRD = [
@@ -227,6 +233,8 @@ interface Props {
   quality?: QualityPick;
   /** The tier badge was tapped: open wherever the tier is changed. */
   onQuality?: () => void;
+  /** Lines with a purpose over the way network — trail legs, the walk to help, shore and flight lines (`track.ts`). */
+  track?: Track[];
 }
 
 type Project = Projection["project"];
@@ -445,18 +453,13 @@ const Ground = memo(function Ground({
   const cull: Cull = { x: cull_x, y: cull_y, r: cull_r };
   const near = (ring: [number, number][]) => isNear(ring, project, cull);
   /* The subpaths, one string per look — see the comment on the grass below. */
-  const merged = { grass: "", building: "", outside_road: "", outside_foot: "", road: "", foot: "" };
+  const merged = { grass: "", building: "", water: "", street: "", walk: "", stair: "" };
   for (const row of sector_row) if (row.is_biome && near(row.point)) merged.grass += ringPath(row.point, project, true);
   for (const b of campus_building) if (near(b.point)) merged.building += ringPath(b.point, project, true);
-  for (const p of outside_path) {
-    if (!near(p.point)) continue;
-    if (p.is_road) merged.outside_road += ringPath(p.point, project, false);
-    else merged.outside_foot += ringPath(p.point, project, false);
-  }
-  for (const p of campus_path) {
-    if (!near(p.point)) continue;
-    if (p.is_road) merged.road += ringPath(p.point, project, false);
-    else merged.foot += ringPath(p.point, project, false);
+  for (const w of network.water) if (near(w.point)) merged.water += ringPath(w.point, project, true);
+  for (const w of network.way) {
+    if (!near(w.point)) continue;
+    merged[w.way_class] += ringPath(w.point, project, false);
   }
   return (
     <>
@@ -472,8 +475,12 @@ const Ground = memo(function Ground({
             d={ringPath(row.point, project, true)}
             fill={gradeFill(sectorFill(row), is_night)}
             fillOpacity={is_here ? 1 : 0.95}
-            stroke={is_here ? "#F0B429" : sectorStroke(row)}
-            strokeWidth={is_here ? 4.5 : 1}
+            /* Only the sector you stand in is outlined. A hairline round every
+               sector traced the ways it was cut along — including the
+               sidewalks and driveways the network no longer draws — and read
+               as a second, ghost path network under the real one. */
+            stroke={is_here ? "#F0B429" : "none"}
+            strokeWidth={is_here ? 4.5 : 0}
             strokeLinejoin="round"
             /* The ground takes no clicks in the play view.
              *
@@ -514,50 +521,47 @@ const Ground = memo(function Ground({
              light block looks like it is floating on one. */}
       <path d={merged.building} fill="rgba(104,96,78,0.30)" stroke="none" />
 
-      {/* 3a · the city outside, at a whisper.
-             Cutting it entirely left campus floating in a void, which
-             reads as isolation rather than as a boundary. Faded says
-             "this continues, you just do not play here" without
-             inviting anyone into Katipunan traffic. */}
-      {[true, false].map((is_road) => (
+      {/* 3 · open water — the pond and the pool, which the ground never drew. */}
+      {merged.water && (
         <path
-          key={is_road ? "po-road" : "po-foot"}
-          d={is_road ? merged.outside_road : merged.outside_foot}
-          fill="none"
-          stroke={is_night ? "rgba(160,176,214,0.3)" : "rgba(255,255,255,0.34)"}
-          strokeWidth={roadWidthPx(is_road, plane_meter_per_pixel) * 0.7}
-          strokeLinecap="round"
+          d={merged.water}
+          fill={is_night ? "#2F5E86" : "#8FD3F0"}
+          stroke={is_night ? "#5C8DB5" : "#D8F1FB"}
+          strokeWidth={Math.max(2, 1.2 / Math.max(plane_meter_per_pixel, 0.001))}
           strokeLinejoin="round"
         />
-      ))}
+      )}
 
-      {/* 3b · the ways the sectors were cut along, at their real width.
-             Widths are metres turned into plane pixels (`roadWidthPx`: a
-             campus road 5.5 m, a footpath 2.6 m), so a path is as wide as
-             the ground it covers at every zoom instead of a fixed 9 px that
-             was a ribbon at z19 and a thread at z22. An edge, a sand-coloured
-             walk, and on roads a dashed centre line once there is room.
-             Every casing under every walk, as before; within each, roads
-             over footpaths, which is how a crossing reads anyway. */}
+      {/* 4 · the way network (`campus-network.json`), drawn the way Pokémon GO
+             draws its streets: one quiet network, nothing doubled.
+             ONE casing under every way (streets and walks alike, same colour),
+             then the walk fills, then the street fills. Same-colour strokes
+             union, so a junction is seamless whatever meets there, and a walk
+             that ends on a street disappears into it rather than capping on
+             top of it. Butt caps: a dead end is square, not a blob. No centre
+             dashes — they ran through every junction and dead end. Widths are
+             metres (`roadWidthPx`: street 5.5 m, walk 2.6 m), so a way is as
+             wide as the ground it covers at every zoom. Streets outside campus
+             are the same streets; the sector fills already say where play is. */}
       {(() => {
-        const road_fill = roadWidthPx(true, plane_meter_per_pixel);
-        const foot_fill = roadWidthPx(false, plane_meter_per_pixel);
-        const dash = Math.max(4, 1.6 / Math.max(plane_meter_per_pixel, 0.001));
+        const street_fill = roadWidthPx(true, plane_meter_per_pixel);
+        const walk_fill = roadWidthPx(false, plane_meter_per_pixel);
+        const casing = is_night ? "#6F6A9E" : "#D8CCAA";
+        const walk_and_stair = merged.walk + merged.stair;
         return (
-          <g fill="none" strokeLinecap="round" strokeLinejoin="round">
-            <path d={merged.foot} stroke={is_night ? "#8E88BC" : "#DCC188"} strokeWidth={roadCasingPx(foot_fill)} />
-            <path d={merged.road} stroke={is_night ? "#9A86C0" : "#C8BD9F"} strokeWidth={roadCasingPx(road_fill)} />
-            <path d={merged.foot} stroke={is_night ? "#6C6AA2" : "#F4E6BC"} strokeWidth={foot_fill} />
-            <path d={merged.road} stroke={is_night ? "#3E4A86" : "#ECE5D2"} strokeWidth={road_fill} />
-            {road_fill > 16 && (
+          <g fill="none" strokeLinecap="butt" strokeLinejoin="round">
+            <path d={walk_and_stair} stroke={casing} strokeWidth={roadCasingPx(walk_fill)} />
+            <path d={merged.street} stroke={casing} strokeWidth={roadCasingPx(street_fill)} />
+            <path d={walk_and_stair} stroke={is_night ? "#5E5C94" : "#F3E6C2"} strokeWidth={walk_fill} />
+            {merged.stair && (
               <path
-                d={merged.road}
-                stroke={is_night ? "rgba(255,246,220,0.45)" : "rgba(255,255,255,0.95)"}
-                strokeWidth={Math.max(1.5, road_fill * 0.035)}
-                strokeDasharray={`${dash * 1.6} ${dash * 1.4}`}
-                strokeLinecap="butt"
+                d={merged.stair}
+                stroke={casing}
+                strokeWidth={walk_fill * 0.8}
+                strokeDasharray={`${Math.max(1.2, walk_fill * 0.12)} ${Math.max(2.4, walk_fill * 0.26)}`}
               />
             )}
+            <path d={merged.street} stroke={is_night ? "#46508C" : "#FBF5E4"} strokeWidth={street_fill} />
           </g>
         );
       })()}
@@ -586,6 +590,118 @@ const Ground = memo(function Ground({
     </>
   );
 });
+
+/**
+ * Land and sea tracks, and the shadow under every air track, laid ON the
+ * ground plane — so they are foreshortened with it and sit under every find,
+ * tree and walker, the way a route does in Pokémon GO.
+ *
+ * Widths and dashes are metres (`TRACK_STYLE`), so a trail is the same width
+ * on the ground at every zoom. Casing, then line, per track: tracks are few,
+ * and each kind keeps its own colour where two cross. Nothing animates in
+ * here — anything moving inside the ground `<svg>` repaints all of it
+ * (see `Ripple`).
+ */
+const TrackGround = memo(function TrackGround({
+  track,
+  project,
+  plane_meter_per_pixel,
+}: {
+  track: Track[];
+  project: Project;
+  plane_meter_per_pixel: number;
+}) {
+  const px = (m: number) => m / Math.max(plane_meter_per_pixel, 0.001);
+  return (
+    <g fill="none" strokeLinejoin="round">
+      {track.map((t) => {
+        const style = TRACK_STYLE[t.track_kind];
+        const d = ringPath(t.point.map((q) => [q.lat, q.lon] as [number, number]), project, false);
+        const opacity = t.is_done ? 0.3 : t.is_active === false ? 0.55 : 1;
+        if (mediumOf(t) === "air") {
+          /* Its shadow: where the flight passes over. */
+          return (
+            <path
+              key={t.track_code}
+              d={d}
+              stroke="rgba(38,30,72,0.28)"
+              strokeWidth={Math.max(2, px(0.7))}
+              strokeDasharray={`${px(1.2)} ${px(1.6)}`}
+              strokeLinecap="butt"
+            />
+          );
+        }
+        const width = Math.max(4, px(style.width_m));
+        const dash = style.dash_m ? `${px(style.dash_m[0])} ${Math.max(width * 1.2, px(style.dash_m[1]))}` : undefined;
+        /* A dotted (sea) line is zero-length dashes with round caps: a dot IS
+           a round cap. Everywhere else the ends are square. */
+        const is_dotted = style.dash_m?.[0] === 0;
+        return (
+          <g key={t.track_code} opacity={opacity}>
+            <path d={d} stroke={style.casing} strokeWidth={width + Math.max(3, px(0.7))} strokeLinecap={is_dotted ? "round" : "butt"} strokeOpacity={is_dotted ? 0.55 : 1} />
+            <path d={d} stroke={style.fill} strokeWidth={width} strokeDasharray={dash} strokeLinecap={is_dotted ? "round" : "butt"} />
+            {/* A route that goes somewhere ends on its destination, marked. */}
+            {(t.track_kind === "help" || t.track_kind === "evacuation") &&
+              (() => {
+                const end = project(t.point[t.point.length - 1]);
+                return <circle cx={end.x} cy={end.y} r={Math.max(7, px(2.4))} fill={style.fill} stroke="#FFFFFF" strokeWidth={Math.max(3, px(0.8))} />;
+              })()}
+          </g>
+        );
+      })}
+    </g>
+  );
+});
+
+/**
+ * Air tracks, on the glass: each sample of the line is lifted off its ground
+ * point by its height (`altitudeAt`) times the camera's foreshortening there,
+ * so a flight rises off the ground, arcs, and comes down where it lands, with
+ * its shadow (`TrackGround`) on the ground below.
+ */
+function AirTrack({ track, projection }: { track: Track[]; projection: Projection }) {
+  const air = track.filter((t) => mediumOf(t) === "air");
+  if (!air.length) return null;
+  const lift_k = Math.sin((projection.tilt_degree * Math.PI) / 180) / Math.max(projection.plane_meter_per_pixel, 1e-6);
+  const fog_y = projection.fog_start_y ?? -Infinity;
+  return (
+    <svg
+      width={projection.width}
+      height={projection.height}
+      style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 2 }}
+      aria-hidden="true"
+    >
+      {air.map((t) => {
+        const style = TRACK_STYLE[t.track_kind];
+        /* Densify to ~2 m so the arc is a curve, not three kinks. */
+        const dense: { lat: number; lon: number }[] = [];
+        for (let i = 1; i < t.point.length; i += 1) {
+          const a = t.point[i - 1];
+          const b = t.point[i];
+          for (let k = 0; k < 24; k += 1) dense.push({ lat: a.lat + ((b.lat - a.lat) * k) / 24, lon: a.lon + ((b.lon - a.lon) * k) / 24 });
+        }
+        dense.push(t.point[t.point.length - 1]);
+        const fraction = lengthFraction(dense);
+        let d = "";
+        let pen = false;
+        dense.forEach((q, i) => {
+          const at = projection.toScreen(projection.project(q));
+          if (at.scale <= 0 || at.y < fog_y) { pen = false; return; }
+          const y = at.y - altitudeAt(t.altitude_m ?? 0, fraction[i]) * lift_k * at.scale;
+          d += `${pen ? "L" : "M"}${at.x.toFixed(1)} ${y.toFixed(1)}`;
+          pen = true;
+        });
+        if (!d) return null;
+        return (
+          <g key={t.track_code} fill="none" strokeLinejoin="round" opacity={t.is_done ? 0.35 : 1}>
+            <path d={d} stroke={style.casing} strokeWidth={6} strokeLinecap="round" />
+            <path d={d} stroke={style.fill} strokeWidth={3} strokeDasharray="9 7" strokeLinecap="butt" />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
 
 /** The camera's furthest drift from its anchor (`ANCHOR_GRID` / 2, diagonal) plus a margin. */
 const ANCHOR_SLACK_PX = 1500;
@@ -797,6 +913,7 @@ export default function PlayMap({
   is_camera_locked = false,
   skyline_style,
   hall,
+  track = [],
   is_night = false,
   quality = { tier: "full", reason: "default" },
   onQuality,
@@ -883,7 +1000,11 @@ export default function PlayMap({
     /* `pm-lite` switches off, in CSS, the animations that run on the main
        thread every frame — the find bob and the eagle's wings are transforms
        on SVG children, which the compositor cannot take over (`game.css`). */
-    <div className={quality.tier === "lite" ? "pm-lite" : undefined} style={{ position: "absolute", inset: 0 }}>
+    /* `isolation`: the glass stacks by depth (`depthZ`, foot y + 400, so
+       hundreds), and without a stacking context of its own those z-indexes
+       competed with the app's dialogs — the pet egg drew over the "No
+       position here" card (10-01). Everything here now stacks inside the map. */
+    <div className={quality.tier === "lite" ? "pm-lite" : undefined} style={{ position: "absolute", inset: 0, isolation: "isolate" }}>
     <TileMap
       view={view}
       onView={onView}
@@ -1093,7 +1214,7 @@ export default function PlayMap({
                     >
                       <HikerAvatar size={avatar_px} is_walking={travel.current.is_walking} heading_degree={travel.current.heading} />
                     </Suspense>
-                  ) : (
+                  ) : avatar === "sticker" ? (
                     <WalkerFigure
                       stage={stage}
                       vigor={vigor}
@@ -1101,10 +1222,17 @@ export default function PlayMap({
                       is_walking={travel.current.is_walking}
                       heading_degree={travel.current.heading}
                     />
+                  ) : (
+                    <TrainerFigure
+                      stage={stage}
+                      size={avatar_px}
+                      is_walking={travel.current.is_walking}
+                      heading_degree={travel.current.heading}
+                    />
                   )}
                 </div>
                 {/* The pet eagle — companion by day, sleep pet when you stop. See `pet.ts`. */}
-                <PetEagle projection={projection} fix={fix} anchor={anchor} avatar_px={avatar_px} />
+                <PetEagle stage={stage} projection={projection} fix={fix} anchor={anchor} avatar_px={avatar_px} />
                 </>
               );
             })()}
@@ -1160,6 +1288,7 @@ export default function PlayMap({
                 </div>
               );
             })}
+            <AirTrack track={track} projection={projection} />
             <QualityBadge pick={quality} onOpen={onQuality} />
             <FrameProbeOnce />
           </>
@@ -1219,6 +1348,14 @@ export default function PlayMap({
                 cull_y={height / 2}
                 cull_r={groundCullPx(projection)}
               />
+
+              {track.length > 0 && (
+                <TrackGround
+                  track={track}
+                  project={project}
+                  plane_meter_per_pixel={Number(projection.plane_meter_per_pixel.toPrecision(4))}
+                />
+              )}
 
               {/* 5 · soft ground contact under each find (and in-range ripples).
                    Ripples are diegetic: only when the walker is close enough to log. */}

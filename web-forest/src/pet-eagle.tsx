@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { lazy, memo, Suspense, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import fly_svg from "./asset/magi/pet/eagle-fly.svg?raw";
 import perch_svg from "./asset/magi/pet/eagle-perch.svg?raw";
@@ -23,6 +23,38 @@ import {
   type PetState,
 } from "./pet";
 import type { Projection } from "./tile-map";
+import type { Stage } from "./stage.ts";
+import Character from "./character";
+import { depthZ } from "./depth";
+
+const CharacterModel = lazy(() => import("./character-model"));
+
+/**
+ * Agila on the map, in 3D — your buddy at its own growth stage, following the
+ * trainer the way a Pokémon GO buddy does. Only a full-grown eagle takes to
+ * the air; an egg or a chick waits on the ground. Asleep, its clip stops.
+ * The flat art stands in while the viewer chunk loads — the eagle's pose art
+ * only for a full-grown eagle, the stage sticker otherwise, or an egg showed
+ * as a perched eagle for the first seconds (the card keeps the same rule).
+ */
+function PetModel({ stage, pose, size }: { stage: Stage; pose: PetPose; size: number }) {
+  const px = Math.round(size * 1.35);
+  const flat = stage === "tree" ? <PetArt pose={pose} size={size} /> : <Character stage={stage} vigor={1} size={size} />;
+  return (
+    <Suspense fallback={flat}>
+      <div
+        style={{
+          width: px,
+          height: px,
+          margin: `${size - px}px 0 0 ${(size - px) / 2}px`,
+          filter: pose === "sleep" ? "saturate(.8) brightness(.92)" : undefined,
+        }}
+      >
+        <CharacterModel stage={stage} size={px} is_paused={pose === "sleep"} />
+      </div>
+    </Suspense>
+  );
+}
 
 /**
  * The pet eagle on the play map, and its card. The rules live in `pet.ts`
@@ -139,31 +171,46 @@ function useActivity(fix: PetPoint): { is_walking: boolean; idle_ms: number; hou
 
 /**
  * Ground-space lag behind the walker, on a leash of `max_meter`; under reduced
- * motion it is simply there. The leash is read through a ref because it moves
- * with every zoom frame and must not restart the follow loop.
+ * motion it is simply there.
+ *
+ * `target` is where the walker is DRAWN (the gliding camera centre when the
+ * camera is welded to them), and it moves every frame. So the loop is one
+ * loop that reads the target through a ref and runs until it settles — not an
+ * effect per target, which would restart the clock on every frame — and the
+ * eagle is drawn at the result directly. It used to chase the 20 Hz fix and be
+ * drawn at `anchor + (pet − fix)`: every fix step jumped that offset back, a
+ * sawtooth of a few pixels along the direction of travel.
  */
 function useFollow(target: PetPoint, max_meter: number): PetPoint {
   const [is_reduced] = useState(isReducedMotion);
   const [pet, setPet] = useState<PetPoint>(target);
   const pet_ref = useRef<PetPoint | null>(target);
+  const target_ref = useRef(target);
+  target_ref.current = target;
   const leash_ref = useRef(max_meter);
   leash_ref.current = max_meter;
+  const frame = useRef<number | null>(null);
   const { lat, lon } = target;
   useEffect(() => {
-    if (is_reduced) return;
-    const goal = { lat, lon };
-    let frame = 0;
+    if (is_reduced || frame.current !== null) return;
     let last = performance.now();
     const step = (t: number) => {
+      const goal = target_ref.current;
       const next = followStep(pet_ref.current, goal, t - last, undefined, leash_ref.current);
       last = t;
       pet_ref.current = next;
       setPet(next);
-      if (!isSettled(next, goal)) frame = requestAnimationFrame(step);
+      frame.current = isSettled(next, goal) ? null : requestAnimationFrame(step);
     };
-    frame = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frame);
+    frame.current = requestAnimationFrame(step);
   }, [lat, lon, is_reduced]);
+  useEffect(
+    () => () => {
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+      frame.current = null;
+    },
+    [],
+  );
   return is_reduced ? target : pet;
 }
 
@@ -172,7 +219,10 @@ export default function PetEagle({
   fix,
   anchor,
   avatar_px,
+  stage,
 }: {
+  /** The buddy's growth stage — which Agila follows you. */
+  stage: Stage;
   projection: Projection;
   /** The walker's position — what the eagle follows and what wakes it. */
   fix: PetPoint;
@@ -191,14 +241,26 @@ export default function PetEagle({
   const { is_walking, idle_ms, hour } = useActivity(fix);
   const state = petState({ is_walking, idle_ms, hour });
   const leash_m = PET_LEASH_AVATAR * avatar_px * projection.meter_per_pixel;
-  const pet = useFollow({ lat: fix.lat, lon: fix.lon }, leash_m);
+  const pet = useFollow({ lat: anchor.lat, lon: anchor.lon }, leash_m);
   const size = petPx(avatar_px);
 
-  const at = projection.toScreen(
-    projection.project({ lat: anchor.lat + (pet.lat - fix.lat), lon: anchor.lon + (pet.lon - fix.lon) }),
-  );
-  const scale = Math.max(0.6, Math.min(1.35, at.scale));
-  const offset = petOffset(state.pose, avatar_px, size);
+  const walker_at = projection.toScreen(projection.project(anchor));
+  const lag_at = projection.toScreen(projection.project(pet));
+  const scale = Math.max(0.6, Math.min(1.35, lag_at.scale));
+  /* Only a full-grown eagle flies; younger stages keep to the ground beside you. */
+  const pose: PetPose = state.pose === "fly" && stage !== "tree" ? "perch" : state.pose;
+  const offset = petOffset(pose, avatar_px, size);
+  /* The lag trails along the path — up and down the glass freely, but never
+     sideways INTO the figure: `petOffset` puts the eagle beside the walker,
+     and a lag pulling it back across them is what sat the egg on their legs.
+     The leash (`PET_LEASH_AVATAR`) is shorter than the perch distance, so
+     holding the eagle's centre at least that far to the right costs no flip. */
+  const beside = offset.x * scale;
+  const centre_dx = Math.max(beside, lag_at.x - walker_at.x + beside);
+  const at = { x: walker_at.x + centre_dx - beside, y: lag_at.y };
+  /* Where it meets the ground, for the painter's order against the walker
+     and the trees: a flying eagle's ground point is still under it. */
+  const foot_y = at.y + (pose === "fly" ? 0 : offset.y * scale);
 
   return (
     <>
@@ -212,7 +274,7 @@ export default function PetEagle({
              and a moved `left` is a layout each time (`glassAt` in play-map). */
           transform: `translate(${at.x.toFixed(1)}px, ${at.y.toFixed(1)}px) scale(${scale.toFixed(3)})`,
           transformOrigin: "0 0",
-          zIndex: 7,
+          zIndex: depthZ(foot_y),
           pointerEvents: "none",
         }}
       >
@@ -240,21 +302,8 @@ export default function PetEagle({
             transition: "transform .5s cubic-bezier(.3,.7,.3,1)",
           }}
         >
-          {/* Contact shadow, only when it is on the ground. */}
-          {state.pose !== "fly" && (
-            <span
-              style={{
-                position: "absolute",
-                left: "22%",
-                right: "22%",
-                bottom: -2,
-                height: 6,
-                borderRadius: 999,
-                background: "rgba(28,74,34,0.22)",
-              }}
-            />
-          )}
-          <PetArt pose={state.pose} size={size} />
+          {/* No drawn contact shadow: the 3D model casts its own. */}
+          <PetModel stage={stage} pose={pose} size={size} />
           {state.pose === "sleep" && (
             <span className="pet-zzz" style={{ right: -6, top: -4, fontSize: 14 }} aria-hidden>
               Zzz
@@ -267,6 +316,7 @@ export default function PetEagle({
           <PetCard
             name={name}
             state={state}
+            stage={stage}
             onRename={(raw) => setName(writePetName(storage(), raw))}
             onClose={() => setOpen(false)}
           />,
@@ -279,11 +329,14 @@ export default function PetEagle({
 export function PetCard({
   name,
   state,
+  stage = "tree",
   onRename,
   onClose,
 }: {
   name: string;
   state: PetState;
+  /** The buddy's growth stage: an egg on the map is an egg on its card. */
+  stage?: Stage;
   onRename: (raw: string) => void;
   onClose: () => void;
 }) {
@@ -328,7 +381,9 @@ export function PetCard({
               position: "relative",
             }}
           >
-            <PetArt pose={state.pose} size={76} />
+            {/* The eagle art is the grown bird's; any younger stage is drawn
+                as itself, the same figure the map shows. */}
+            {stage === "tree" ? <PetArt pose={state.pose} size={76} /> : <Character stage={stage} vigor={1} size={76} />}
             {state.pose === "sleep" && (
               <span className="pet-zzz" style={{ right: 2, top: 0, fontSize: 13 }} aria-hidden>
                 Zzz
@@ -384,7 +439,7 @@ export function PetCard({
                 </button>
               </div>
             )}
-            <div style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.35 }}>{petStatusLine(name, state)}</div>
+            <div style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.35 }}>{petStatusLine(name, state, stage === "egg")}</div>
           </div>
         </div>
 

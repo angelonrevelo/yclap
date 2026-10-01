@@ -46,3 +46,9 @@ Walk-step / calorie points also stay rejected unless the device actually measure
 | Persist the Worker's rate-limit counters across isolate restarts | They are brakes, not ledgers (`rate-limit.ts`). Persisting them costs a storage write on every request to stop an attacker who can already only make 20 wrong guesses per window per isolate |
 | Force-refresh phones that installed the 09-22 build | Not needed: the live service worker (`magisphere-v6`) serves navigations network-first and calls `skipWaiting` + `clients.claim`, so the next online load gets the new build (checked 2026-10-01) |
 | Copy Pokémon GO's handling of other players' positions | Could not verify what it does (one search, no primary source), so it is not a precedent here. Snap Map's off-by-default, friends-only sharing is the verified one |
+## 2026-09-26 — showcase panel
+
+| Idea | Source | Reason (verbatim position) |
+|------|--------|----------------------------|
+| Health or other non-biodiversity uses inside Magisphere | `plaud/2026-09-26-showcase-panel.md` A3 `266:01` | Magisphere answers the urban-forest problem tree. The engine (areas, quests, journal) can be forked for another brief; the product does not widen |
+| A carbon / CO₂ panel on the climate dashboard | `plaud/2026-09-26-showcase-panel.md` A6 `267:58` | Repeat of the ForestDrop and no-carbon-product rows above. The conditions card shows hazards and heat only |

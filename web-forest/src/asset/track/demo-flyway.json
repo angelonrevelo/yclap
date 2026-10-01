@@ -1,0 +1,23 @@
+{
+ "_comment": "A DEMO air track: how a flight line reads on the map. Nobody observed a bird fly this line; is_demo is true and the card says so. Ends at the pond so it lands somewhere real.",
+ "track_code": "demo-flyway",
+ "track_kind": "flyway",
+ "title": "Demo flyway: Gonzaga walk to the pond",
+ "is_demo": true,
+ "altitude_m": 16,
+ "source": "Laid out by us to show the air layer; not an observed flight",
+ "point": [
+  {
+   "lat": 14.63905,
+   "lon": 121.07712
+  },
+  {
+   "lat": 14.63908,
+   "lon": 121.0765
+  },
+  {
+   "lat": 14.638597,
+   "lon": 121.075893
+  }
+ ]
+}

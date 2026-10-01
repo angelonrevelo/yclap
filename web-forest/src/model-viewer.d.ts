@@ -23,6 +23,7 @@ interface ModelViewerAttributes extends HTMLAttributes<HTMLElement> {
   "interaction-prompt"?: string;
   /** Framing — see `STAGE_FRAME` in character-model.tsx. */
   "camera-target"?: string;
+  /** "<theta> <phi> <radius>" — where the camera sits around the model. */
   "camera-orbit"?: string;
   "min-camera-orbit"?: string;
   "max-camera-orbit"?: string;
@@ -32,6 +33,13 @@ interface ModelViewerAttributes extends HTMLAttributes<HTMLElement> {
   /** How fast camera changes ease, in ms-ish decay (lower is snappier). */
   "interpolation-decay"?: string;
   "field-of-view"?: string;
+  /** "<roll> <pitch> <yaw>" — turns the model itself, e.g. to face its heading. */
+  orientation?: string;
+  "environment-image"?: string;
+  "disable-zoom"?: boolean;
+  "disable-pan"?: boolean;
+  "animation-name"?: string;
+  "time-scale"?: string;
   /** "eager" | "lazy" | "auto". */
   loading?: string;
   /** Listeners for `load` / `error` are attached through the ref (see SpeciesCard). */

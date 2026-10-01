@@ -297,7 +297,11 @@ export default function CampusMap({
         <>
           {is_biome_on && <SectorLayer projection={projection} layer={layer} />}
           {is_boundary_on && <CampusOutline projection={projection} layer={layer} />}
-          {is_path_on && <PathNetwork projection={projection} layer={layer} />}
+          {/* Not over the Guide basemap: OSM's own tiles already draw every
+              footway there, and ours on top was the same network twice,
+              slightly offset (10-01, "osm and our are overlapping"). Paper
+              and satellite draw none, so ours is the only one. */}
+          {is_path_on && layer !== "guide" && <PathNetwork projection={projection} layer={layer} />}
           {is_restricted_on && <RestrictedArea projection={projection} />}
           {extra?.(projection)}
 

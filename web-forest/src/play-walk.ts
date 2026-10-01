@@ -24,11 +24,16 @@ export const PLAY_START: LatLon = DEMO_WALK[0];
  * Not `PLAY_START`. The stage loop starts on the Moro Lorenzo football field,
  * which is right for a scripted lap and wrong for a first impression: the stick
  * is what a judge at the off-campus showcase lands on, and the first screen
- * they saw was a lawn the width of the phone with nothing on it. This is the
- * footpath between Schmitt Hall's grounds and the Zen Garden, two of the
- * greenest MEASURED sectors on campus, with a road junction in view.
+ * they saw was a lawn the width of the phone with nothing on it.
+ *
+ * Chosen by measurement, not by eye. The first pick (the path by Schmitt Hall,
+ * 14.63904, 121.07747) looked green but sat among buildings, and the near
+ * field only spawns on biome ground: a 09-26 playtest opened on a screen with
+ * no finds at all. Every walkable footpath vertex was scored on finds within
+ * 60 m across 48 consecutive windows; this one, on the footpath through the
+ * International Residence Halls grounds, averaged 4.6 and never fell below 2.
  */
-export const STICK_START: LatLon = { lat: 14.63904, lon: 121.07747 };
+export const STICK_START: LatLon = { lat: 14.63737, lon: 121.07881 };
 
 /** Nearest and farthest a player's own start sits from `STICK_START`, metres. */
 export const START_SPREAD_MIN_M = 10;

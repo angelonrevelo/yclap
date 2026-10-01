@@ -1,0 +1,45 @@
+{
+ "_comment": "The campus pond's edge as a sea-medium track: where to look for what lives in and under the water. The line is the OSM pond outline (natural=water, ODbL); calling it a shore track is ours.",
+ "track_code": "pond-shore",
+ "track_kind": "shore",
+ "title": "Pond edge: look into the water",
+ "source": "Pond outline \u00a9 OpenStreetMap contributors, ODbL; the track is ours",
+ "point": [
+  {
+   "lat": 14.638551,
+   "lon": 121.075885
+  },
+  {
+   "lat": 14.638559,
+   "lon": 121.075923
+  },
+  {
+   "lat": 14.638589,
+   "lon": 121.075948
+  },
+  {
+   "lat": 14.638627,
+   "lon": 121.075947
+  },
+  {
+   "lat": 14.638661,
+   "lon": 121.075905
+  },
+  {
+   "lat": 14.638649,
+   "lon": 121.075854
+  },
+  {
+   "lat": 14.638618,
+   "lon": 121.075836
+  },
+  {
+   "lat": 14.638568,
+   "lon": 121.07585
+  },
+  {
+   "lat": 14.638551,
+   "lon": 121.075885
+  }
+ ]
+}

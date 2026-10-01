@@ -133,13 +133,14 @@ describe("the shipped models hold together", () => {
   });
 });
 
-describe("avatar — the hiker is opt-in and can never leave the map empty", () => {
-  it("is the stage sticker unless the URL asks for the hiker", () => {
-    assert.equal(avatarFrom(""), "stage");
-    assert.equal(avatarFrom("?time=day"), "stage");
-    assert.equal(avatarFrom("?avatar=hikr"), "stage");
+describe("avatar — the trainer by default, the others opt-in, never an empty map", () => {
+  it("is the 3D trainer unless the URL asks for the hiker or the sticker (10-02)", () => {
+    assert.equal(avatarFrom(""), "trainer");
+    assert.equal(avatarFrom("?time=day"), "trainer");
+    assert.equal(avatarFrom("?avatar=hikr"), "trainer", "a typo never leaves the map without a walker");
     assert.equal(avatarFrom("?avatar=hiker"), "hiker");
     assert.equal(avatarFrom("?boot=off&avatar=Hiker"), "hiker");
+    assert.equal(avatarFrom("?avatar=sticker"), "sticker");
   });
 
   it("walks while walking and idles while not", () => {

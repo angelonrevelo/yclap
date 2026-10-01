@@ -87,7 +87,9 @@ export const BADGE_LIST: BadgeDef[] = [
   {
     id: "first-find",
     name: "First Find",
-    blurb: "Photograph your first species on the guide.",
+    /* Any logged find counts, photo or not — so the blurb must not say
+       "photograph", or a list pick earns a badge its own card denies. */
+    blurb: "Log your first species.",
     group: "find",
     check: (row) => firstAt(row, isBadge),
   },

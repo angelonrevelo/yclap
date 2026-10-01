@@ -122,12 +122,13 @@ export interface SpeciesLabel {
 }
 
 /**
- * THE display name for a sweep species, wherever it is listed — the Nearby
- * tray, the hunt chip, the day's hunt card. Title Case common name
- * (`titleName`); the scientific name only when there is no common name (an
- * empty one, or the sweep's fallback of the scientific name itself), flagged
- * so the caller sets it in italics. One function, so "Rain tree" on the hunt
- * chip can never sit beside "Rain Tree" in Nearby again.
+ * Which name a sweep species is listed by: the common name, or the scientific
+ * name when there is no common name (an empty one, or the sweep's fallback of
+ * the scientific name itself), flagged so the caller sets it in italics. The
+ * `text` here is Title Case (`titleName`); what the Nearby tray, hunt chip,
+ * map orb and toasts RENDER goes through ui.tsx `speciesNameText`, which cases
+ * the common name with `displayName` like the map, toast and species card, so
+ * "Rain tree" on one surface can never sit beside "Rain Tree" on another.
  */
 export function speciesLabelOf(common_name: string | null | undefined, scientific_name: string | null | undefined): SpeciesLabel {
   const common = (common_name ?? "").trim();

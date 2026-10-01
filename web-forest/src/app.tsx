@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { walkPoint } from "./placement.ts";
+import { areaName, sectorName } from "./area-name.ts";
 import CampusMap from "./campus-map";
 import Joystick from "./joystick";
 import {
@@ -45,8 +45,8 @@ const CharacterModel = lazy(() => import("./character-model"));
 const SpeciesCard = lazy(() => import("./species-card"));
 /* The pin sheet's hero is the card's own turning model — same lazy chunk. */
 const SpeciesHero = lazy(() => import("./species-card").then((m) => ({ default: m.SpeciesHero })));
-import { learnSubject } from "./species-card-core";
-import { biome_sector, sectorAt, sectorByCode, sector as sector_row, type Sector } from "./sector";
+import { cardFact, learnSubject } from "./species-card-core";
+import { biome_sector, sectorAt, sector as sector_row, type Sector } from "./sector";
 import Viewfinder, { type Shot } from "./camera";
 import {
   aisDueNote,
@@ -99,6 +99,7 @@ import {
   observeSubject,
   persistAward,
   readPointEvents,
+  writePointEvents,
   withLiveWalker,
   type DailyTask,
   type GamifySnapshot,
@@ -113,14 +114,18 @@ import { noRouteLine } from "./route";
 import { biomePresenceAt, rankEncounter, sectorResident, trayRow, type BiomePresence } from "./nearby";
 import { cosmeticForStage } from "./cosmetic";
 import { BlindboxShelf } from "./blindbox-reveal";
+import { earnedBadges } from "./badge";
 import { BadgeShelf, loadSpawnPool, RarityPill, reachableSpawn, useLiveWorld, useSpawnWorld, WildShelf, WorldStrip } from "./live";
-import { kindOf, speciesLabelOf } from "./kind";
+import { kindOf } from "./kind";
 import { SpeciesPortrait } from "./portrait.tsx";
-import { icon, settings_icon as kit_settings_icon, sticker } from "./asset/kit";
+/* Alert marks still hand a sticker URL to alert.tsx, which renders an <img>. */
+import { sticker } from "./asset/kit";
+import { Art } from "./art/art";
+import { glyph, settings_glyph } from "./art";
 import type { Rarity, Spawn, SpawnPoolEntry } from "./spawn";
 import { WALK_TO_SHORT_M } from "./play-walk";
 import { receiptHighlight } from "./collection";
-import { demoJournal, isSeededJournal } from "./demo-seed";
+import { demoJournal, demoPointEvent, isSeededJournal } from "./demo-seed";
 import { fetchJoin, fetchMine, fetchPartner, readPlayer, writePlayer, type World } from "./sync";
 
 import {
@@ -135,8 +140,9 @@ import { matchCampus, suggestedPick } from "./inat-match";
 import { pinReply } from "./pin-reply";
 import InatStrip from "./inat-strip";
 import { ModuleButton, ModuleDock, ModuleLayer } from "./module-ui";
+import { shownTrack } from "./track";
 import { fromLabel, moduleAttribution, useModuleState } from "./module-state";
-import { Card, Chip, Eyebrow, Fab, GlyphDisc, Pill, PrimaryPill, RADIUS, SheetClose, SpeciesName, SpeciesPill, TaxonName, TaxonThumb } from "./ui";
+import { Card, Chip, Eyebrow, Fab, GlyphDisc, Pill, PrimaryPill, RADIUS, SheetClose, SpeciesName, SpeciesPill, speciesNameText, TaxonName, TaxonThumb } from "./ui";
 import { DexCard, DexHeader, GameDock, GameToast, PlayerHud, QuestBanner, StageSticker, TodayHuntCard } from "./hud";
 import {
   CameraIcon,
@@ -160,7 +166,14 @@ const WALK_ZOOM = 18;
  * on the walker the way a GO play-view does — buildings and paths at standing
  * scale, avatar large in frame.
  */
-const PLAY_ZOOM = PLAY_MAX_ZOOM;
+const PLAY_ZOOM = 20;
+/*
+ * z20, not the z22 ceiling, since a 09-26 playtest. At z22 a phone shows about
+ * fifteen metres of ground, which is the walker and a lawn: finds were within
+ * reach but none was on screen, so the first view of the game had nothing in
+ * it to walk toward. z20 holds four or five finds, the trees and the paths
+ * between them, which is the genre's camera. Pinch still goes all the way in.
+ */
 
 const CARD_RADIUS = RADIUS.card;
 const TILE_RADIUS = RADIUS.tile;
@@ -344,7 +357,7 @@ function PartnerCard({
     <Card style={{ padding: 14 }}>
       <div className="flex items-center justify-between">
         <Eyebrow>WALKING PARTNERS</Eyebrow>
-        <StreakFlame weeks={group.weeks} size={30} is_group />
+        <StreakFlame weeks={group.weeks} size={30} is_group tone="surface" />
       </div>
 
       <div style={{ fontSize: 12, color: "rgb(var(--mg-ink-rgb) / 0.78)", marginTop: 8, lineHeight: 1.45 }}>
@@ -541,8 +554,10 @@ function TrainerSheet({
           <SheetClose onClose={onClose} />
         </div>
         <div className="flex items-center gap-3">
-          <div style={{ width: 72, height: 72, borderRadius: 999, overflow: "hidden", background: "#2f5d2b", border: "3px solid var(--mg-green)" }}>
-            <Character stage={stage} vigor={vigor} size={68} is_idle_animated />
+          <div style={{ width: 84, height: 84, flexShrink: 0, borderRadius: 999, overflow: "hidden", background: "#EEF6E8" }}>
+            <Suspense fallback={<Character stage={stage} vigor={vigor} size={80} is_idle_animated />}>
+              <CharacterModel stage={stage} size={84} />
+            </Suspense>
           </div>
           <div>
             <div style={{ fontWeight: 800, fontSize: 28, fontVariantNumeric: "tabular-nums" }}>
@@ -551,7 +566,7 @@ function TrainerSheet({
             </div>
             <div style={{ fontSize: 13, opacity: 0.75 }}>{walker_name}</div>
             <div className="flex items-center gap-2" style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>
-              <StreakFlame weeks={snap.streak_weeks} size={26} />
+              <StreakFlame weeks={snap.streak_weeks} size={26} tone="surface" />
               <span style={{ opacity: 0.8 }}>· {STAGE_LABEL[stage]}</span>
             </div>
             <div style={{ fontSize: 11, marginTop: 4, letterSpacing: "0.08em", fontWeight: 800 }}>
@@ -560,15 +575,9 @@ function TrainerSheet({
           </div>
         </div>
         <JoinRow onJoin={onJoin} />
-        <div
-          style={{
-            marginTop: 16,
-            background: "var(--mg-bg)",
-            color: "rgb(var(--mg-ink-rgb) / 0.92)",
-            borderRadius: 20,
-            padding: 12,
-          }}
-        >
+        {/* The cards sit straight on the sheet — a tinted tray behind them was a
+            third nested frame around every number. */}
+        <div style={{ marginTop: 16, color: "rgb(var(--mg-ink-rgb) / 0.92)" }}>
           <PointsStreakCard snap={snap} is_desktop={false} />
           <div style={{ marginTop: 10 }}>
             <PartnerCard
@@ -631,17 +640,33 @@ function JoinRow({ onJoin }: { onJoin: (code: string) => void }) {
         maxLength={6}
         style={{
           flex: 1,
-          borderRadius: 12,
-          border: "1.5px solid rgb(var(--mg-ink-rgb) / 0.2)",
-          background: "rgba(17,75,47,0.1)",
+          minWidth: 0,
+          height: 44,
+          borderRadius: 999,
+          border: "none",
+          background: "#F1F3F0",
           color: "rgb(var(--mg-ink-rgb) / 0.92)",
-          padding: "8px 10px",
+          padding: "0 16px",
           minHeight: 44,
-          fontWeight: 800,
-          letterSpacing: "0.12em",
+          fontSize: 15,
+          /* Spaced like a code only once there is a code; the hint reads as words. */
+          fontWeight: code ? 800 : 600,
+          letterSpacing: code ? "0.12em" : "normal",
         }}
       />
-      <button type="submit" style={{ fontWeight: 800, fontSize: 13, color: "var(--mg-green-text)", minWidth: 44, minHeight: 44, padding: "0 8px" }}>
+      <button
+        type="submit"
+        style={{
+          height: 44,
+          padding: "0 20px",
+          borderRadius: 999,
+          background: "var(--mg-green)",
+          color: "#fff",
+          fontWeight: 800,
+          fontSize: 14,
+          boxShadow: "var(--mg-shadow-sm)",
+        }}
+      >
         Join
       </button>
     </form>
@@ -736,7 +761,7 @@ function NearbySightTray({
                 {/* Up to three lines at 12 px rather than one at 10 cut off
                     with "…" — the tray is only as tall as its longest name. */}
                 <div
-                  title={speciesLabelOf(s.common_name, s.scientific_name).text}
+                  title={speciesNameText(s.common_name, s.scientific_name)}
                   style={{
                     fontSize: 12,
                     fontWeight: 700,
@@ -772,7 +797,6 @@ function PointsStreakCard({ snap, is_desktop }: { snap: GamifySnapshot; is_deskt
           style={{
             flex: 1,
             borderRadius: RADIUS.tile,
-            border: "1.5px solid rgba(62,154,74,0.4)",
             background: "rgba(62,154,74,0.12)",
             padding: "10px 12px",
           }}
@@ -791,7 +815,6 @@ function PointsStreakCard({ snap, is_desktop }: { snap: GamifySnapshot; is_deskt
           style={{
             flex: 1,
             borderRadius: RADIUS.tile,
-            border: "1.5px solid rgba(247,198,49,0.4)",
             background: "rgba(247,198,49,0.12)",
             padding: "10px 12px",
           }}
@@ -1134,7 +1157,6 @@ function ConfusableWarning({ warn }: { warn: Confusable }) {
         padding: "10px 12px",
         borderRadius: 14,
         background: "rgba(247,198,49,0.12)",
-        border: "1.5px solid rgba(247,198,49,0.4)",
       }}
     >
       <div style={{ fontSize: 11, fontWeight: 800, color: "var(--mg-gold)", letterSpacing: "0.06em" }}>
@@ -2103,8 +2125,12 @@ function ExportRow({ sighting }: { sighting: Sighting[] }) {
   );
 }
 
-function SightingLog({ sighting }: { sighting: Sighting[] }) {
+function SightingLog({ sighting, pool }: { sighting: Sighting[]; pool: SpawnPoolEntry[] }) {
   const row = [...sighting].reverse().slice(0, 12);
+  /* Names and thumbs come off the whole campus sweep, the way "Beyond the
+     guide" reads them — the curated nine alone left a wild find here as its
+     raw code ("abroma-augustum") over a blank silhouette. */
+  const by_code = useMemo(() => new Map(pool.map((e) => [e.species_code, e])), [pool]);
   const prior_count = (code: string, before_id: string) => {
     const self = sighting.find((y) => y.sighting_id === before_id);
     if (!self) return 0;
@@ -2122,6 +2148,7 @@ function SightingLog({ sighting }: { sighting: Sighting[] }) {
       <div style={{ marginTop: 8, border: "1.5px solid rgb(var(--mg-ink-rgb) / 0.1)", borderRadius: 10, overflow: "hidden", background: "rgb(var(--mg-ink-rgb) / 0.06)" }}>
         {row.map((s, i) => {
           const sp = species[s.species_code];
+          const fact = cardFact(s.species_code, sp, by_code.get(s.species_code));
           const status = localObsStatus({
             photo_data: s.photo_data,
             species_code: s.species_code,
@@ -2134,14 +2161,25 @@ function SightingLog({ sighting }: { sighting: Sighting[] }) {
               className="flex items-start gap-3"
               style={{ padding: "12px 14px", borderTop: i === 0 ? "none" : "1px solid rgb(var(--mg-ink-rgb) / 0.1)" }}
             >
-              <TaxonThumb species_code={s.species_code} size={52} photo_data={s.photo_data} />
+              {sp || s.entry_kind === "contribution" ? (
+                <TaxonThumb species_code={s.species_code} size={52} photo_data={s.photo_data} />
+              ) : (
+                <SpeciesPortrait
+                  scientific_name={fact.scientific_name}
+                  species_code={s.species_code}
+                  kind={fact.kind}
+                  photo_data={s.photo_data}
+                  size={52}
+                  style={{ background: "var(--mg-surface-2)" }}
+                />
+              )}
               <div style={{ minWidth: 0 }}>
                 <div className="flex items-baseline gap-2" style={{ flexWrap: "wrap" }}>
                   {/* A report is not a species badge and must not read as one. */}
                   <div style={{ fontWeight: 700, fontSize: 14.5 }}>
                     {s.entry_kind === "contribution"
                       ? (s.reported_name ?? "Unknown")
-                      : (sp?.common_name ?? s.species_code)}
+                      : fact.common_name}
                   </div>
                   {s.entry_kind === "contribution" && <Pill tone="info">Report</Pill>}
                   {/* Picked off the recorded reply, not a read of the photo. */}
@@ -2211,7 +2249,7 @@ function WalkReceiptSheet({
   pool: SpawnPoolEntry[];
 }) {
   const sector_name = receipt.sector_code
-    .map((code) => sectorByCode(code)?.name)
+    .map((code) => sectorName(code))
     .filter(Boolean)
     .slice(0, 4);
   const curated_name = useMemo(
@@ -2625,8 +2663,21 @@ function LevelUpCard({ level, stage, onDismiss }: { level: number; stage: Stage;
  * This is the personal "account" — a local identity for progression, not a
  * social profile. There is no server and no cross-user field anywhere in it.
  */
-function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; is_desktop: boolean; gamify: GamifySnapshot }) {
+function ProgressCard({
+  sighting,
+  is_desktop,
+  gamify,
+  pool_count,
+}: {
+  sighting: Sighting[];
+  is_desktop: boolean;
+  gamify: GamifySnapshot;
+  pool_count: ReadonlyMap<string, number | null>;
+}) {
   const p = progressOf(sighting);
+  /* The same count the badge shelf heads with ("8 of 13 earned") — the tile
+     used to print `badge_count`, which is sightings, and read as 13 badges. */
+  const earned_count = useMemo(() => earnedBadges(sighting, { pool_count }).length, [sighting, pool_count]);
   const stage_label = STAGE_LABEL[p.stage];
   const next = p.next_stage;
   /* The denominator for the bar is the next stage's sector threshold, read off
@@ -2649,7 +2700,6 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
               flex: 1,
               minWidth: 0,
               borderRadius: RADIUS.tile,
-              border: "1.5px solid rgba(62,154,74,0.4)",
               background: "rgba(62,154,74,0.12)",
               padding: "9px 11px",
             }}
@@ -2657,7 +2707,7 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
             <div style={{ fontSize: 9.5, fontWeight: 800, color: "var(--mg-green-text)", letterSpacing: "0.02em" }}>
               BADGES
             </div>
-            <div style={{ fontSize: 18, fontWeight: 800, marginTop: 2 }}>{p.badge_count}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, marginTop: 2 }}>{earned_count}</div>
             <div style={{ fontSize: 10, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 1 }}>
               {p.photographed_count} species photographed
             </div>
@@ -2667,7 +2717,6 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
               flex: 1,
               minWidth: 0,
               borderRadius: RADIUS.tile,
-              border: "1.5px solid rgba(0,159,217,0.4)",
               background: "rgba(0,159,217,0.12)",
               padding: "9px 11px",
             }}
@@ -2688,7 +2737,7 @@ function ProgressCard({ sighting, is_desktop, gamify }: { sighting: Sighting[]; 
         <div style={{ marginTop: 12 }}>
           <div className="flex items-center justify-between" style={{ fontSize: 12.5 }}>
             <span style={{ fontWeight: 700, color: "rgb(var(--mg-ink-rgb) / 0.92)" }}>
-              {next ? `To ${STAGE_LABEL[next.stage]}` : "Fully grown"}
+              {next ? `To ${STAGE_LABEL[next.stage]}` : "Fully fledged"}
             </span>
             <span style={{ color: "rgb(var(--mg-ink-rgb) / 0.78)", fontVariantNumeric: "tabular-nums" }}>
               {next ? `${p.sector_seen_count}/${next_total}` : "—"}
@@ -2841,7 +2890,7 @@ function JournalScreen({
         {seen.size > 0 && (
           <>
             <div style={{ marginTop: 22 }}>
-              <ProgressCard sighting={sighting} is_desktop={is_desktop} gamify={gamify} />
+              <ProgressCard sighting={sighting} is_desktop={is_desktop} gamify={gamify} pool_count={pool_count} />
             </div>
             <div style={{ marginTop: 22 }}>
               <BlindboxShelf refresh_key={gamify.total_points} />
@@ -2855,7 +2904,7 @@ function JournalScreen({
             <div style={{ marginTop: 26 }}>
               <BadgeShelf sighting={sighting} pool_count={pool_count} is_desktop={is_desktop} />
             </div>
-            <SightingLog sighting={sighting} />
+            <SightingLog sighting={sighting} pool={pool} />
             <ExportRow sighting={sighting} />
           </>
         )}
@@ -2988,7 +3037,10 @@ function MapNote({ is_desktop, layer }: { is_desktop: boolean; layer: Layer }) {
       className="absolute"
       style={{
         left: is_desktop ? 18 : 12,
-        bottom: is_desktop ? 30 : 176,
+        /* On a phone the Nearest / Biome bar sits at bottom:100 and stands about
+           104 px tall, so its top edge is ~204 px up. 176 put the note two
+           thirds under it; 222 clears the bar and its shadow with a gap. */
+        bottom: is_desktop ? 30 : 222,
         zIndex: 20,
         maxWidth: is_desktop ? 330 : 250,
         background: "var(--mg-surface-glass)",
@@ -3163,7 +3215,7 @@ function SectorCard({
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
           <HudOrb label="Log what you see here" onClick={() => onLog(resident[0]?.species_code ?? "narra")} size={HUD_ORB}>
-            <img src={icon.go_camera} alt="" width={HUD_ORB} height={HUD_ORB} style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
+            <Art svg={glyph.go_camera} size={HUD_ORB} style={{ display: "block", width: "100%", height: "100%" }} />
           </HudOrb>
           <HudOrb label={is_open ? "Hide sources" : "Where does this come from?"} active={is_open} onClick={() => setOpen((o) => !o)} size={HUD_ORB}>
             <span style={{ fontWeight: 800, fontSize: 22, color: "#1a3d28" }}>i</span>
@@ -3347,9 +3399,13 @@ function ModeSwitch({
       style={{
         width: 44,
         height: 44,
-        borderRadius: 10,
-        background: is_field ? "var(--mg-green-deep)" : "var(--mg-surface-glass)",
-        color: is_field ? "#fff" : "var(--mg-forest)",
+        borderRadius: 999,
+        /* Round and white like every Pokémon GO map control; the state lives in
+           the icon's colour and a thin ring, never in a heavy fill. */
+        background: "#fff",
+        color: is_field ? "var(--mg-green-deep)" : "var(--mg-forest)",
+        outline: is_field ? "2.5px solid var(--mg-green)" : "none",
+        outlineOffset: -2.5,
         boxShadow: "var(--mg-shadow-sm)",
         border: "none",
         display: "grid",
@@ -3384,8 +3440,7 @@ function GeoModeSwitch({
   label: string;
   onCycle: () => void;
 }) {
-  const tone =
-    mode === "gps" ? "var(--mg-green-deep)" : mode === "play" ? "#C98A12" : "var(--mg-surface-glass)";
+  const tone = mode === "gps" ? "var(--mg-green-deep)" : mode === "play" ? "#C98A12" : "var(--mg-forest)";
   return (
     <button
       type="button"
@@ -3395,9 +3450,9 @@ function GeoModeSwitch({
       style={{
         width: 44,
         height: 44,
-        borderRadius: 10,
-        background: tone,
-        color: mode === "gps" || mode === "play" ? "#fff" : "var(--mg-forest)",
+        borderRadius: 999,
+        background: "#fff",
+        color: tone,
         boxShadow: "var(--mg-shadow-sm)",
         border: "none",
         display: "grid",
@@ -3444,8 +3499,8 @@ function Compass({ bearing, onReset }: { bearing: number; onReset: () => void })
       style={{
         width: 44,
         height: 44,
-        borderRadius: 10,
-        background: "var(--mg-surface-glass)",
+        borderRadius: 999,
+        background: "#fff",
         border: "none",
         boxShadow: "var(--mg-shadow-sm)",
         display: "grid",
@@ -3453,7 +3508,10 @@ function Compass({ bearing, onReset }: { bearing: number; onReset: () => void })
         cursor: "pointer",
       }}
     >
-      <svg width="22" height="22" viewBox="0 0 24 24" style={{ transform: `rotate(${-bearing}deg)` }}>
+      {/* The ground is turned by `rotateZ(+bearing)` (clockwise on the glass),
+          so north on the map sits `bearing` degrees clockwise of straight up —
+          the needle turns the same way, or it points away from the map's north. */}
+      <svg width="22" height="22" viewBox="0 0 24 24" style={{ transform: `rotate(${bearing}deg)` }}>
         <path d="M12 3 L15.4 13 L12 11 L8.6 13 Z" fill="#C0392B" />
         <path d="M12 21 L8.6 11 L12 13 L15.4 11 Z" fill="#9AA3A0" />
       </svg>
@@ -3515,7 +3573,7 @@ export default function App() {
     const asked = Number(raw);
     const zoom =
       raw !== null && Number.isFinite(asked)
-        ? Math.max(PLAY_MIN_ZOOM, Math.min(PLAY_MAX_ZOOM, Math.round(asked)))
+        ? Math.max(PLAY_MIN_ZOOM, Math.min(PLAY_MAX_ZOOM, asked))
         : PLAY_ZOOM;
     return { ...CAMPUS_CENTER, zoom };
   });
@@ -3567,6 +3625,23 @@ export default function App() {
   /* A walk-to that gets stuck part-way says so (showToast is declared below;
      this only runs on a later tick). */
   const geo = useGeo(geo_mode, bearing, view_span_m, (line) => showToast(line));
+
+  /* What the play map lays over its ways: the trail's legs, the walk to help,
+     and the land/sea/air route files when that layer is on (`track.ts`). */
+  const help_route = module_state.help.status === "found" ? module_state.help : null;
+  const play_track = useMemo(
+    () =>
+      shownTrack({
+        trail_leg:
+          module_state.shown.trail && module_state.trail_plan
+            ? module_state.trail_plan.leg.map((leg) => ({ from: leg.from, waypoint: leg.route?.waypoint ?? null }))
+            : [],
+        trail_at: module_state.trail_at,
+        help: help_route ? { from: geo.fix ?? CAMPUS_CENTER, waypoint: help_route.route.waypoint, title: `To ${help_route.feature.name ?? "help"}` } : null,
+        is_file_shown: module_state.shown.track,
+      }),
+    [module_state.shown.trail, module_state.shown.track, module_state.trail_plan, module_state.trail_at, help_route, geo.fix],
+  );
   /* Boot, alerts and weather. The boot overlay sits over everything until the
      safety card is dismissed; alerts raised meanwhile queue behind it. */
   const [is_booted, setBooted] = useState(() => isBootSkipped());
@@ -3640,6 +3715,13 @@ export default function App() {
     const seeded = demoJournal(spawn_world.pool, picker_order);
     writeSighting(seeded);
     setSighting(readSighting());
+    /* The points those finds would have earned, so the HUD and the Buddy sheet
+       do not say "0 pts · 0 wk" beside a full Dex. Same guard as above: never
+       over a device that already has points of its own. */
+    if (readPointEvents().length === 0) {
+      writePointEvents(demoPointEvent(seeded));
+      setPointEvents(readPointEvents());
+    }
   }, [spawn_world.pool]);
 
   /* Drives the banner. Keyed off the rows themselves, so it cannot be left on
@@ -3648,34 +3730,25 @@ export default function App() {
   const seen = seenCode(sighting);
   const gamify = useMemo(() => gamifySnapshot(point_events), [point_events]);
   const daily = useMemo(
-    () => dailyTaskFor(spawn_world.pool, biome_sector, new Date(), readPlayer().player_id, point_events),
-    [spawn_world.pool, point_events],
+    /* The same instant the spawn world was built for, so the hunt named here is
+       the hunt find standing in the world (live.tsx places it). */
+    () => dailyTaskFor(spawn_world.pool, biome_sector, new Date(Date.parse(spawn_world.ends_at) - 1), point_events),
+    [spawn_world.pool, spawn_world.ends_at, point_events],
   );
   const goDaily = () => {
     if (!daily) return;
-    const place = sectorByCode(daily.sector_code);
-    if (!place) return;
+    /* The hunt is a find of its own (`huntFind`), on walkable ground inside
+       its area, so the camera lands ON it rather than on the area's label.
+       In Play walk the walker also sets off for it along the footpaths; the
+       camera does not wait for the walk — the find is on screen now, and
+       Recentre goes back to the walker. No way there says so. */
+    const find = { lat: daily.lat, lon: daily.lon };
     if (geo_mode === "play") {
-      if (geo.walkTo(walkPoint(place), 0, place.name)) setFollowing(true);
-      else showToast(noRouteLine(place.name));
-      return;
+      const name = sectorName(daily.sector_code) ?? "today's hunt";
+      if (!geo.walkTo(find, WALK_TO_SHORT_M, name)) showToast(noRouteLine(name));
     }
     setFollowing(false);
-    /* Fly to the hunt's finds, not the sector's label. The label is the
-       middle of the area, and the playtest found the pins you were sent to
-       left at the screen's edge (x ≈ 12 on a 375 px phone). The hunt species
-       itself when this window has spawned it; otherwise the middle of the
-       finds standing in the hunt's sector; the label only when it has none. */
-    const same = spawn_world.spawn.find((s) => s.species_code === daily.species_code && s.sector_code === daily.sector_code);
-    const in_sector = spawn_world.spawn.filter((s) => s.sector_code === daily.sector_code);
-    const focus = same
-      ? [same]
-      : in_sector.length > 0
-        ? in_sector
-        : [{ lat: place.label_point[0], lon: place.label_point[1] }];
-    const lat = focus.reduce((sum, f) => sum + f.lat, 0) / focus.length;
-    const lon = focus.reduce((sum, f) => sum + f.lon, 0) / focus.length;
-    setView((prev) => ({ ...prev, lat, lon, zoom: Math.max(prev.zoom, 17) }));
+    setView((prev) => ({ ...prev, lat: find.lat, lon: find.lon, zoom: Math.max(prev.zoom, 17) }));
   };
   /* The day's first open shows today's hunt once, big, after boot and after
      any safety card. Keyed by the hunt's own day. */
@@ -3739,10 +3812,10 @@ export default function App() {
      and the Dex strip all count off this one roster (`hallLabelOf`). */
   const hall = useHall({ fix: geo.fix, stage, level, name: live_name, is_hidden: is_hidden_from_hall });
   const hall_label = hallLabelOf(hall);
-  /* Section art. Filled from `asset/kit.ts` once the generated set is keyed and
-     committed; every section renders headed-but-unillustrated until then, which
-     is why `SettingsIcon` is all-optional. */
-  const settings_icon: SettingsIcon = kit_settings_icon;
+  /* Section art — inline vector markup (`art/svg/glyph/settings-*`). A section
+     still renders headed-but-plain when a piece is missing, which is why
+     `SettingsIcon` stays all-optional. */
+  const settings_icon: SettingsIcon = settings_glyph;
 
   const savePreference = (next: Preference) => {
     setPreference(next);
@@ -4059,12 +4132,27 @@ export default function App() {
    * camera from across campus: a find you log without standing at it is a
    * record of nothing, and this app's one useful output is the location.
    */
+  const walk_goal = useRef<Spawn | null>(null);
+  /* Arrival: say so, and say what to do (09-26 playtest). The route ends
+     WALK_TO_SHORT_M short of the find, well inside reach, so one more tap
+     opens the camera. */
+  useEffect(() => {
+    const goal = walk_goal.current;
+    if (!goal || !geo.fix) return;
+    if (distanceMeter(geo.fix, goal) > WALK_TO_SHORT_M + 1.5) return;
+    walk_goal.current = null;
+    haptic("bump");
+    showToast(`${speciesNameText(goal.common_name, goal.scientific_name)} is in reach. Tap it to log.`);
+  }, [geo.fix?.lat, geo.fix?.lon]);
+
   const walkToSpawn = (row: Spawn) => {
     const is_reach = reachableSpawn(spawn_world.spawn, geo.fix).some((r) => r.spawn_id === row.spawn_id);
+    /* Cased the way Nearby, the card and the map print it (`speciesNameText`). */
+    const name = speciesNameText(row.common_name, row.scientific_name);
     const reply = pinReply({
       target: row,
-      common_name: row.common_name,
-      sector_name: sectorByCode(row.sector_code)?.name ?? null,
+      common_name: name,
+      sector_name: sectorName(row.sector_code),
       fix: geo.fix,
       is_reach,
       is_walk_mode: geo_mode === "play",
@@ -4073,7 +4161,7 @@ export default function App() {
       /* You are close enough and the camera is opening — the moment the whole
          walk is for. */
       haptic("bump");
-      openCamera(row.species_code, sectorByCode(row.sector_code)?.name, row.rarity);
+      openCamera(row.species_code, sectorName(row.sector_code) ?? undefined, row.rarity);
       return;
     }
     haptic("tap");
@@ -4083,10 +4171,12 @@ export default function App() {
       /* Routed round the buildings (route.ts), stopping a few metres short
          on walkable ground. No route from here → say so; never a toast that
          promises a walk and then stands still. */
-      if (!geo.walkTo(row, WALK_TO_SHORT_M, row.common_name)) {
-        showToast(noRouteLine(row.common_name));
+      if (!geo.walkTo(row, WALK_TO_SHORT_M, name)) {
+        walk_goal.current = null;
+        showToast(noRouteLine(name));
         return;
       }
+      walk_goal.current = row;
       setFollowing(true);
       showToast(reply.line);
       return;
@@ -4303,7 +4393,7 @@ export default function App() {
    * asked for on 09-03.
    */
   const play_sheet_sp = species[pick_code] ?? sel_sp;
-  const play_sheet_where = camera_where ?? (here_sector?.name ?? "Campus");
+  const play_sheet_where = camera_where ?? (here_sector ? areaName(here_sector) : "Campus");
   const play_sheet_distance = (() => {
     if (!geo.fix) return null;
     const hit = ranked.find((n) => n.row.species_code === play_sheet_sp.species_code);
@@ -4313,7 +4403,10 @@ export default function App() {
       : `${formatMeter(hit.distance_m)} ${hit.compass} of you · ${formatWalkMinute(hit.distance_m)}`;
   })();
   const playBody = (
-    <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+    /* `clip`, not `hidden`: a hidden box is still a scroll container, and at
+       1800 px its content ran 25 px past it, so a drag scrolled the whole play
+       screen sideways. A clipped box cannot scroll. */
+    <div style={{ position: "absolute", inset: 0, overflow: "clip" }}>
       <PlayMap
         view={camera_view}
         onView={setView}
@@ -4367,6 +4460,28 @@ export default function App() {
           setSettingsSetupFirst(true);
           go("/settings");
         }}
+        track={play_track}
+      />
+
+      {/* The modules (trails, emergency, routes) on the play map too: a route
+          is something you walk, so it belongs where you walk. */}
+      <ModuleDock
+        state={module_state}
+        from={geo.fix ?? CAMPUS_CENTER}
+        from_label={fromLabel(geo.fix)}
+        is_desktop={is_desktop}
+        onFocus={(point) => {
+          /* The play camera is welded to the walker, so "show me" on the play
+             map means walk there (the routed walk-to), the way every other
+             tap on this map does. Without a walker to move, look instead. */
+          if (geo_mode === "play" && geo.walkTo(point, 0, "the route")) {
+            setFollowing(true);
+            module_state.setPanelOpen(false);
+            return;
+          }
+          stopFollowing();
+          setView((prev) => ({ lat: point.lat, lon: point.lon, zoom: Math.max(prev.zoom, 19) }));
+        }}
       />
 
       {/* The stick. Only in play mode, because in the other two the position
@@ -4381,7 +4496,7 @@ export default function App() {
             points={live_snap.total_points}
             streak_weeks={live_snap.streak_weeks}
             is_week_active={live_snap.participated_this_week}
-            place={here_sector ? here_sector.name : "Between sectors"}
+            place={here_sector ? areaName(here_sector) : "Between sectors"}
             stage={stage}
             vigor={vigor}
             onOpen={() => {
@@ -4392,7 +4507,11 @@ export default function App() {
         }
         control={
           <>
-            {weather && <WeatherChip weather={weather} onOpen={() => pushAlert(weatherAlert(weather), true)} />}
+            {/* The chip's sun or moon follows the same day/night as the map (the
+                `?time=` pin included), so a daytime demo never shows a moon. */}
+            {weather && (
+              <WeatherChip weather={{ ...weather, is_day: !is_night }} onOpen={() => pushAlert(weatherAlert(weather), true)} />
+            )}
             <ModeSwitch mode={map_mode} onMode={setMode} />
             <GeoModeSwitch
               mode={geo_mode}
@@ -4403,6 +4522,7 @@ export default function App() {
               }}
             />
             <Compass bearing={bearing} onReset={returnToStreet} />
+            <ModuleButton state={module_state} is_round />
           </>
         }
         below={
@@ -4455,7 +4575,7 @@ export default function App() {
           resident={sectorResident(picked_sector)}
           progress={sectorProgress(sighting, picked_sector)}
           is_desktop={is_desktop}
-          onLog={(code) => openCamera(code, picked_sector.name)}
+          onLog={(code) => openCamera(code, areaName(picked_sector))}
           onDismiss={() => setPickedSector(null)}
         />
       )}
@@ -4613,6 +4733,7 @@ export default function App() {
   const shown_alert = alert_queue.find((a) => is_on_map || !MAP_ONLY_ALERT.has(a.alert_id)) ?? null;
   const is_play = is_on_map && map_mode === "play";
 
+  const here_area = here_sector ? areaName(here_sector) : undefined;
   const pressGo = () => {
     setTrainerOpen(false);
     setNearbyOpen(false);
@@ -4622,12 +4743,14 @@ export default function App() {
          land in the same render. Walking to a find is left for the map. */
       setMode("play");
       go("/");
-      if (daily && !daily.is_done) openCamera(daily.species_code, daily.sector_name);
-      else openCamera(here_sector?.species_code[0] ?? pick_code, here_sector?.name);
+      if (daily && !daily.is_done) openCamera(daily.species_code, here_area);
+      else openCamera(here_sector?.species_code[0] ?? pick_code, here_area);
       return;
     }
     if (daily && !daily.is_done) {
-      openCamera(daily.species_code, daily.sector_name);
+      /* The sheet's title is where you are standing; the hunt tile inside it
+         still names the hunt and its area. */
+      openCamera(daily.species_code, here_area);
       return;
     }
     const near = spawn_world.spawn[0];
@@ -4635,7 +4758,7 @@ export default function App() {
       walkToSpawn(near);
       return;
     }
-    openCamera(here_sector?.species_code[0] ?? pick_code, here_sector?.name);
+    openCamera(here_sector?.species_code[0] ?? pick_code, here_area);
   };
 
   return (
@@ -4716,15 +4839,7 @@ export default function App() {
             onCycleMode={() => setGeoMode((m) => nextGeoMode(m))}
             onHunt={() => {
               setTrainerOpen(false);
-              if (daily) {
-                const place = sectorByCode(daily.sector_code);
-                if (place && geo_mode === "play") {
-                  if (geo.walkTo(walkPoint(place), 0, place.name)) setFollowing(true);
-                  else showToast(noRouteLine(place.name));
-                } else if (place) {
-                  setView((prev) => ({ ...prev, lat: place.label_point[0], lon: place.label_point[1], zoom: Math.max(prev.zoom, 17) }));
-                }
-              }
+              if (daily) goDaily();
               setMode("play");
               go("/");
             }}

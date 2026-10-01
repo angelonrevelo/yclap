@@ -4,6 +4,7 @@ import { formatMeter, formatWalkMinute, type Fix, type LatLon } from "./geo";
 import { isBadge, type Sighting } from "./journal";
 import { species } from "./data";
 import { biome_sector, sectorByCode } from "./sector";
+import { dailyTaskFor, huntFind } from "./gamify";
 import { displayName, kindOf } from "./kind";
 import { KIND_LABEL, type Kind } from "./kind";
 import { wildCollection, type WildFind } from "./collection";
@@ -138,8 +139,14 @@ export function useSpawnWorld(
     if (!pool || pool.length === 0) return EMPTY_WORLD;
     const { ends_at } = spawnWindow(now_ms);
     const explored = explored_key ? new Set(explored_key.split("|")) : undefined;
+    /* The day's hunt is a find of its own, standing in the area the hunt names
+       for the whole day — so "Out today in X" is true on every phone, in every
+       window, whatever the seeded rotation rolled. */
+    const hunt = dailyTaskFor(pool, biome_sector, new Date(now_ms), []);
+    const hunt_find = hunt ? huntFind(hunt, pool) : null;
+    const spawn = spawnWorld(pool, now_ms, at ?? null, { explored_sector: explored });
     return {
-      spawn: spawnWorld(pool, now_ms, at ?? null, { explored_sector: explored }),
+      spawn: hunt_find ? [...spawn, hunt_find] : spawn,
       pool,
       pool_count: new Map(pool.map((e) => [e.species_code, e.count])),
       ends_at,
@@ -702,7 +709,7 @@ export function WorldStrip({
       </div>
       <div className="flex flex-wrap gap-2" style={{ marginTop: 10 }}>
         {walker_label && <Pill tone="info">{walker_label}</Pill>}
-        <Pill tone="neutral">{world.totals.sighting_count} finds shared</Pill>
+        <Pill tone="neutral">{world.totals.sighting_count} {world.totals.sighting_count === 1 ? "find" : "finds"} shared</Pill>
         <Pill tone="native">{mine} of them yours</Pill>
       </div>
       <p style={{ fontSize: 10.5, color: "rgb(var(--mg-ink-rgb) / 0.6)", marginTop: 10, lineHeight: 1.4 }}>
