@@ -140,6 +140,7 @@ import { matchCampus, suggestedPick } from "./inat-match";
 import { pinReply } from "./pin-reply";
 import InatStrip from "./inat-strip";
 import { ModuleButton, ModuleDock, ModuleLayer } from "./module-ui";
+import { shownTrack } from "./track";
 import { fromLabel, moduleAttribution, useModuleState } from "./module-state";
 import { Card, Chip, Eyebrow, Fab, GlyphDisc, Pill, PrimaryPill, RADIUS, SheetClose, SpeciesName, SpeciesPill, speciesNameText, TaxonName, TaxonThumb } from "./ui";
 import { DexCard, DexHeader, GameDock, GameToast, PlayerHud, QuestBanner, StageSticker, TodayHuntCard } from "./hud";
@@ -3624,6 +3625,23 @@ export default function App() {
   /* A walk-to that gets stuck part-way says so (showToast is declared below;
      this only runs on a later tick). */
   const geo = useGeo(geo_mode, bearing, view_span_m, (line) => showToast(line));
+
+  /* What the play map lays over its ways: the trail's legs, the walk to help,
+     and the land/sea/air route files when that layer is on (`track.ts`). */
+  const help_route = module_state.help.status === "found" ? module_state.help : null;
+  const play_track = useMemo(
+    () =>
+      shownTrack({
+        trail_leg:
+          module_state.shown.trail && module_state.trail_plan
+            ? module_state.trail_plan.leg.map((leg) => ({ from: leg.from, waypoint: leg.route?.waypoint ?? null }))
+            : [],
+        trail_at: module_state.trail_at,
+        help: help_route ? { from: geo.fix ?? CAMPUS_CENTER, waypoint: help_route.route.waypoint, title: `To ${help_route.feature.name ?? "help"}` } : null,
+        is_file_shown: module_state.shown.track,
+      }),
+    [module_state.shown.trail, module_state.shown.track, module_state.trail_plan, module_state.trail_at, help_route, geo.fix],
+  );
   /* Boot, alerts and weather. The boot overlay sits over everything until the
      safety card is dismissed; alerts raised meanwhile queue behind it. */
   const [is_booted, setBooted] = useState(() => isBootSkipped());
@@ -4442,6 +4460,28 @@ export default function App() {
           setSettingsSetupFirst(true);
           go("/settings");
         }}
+        track={play_track}
+      />
+
+      {/* The modules (trails, emergency, routes) on the play map too: a route
+          is something you walk, so it belongs where you walk. */}
+      <ModuleDock
+        state={module_state}
+        from={geo.fix ?? CAMPUS_CENTER}
+        from_label={fromLabel(geo.fix)}
+        is_desktop={is_desktop}
+        onFocus={(point) => {
+          /* The play camera is welded to the walker, so "show me" on the play
+             map means walk there (the routed walk-to), the way every other
+             tap on this map does. Without a walker to move, look instead. */
+          if (geo_mode === "play" && geo.walkTo(point, 0, "the route")) {
+            setFollowing(true);
+            module_state.setPanelOpen(false);
+            return;
+          }
+          stopFollowing();
+          setView((prev) => ({ lat: point.lat, lon: point.lon, zoom: Math.max(prev.zoom, 19) }));
+        }}
       />
 
       {/* The stick. Only in play mode, because in the other two the position
@@ -4482,6 +4522,7 @@ export default function App() {
               }}
             />
             <Compass bearing={bearing} onReset={returnToStreet} />
+            <ModuleButton state={module_state} is_round />
           </>
         }
         below={

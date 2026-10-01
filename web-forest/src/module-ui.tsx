@@ -25,6 +25,7 @@ import type { EmergencyRouteState, ModuleState } from "./module-state";
 import { sector, sectorByCode } from "./sector";
 import type { Projection } from "./tile-map";
 import { TRAIL, progressLine, remainingMeter, type TrailPlan } from "./trail";
+import { FILE_TRACK, mediumOf, TRACK_STYLE } from "./track";
 
 /**
  * The campus-module UI: the layers each module draws on the field map, and
@@ -286,7 +287,37 @@ function helpLine(help: EmergencyRouteState): ReactNode {
   );
 }
 
-export function ModuleButton({ state }: { state: ModuleState }) {
+export function ModuleButton({ state, is_round = false }: { state: ModuleState; is_round?: boolean }) {
+  /* On the play map the control column is round 44 px buttons; a text pill
+     there stuck out over the walkers-out count. Same action, as an icon. */
+  if (is_round) {
+    return (
+      <button
+        type="button"
+        onClick={() => state.setPanelOpen(!state.is_panel_open)}
+        aria-expanded={state.is_panel_open}
+        aria-label="Trails, routes and emergency"
+        title="Trails, routes and emergency"
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 999,
+          background: "#fff",
+          border: state.is_panel_open ? "2px solid var(--mg-green)" : "none",
+          boxShadow: "var(--mg-shadow-sm)",
+          display: "grid",
+          placeItems: "center",
+          cursor: "pointer",
+        }}
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 19 C 5 13, 12 15, 12 10 S 19 6, 19 4" fill="none" stroke="#159A5E" strokeWidth="2.6" strokeLinecap="round" />
+          <circle cx="5" cy="19" r="2.4" fill="#E2512F" />
+          <circle cx="19" cy="4" r="2.4" fill="#1678C2" />
+        </svg>
+      </button>
+    );
+  }
   return (
     <button
       type="button"
@@ -498,6 +529,29 @@ export function ModuleDock({
             />
           ))}
         </Section>
+      )}
+      {is_on("trail") && FILE_TRACK.length > 0 && (
+        <section style={{ borderTop: "1px solid rgb(var(--mg-ink-rgb) / 0.1)", padding: "12px 0" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <h3 style={{ margin: 0, fontSize: 14, fontWeight: 800, flex: 1 }}>Routes on the map: land, sea, air</h3>
+            <Toggle is_on={state.shown.track} onClick={() => state.toggle("track")} label="Show routes on the map" />
+          </div>
+          {FILE_TRACK.map((t) => (
+            <div key={t.track_code} style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+              <span aria-hidden style={{ width: 18, height: 6, borderRadius: 3, background: TRACK_STYLE[t.track_kind].fill, flex: "none" }} />
+              <span style={{ ...panel_text, flex: 1 }}>
+                <strong>{t.title}</strong>
+                <span style={{ ...small_text, display: "block" }}>
+                  {mediumOf(t)} · {t.track_kind}
+                  {t.is_demo ? " · demo line, not mapped or observed" : ""} · {t.source}
+                </span>
+              </span>
+              <Button tone="rgb(var(--mg-ink-rgb) / 0.7)" onClick={() => onFocus(t.point[0])}>
+                Show
+              </Button>
+            </div>
+          ))}
+        </section>
       )}
       <p style={{ ...small_text, margin: "10px 0 0" }}>
         Routes start from {from_label}. Distances are along walkable ground; minutes assume the app's walking pace.

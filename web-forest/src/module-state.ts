@@ -29,8 +29,8 @@ export interface ModuleState {
   is_panel_open: boolean;
   setPanelOpen: (is_open: boolean) => void;
   /** Which layers are drawn right now — a module can be enabled but hidden. */
-  shown: Record<"hotspot" | "emergency" | "flood" | "trail", boolean>;
-  toggle: (key: "hotspot" | "emergency" | "flood" | "trail") => void;
+  shown: Record<"hotspot" | "emergency" | "flood" | "trail" | "track", boolean>;
+  toggle: (key: "hotspot" | "emergency" | "flood" | "trail" | "track") => void;
   picked_feature: EmergencyFeature | null;
   pickFeature: (f: EmergencyFeature | null) => void;
   help: EmergencyRouteState;
@@ -48,7 +48,7 @@ export function useModuleState(): ModuleState {
   const config = useMemo(() => configFromQuery(typeof window === "undefined" ? "" : window.location.search), []);
   const module_on = config.module_on;
   const [is_panel_open, setPanelOpen] = useState(false);
-  const [shown, setShown] = useState({ hotspot: false, emergency: false, flood: false, trail: false });
+  const [shown, setShown] = useState({ hotspot: false, emergency: false, flood: false, trail: false, track: false });
   const [picked_feature, pickFeature] = useState<EmergencyFeature | null>(null);
   const [help, setHelp] = useState<EmergencyRouteState>({ status: "idle" });
   const [trail_plan, setTrailPlan] = useState<TrailPlan | null>(null);

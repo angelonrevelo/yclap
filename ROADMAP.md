@@ -298,6 +298,22 @@ Gelo, 10-01: "i really dont like this artifical horizon, in the real pokemon go,
 | The horizon is where the world really ends: ground drawn out to a view distance, fading by real distance into the sky, which begins where that distance lands on screen. No painted hills, skyline or haze band | Play view (`horizon.tsx`, `camera-feel.ts`, `tile-map.tsx`); buildings, trees, labels and finds fade and cull by the same distance | `camera-feel.test.ts` "the real horizon": at the street camera the horizon lands 5–30 % down a phone, a laptop and a wide desktop; tilting up brings it down; fog is 0 before `FOG_START` and 1 at the view distance | Shipped. Close pitch 58° → 62° (max 64° → 68°) so the sky shows as in GO |
 | The close camera never breaks: no ground, walker, trees or dock dropping out while walking and turning at a steep pitch | Play view | Stress run (max tilt, walking and turning, 1 frame/s, pixel check for the dock and the walker): old build 7 of 20 frames broken, new build 0 of 20 on a 1780×880 desktop and 0 of 10 on a 390×844 phone. `camera-feel.test.ts`: the clip never reaches behind the eye at any pitch 40–68° on any screen (red with the guard removed), and its area is bounded | Shipped. **Not done:** tested with Chrome on this machine's RTX 2060 (headless, GPU compositing on); not yet on a physical phone or a low-end laptop's integrated GPU |
 
+### 2026-10-01 — the 3D walker, and one clean way network with land, sea and air tracks
+
+Gelo, 10-01: "make you get use the 3d version of the walker/pet", and the paths/roads/trails "(land/air/sea) … emergency area/hiking trails in cebu, or even underwater species … fully custom, clean and usable, similar to pokemon go … its not clean, roundy, osm and our are overlapping". pmap (Mac) was offline over Tailscale; its pipeline's claim-reconciler rule (one layer owns each piece of ground) was taken from its commit log.
+
+| Behavior | Surface | PASS iff | Status |
+|----------|---------|----------|--------|
+| The walker is the 3D trainer and the pet the 3D Agila, limbs joined | Play view; `?avatar=hiker` / `?avatar=sticker` keep the old ones | `auditConnectivity` on all five GLBs: no joints, no islands; screenshot shows the trainer and egg | Shipped (merged `mac/demo-0926`) |
+| One way network, nothing doubled: no sidewalk beside its road, no crossing, driveway or parking aisle, no stub blobs, square ends, no centre dashes | Play view ground from `campus-network.json` (`script/build-network.mjs`) | `network.test.ts`: no walk lies inside a street ribbon for >60 % of its length (the old data fails it: 9 of 198), no dead-end walk under 9 m, report adds up | Shipped |
+| Open water is drawn: the pond and the pool | Play view ground | `network.test.ts` pond present; screenshot | Shipped |
+| Trails and the walk to help draw on the PLAY map, as ribbons on the ground, the help destination marked; a routes button on the play map opens the modules | Play view: routes button under the compass; `track.ts`, `TrackGround` | `network.test.ts` shownTrack (active leg last, walked faint, unroutable leg not drawn); screenshot of the red route to JM Lucas Infirmary and the green trail | Shipped |
+| Land, sea and air tracks from files: a sea line is dots over water, an air line lifts off the ground by its altitude with its shadow under it | Routes on the map toggle; `src/asset/track/*.json`, format in `web-forest/docs/track-format.md` | `trackProblem` refuses a broken file; every file registered; pond-shore lies on the pond edge; the demo flyway says it is a demo | Shipped. Only a **demo** flyway exists; no observed flight line |
+| Field view's Guide basemap no longer has our paths drawn over OSM's own | Field view | Open `/map?view=field` on Guide: one footway network | Shipped |
+| The pet never draws over a dialog | Play view (`isolation: isolate` on the map) | "No position here" card shows no egg over it | Shipped |
+| **A Cebu site**: hiking trails, emergency areas and reef/dive lines | needs its own box, OSM extract, network build and `MODULE_CONFIG` | A second site config boots with its own map and tracks | Not built: the app is boxed to one campus |
+| **Underwater species** found from the shore: spawns inside water, logged from the edge | `spawn.ts`, `placement.ts` | A spawn can sit in the pond and is loggable within reach from the shore | Not built |
+
 ---
 
 ## 2026-09-26 — Showcase panel: better features

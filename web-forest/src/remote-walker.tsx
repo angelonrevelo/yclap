@@ -505,8 +505,9 @@ export function HallCount({ hall }: { hall: Hall }) {
         position: "absolute",
         /* Under the right-hand camera orbs: the space under the player card
            is where the spawn toasts land. 240, not 172: the weather chip
-           joined the column and the compass ended up under this pill. */
-        top: "calc(env(safe-area-inset-top, 0px) + 240px)",
+           joined the column and the compass ended up under this pill; 292
+           since the routes button (10-01) made it five orbs. */
+        top: "calc(env(safe-area-inset-top, 0px) + 292px)",
         right: 12,
         zIndex: 8,
         pointerEvents: "none",
