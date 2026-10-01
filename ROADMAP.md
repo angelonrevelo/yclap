@@ -298,7 +298,17 @@ Gelo, 10-01: "i really dont like this artifical horizon, in the real pokemon go,
 | The horizon is where the world really ends: ground drawn out to a view distance, fading by real distance into the sky, which begins where that distance lands on screen. No painted hills, skyline or haze band | Play view (`horizon.tsx`, `camera-feel.ts`, `tile-map.tsx`); buildings, trees, labels and finds fade and cull by the same distance | `camera-feel.test.ts` "the real horizon": at the street camera the horizon lands 5–30 % down a phone, a laptop and a wide desktop; tilting up brings it down; fog is 0 before `FOG_START` and 1 at the view distance | Shipped. Close pitch 58° → 62° (max 64° → 68°) so the sky shows as in GO |
 | The close camera never breaks: no ground, walker, trees or dock dropping out while walking and turning at a steep pitch | Play view | Stress run (max tilt, walking and turning, 1 frame/s, pixel check for the dock and the walker): old build 7 of 20 frames broken, new build 0 of 20 on a 1780×880 desktop and 0 of 10 on a 390×844 phone. `camera-feel.test.ts`: the clip never reaches behind the eye at any pitch 40–68° on any screen (red with the guard removed), and its area is bounded | Shipped. **Not done:** tested with Chrome on this machine's RTX 2060 (headless, GPU compositing on); not yet on a physical phone or a low-end laptop's integrated GPU |
 
-### 2026-10-01 — things to do, SEEDS challenges nobody can cheat, group walks
+### 2026-10-01 — clean biome edges, accessories on the 3D figures, livelier trainer and pet
+
+Gelo, 10-01: "clean biome boundaries, animations 3d figures + accessories (from shop/blindbox/etc.) and pet".
+
+| Behavior | Surface | PASS iff | Status |
+|----------|---------|----------|--------|
+| Biomes read as clean areas: one tone per kind (two greenness steps), same-tone neighbours drawn as one shape with a same-colour seam stroke; only the sector you stand in is outlined | Play view (`biomeTone`, `KIND_ORDER`, `play-map.tsx`) | Screenshot: no patchwork of near-identical greens, no hairline seams; field view keeps per-sector colours | Shipped |
+| Accessories are worn on the 3D figures and move with them: 8 blind-box charms and 4 shop items on the trainer, 3 growth rewards and a bandana on the pet; one per slot | Map walker and pet; Buddy sheet → Wardrobe (`wear.ts`, `use-wear.ts`, `wardrobe.tsx`, `character-model.tsx`) | `wear.test.ts`: every catalogue item is built into its model and nothing else is; shop spends a balance, never twice, never sells a charm; one per slot. Screenshot: salakot, glasses, scarf on the trainer, bandana on the pet, nothing hidden flashing on load | Shipped |
+| The trainer looks around, blinks and cheers; every pet stage has idle / walk / sleep / happy picked by its pose; both celebrate a logged find | `build-eagle-glb.mjs`, `pet-eagle.tsx`, `character.tsx` | `wear.test.ts` clip names; connectivity audit: all five models one piece at every keyframe (the firefly is the one named `float_` exemption) | Shipped. **Not done:** checked in headless Chrome only |
+| The trainer's loading still matches the model | `agila-trainer-poster.webp` | Rendered from `agila-trainer.glb` at the map framing, accessories hidden, transparent | Shipped |
+
 
 Gelo, 10-01: "improve on the display of items on the map (things to do), also adding more objectives (doable by anyone) and a way for seeds to integrate challenges to students and that noone can cheat … research all the anticheat measures pokemon go has + make sure multiplayer works well or group walk". Research: `docs/research/anticheat.md`. Spec: `docs/spec/seeds-challenge.md`.
 
