@@ -100,6 +100,8 @@ export interface SightingWire {
   lon: number | null;
   entry_kind: "badge" | "contribution";
   created_at: string;
+  /** How the position was got — kept end to end, so a stick-walk find is never passed off as a GPS one. */
+  fix_source?: "gps" | "demo" | "play" | null;
 }
 
 export function toWire(
@@ -110,6 +112,7 @@ export function toWire(
     lon: number | null;
     entry_kind?: "badge" | "contribution";
     created_at: string;
+    fix_source?: "gps" | "demo" | "play" | null;
   },
   common_name: string,
 ): SightingWire {
@@ -121,6 +124,7 @@ export function toWire(
     lon: row.lon,
     entry_kind: row.entry_kind ?? "badge",
     created_at: row.created_at,
+    fix_source: row.fix_source ?? null,
   };
 }
 

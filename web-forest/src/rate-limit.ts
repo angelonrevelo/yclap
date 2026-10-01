@@ -243,7 +243,9 @@ export function accountCorsOf(origin: string | null, host: string, allow: readon
 
 /** The paths that take `accountCorsOf`. */
 export function isAccountCorsPath(pathname: string): boolean {
-  return pathname.startsWith("/auth/") || pathname.startsWith("/account/") || pathname === "/inat/identify";
+  /* /quest and /quest/claim too: a claim carries the session cookie, so one
+     signed-in student is one claim (worker/quest.ts). */
+  return pathname.startsWith("/auth/") || pathname.startsWith("/account/") || pathname === "/inat/identify" || pathname === "/quest" || pathname === "/quest/claim";
 }
 
 /**

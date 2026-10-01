@@ -6,6 +6,7 @@
  */
 
 import { species } from "./data.ts";
+import { CAMPUS_BOX } from "./geo.ts";
 import { safeNameOf } from "./name-filter.ts";
 import { weekKey } from "./week.ts";
 
@@ -59,7 +60,12 @@ export interface SightingRow {
   lon: number | null;
   entry_kind: "badge" | "contribution";
   created_at: string;
+  /** "gps" · "demo" · "play" (the stick), or null when the phone did not say. Never upgraded. */
+  fix_source?: "gps" | "demo" | "play" | null;
 }
+
+/** A logged position this far outside the campus box is not a campus find: its point is dropped. */
+const SIGHTING_BOX_PAD_DEG = 0.02;
 
 /**
  * Everything below `World` is what EVERY phone receives, so it carries
@@ -209,13 +215,31 @@ export function sanitizeSighting(
     lon?: unknown;
     entry_kind?: unknown;
     created_at?: unknown;
+    fix_source?: unknown;
   },
   player_id: string,
+  now_ms: number = Date.now(),
 ): SightingRow | null {
   if (typeof input.sighting_id !== "string" || typeof input.species_code !== "string") return null;
   if (!input.sighting_id.trim() || !input.species_code.trim()) return null;
-  const lat = typeof input.lat === "number" && Number.isFinite(input.lat) ? input.lat : null;
-  const lon = typeof input.lon === "number" && Number.isFinite(input.lon) ? input.lon : null;
+  let lat = typeof input.lat === "number" && Number.isFinite(input.lat) ? input.lat : null;
+  let lon = typeof input.lon === "number" && Number.isFinite(input.lon) ? input.lon : null;
+  /* A point off campus (or off the globe) is not believed: the find stays, its spot does not. */
+  if (
+    lat === null ||
+    lon === null ||
+    lat < CAMPUS_BOX.south - SIGHTING_BOX_PAD_DEG ||
+    lat > CAMPUS_BOX.north + SIGHTING_BOX_PAD_DEG ||
+    lon < CAMPUS_BOX.west - SIGHTING_BOX_PAD_DEG ||
+    lon > CAMPUS_BOX.east + SIGHTING_BOX_PAD_DEG
+  ) {
+    lat = null;
+    lon = null;
+  }
+  /* The phone's clock is not trusted to write the future: a find dated ahead of the server is dated now. */
+  const said = typeof input.created_at === "string" ? Date.parse(input.created_at) : NaN;
+  const created_at = Number.isFinite(said) && said <= now_ms + 5 * 60 * 1000 ? new Date(said).toISOString() : new Date(now_ms).toISOString();
+  const fix_source = input.fix_source === "gps" || input.fix_source === "demo" || input.fix_source === "play" ? input.fix_source : null;
   return {
     sighting_id: input.sighting_id.trim().slice(0, 80),
     player_id,
@@ -224,7 +248,8 @@ export function sanitizeSighting(
     lat,
     lon,
     entry_kind: input.entry_kind === "contribution" ? "contribution" : "badge",
-    created_at: typeof input.created_at === "string" ? input.created_at : new Date().toISOString(),
+    created_at,
+    fix_source,
   };
 }
 

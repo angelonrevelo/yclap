@@ -181,6 +181,7 @@ export function mergeRemoteSighting(wire: {
   lon: number | null;
   entry_kind?: "badge" | "contribution";
   created_at: string;
+  fix_source?: "gps" | "demo" | "play" | null;
 }): boolean {
   const row = readSighting();
   if (row.some((s) => s.sighting_id === wire.sighting_id)) return false;
@@ -194,7 +195,9 @@ export function mergeRemoteSighting(wire: {
     lat: wire.lat,
     lon: wire.lon,
     accuracy_m: null,
-    fix_source: wire.lat !== null ? "gps" : null,
+    /* What the phone that logged it said — never upgraded to "gps" because a
+       point exists (10-01: a stick-walk find came back from /join as GPS). */
+    fix_source: wire.fix_source ?? null,
     note: null,
     walk_id: null,
     entry_kind: wire.entry_kind === "contribution" ? "contribution" : "badge",

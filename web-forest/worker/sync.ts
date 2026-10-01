@@ -24,6 +24,7 @@ import { EDGE_REPORT_IP_PER_HOUR } from "../src/moderation.ts";
 import { safeNameOf, nameNoticeOf } from "../src/name-filter.ts";
 import { LIVE_PATH, LiveHall } from "./live-socket.ts";
 import { isModPath, ModerationService, type ModWorld } from "./moderation.ts";
+import { isQuestPath, QuestService } from "./quest.ts";
 import { accountCorsOf, clientIp, isAccountCorsPath, pageOriginListOf, RateWindow, withCors } from "../src/rate-limit.ts";
 
 export interface Env extends AccountEnv {
@@ -53,7 +54,15 @@ export interface Env extends AccountEnv {
    * characters). Unset or short: /mod/api/* answers 404 and the console is off.
    */
   MOD_TOKEN?: string;
+  /**
+   * The SEEDS organiser console's password (`wrangler secret put SEEDS_TOKEN`,
+   * 16+ characters, or `name:token,…`). Unset: /seeds/api/* answers 404.
+   */
+  SEEDS_TOKEN?: string;
 }
+
+/** The largest /sync body taken: 500 rows of a few hundred bytes, with room. */
+const SYNC_BODY_MAX = 512 * 1024;
 
 const SYNC_PATH = new Set(["/world", "/sync", "/live", "/health", "/join", "/partner", "/mine"]);
 
@@ -75,7 +84,7 @@ export default {
       const id = env.CAMPUS.idFromName("loyola");
       return withCors(await env.CAMPUS.get(id).fetch(request), cors);
     }
-    if (SYNC_PATH.has(url.pathname) || LIVE_PATH.has(url.pathname) || isAccountPath(url.pathname) || isModPath(url.pathname)) {
+    if (SYNC_PATH.has(url.pathname) || LIVE_PATH.has(url.pathname) || isAccountPath(url.pathname) || isModPath(url.pathname) || isQuestPath(url.pathname)) {
       const id = env.CAMPUS.idFromName("loyola");
       return env.CAMPUS.get(id).fetch(request);
     }
@@ -94,6 +103,8 @@ export class CampusWorld {
   page_origin: string[];
   /** Wrong walker codes per address — see `CODE_MISS_MAX`. In memory, like every brake here. */
   code_miss = new RateWindow(CODE_MISS_MAX, CODE_MISS_WINDOW_MS);
+  /** /sync pushes per address — see the /sync route. */
+  sync_limit = new RateWindow(30, 60_000);
 
   constructor(ctx: DurableObjectState, env: Env) {
     this.ctx = ctx;
@@ -109,6 +120,23 @@ export class CampusWorld {
   /** The world as every phone sees it: what a moderator hid is filtered out. */
   world(store: MemoryCampusStore) {
     return worldFrom(store, Date.now(), this.moderation.worldHide(), hallDefaultOf(this.env.HALL_DEFAULT));
+  }
+
+  quest_service: QuestService | null = null;
+
+  /** SEEDS challenges, in this object's SQLite, judged here — see worker/quest.ts. */
+  quest(): QuestService {
+    this.quest_service ??= new QuestService(
+      (query: string, ...bind: SqlValue[]) => this.ctx.storage.sql.exec(query, ...bind).toArray(),
+      {
+        token: this.env.SEEDS_TOKEN,
+        session: async (request) => {
+          const session = await this.account().sessionOf(request);
+          return session ? { account_code: session.account.account_code, display_name: session.account.display_name } : null;
+        },
+      },
+    );
+    return this.quest_service;
   }
 
   /** Accounts live in this object's SQLite — see worker/account.ts. */
@@ -164,6 +192,7 @@ export class CampusWorld {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     if (isAccountPath(url.pathname)) return this.account().handle(request);
+    if (isQuestPath(url.pathname)) return (await this.quest().handle(request, this.page_origin))!;
     /* Before the catch-all OPTIONS below: /report answers only its own page,
        and the console answers no other origin at all. */
     if (isModPath(url.pathname)) {
@@ -235,9 +264,17 @@ export class CampusWorld {
     }
 
     if (request.method === "POST" && url.pathname === "/sync") {
+      /* A brake and a cap (10-01 audit: /sync had neither). Thirty pushes a
+         minute per address covers a booth of phones on one Wi-Fi; the body is
+         a journal of at most SYNC_ROW_MAX rows, never megabytes. */
+      const ip = clientIp(request) ?? "local";
+      const wait = this.sync_limit.take(ip, Date.now());
+      if (wait > 0) return this.json({ error: "too many syncs from this network — try again shortly" }, 429);
+      const text = await request.text();
+      if (text.length > SYNC_BODY_MAX) return this.json({ error: "sync too large", max_byte: SYNC_BODY_MAX }, 413);
       let body: { player?: unknown; sighting?: unknown };
       try {
-        body = (await request.json()) as { player?: unknown; sighting?: unknown };
+        body = JSON.parse(text) as { player?: unknown; sighting?: unknown };
       } catch {
         return this.json({ error: "bad json" }, 400);
       }

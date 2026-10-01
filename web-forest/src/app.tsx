@@ -6,6 +6,7 @@ import {
   addFriend,
   groupMember,
   groupStreak,
+  rememberWeek,
   readFriend,
   removeFriend,
   writeFriend,
@@ -92,6 +93,8 @@ import {
   LOCAL_OBS_STATUS_LABEL,
   LOCAL_OBS_STATUS_NOTE,
   dailySubject,
+  huntClearOf,
+  HUNT_REACH_M,
   dailyTaskFor,
   gamifySnapshot,
   localObsStatus,
@@ -141,6 +144,11 @@ import { pinReply } from "./pin-reply";
 import InatStrip from "./inat-strip";
 import { ModuleButton, ModuleDock, ModuleLayer } from "./module-ui";
 import { shownTrack } from "./track";
+import TodoSheet, { TodoChip } from "./todo";
+import { objectiveProgress } from "./objective";
+import { claimableSighting, claimOf, fetchQuestBoard, readClassCode, sendClaim, writeClassCode, type QuestBoard } from "./quest-client";
+import { isQuestOpen, type Quest } from "./quest";
+import { canJoin, cleanPartyCode, newPartyCode, partyMemberOf, partySpecies, partyTagOf, PARTY_GOAL_SPECIES, readParty, writeParty, type Party, type PartyWalker } from "./party";
 import { fromLabel, moduleAttribution, useModuleState } from "./module-state";
 import { Card, Chip, Eyebrow, Fab, GlyphDisc, Pill, PrimaryPill, RADIUS, SheetClose, SpeciesName, SpeciesPill, speciesNameText, TaxonName, TaxonThumb } from "./ui";
 import { DexCard, DexHeader, GameDock, GameToast, PlayerHud, QuestBanner, StageSticker, TodayHuntCard } from "./hud";
@@ -3557,6 +3565,12 @@ export default function App() {
   const [layer, setLayer] = useState<Layer>("guide");
   /* Campus modules (hotspots, emergency & DRR, trails) — Gelo 09-30 `3:58`–`5:11`. All UI in module-ui.tsx. */
   const module_state = useModuleState();
+  /* To do (todo.tsx): today's objectives, SEEDS challenges, the group walk. */
+  const [is_todo_open, setTodoOpen] = useState(false);
+  const [quest_board, setQuestBoard] = useState<QuestBoard | null>(null);
+  const [is_board_loading, setBoardLoading] = useState(false);
+  const [class_code, setClassCode] = useState<string[]>(() => readClassCode());
+  const [party, setParty] = useState<Party | null>(() => readParty());
   /* `?zoom=` is the bearing parameter's twin and exists for the same reason: a
      projector can be set up at a known camera, and a screenshot of a given zoom
      is reproducible. Clamped to the play band, so the parameter cannot reach a
@@ -3810,7 +3824,35 @@ export default function App() {
   }, [live.world?.hall_default, Boolean(live.world)]);
   /* The hall, opened once for the whole app: the map pill, the trainer sheet
      and the Dex strip all count off this one roster (`hallLabelOf`). */
-  const hall = useHall({ fix: geo.fix, stage, level, name: live_name, is_hidden: is_hidden_from_hall });
+  const hall = useHall({
+    fix: geo.fix,
+    stage,
+    level,
+    name: live_name,
+    is_hidden: is_hidden_from_hall,
+    party: party ? { tag: partyTagOf(party.code), since: party.role === "host" ? party.since : null } : null,
+  });
+  /* Everyone in the hall, as the group-walk rules read them. */
+  const hall_walker: PartyWalker[] = [...hall.track.values()].map((t) => ({
+    walker_id: t.pose.walker_id,
+    name: t.pose.name,
+    lat: t.pose.lat,
+    lon: t.pose.lon,
+    party_tag: t.pose.party_tag,
+    party_since: t.pose.party_since,
+  }));
+  const party_member = partyMemberOf(hall_walker, party);
+  const party_species = party
+    ? partySpecies(party, new Set(party_member.map((m) => m.walker_id)), live.world?.find ?? [], sighting).size
+    : 0;
+  /* The last fixes, for a SEEDS claim's speed check (`plausibilityFlag`). */
+  const recent_fix = useRef<{ lat: number; lon: number; at: number; source: "gps" | "demo" | "play" }[]>([]);
+  useEffect(() => {
+    if (!geo.fix) return;
+    const last = recent_fix.current[recent_fix.current.length - 1];
+    if (last && last.at === geo.fix.at) return;
+    recent_fix.current = [...recent_fix.current.slice(-19), { lat: geo.fix.lat, lon: geo.fix.lon, at: geo.fix.at, source: geo.fix.source }];
+  }, [geo.fix]);
   const hall_label = hallLabelOf(hall);
   /* Section art — inline vector markup (`art/svg/glyph/settings-*`). A section
      still renders headed-but-plain when a piece is missing, which is why
@@ -3830,7 +3872,8 @@ export default function App() {
      compares itself by its own hash, never by the player_id it keeps secret. */
   const me_walker_id = useMemo(() => walkerIdOf(me.player_id), [me.player_id]);
   const group_streak = useMemo(
-    () => groupStreak(live.world?.find ?? [], groupMember(friend, me_walker_id)),
+    /* The live world holds six hours; the week log holds the weeks (`rememberWeek`). */
+    () => groupStreak([...rememberWeek(live.world?.find ?? []), ...(live.world?.find ?? [])], groupMember(friend, me_walker_id)),
     [live.world?.find, friend, me_walker_id],
   );
   const addPartner = async (code: string) => {
@@ -4091,6 +4134,83 @@ export default function App() {
     return result;
   };
 
+  /* Today's objectives, counted from the journal, the ledger and the walk. */
+  const native_code = useMemo(() => new Set(Object.values(species).filter((sp) => sp.origin === "Native").map((sp) => sp.species_code)), []);
+  const objective = useMemo(
+    () => objectiveProgress({ now_ms: Date.now(), sighting, point_event: point_events, walk_track: walk?.track ?? [], native_code }),
+    [sighting, point_events, walk, native_code],
+  );
+  /* Paid once each, the moment it is done — `persistAward` dedups on the key. */
+  useEffect(() => {
+    for (const o of objective) if (o.is_done) noteAward("challenge", o.award_key, `Objective done: ${o.title} · +${POINT_VALUE.challenge}`);
+    if (party && party_species >= PARTY_GOAL_SPECIES) noteAward("challenge", `party:${party.since}`, `Group goal: ${PARTY_GOAL_SPECIES} species together · +${POINT_VALUE.challenge}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [objective.filter((o) => o.is_done).length, party_species >= PARTY_GOAL_SPECIES]);
+  /* SEEDS challenges: read on open, then every minute while the sheet is up,
+     and once at start so the chip can say one is open. */
+  useEffect(() => {
+    let is_live = true;
+    const load = async () => {
+      setBoardLoading(true);
+      const board = await fetchQuestBoard(class_code);
+      if (!is_live) return;
+      setBoardLoading(false);
+      if (board) setQuestBoard(board);
+    };
+    void load();
+    const timer = is_todo_open ? setInterval(load, 60_000) : null;
+    return () => {
+      is_live = false;
+      if (timer) clearInterval(timer);
+    };
+  }, [is_todo_open, class_code]);
+  const open_quest = (quest_board?.quest ?? []).filter(
+    (q) => isQuestOpen(q, Date.now()) && !quest_board?.claim.some((c) => c.quest_code === q.quest_code),
+  );
+  /* What the map rings: today's hunt, and every species an open challenge asks for. */
+  const target_species = useMemo(
+    () => new Set([...(daily && !daily.is_done ? [daily.species_code] : []), ...open_quest.flatMap((q) => q.species_code)]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [daily?.species_code, daily?.is_done, open_quest.map((q) => q.quest_code).join()],
+  );
+  const claim_block = !geo.fix
+    ? "Turn on your location: a SEEDS challenge is claimed where you stand."
+    : geo.fix.source !== "gps"
+      ? "A SEEDS challenge needs real GPS. Switch the walk mode from the stick to GPS, then claim."
+      : null;
+  const claimQuest = async (quest: Quest, site_code: string | null) => {
+    if (!geo.fix || claim_block) return { error: claim_block ?? "No position." };
+    const answer = quest.quest_kind === "visit" ? null : claimableSighting(quest, sighting, Date.now());
+    if (quest.quest_kind !== "visit" && !answer) {
+      return { error: quest.is_photo ? "Log the find with a photo first (within the last hour), then claim." : "Log the find first (within the last hour), then claim." };
+    }
+    const out = await sendClaim(claimOf({ quest, fix: geo.fix, sighting: answer, site_code, name: live_name, path: recent_fix.current }));
+    if ("verdict" in out && out.verdict.status !== "refused") {
+      if (out.verdict.status === "accepted") haptic("success");
+      setQuestBoard(await fetchQuestBoard(class_code));
+    }
+    return out;
+  };
+  const startParty = () => {
+    const next: Party = { code: newPartyCode(), role: "host", since: Date.now() };
+    writeParty(next);
+    setParty(next);
+  };
+  const joinParty = (raw: string): string | null => {
+    const code = cleanPartyCode(raw);
+    if (!code) return "A group code is six digits.";
+    const verdict = canJoin(code, hall_walker, geo.fix, Date.now());
+    if (!verdict.ok) return verdict.reason;
+    const next: Party = { code, role: "member", since: verdict.since };
+    writeParty(next);
+    setParty(next);
+    return null;
+  };
+  const leaveParty = () => {
+    writeParty(null);
+    setParty(null);
+  };
+
   const selected_id = pinned_id ?? nearest?.row.encounter_id ?? encounter[0].encounter_id;
   const sel = encounter.find((e) => e.encounter_id === selected_id) ?? encounter[0];
   const sel_sp = species[sel.species_code];
@@ -4216,7 +4336,14 @@ export default function App() {
         : `+${POINT_VALUE.observe} Observe`,
     );
     if (daily && !daily.is_done && daily.species_code === pick_code) {
-      noteAward("challenge", dailySubject(daily.day_key), `+${POINT_VALUE.challenge} Hunt`);
+      const hunt = huntClearOf(daily, pick_code, geo.fix);
+      if (hunt.is_clear) noteAward("challenge", dailySubject(daily.day_key), `+${POINT_VALUE.challenge} Hunt`);
+      else
+        showToast(
+          hunt.meter === null
+            ? "Logged. The hunt counts when the log has a position — turn location on at the hunt's spot."
+            : `Logged. The hunt counts at its spot — you are ${Math.round(hunt.meter)} m away (within ${HUNT_REACH_M} m).`,
+        );
     }
     setCameraOpen(false);
     setCameraRarity(null);
@@ -4461,7 +4588,33 @@ export default function App() {
           go("/settings");
         }}
         track={play_track}
+        target_species={target_species}
+        party_tag={party ? partyTagOf(party.code) : null}
       />
+
+      {is_todo_open && (
+        <TodoSheet
+          is_desktop={is_desktop}
+          onClose={() => setTodoOpen(false)}
+          objective={objective}
+          board={quest_board}
+          is_board_loading={is_board_loading}
+          class_code={class_code}
+          onClassCode={(next) => {
+            writeClassCode(next);
+            setClassCode(readClassCode());
+          }}
+          onClaim={claimQuest}
+          claim_block={claim_block}
+          party={party}
+          party_member={party_member}
+          party_species={party_species}
+          me={geo.fix}
+          onStartParty={startParty}
+          onJoinParty={joinParty}
+          onLeaveParty={leaveParty}
+        />
+      )}
 
       {/* The modules (trails, emergency, routes) on the play map too: a route
           is something you walk, so it belongs where you walk. */}
@@ -4526,9 +4679,18 @@ export default function App() {
           </>
         }
         below={
-          daily ? (
-            <QuestBanner daily={daily} reward={POINT_VALUE.challenge} onGo={goDaily} />
-          ) : null
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+            {daily ? <QuestBanner daily={daily} reward={POINT_VALUE.challenge} onGo={goDaily} /> : null}
+            <TodoChip
+              objective={objective}
+              open_quest_count={open_quest.length}
+              party_count={party ? party_member.length + 1 : null}
+              onOpen={() => {
+                module_state.setPanelOpen(false);
+                setTodoOpen((v) => !v);
+              }}
+            />
+          </div>
         }
       />
 

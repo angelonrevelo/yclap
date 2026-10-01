@@ -74,6 +74,8 @@ export function useHall(input: {
   name: string;
   /** Listen only: see the hall, send no position (`Preference.is_hidden_from_hall`). */
   is_hidden?: boolean;
+  /** The group walk this phone is in (`party.ts`): its tag rides on every pose. */
+  party?: { tag: string; since: number | null } | null;
 }): Hall {
   const is_hidden = input.is_hidden === true;
   const [track, setTrack] = useState<Map<string, Track>>(() => new Map());
@@ -142,9 +144,16 @@ export function useHall(input: {
     setSharing(false);
     const send = () => {
       if (is_hidden) return;
-      const { fix, stage, level, name } = latest.current;
+      const { fix, stage, level, name, party } = latest.current;
       if (!fix || !isInsideCampus(fix)) return;
-      const next = { lat: fix.lat, lon: fix.lon, level, stage, name };
+      const next = {
+        lat: fix.lat,
+        lon: fix.lon,
+        level,
+        stage,
+        name,
+        ...(party ? { party_tag: party.tag, ...(party.since !== null ? { party_since: party.since } : {}) } : {}),
+      };
       const now = Date.now();
       if (!shouldSend(last, { ...next, source: fix.source }, now)) return;
       last = { ...next, at: now };
@@ -214,12 +223,15 @@ export default function RemoteWalkerLayer({
   projection,
   bearing_degree,
   zoom,
+  party_tag = null,
 }: {
   hall: Hall;
   projection: Projection;
   bearing_degree: number;
   /** The camera zoom your own walker is sized by — remote walkers follow it, a size down. */
   zoom: number;
+  /** Your group walk's tag (`party.ts`): walkers carrying it are drawn as your group. */
+  party_tag?: string | null;
 }) {
   const delay_ms = interpDelayOf(hall.mode);
   useGlideClock(hall.track, delay_ms);
@@ -249,6 +261,7 @@ export default function RemoteWalkerLayer({
         if (at.x < -80 || at.y < -120 || at.x > width + 80 || at.y > height + 120) return null;
         /* Same clamp as your own walker, so two phones side by side agree. */
         const scale = Math.max(0.6, Math.min(1.35, at.scale));
+        const is_group = party_tag !== null && one.pose.party_tag === party_tag;
         return (
           <div
             key={one.pose.walker_id}
@@ -287,8 +300,8 @@ export default function RemoteWalkerLayer({
                 fontSize: 11,
                 fontWeight: 800,
                 color: "#1B2E16",
-                background: "rgba(255,255,255,0.94)",
-                border: "1.5px solid #7FB3E0",
+                border: is_group ? "2px solid #F0B429" : "1.5px solid #7FB3E0",
+                background: is_group ? "#FFF6DE" : "rgba(255,255,255,0.94)",
                 borderRadius: 999,
                 padding: "2px 8px",
                 marginBottom: 2,
@@ -296,7 +309,10 @@ export default function RemoteWalkerLayer({
               }}
             >
               {one.pose.name} · Lv {one.pose.level}
-              <span style={{ fontWeight: 600, color: "rgba(27,46,22,0.6)" }}> · {SOURCE_LABEL[one.pose.source]}</span>
+              <span style={{ fontWeight: 600, color: "rgba(27,46,22,0.6)" }}>
+                {" "}
+                · {is_group ? "your group" : SOURCE_LABEL[one.pose.source]}
+              </span>
             </button>
             <Character
               stage={(one.pose.stage as Stage) ?? "egg"}

@@ -1,4 +1,4 @@
-import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import campus_network from "./asset/campus-network.json" with { type: "json" };
 import Botanical from "./botanical";
 import { BUILDING_ATTRIBUTION, building as campus_building } from "./building";
@@ -27,6 +27,7 @@ import { KindPath, KIND_TONE } from "./kind-mark";
 import RemoteWalkerLayer, { HallCount, type Hall } from "./remote-walker";
 import PetEagle from "./pet-eagle";
 import { avatarFrom } from "./avatar";
+import { FIND_BUDGET, tierFind, type FindCandidate, type FindTier } from "./find-display";
 import { altitudeAt, lengthFraction, mediumOf, TRACK_STYLE, type Track } from "./track";
 /* The proposed 3D hiker (`?avatar=hiker`, see avatar.ts): its own lazy chunk,
    so nobody who did not ask for it downloads model-viewer for the map. */
@@ -233,6 +234,10 @@ interface Props {
   quality?: QualityPick;
   /** The tier badge was tapped: open wherever the tier is changed. */
   onQuality?: () => void;
+  /** Your group walk's tag: those walkers are drawn as your group. */
+  party_tag?: string | null;
+  /** Species an objective or a challenge points at: their finds always stand up, ringed. */
+  target_species?: Set<string>;
   /** Lines with a purpose over the way network — trail legs, the walk to help, shore and flight lines (`track.ts`). */
   track?: Track[];
 }
@@ -786,6 +791,37 @@ function Ripple({
  * re-renders every camera frame — reuses them instead of rebuilding the
  * botanical drawing and the sticker on every frame.
  */
+/**
+ * Something is there, not what: a few blades shaking in the grass, flat on the
+ * ground. Pokémon GO's rustling grass, for a find past the full-sticker range
+ * (`find-display.ts`). Tapping it walks you there like any find.
+ */
+const RustleMark = memo(function RustleMark({ tone }: { tone: string }) {
+  return (
+    <svg className="pm-rustle" width="34" height="22" viewBox="0 0 34 22" style={{ overflow: "visible" }} aria-label="Something rustling here">
+      <ellipse cx="17" cy="19" rx="13" ry="3.4" fill="rgba(20,60,30,0.22)" />
+      <g fill="none" strokeLinecap="round" strokeWidth="2.6">
+        <path d="M9 19 Q8 11 4 7" stroke="#fff" strokeWidth="5" />
+        <path d="M17 19 Q17 9 15 3" stroke="#fff" strokeWidth="5" />
+        <path d="M25 19 Q26 11 30 7" stroke="#fff" strokeWidth="5" />
+        <path d="M9 19 Q8 11 4 7" stroke={tone} />
+        <path d="M17 19 Q17 9 15 3" stroke={tone} />
+        <path d="M25 19 Q26 11 30 7" stroke={tone} />
+      </g>
+    </svg>
+  );
+});
+
+/** The ring a target find stands in: what an objective is asking you to find. */
+function TargetRing({ children }: { children: ReactNode }) {
+  return (
+    <div style={{ position: "relative" }}>
+      <div className="pm-target-ring" aria-hidden="true" />
+      {children}
+    </div>
+  );
+}
+
 const ResidentOrb = memo(function ResidentOrb({
   species_code,
   is_logged,
@@ -914,6 +950,8 @@ export default function PlayMap({
   skyline_style,
   hall,
   track = [],
+  target_species,
+  party_tag = null,
   is_night = false,
   quality = { tier: "full", reason: "default" },
   onQuality,
@@ -1055,15 +1093,72 @@ export default function PlayMap({
            Up here they are sized by the same perspective scale as the trees,
            and `Flora` paints them in one depth order with the trees. */
         const glass_find: GlassFind[] = [];
+        /* What stands up, what only rustles, what is not shown at all — one
+           budget over residents and spawns together (`find-display.ts`). */
+        const from = fix ?? view;
+        const candidate: FindCandidate[] = [];
+        for (const e of marker) {
+          const pin_kind = pinKindOf(species[e.species_code]);
+          if (pin_filter && pin_filter.size > 0 && !pin_filter.has(pin_kind)) continue;
+          const d = distanceMeter(from, e);
+          candidate.push({
+            key: `pin-${e.encounter_id}`,
+            distance_m: d,
+            in_range: Boolean(fix) && d <= AT_TREE_RADIUS_M,
+            is_target: Boolean(target_species?.has(e.species_code)),
+            is_logged: seen_species.has(e.species_code),
+            rarity_rank: 0,
+          });
+        }
+        for (const row of spawn) {
+          const d = distanceMeter(from, row);
+          candidate.push({
+            key: row.spawn_id,
+            distance_m: d,
+            in_range: Boolean(fix) && d <= AT_TREE_RADIUS_M,
+            is_target: Boolean(target_species?.has(row.species_code)),
+            is_logged: seen_species.has(row.species_code),
+            rarity_rank: row.rarity ? RARITY_ORDER.indexOf(row.rarity) : 0,
+          });
+        }
+        const tier = tierFind(candidate, FIND_BUDGET[is_desktop ? "desktop" : "phone"]);
+        const tierOf = (key: string): FindTier => tier.get(key) ?? "hidden";
+        const rustleAt = (key: string, p: { x: number; y: number; k: number }, tone: string, onClick: (() => void) | undefined) => {
+          glass_find.push({
+            key,
+            x: p.x,
+            y: p.y,
+            w: 34 * p.k,
+            h: 22 * p.k,
+            node: (
+              <div
+                data-play-marker="1"
+                onClick={onClick}
+                className="pm-find-at"
+                style={{ transform: glassAt(p.x, p.y, `translate(-50%, -100%) scale(${p.k.toFixed(3)})`), cursor: onClick ? "pointer" : undefined }}
+              >
+                <RustleMark tone={tone} />
+              </div>
+            ),
+          });
+        };
         /* Resident finds: large botanical model, tiny stem chrome — not a map pin. */
         for (const e of marker) {
           const sp = species[e.species_code];
           const pin_kind = pinKindOf(sp);
           if (pin_filter && pin_filter.size > 0 && !pin_filter.has(pin_kind)) continue;
+          const key = `pin-${e.encounter_id}`;
+          const t = tierOf(key);
+          if (t === "hidden") continue;
           const p = toScreenFind(e);
           if (!p) continue;
+          if (t === "rustle") {
+            rustleAt(key, p, "#2F6B3A", () => onSelectEncounter(e));
+            continue;
+          }
           const is_logged = seen_species.has(e.species_code);
           const in_range = fix ? distanceMeter(fix, e) <= AT_TREE_RADIUS_M : false;
+          const is_target = Boolean(target_species?.has(e.species_code));
           const model = is_desktop ? 64 : 56;
           glass_find.push({
             key: `pin-${e.encounter_id}`,
@@ -1084,16 +1179,29 @@ export default function PlayMap({
                   filter: in_range ? "drop-shadow(0 0 10px rgba(255,255,255,0.65))" : undefined,
                 }}
               >
-                <ResidentOrb species_code={e.species_code} is_logged={is_logged} model={model} label={`${sp?.common_name ?? "A find"} — ${pin_kind}`} />
+                {is_target ? (
+                  <TargetRing>
+                    <ResidentOrb species_code={e.species_code} is_logged={is_logged} model={model} label={`${sp?.common_name ?? "A find"} — ${pin_kind}, an objective`} />
+                  </TargetRing>
+                ) : (
+                  <ResidentOrb species_code={e.species_code} is_logged={is_logged} model={model} label={`${sp?.common_name ?? "A find"} — ${pin_kind}`} />
+                )}
               </div>
             ),
           });
         }
         /* Temporary world finds: a sticker on a stalk, same kind mark. */
         for (const row of spawn) {
+          const t = tierOf(row.spawn_id);
+          if (t === "hidden") continue;
           const p = toScreenFind(row);
           if (!p) continue;
           const kind = kindOf(row.iconic_taxon_name, row.archetype);
+          if (t === "rustle") {
+            rustleAt(row.spawn_id, p, KIND_TONE[kind], onSelectSpawn ? () => onSelectSpawn(row) : undefined);
+            continue;
+          }
+          const is_target = Boolean(target_species?.has(row.species_code));
           const in_range = fix ? distanceMeter(fix, row) <= AT_TREE_RADIUS_M : false;
           glass_find.push({
             key: row.spawn_id,
@@ -1113,7 +1221,13 @@ export default function PlayMap({
                   filter: in_range ? "drop-shadow(0 0 8px rgba(255,255,255,0.55))" : undefined,
                 }}
               >
-                <SpawnSticker row={row} kind={kind} is_logged={seen_species.has(row.species_code)} in_range={in_range} />
+                {is_target ? (
+                  <TargetRing>
+                    <SpawnSticker row={row} kind={kind} is_logged={seen_species.has(row.species_code)} in_range={in_range} />
+                  </TargetRing>
+                ) : (
+                  <SpawnSticker row={row} kind={kind} is_logged={seen_species.has(row.species_code)} in_range={in_range} />
+                )}
               </div>
             ),
           });
@@ -1144,7 +1258,7 @@ export default function PlayMap({
               is_night={is_night}
               is_shadow={budget.is_building_shadow}
             />
-            <RemoteWalkerLayer hall={hall} projection={projection} bearing_degree={bearing_degree} zoom={view.zoom} />
+            <RemoteWalkerLayer hall={hall} projection={projection} bearing_degree={bearing_degree} zoom={view.zoom} party_tag={party_tag} />
             <HallCountPill hall={hall} />
             <Flora
               tuft={tuft}
