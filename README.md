@@ -1,69 +1,79 @@
+<p align="center">
+  <img src="web/public/brand/logo-upright-512.png" alt="Youth CLAP" width="160">
+</p>
+
 # yclap
 
-Ateneo desk for the **Youth Climate Leadership Accelerator Project (Youth CLAP)** — landing site, research, lanes, campaign materials. Product pilots live in sibling repos.
+**The Ateneo team's desk for the Youth Climate Leadership Accelerator Project (Youth CLAP) — the landing site, the Magisphere app, and the research and pitch material behind them.**
 
-## Day-one demos
+Youth CLAP is a 2026 accelerator where student teams take a climate problem
+from research to a working pilot. This repo is the Ateneo team's shared
+workspace for it.
 
-| What | Where | Command |
-|------|--------|---------|
-| **YCLAP landing** | `web/` | `cd web && npm run dev` (port 9500) |
-| **Magisphere PWA** | `web-forest/` | `cd web-forest && npm run dev` (port **4177**) — a rotating world of finds, 1,098 3D species, badges, camera + iNaturalist identify, offline. GPS walk, an on-screen **thumbstick** for a venue with no campus trees, a locked GO camera with continuous zoom, a shadow **skyline** from 75 real building heights, walking partners + group streak, and a **Settings** tab that says what stage this is at. See [`web-forest/README.md`](web-forest/README.md) |
-| **Magisphere sync** | `web-forest/` | `npm run sync` (port **8788**) — live campus world. Vite on 4177 proxies `/sync` `/live` `/world`. Production is same-origin on the Worker. No auth, no official rank |
-| **Gargar pilot** | `~/Codex/gargar` | `cd ~/Codex/gargar && npm run dev` |
-| **EcoWaste intel** | `~/Antigravity/ecowaste` | `npm run dev` there |
+- **Magisphere** (`web-forest/`) — the team's flagship: a campus-forest app for
+  Ateneo Loyola Heights. Walk the campus, find and photograph trees and wildlife,
+  identify them through iNaturalist, earn badges, and watch a shared live map of
+  what everyone has found. It works offline and installs as a PWA. *Two-thirds
+  of this campus is green. Now you can name it.*
+- **Landing site** (`web/`) — the Youth CLAP brand, goals, legal grounds, the
+  participant journey, the team's lanes, and the experts behind it.
+- **Docs** (`docs/`) — research briefs, the problem tree, the showcase deck and
+  concept note, campaign canvas, pitch scripts, and session notes.
 
-Landing includes: **Youth CLAP design-system brand** (tokens + four-person mark), goals, legal grounds, journey, multi-lane cohort map, SEEDS/experts. Brand assets live in `web/public/brand/` and `web/src/brand/`.
+The team works in four lanes — Build, Science, Mobilize, Story.
 
-> **Correction, 2026-09-09.** This line used to claim the landing renders a
-> "project rack (Gargar · EcoWaste · options)". It does not. `web/src/data/project.js`
-> and `web/src/data/pilot.js` are **orphaned** — nothing imports either, and the only
-> `Gargar` string in the built bundle comes from a lane task in `cohort.js`. Verified by
-> grepping `web/dist/`. The data files are kept and have been brought current
-> (Magisphere now leads `project.js`), so wiring the rack is an afternoon whenever
-> someone wants it — but the README will not claim it until it renders.
+## Quick start
 
-## Docs
+Landing site:
 
-| Doc | Purpose |
-|-----|---------|
-| [`ROADMAP.md`](ROADMAP.md) | Tiered roadmap from the Aug 15 / Aug 22 sessions |
-| [`docs/problem-tree-admu-forest.md`](docs/problem-tree-admu-forest.md) | Ateneo CCC urban-forest tree (waste tree stays at `docs/problem-tree-admu.md`) |
-| [`docs/design/ui-consensus-treewatch.md`](docs/design/ui-consensus-treewatch.md) | UI consensus for `web-forest/` read off 29 Dribbble shots — adopt · defer · refuse |
-| [`docs/plaud/`](docs/plaud/) | Session-recording briefs (transcript-cited asks · decisions · open questions) |
-| [`docs/research/2026-08-deep-research-brief.md`](docs/research/2026-08-deep-research-brief.md) | Climate + PH priorities + people research |
-| [`docs/research/2026-08-research-wave3-delta.md`](docs/research/2026-08-research-wave3-delta.md) | Wave 3 delta (50 agents) · Gargar actions |
-| [`docs/campaign-canvas.md`](docs/campaign-canvas.md) | Campaign Canvas v0.2 |
-| [`docs/showcase/deck-7-slide.md`](docs/showcase/deck-7-slide.md) | **Showcase deck (Sep 26, moved from Sep 12) — seven slides**, demo beat sheet, booth + AV checklist |
-| [`docs/showcase/concept-note.md`](docs/showcase/concept-note.md) | **Showcase two-page concept note** — same information, document form |
-| [`docs/showcase/judging-rubric.md`](docs/showcase/judging-rubric.md) | NBS multi-factor judging rubric |
-| [`docs/pitch-3min.md`](docs/pitch-3min.md) | 3-min showcase script + non-claims (Gargar-era; superseded for the showcase by the deck above) |
-| [`docs/cohort-intro.md`](docs/cohort-intro.md) | Copy-paste intro for the group |
-| [`docs/lane-and-task.md`](docs/lane-and-task.md) | Lanes · tasks · pivot rules |
-| [`docs/pilot-7-day.md`](docs/pilot-7-day.md) | 7-day Gargar patch list |
-| [`docs/people/cohort-and-organizers.md`](docs/people/cohort-and-organizers.md) | Public people notes |
+```bash
+cd web
+npm install
+npm run dev          # http://localhost:9500
+```
 
-## North star
+Magisphere:
 
-**Flagship for the Sep 26 showcase:** **Magisphere** — the campus-forest PWA in `web-forest/`.
-Named by the group on 2026-09-08; the GC is `yclap magisphere 🌏🦅`.
-**Mission line:** *Two-thirds of this campus is green. Now you can name it.*
-**Evidence:** 1,098 species modelled from a real iNaturalist campus sweep; 68 walkable
-sectors cut from OSM and measured against imagery; 278 tests in the gate.
-**Earlier flagship:** Gargar pilot (scrap-to-value + diversion log), with EcoWaste intel
-as evidence — still live in its own repo, no longer the showcase piece.
-**Team model:** multi-lane (Build · Science · Mobilize · Story)
-**Promise:** any solid idea can be turned into a demoable slice before Sep 26  
+```bash
+cd web-forest
+npm install
+npm run dev          # http://localhost:4177
+npm run sync         # live campus world on :8788 (Vite proxies /sync /live /world)
+npm test
+```
 
-## Program dates (2026)
+Magisphere also has `build`, `lint`, `preview`, `handset` (HTTPS build for a
+phone on the LAN) and `deploy` (Cloudflare Worker via wrangler). Its own
+[README](web-forest/README.md) covers all of it.
 
-| Date | Session |
-|------|---------|
-| Aug 15 | LEARN · online (moved for Habagat) |
-| Aug 22 | BUILD · done — Mapúa Makati |
-| Aug 29 | Masterclass · Mapúa (venue per organizer) |
-| Sep 5 | Async prepare |
-| ~~Sep 12~~ → Sep 26 | Innovation Showcase · PNU Gym — moved for weather, subject to CCC confirmation |
+## Configuration
 
-## Legal frame (summary)
+The landing site needs none. Magisphere reads, where its sync server or Worker
+runs:
 
-RA 9729 · RA 10174 · CCC ACCELERATE · NAP / NDC · SDG Welcome Generation rationale — detail on the landing and research brief.
+- `INAT_API_TOKEN` — iNaturalist API token for identification
+  (`VITE_INAT_API_TOKEN` for the client in development).
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — Google sign-in.
+- `HALL_PAGE_ORIGIN` — extra page origins the sync "hall" answers, comma-separated.
+
+## How it works
+
+```
+web-forest (React PWA, offline-first)
+    │  /sync /live /world
+    ▼
+sync server (local, :8788)  or  Cloudflare Worker + "CAMPUS" Durable Object (production)
+    │
+    └── iNaturalist API for species identification
+```
+
+The campus map is computed from OpenStreetMap paths and measured against
+satellite imagery; the species list comes from a real iNaturalist campus sweep.
+
+## More
+
+- [ROADMAP.md](ROADMAP.md) — what's next, tiered
+- [docs/internals.md](docs/internals.md) — demo table with sibling pilots
+  (Gargar, EcoWaste), the full doc index, north star, program dates, legal frame
+- [web-forest/README.md](web-forest/README.md) — Magisphere in depth
+- [docs/](docs/) — research, showcase, campaign and people notes
