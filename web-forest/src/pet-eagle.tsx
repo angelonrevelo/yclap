@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import fly_svg from "./asset/magi/pet/eagle-fly.svg?raw";
 import perch_svg from "./asset/magi/pet/eagle-perch.svg?raw";
@@ -23,6 +23,33 @@ import {
   type PetState,
 } from "./pet";
 import type { Projection } from "./tile-map";
+import type { Stage } from "./stage.ts";
+
+const CharacterModel = lazy(() => import("./character-model"));
+
+/**
+ * Agila on the map, in 3D — your buddy at its own growth stage, following the
+ * trainer the way a Pokémon GO buddy does. Only a full-grown eagle takes to
+ * the air; an egg or a chick waits on the ground. Asleep, its clip stops.
+ * The flat pose art stands in while the viewer chunk loads.
+ */
+function PetModel({ stage, pose, size }: { stage: Stage; pose: PetPose; size: number }) {
+  const px = Math.round(size * 1.35);
+  return (
+    <Suspense fallback={<PetArt pose={pose} size={size} />}>
+      <div
+        style={{
+          width: px,
+          height: px,
+          margin: `${size - px}px 0 0 ${(size - px) / 2}px`,
+          filter: pose === "sleep" ? "saturate(.8) brightness(.92)" : undefined,
+        }}
+      >
+        <CharacterModel stage={stage} size={px} is_paused={pose === "sleep"} />
+      </div>
+    </Suspense>
+  );
+}
 
 /**
  * The pet eagle on the play map, and its card. The rules live in `pet.ts`
@@ -162,7 +189,10 @@ export default function PetEagle({
   fix,
   anchor,
   avatar_px,
+  stage,
 }: {
+  /** The buddy's growth stage — which Agila follows you. */
+  stage: Stage;
   projection: Projection;
   /** The walker's position — what the eagle follows and what wakes it. */
   fix: PetPoint;
@@ -188,7 +218,9 @@ export default function PetEagle({
     projection.project({ lat: anchor.lat + (pet.lat - fix.lat), lon: anchor.lon + (pet.lon - fix.lon) }),
   );
   const scale = Math.max(0.6, Math.min(1.35, at.scale));
-  const offset = petOffset(state.pose, avatar_px, size);
+  /* Only a full-grown eagle flies; younger stages keep to the ground beside you. */
+  const pose: PetPose = state.pose === "fly" && stage !== "tree" ? "perch" : state.pose;
+  const offset = petOffset(pose, avatar_px, size);
 
   return (
     <>
@@ -228,21 +260,8 @@ export default function PetEagle({
             transition: "transform .5s cubic-bezier(.3,.7,.3,1)",
           }}
         >
-          {/* Contact shadow, only when it is on the ground. */}
-          {state.pose !== "fly" && (
-            <span
-              style={{
-                position: "absolute",
-                left: "22%",
-                right: "22%",
-                bottom: -2,
-                height: 6,
-                borderRadius: 999,
-                background: "rgba(28,74,34,0.22)",
-              }}
-            />
-          )}
-          <PetArt pose={state.pose} size={size} />
+          {/* No drawn contact shadow: the 3D model casts its own. */}
+          <PetModel stage={stage} pose={pose} size={size} />
           {state.pose === "sleep" && (
             <span className="pet-zzz" style={{ right: -6, top: -4, fontSize: 14 }} aria-hidden>
               Zzz

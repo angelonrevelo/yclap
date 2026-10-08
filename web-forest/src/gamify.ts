@@ -215,11 +215,13 @@ export function observeAwardKind(input: {
 
 export type BuddyStage = "seedling" | "sprout" | "young_tree" | "mature_tree";
 
+/* The buddy is Agila the eagle now (`art/`, `character-model.tsx`); the keys
+   are the Working Doc's and stay, only what a player reads changed. */
 export const BUDDY_LABEL: Record<BuddyStage, string> = {
-  seedling: "Seedling",
-  sprout: "Sprout",
-  young_tree: "Young Tree",
-  mature_tree: "Mature Tree",
+  seedling: "Egg",
+  sprout: "Hatchling",
+  young_tree: "Eaglet",
+  mature_tree: "Eagle",
 };
 
 /** Sustained participation: weekly streak thresholds. */

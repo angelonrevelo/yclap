@@ -134,15 +134,16 @@
   transform: scale(0.98);
 }
 
+/* A round portrait, like a Pokémon GO trainer's — the buddy on a soft tint. */
 .gm-avatar {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   flex-shrink: 0;
-  border-radius: 14px;
+  border-radius: 999px;
   display: grid;
   place-items: center;
-  background: var(--mg-surface-2);
+  background: #eef6e8;
 }
 
 /* The level: a sunny sticker disc hung off the avatar corner. */
@@ -591,16 +592,10 @@
   animation: gm-rise 0.4s cubic-bezier(0.2, 1, 0.4, 1) both;
   transition: transform var(--mg-motion);
 }
+/* One shape per card: the portrait sits on its own tinted disc. The inner
+   panel that used to frame it made three nested outlines per card. */
 .gm-card::before {
-  content: "";
-  position: absolute;
-  left: 6px;
-  right: 6px;
-  top: 6px;
-  height: 56%;
-  border-radius: 15px;
-  background: var(--mg-surface-2);
-  z-index: 0;
+  content: none;
 }
 .gm-card > * {
   position: relative;
@@ -614,9 +609,6 @@
 .gm-card[data-locked="true"] {
   background: #fff;
   box-shadow: var(--mg-sticker);
-}
-.gm-card[data-locked="true"]::before {
-  background: #f4f5f3;
 }
 
 .gm-card-no {

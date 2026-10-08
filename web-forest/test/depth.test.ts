@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { byDepth, isCovering } from "../src/depth.ts";
+import { byDepth, isBuildingOverWalker, isCovering, isOverWalker } from "../src/depth.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const flora = readFileSync(join(root, "src/flora.tsx"), "utf8");
@@ -54,5 +54,46 @@ describe("depth on the glass", () => {
   it("night does not put a CSS filter on each tree", () => {
     assert.doesNotMatch(flora, /filter:\s*is_night/);
     assert.match(flora, /NIGHT_TONE/);
+  });
+});
+
+describe("isOverWalker", () => {
+  const walker = { x: 200, y: 500 };
+  it("a standee nearer the camera and over the walker is over them", () => {
+    assert.equal(isOverWalker({ x: 210, y: 540, w: 60, h: 90 }, walker), true);
+  });
+  it("one further away never is, however it overlaps", () => {
+    assert.equal(isOverWalker({ x: 200, y: 480, w: 200, h: 300 }, walker), false);
+  });
+  it("one off to the side is not", () => {
+    assert.equal(isOverWalker({ x: 360, y: 540, w: 60, h: 90 }, walker), false);
+  });
+  it("one too short to reach up past the walker's feet is not", () => {
+    assert.equal(isOverWalker({ x: 200, y: 540, w: 60, h: 30 }, walker), false);
+  });
+  it("no walker, nothing is over them", () => {
+    assert.equal(isOverWalker({ x: 200, y: 540, w: 60, h: 90 }, null), false);
+  });
+});
+
+describe("isBuildingOverWalker", () => {
+  /* A footprint on the glass: a box from x 100..300, ground y 560..620. */
+  const ring = [
+    { x: 100, y: 560 },
+    { x: 300, y: 560 },
+    { x: 300, y: 620 },
+    { x: 100, y: 620 },
+  ];
+  it("a building whose near edge is below the walker's feet and rises past them is over them", () => {
+    assert.equal(isBuildingOverWalker(ring, 480, { x: 200, y: 540 }), true);
+  });
+  it("one the walker stands in front of is not", () => {
+    assert.equal(isBuildingOverWalker(ring, 480, { x: 200, y: 660 }), false);
+  });
+  it("one off to the side is not", () => {
+    assert.equal(isBuildingOverWalker(ring, 480, { x: 360, y: 540 }), false);
+  });
+  it("a low one that never reaches the walker's feet is not", () => {
+    assert.equal(isBuildingOverWalker(ring, 550, { x: 200, y: 540 }), false);
   });
 });
